@@ -140,7 +140,7 @@ class LearnedSwitch:
         self.config = config or SwitchConfig()
         # Lazy import to avoid a circular reference through __init__.
         if storage is None:
-            from learned_switch.storage import InMemoryStorage
+            from dendra.storage import InMemoryStorage
 
             storage = InMemoryStorage()
         self._storage = storage
