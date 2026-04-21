@@ -83,17 +83,22 @@ def ml_switch(
     name: Optional[str] = None,
     config: Optional[SwitchConfig] = None,
     storage: Optional[Any] = None,
+    llm: Optional[Any] = None,
+    ml_head: Optional[Any] = None,
+    telemetry: Optional[Any] = None,
 ) -> Callable[[Callable[..., Any]], _MLSwitchWrapper]:
     """Wrap a classification rule function as a :class:`LearnedSwitch`.
 
     Args:
-        labels: Exhaustive list of valid output labels. Unused in
-            Phase 0; required at Phase 1+ for ML head configuration.
+        labels: Exhaustive list of valid output labels. Optional at
+            Phase 0; required at Phase 1+ for LLM/ML routing.
         author: Principal associated with the switch (opaque string).
         name: Stable switch identifier. Defaults to the wrapped
             function's ``__name__``.
         config: Optional :class:`SwitchConfig`.
         storage: Optional :class:`Storage` backend.
+        llm: Optional :class:`LLMClassifier` used in LLM_SHADOW /
+            LLM_PRIMARY phases.
 
     Returns a wrapper callable that forwards to the decorated function
     and exposes the LearnedSwitch affordances (``record_outcome``,
@@ -108,10 +113,11 @@ def ml_switch(
             author=author,
             config=config,
             storage=storage,
+            llm=llm,
+            ml_head=ml_head,
+            telemetry=telemetry,
         )
-        # ``labels`` is informational in v0.1.0; stash on the switch for
-        # later phases to consume during ML head construction.
-        switch.labels = list(labels or [])  # type: ignore[attr-defined]
+        switch.labels = list(labels or [])
         return _MLSwitchWrapper(fn, switch)
 
     return decorate

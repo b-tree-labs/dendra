@@ -1,0 +1,251 @@
+# Copyright (c) 2026 B-Tree Ventures, LLC
+# SPDX-License-Identifier: Apache-2.0
+
+"""Plot transition curves from benchmark JSONL output.
+
+matplotlib is a soft dependency — pulled in only when plotting is
+requested. All data munging (parsing JSONL, computing crossover depth)
+is pure-Python and testable without a display.
+"""
+
+from __future__ import annotations
+
+import json
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Iterable, Optional
+
+
+@dataclass(frozen=True)
+class BenchmarkRun:
+    """Parsed ``dendra bench`` output — summary + checkpoints."""
+
+    benchmark: str
+    labels: int
+    train_rows: int
+    test_rows: int
+    seed_size: int
+    checkpoints: list[dict[str, Any]] = field(default_factory=list)
+
+    def outcomes(self) -> list[int]:
+        return [c["training_outcomes"] for c in self.checkpoints]
+
+    def rule_accs(self) -> list[float]:
+        return [c["rule_test_accuracy"] for c in self.checkpoints]
+
+    def ml_accs(self) -> list[float]:
+        return [c["ml_test_accuracy"] for c in self.checkpoints]
+
+    def llm_accs(self) -> list[Optional[float]]:
+        return [c.get("llm_test_accuracy") for c in self.checkpoints]
+
+    def has_llm(self) -> bool:
+        return any(c.get("llm_test_accuracy") is not None for c in self.checkpoints)
+
+    def crossover_outcomes(self) -> Optional[int]:
+        """Training-outcome count where ML first exceeds the rule."""
+        for c in self.checkpoints:
+            if c["ml_test_accuracy"] > c["rule_test_accuracy"]:
+                return c["training_outcomes"]
+        return None
+
+    def transition_depth(
+        self, *, alpha: float = 0.01, prefer_paired: bool = True
+    ) -> Optional[int]:
+        """Outcome count at which ML beats rule with ``p < alpha``.
+
+        When per-example ``rule_correct``/``ml_correct`` arrays are
+        present and ``prefer_paired=True``, uses McNemar's paired
+        exact test — the tighter and more principled statistic for
+        this comparison. Falls back to an unpaired two-proportion
+        z-test when per-example data isn't available. Matches paper
+        §4.4 "statistical beat" definition.
+        """
+        for c in self.checkpoints:
+            if not c.get("ml_trained"):
+                continue
+            p_value: Optional[float] = None
+            if (
+                prefer_paired
+                and c.get("rule_correct") is not None
+                and c.get("ml_correct") is not None
+            ):
+                p_value = mcnemar_p(c["rule_correct"], c["ml_correct"])
+            else:
+                p_value = _two_proportion_z_p(
+                    p1=c["ml_test_accuracy"],
+                    p2=c["rule_test_accuracy"],
+                    n=self.test_rows,
+                )
+            if p_value is not None and p_value < alpha:
+                return c["training_outcomes"]
+        return None
+
+    def final_gap(self) -> float:
+        """ML accuracy minus rule accuracy at the last checkpoint."""
+        if not self.checkpoints:
+            return 0.0
+        last = self.checkpoints[-1]
+        return last["ml_test_accuracy"] - last["rule_test_accuracy"]
+
+
+def _two_proportion_z_p(*, p1: float, p2: float, n: int) -> Optional[float]:
+    """One-sided two-proportion z-test p-value (H1: p1 > p2).
+
+    Returns None when the pooled variance is zero (degenerate) or when
+    ``n`` is non-positive. Pure Python — no scipy dependency.
+    """
+    if n <= 0:
+        return None
+    if p1 <= p2:
+        return 1.0
+    pooled = (p1 + p2) / 2
+    var = pooled * (1 - pooled) * (2 / n)
+    if var <= 0:
+        return None
+    import math
+
+    z = (p1 - p2) / math.sqrt(var)
+    # One-sided survival: 1 - Phi(z). Use the complementary error function.
+    return 0.5 * math.erfc(z / math.sqrt(2))
+
+
+def mcnemar_p(
+    rule_correct: list[bool], ml_correct: list[bool]
+) -> Optional[float]:
+    """One-sided McNemar's paired-test p-value (H1: ML beats rule).
+
+    Uses the exact binomial on disagreement pairs when the count is
+    small; normal approximation above 50 disagreements.
+
+    ``rule_correct`` and ``ml_correct`` are parallel lists of booleans
+    over the same test set. Returns None if the lists are empty or
+    mismatched.
+    """
+    if (
+        not rule_correct
+        or not ml_correct
+        or len(rule_correct) != len(ml_correct)
+    ):
+        return None
+    b = sum(1 for r, m in zip(rule_correct, ml_correct) if (not r) and m)
+    c = sum(1 for r, m in zip(rule_correct, ml_correct) if r and (not m))
+    n = b + c
+    if n == 0:
+        return 1.0  # no disagreements → cannot reject H0
+
+    if n <= 50:
+        # Exact one-sided binomial: P(X >= b | X ~ Bin(n, 0.5)).
+        from math import comb
+
+        tail = sum(comb(n, k) for k in range(b, n + 1))
+        return tail / (2**n)
+
+    # Normal approximation (continuity-corrected).
+    import math
+
+    z = (b - c - (1 if b > c else -1)) / math.sqrt(n)
+    return 0.5 * math.erfc(z / math.sqrt(2))
+
+
+def load_run(jsonl_path: "str | Path") -> BenchmarkRun:
+    path = Path(jsonl_path)
+    summary: dict[str, Any] = {}
+    checkpoints: list[dict[str, Any]] = []
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            row = json.loads(line)
+            if row.get("kind") == "summary":
+                summary = row
+            elif row.get("kind") == "checkpoint":
+                checkpoints.append(row)
+    if not summary:
+        raise ValueError(f"no summary row found in {path}")
+    return BenchmarkRun(
+        benchmark=summary["benchmark"],
+        labels=summary["labels"],
+        train_rows=summary["train_rows"],
+        test_rows=summary["test_rows"],
+        seed_size=summary["seed_size"],
+        checkpoints=checkpoints,
+    )
+
+
+def plot_transition_curves(
+    runs: Iterable[BenchmarkRun],
+    *,
+    output_path: "str | Path",
+    title: str = "Dendra transition curves",
+) -> None:
+    """Render a multi-panel transition-curve figure.
+
+    One panel per ``BenchmarkRun``, arranged in a 2×2 grid when ≤4
+    runs are supplied (the paper's Figure 1 layout). Each panel plots
+    rule accuracy (flat line) vs ML accuracy (rising) against training
+    outcomes on a log x-axis.
+    """
+    try:
+        import matplotlib.pyplot as plt  # type: ignore[import-not-found]
+    except ImportError as e:
+        raise ImportError(
+            "plotting requires matplotlib. Install with `pip install dendra[viz]`."
+        ) from e
+
+    runs = list(runs)
+    if not runs:
+        raise ValueError("at least one run is required")
+
+    cols = 2 if len(runs) > 1 else 1
+    rows = (len(runs) + cols - 1) // cols
+    fig, axes_grid = plt.subplots(
+        rows, cols, figsize=(6.5 * cols, 4.2 * rows), squeeze=False,
+    )
+    axes = [ax for row in axes_grid for ax in row]
+
+    for ax, run in zip(axes, runs):
+        xs = run.outcomes()
+        ax.plot(xs, run.rule_accs(), label="Rule", linestyle="--", color="#c04040")
+        ax.plot(xs, run.ml_accs(), label="ML", color="#2a7fb8", linewidth=2)
+        if run.has_llm():
+            llm_vals = [v if v is not None else float("nan") for v in run.llm_accs()]
+            ax.plot(
+                xs,
+                llm_vals,
+                label="LLM (shadow)",
+                color="#5b9e4a",
+                linestyle="-.",
+                linewidth=1.6,
+            )
+        crossover = run.crossover_outcomes()
+        if crossover is not None:
+            ax.axvline(crossover, color="#8a8a8a", linestyle=":", linewidth=1)
+            ax.annotate(
+                f"crossover ≈ {crossover:,}",
+                xy=(crossover, 0.05),
+                xytext=(6, 0),
+                textcoords="offset points",
+                fontsize=8,
+                color="#444",
+            )
+        ax.set_title(f"{run.benchmark}  ({run.labels} labels)")
+        ax.set_xlabel("Training outcomes")
+        ax.set_ylabel("Test accuracy")
+        ax.set_xscale("log")
+        ax.set_ylim(0, 1.0)
+        ax.grid(True, which="both", alpha=0.25)
+        ax.legend(loc="lower right", fontsize=9)
+
+    # Hide any unused subplots (odd run count).
+    for extra_ax in axes[len(runs):]:
+        extra_ax.set_visible(False)
+
+    fig.suptitle(title, fontsize=13)
+    fig.tight_layout(rect=(0, 0, 1, 0.97))
+    fig.savefig(output_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+
+
+__all__ = ["BenchmarkRun", "load_run", "plot_transition_curves"]
