@@ -265,7 +265,7 @@ dendra init src/support/triage.py:triage --author "@you:team"
 
 ### Contact
 
-- **GitHub:** [github.com/bwbooth/dendra](https://github.com/bwbooth/dendra)
+- **GitHub:** [github.com/axiom-labs-os/dendra](https://github.com/axiom-labs-os/dendra)
 - **Paper:** [arxiv.org/abs/...](https://arxiv.org) *(post-submission)*
 - **Email:** `ben@b-treeventures.com`
 - **X / Bluesky:** *[pick one]*

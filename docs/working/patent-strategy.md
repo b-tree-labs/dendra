@@ -405,7 +405,7 @@ writing ahead of filing and in case of any future inquiry.
 - **Assignee:** B-Tree Ventures, LLC (a Texas limited-liability
   company doing business as Axiom Labs for the commercial side
   of its portfolio).
-- **Repository:** `github.com/bwbooth/dendra`, licensed Apache
+- **Repository:** `github.com/axiom-labs-os/dendra`, licensed Apache
   2.0. Commit history shows Benjamin Booth as sole committer
   from inception.
 - **Development environment:** personal time, personal equipment,

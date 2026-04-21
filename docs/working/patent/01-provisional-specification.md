@@ -2284,7 +2284,7 @@ itself a classification problem and the same primitive applies.
 ### Appendix A — Representative Python reference implementation
 
 [The reference implementation is publicly available at
-`github.com/bwbooth/dendra`, licensed under Apache 2.0. All code
+`github.com/axiom-labs-os/dendra`, licensed under Apache 2.0. All code
 paths described in §5 correspond to modules at
 `src/dendra/core.py`, `src/dendra/storage.py`, `src/dendra/ml.py`,
 `src/dendra/llm.py`, `src/dendra/research.py`, `src/dendra/roi.py`,

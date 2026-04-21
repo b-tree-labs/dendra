@@ -114,7 +114,7 @@ def triage(ticket):
 - **Dendra switch overhead: 0.62 µs.** Lower than a Python
   attribute lookup. *No production team will feel it.*
 
-Evidence: `dendra-one-pager.md`; code at `github.com/bwbooth/dendra`.
+Evidence: `dendra-one-pager.md`; code at `github.com/axiom-labs-os/dendra`.
 
 ---
 

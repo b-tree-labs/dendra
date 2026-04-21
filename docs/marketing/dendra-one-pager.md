@@ -172,7 +172,7 @@ Full unit economics + pricing rationale: `business-model-and-moat.md`
 ## Contact
 
 - Maintainer: Benjamin Booth — `ben@b-treeventures.com`
-- Code: [github.com/bwbooth/dendra](https://github.com/bwbooth/dendra)
+- Code: [github.com/axiom-labs-os/dendra](https://github.com/axiom-labs-os/dendra)
 - Paper: target NeurIPS 2026 ("When Should a Rule Learn? Transition
   Curves for Safe Rule-to-ML Graduation").
 

@@ -51,7 +51,7 @@ I drafted them.
 > measurements. Patent-pending. Taking on 3-5 design partners —
 > $10-25k for 6mo priority access + roadmap input. 20 min to see if
 > it fits your triage/router/moderation stack? No demo deck; live
-> repo walkthrough. [github.com/bwbooth/dendra]
+> repo walkthrough. [github.com/axiom-labs-os/dendra]
 
 ---
 

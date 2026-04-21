@@ -21,7 +21,7 @@ hours if you clear your calendar.
       `patent/05-provenance-snapshot.md`. Archive the tarball to
       three locations (local, cloud, off-machine).
 - [ ] **H+2: Create the public GitHub repo** at
-      `github.com/bwbooth/dendra`. Push the current workspace
+      `github.com/axiom-labs-os/dendra`. Push the current workspace
       with full commit history.
 - [ ] **H+3: Verify GitHub Actions CI runs green** on the first
       push (workflow is already in `.github/workflows/test.yml`).
