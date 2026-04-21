@@ -1,0 +1,16 @@
+flowchart TB
+    classDef box fill:#ffffff,stroke:#000000,color:#000000
+    classDef unsafe fill:#ffffff,stroke:#000000,stroke-dasharray:4 2,color:#000000
+
+    U[user input]:::box
+    GEN[LLM generator]:::box
+    OUT[generated output]:::box
+    GATE[safety-critical switch<br/>phase up to ML_WITH_FALLBACK<br/>labels: safe, pii, toxic, confidential]:::box
+    SAFE[deliver to user]:::box
+    BLOCK[block / rewrite / refuse]:::unsafe
+
+    U --> GEN
+    GEN --> OUT
+    OUT --> GATE
+    GATE -->|label=safe| SAFE
+    GATE -->|otherwise| BLOCK

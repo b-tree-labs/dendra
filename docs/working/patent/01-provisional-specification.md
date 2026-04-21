@@ -9,14 +9,12 @@ CODEBASES**
 
 ---
 
-**Inventor:** [INVENTOR FULL LEGAL NAME]
+**Inventor:** Benjamin Booth
 **Address:** [INVENTOR ADDRESS]
 **Citizenship:** [US / OTHER]
 **Filing Date:** [LEFT BLANK — to be stamped by USPTO Patent Center]
 **Entity Status Claimed:** Micro entity (37 CFR 1.29)
-**Intended Assignee:** [B-Tree Ventures, LLC] *(subject to UT
-Office of Technology Commercialization release; see cover sheet
-SB/16)*
+**Intended Assignee:** B-Tree Ventures, LLC
 
 **Filing type:** Provisional Patent Application (35 USC 111(b)).
 

@@ -1,0 +1,10 @@
+stateDiagram-v2
+    direction TB
+    [*] --> normal
+    normal --> tripped: ML raises exception
+    tripped --> normal: reset_circuit_breaker() called
+
+    note right of tripped
+      all classifications
+      route to rule-fallback
+    end note

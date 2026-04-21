@@ -1,0 +1,14 @@
+stateDiagram-v2
+    direction TB
+    [*] --> RULE
+    RULE --> LLM_SHADOW: gate passes
+    LLM_SHADOW --> LLM_PRIMARY: gate passes
+    LLM_PRIMARY --> ML_SHADOW: gate passes
+    ML_SHADOW --> ML_WITH_FALLBACK: gate passes
+    ML_WITH_FALLBACK --> ML_PRIMARY: gate passes AND NOT safety_critical
+    ML_WITH_FALLBACK --> ML_WITH_FALLBACK: safety_critical cap
+
+    note right of ML_PRIMARY
+      refused at construction
+      when safety_critical=true
+    end note

@@ -1,0 +1,31 @@
+flowchart TD
+    classDef box fill:#ffffff,stroke:#000000,color:#000000
+
+    IN([input]):::box
+    PH{phase?}:::box
+    RULE[rule<br/>→ return rule_out]:::box
+    LS[rule decides<br/>LLM shadows<br/>→ return rule_out]:::box
+    LP{LLM conf<br/>≥ threshold?}:::box
+    LP_Y[→ return LLM_out]:::box
+    LP_N[→ return rule_out<br/>source=rule_fallback]:::box
+    MS[LLM/rule decides<br/>ML shadows]:::box
+    MF{ML conf<br/>≥ threshold?}:::box
+    MF_Y[→ return ML_out]:::box
+    MF_N[→ return rule_out<br/>source=rule_fallback]:::box
+    MP{breaker<br/>tripped?}:::box
+    MP_Y[→ return rule_out<br/>source=rule_fallback]:::box
+    MP_N[invoke ML<br/>→ return ML_out<br/>or trip breaker]:::box
+
+    IN --> PH
+    PH -->|RULE| RULE
+    PH -->|LLM_SHADOW| LS
+    PH -->|LLM_PRIMARY| LP
+    LP -->|yes| LP_Y
+    LP -->|no or LLM error| LP_N
+    PH -->|ML_SHADOW| MS
+    PH -->|ML_WITH_FALLBACK| MF
+    MF -->|yes| MF_Y
+    MF -->|no or ML error| MF_N
+    PH -->|ML_PRIMARY| MP
+    MP -->|yes| MP_Y
+    MP -->|no| MP_N

@@ -86,6 +86,12 @@ Check one:
 - Entity type: Limited Liability Company
 - State of incorporation: [STATE]
 
+> Dendra was conceived and reduced to practice by Benjamin Booth
+> on personal time, using personal equipment, outside the scope
+> of any employment duties. No institutional, academic, or third-
+> party IP rights apply. See `../personal-invention-declaration.md`
+> for the factual provenance statement kept on file.
+
 > The assignee field establishes who holds the rights. Since
 > Dendra is a pure B-Tree Ventures work per `../patent-strategy.md`
 > §7, this is a clean single-assignee record. If the assignment

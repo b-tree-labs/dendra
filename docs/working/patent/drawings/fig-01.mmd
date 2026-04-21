@@ -1,0 +1,20 @@
+flowchart TD
+    classDef box fill:#ffffff,stroke:#000000,color:#000000
+    classDef dashed fill:#ffffff,stroke:#000000,stroke-dasharray:4 2,color:#000000
+
+    C[caller 102<br/>production application]:::box
+    S[switch instance 110<br/>LearnedSwitch]:::box
+    CFG[config 112<br/>phase, threshold, safety_critical]:::box
+    R[rule function 120<br/>user-supplied]:::box
+    L[LLM classifier 130<br/>optional]:::dashed
+    M[ML head 140<br/>optional]:::dashed
+    ST[storage backend 150<br/>outcome log 152]:::box
+    T[telemetry emitter 160<br/>optional]:::dashed
+
+    C -->|classify/record_outcome| S
+    CFG -.configures.-> S
+    S -->|routes by phase| R
+    S -.->|routes by phase| L
+    S -.->|routes by phase| M
+    S -->|append outcome| ST
+    S -.->|emit event| T

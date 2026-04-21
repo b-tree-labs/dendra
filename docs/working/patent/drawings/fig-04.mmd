@@ -1,0 +1,24 @@
+flowchart TB
+    classDef box fill:#ffffff,stroke:#000000,color:#000000
+
+    D[decision_correct<br/>bool list]:::box
+    C[candidate_correct<br/>bool list]:::box
+    CT[count b, c<br/>b = cand wins, c = dec wins]:::box
+    SEL{n = b+c}:::box
+    EX[exact binomial<br/>P X ge b Bin n,0.5]:::box
+    NO[normal approx<br/>with continuity correction]:::box
+    P[p-value]:::box
+    GT{p less than alpha?}:::box
+    ADV[permit phase advance]:::box
+    HLD[hold]:::box
+
+    D --> CT
+    C --> CT
+    CT --> SEL
+    SEL -->|n <= 50| EX
+    SEL -->|n > 50| NO
+    EX --> P
+    NO --> P
+    P --> GT
+    GT -->|yes| ADV
+    GT -->|no| HLD
