@@ -10,8 +10,8 @@ CODEBASES**
 ---
 
 **Inventor:** Benjamin Booth
-**Address:** [INVENTOR ADDRESS]
-**Citizenship:** [US / OTHER]
+**Address:** 1060 Hidden Hills Drive, Dripping Springs, TX 78620
+**Citizenship:** US
 **Filing Date:** [LEFT BLANK — to be stamped by USPTO Patent Center]
 **Entity Status Claimed:** Micro entity (37 CFR 1.29)
 **Intended Assignee:** B-Tree Ventures, LLC
@@ -47,8 +47,7 @@ specifically, this disclosure describes: (a) a graduated-autonomy
 classification system comprising six operational phases, each
 associated with a specific routing among classifier tiers, wherein
 advancement between phases is gated by statistical evidence drawn
-from an append-only, self-rotating outcome log; and (b) a static-
-and-dynamic code-analysis system for identifying classification
+from an append-only, self-rotating outcome log; and (b) a static-and-dynamic code-analysis system for identifying classification
 decision points in production codebases and projecting quantified
 per-site economic benefit from converting each such point to the
 graduated-autonomy system.
@@ -60,8 +59,7 @@ graduated-autonomy system.
 [0002] Every non-trivial software system contains classification
 decision points — locations in code where the program selects one
 of a finite set of outcomes based on the shape or content of an
-input. Examples include, without limitation: routing a customer-
-support ticket to a handling category; assigning an intent label
+input. Examples include, without limitation: routing a customer-support ticket to a handling category; assigning an intent label
 to a conversational turn; determining whether a piece of content
 requires moderator review; selecting a retrieval strategy for a
 semantic search; classifying a network request as safe, suspicious,
@@ -83,8 +81,7 @@ by some signal (user correction, downstream resolution success,
 audit disposition, manually-reviewed ground-truth label) that
 retrospectively resolves whether the classification was correct.
 
-[0004] Once sufficient outcome data has accumulated, a machine-
-learned classifier trained on that data typically outperforms
+[0004] Once sufficient outcome data has accumulated, a machine-learned classifier trained on that data typically outperforms
 the rule on held-out evaluation. The technical question
 addressed by the present invention is *when and how* to
 transition between classifier tiers such that three concurrent
@@ -92,8 +89,7 @@ technical properties hold:
 
 1. **Bounded regression probability.** The probability that any
    phase transition produces a classifier with mean accuracy
-   worse than the rule's mean accuracy, measured over the post-
-   transition window, is bounded above by a configurable value.
+   worse than the rule's mean accuracy, measured over the post-transition window, is bounded above by a configurable value.
 2. **Bounded storage.** The outcome record store does not grow
    without bound regardless of classification volume or runtime
    duration.
@@ -188,18 +184,15 @@ classification semantics.
 embodiments:
 
 - **A graduated-autonomy classification system** (§3)
-  comprising a plurality of ordered classifier tiers, phase-
-  dependent routing among the tiers, statistical gating of
+  comprising a plurality of ordered classifier tiers, phase-dependent routing among the tiers, statistical gating of
   phase transitions against an outcome record store with
-  bounded retention, architectural enforcement of a safety-
-  critical invariant preventing the highest-autonomy phase
+  bounded retention, architectural enforcement of a safety-critical invariant preventing the highest-autonomy phase
   under configured conditions, and a persistent-recovery
   mechanism from the highest-autonomy phase upon detected
   failure.
 - **A companion static-and-dynamic analyzer** (§4) that
   identifies classification decision points in production
-  codebases, measures their traffic characteristics non-
-  invasively, and projects quantified per-site technical
+  codebases, measures their traffic characteristics non-invasively, and projects quantified per-site technical
   benefit from conversion.
 
 ## 3. SUMMARY OF THE INVENTION — GRADUATED-AUTONOMY SYSTEM
@@ -272,24 +265,23 @@ gated by a configured evidence-based criterion applied to the
 outcome record store. In the preferred embodiment, the
 criterion is a paired-proportion hypothesis test (McNemar's
 exact test or equivalent) over per-example correctness vectors,
-with a configurable one-sided significance level α (typical
-α = 0.01); advancement is permitted when the p-value falls
-below α. Alternative criteria per §13.5 and §14.3 include
+with a configurable one-sided significance level alpha (typical
+alpha = 0.01); advancement is permitted when the p-value falls
+below alpha. Alternative criteria per §13.5 and §14.3 include
 unpaired two-proportion tests, Wilson interval comparison,
-Bayesian posterior comparison, accuracy-margin criteria, cost-
-weighted expected-value criteria, operator-approved criteria,
+Bayesian posterior comparison, accuracy-margin criteria, cost-weighted expected-value criteria, operator-approved criteria,
 sequential-probability-ratio tests, and equivalents; each such
 criterion is within scope.
 
 [0018] **Technical improvement.** When the transition gate is a
-paired-proportion hypothesis test at significance level α, the
+paired-proportion hypothesis test at significance level alpha, the
 probability that any single permitted phase transition produces
 a classifier whose mean accuracy on the post-transition
 distribution is worse than the rule's mean accuracy on the same
-distribution is bounded above by α (the Type-I error rate of
+distribution is bounded above by alpha (the Type-I error rate of
 the test). For k transitions in the lifetime of an instance of
-the system, the family-wise error rate is bounded above by k·α
-under independence, or by a tighter bound (e.g., α/k by
+the system, the family-wise error rate is bounded above by k·alpha
+under independence, or by a tighter bound (e.g., alpha/k by
 Bonferroni correction) under stricter multiple-testing
 controls. This bounded-regression-probability property is a
 distinguishing technical improvement of the invention relative
@@ -317,8 +309,8 @@ entries); LRU eviction; bounded-retention replication to a
 separate store; or equivalent. The preferred embodiment uses
 size-triggered segment rotation with segment-count-based
 retention, achieving a predictable upper storage bound computed
-as (max_bytes_per_segment × (max_rotated_segments + 1)); the
-preferred default values are illustrative (64 MB × 9 = ~576 MB)
+as (max_bytes_per_segment x (max_rotated_segments + 1)); the
+preferred default values are illustrative (64 MB x 9 = ~576 MB)
 and not limiting. See
 §5.4.4 for the formal proof sketch.
 
@@ -377,8 +369,7 @@ affect the user-visible decision or block the decision path.
 [0024] In one embodiment, the switch is exposed to application
 code through a decorator that wraps a user function; in
 alternative embodiments, through direct class instantiation,
-through a service endpoint (REST/gRPC), through configuration-
-driven framework integration, or any equivalent surface (see
+through a service endpoint (REST/gRPC), through configuration-driven framework integration, or any equivalent surface (see
 §14.9). The API surface is not a limitation of the invention;
 the reference implementation uses a Python decorator for
 illustration only.
@@ -429,11 +420,9 @@ is described in detail in §5.12.
 
 ### 4.2 Pattern library
 
-[0030] The pattern library comprises at least patterns for: if-
-elif-else chains with string-literal return values; match-case
+[0030] The pattern library comprises at least patterns for: if-elif-else chains with string-literal return values; match-case
 dispatchers; keyword-matching classifiers (for example, patterns
-of the form `if keyword in text: return label`); regular-
-expression dispatchers; LLM-prompted classifiers (patterns of
+of the form `if keyword in text: return label`); regular-expression dispatchers; LLM-prompted classifiers (patterns of
 function bodies that construct a prompt and parse a label
 response); and rule-tree dispatchers (recursive conditional
 structures reducing to a finite label set). The pattern library
@@ -460,11 +449,9 @@ of savings:
   under the graduated-autonomy system, multiplied by fully-loaded
   engineering cost per unit time.
 - **Time-to-ML acceleration** — the value of earlier ML
-  availability, computed as (months-accelerated × monthly-value-
-  per-site).
+  availability, computed as (months-accelerated x monthly-value-per-site).
 - **Regression avoidance** — the expected annual value of
-  avoided silent-regression events, computed as (regressions-per-
-  site-per-year × regression-cost × volume-adjustment).
+  avoided silent-regression events, computed as (regressions-per-site-per-year x regression-cost x volume-adjustment).
 - **Token-cost savings** — the annualized LLM-API-call cost
   avoided by routing a fraction of decisions through rule or
   ML pathways rather than through the LLM.
@@ -485,8 +472,7 @@ a caller 102 (typically production application code) and a
 decision-making chain comprising a rule function 120, an
 optional LLM classifier 130, and an optional ML head 140. The
 switch 110 is configured by a configuration record 112 which
-specifies the operational phase, confidence threshold, safety-
-critical flag, and other parameters detailed herein. Classification
+specifies the operational phase, confidence threshold, safety-critical flag, and other parameters detailed herein. Classification
 outcomes are recorded to a storage backend 150 which maintains
 an append-only, self-rotating outcome log 152. A telemetry
 emitter 160 receives optional observation events for external
@@ -575,20 +561,31 @@ the input; the output; the outcome label (one of: "correct",
 rule output, LLM output, LLM confidence, ML output, and ML
 confidence from shadow evaluations.
 
-[0040] **Serialization.** Each record is serialized to a single
-line of JSON text. Unicode is permitted; non-ASCII characters are
-encoded using UTF-8 and JSON-escape sequences. Default handlers
-for non-JSON-serializable types convert to string form. Lines
-are separated by the operating system's native line separator
-(`os.linesep`).
+[0040] **Serialization (illustrative embodiment).** In one
+embodiment, each record is serialized to a single line of JSON
+text; Unicode is permitted; non-ASCII characters are encoded
+using UTF-8 and JSON-escape sequences; default handlers for
+non-JSON-serializable types convert to string form; lines are
+separated by the operating system's native line separator
+(`os.linesep`). The JSON-lines serialization is illustrative
+only. Alternative serialization formats — including but not
+limited to YAML, MessagePack, CBOR, Apache Parquet, Protocol
+Buffers, Avro, and custom binary encodings — are expressly
+contemplated as non-limiting substitutions; see §13.6 for
+extended storage-backend alternatives.
 
 [0041] **Segment layout.** The storage backend organizes outcome
-records into segments. The active segment is always the file
-`outcomes.jsonl` at path `<base>/<switch_name>/outcomes.jsonl`.
-Rotated segments are named `outcomes.jsonl.1`, `outcomes.jsonl.2`,
-and so forth up to a configurable retention count (default 8
-segments). Segment 1 is the most-recently-rotated; higher indices
-correspond to older rotations.
+records into segments. In the illustrative embodiment, the
+active segment is the file `outcomes.jsonl` at path
+`<base>/<switch_name>/outcomes.jsonl`; rotated segments are named
+`outcomes.jsonl.1`, `outcomes.jsonl.2`, and so forth up to a
+configurable retention count (default 8 segments). Segment 1 is
+the most-recently-rotated; higher indices correspond to older
+rotations. The specific file extensions and naming convention
+(`outcomes.jsonl`, `.jsonl.N`) are illustrative; any naming
+convention that uniquely identifies the active segment and
+rank-orders rotated segments is within the scope of this
+embodiment.
 
 [0042] **Rotation trigger and procedure.** Each call to
 `append_outcome` first checks the size of the active segment;
@@ -598,7 +595,7 @@ is triggered before the write. The rotation procedure is:
 
 1. Delete any rotated segments at indices beyond the retention
    cap `max_rotated_segments`.
-2. Shift rotated segments up by one index (segment N → segment
+2. Shift rotated segments up by one index (segment N -> segment
    N+1), starting from the highest occupied index so no active
    path is clobbered.
 3. Rename the active segment `outcomes.jsonl` to
@@ -606,7 +603,7 @@ is triggered before the write. The rotation procedure is:
 4. Append the new record to a fresh `outcomes.jsonl`.
 
 [0043] **Bounded-growth property.** The total storage consumed
-per switch is bounded above by (`max_bytes_per_segment` ×
+per switch is bounded above by (`max_bytes_per_segment` x
 (`max_rotated_segments` + 1)). With default values this is
 approximately 576 megabytes per switch.
 
@@ -630,8 +627,7 @@ during outcome accumulation, typically every N outcomes — the
 gate collects per-example predictions from the decision-maker
 and the candidate higher-tier classifier over a fixed held-out
 evaluation set. The gate then computes two boolean vectors:
-`decision_correct[i]` indicating whether the current decision-
-maker's i-th prediction matches ground truth, and
+`decision_correct[i]` indicating whether the current decision-maker's i-th prediction matches ground truth, and
 `candidate_correct[i]` similarly for the higher-tier classifier.
 
 [0047] McNemar's exact test is then applied. The count `b` is the
@@ -641,25 +637,25 @@ count `c` is the symmetric case where the decision-maker won.
 The total `n = b + c` is the number of disagreements between the
 two. Under the null hypothesis that the two classifiers are
 equally good, b is distributed as Binomial(n, 0.5). The one-sided
-p-value is the right-tail probability P(X ≥ b | X ~ Binomial(n,
+p-value is the right-tail probability P(X >= b | X ~ Binomial(n,
 0.5)).
 
-[0048] When n ≤ 50, the exact binomial sum is computed directly.
+[0048] When n <= 50, the exact binomial sum is computed directly.
 When n > 50, a continuity-corrected normal approximation is
-used: z = (b - c - sign(b - c)) / √(b + c); one-sided p-value =
-0.5 · erfc(z / √2).
+used: z = (b - c - sign(b - c)) / sqrt(b + c); one-sided p-value =
+0.5 · erfc(z / sqrt2).
 
 [0049] When paired per-example data is not available, an
 unpaired two-proportion z-test is used as a conservative
 approximation: p_pooled = (p_candidate + p_decision_maker) / 2;
 variance = p_pooled · (1 - p_pooled) · (2 / n); z = (p_candidate
-- p_decision_maker) / √variance; one-sided p-value = 0.5 ·
-erfc(z / √2). This is conservative because it does not exploit
+- p_decision_maker) / sqrtvariance; one-sided p-value = 0.5 ·
+erfc(z / sqrt2). This is conservative because it does not exploit
 the correlation between paired observations; therefore if it
 says "significant", the paired test would also.
 
 [0050] The gate returns "permit advance" when the p-value is
-below the configured α (typical α = 0.01); otherwise the gate
+below the configured alpha (typical alpha = 0.01); otherwise the gate
 returns "hold".
 
 ### 5.6 Circuit breaker implementation
@@ -716,13 +712,12 @@ the switch's return value.
 ### 5.9 LLM classifier protocol
 
 [0057] The LLM classifier is specified by a protocol: any object
-with a method `classify(input, labels) → LLMPrediction`, where
+with a method `classify(input, labels) -> LLMPrediction`, where
 LLMPrediction is a value object carrying a `label` (string) and
 a `confidence` (float in [0, 1]).
 
 [0058] In the preferred embodiment, the invention ships thin
-adapters for several LLM providers: an OpenAI-compatible chat-
-completions adapter (usable against OpenAI, Together, Groq,
+adapters for several LLM providers: an OpenAI-compatible chat-completions adapter (usable against OpenAI, Together, Groq,
 vLLM, LiteLLM, etc.); an Anthropic Messages-API adapter; an
 Ollama local-model adapter; and a llamafile adapter. Each
 adapter parses the model's natural-language response and
@@ -736,11 +731,35 @@ implementing the protocol, including proprietary in-house
 classifiers, open-weight models served locally, remote inference
 services, or caching layers atop any of the above.
 
+[0059a] **Model family is not limited to large language models.**
+The terms "LLM classifier," "LLM_SHADOW," and "LLM_PRIMARY" are
+used throughout this specification as illustrative shorthand for
+an intermediate probabilistic tier that provides richer
+generalization than the rule tier without yet occupying the
+highest-autonomy seat. The tier is defined by the protocol
+(`classify(input, labels) -> (label, confidence)`), not by a
+specific model architecture. Alternative embodiments of the
+tier include, without limitation: small language models
+(sub-billion-parameter transformer variants, distilled or
+quantized); masked-language models and encoder-only architectures
+(e.g., BERT-family, RoBERTa-family, DeBERTa-family); encoder-decoder models (e.g., T5-family, FLAN-family); state-space
+models (e.g., Mamba, S4, Hyena); mixture-of-experts models;
+diffusion models producing categorical outputs; vision-language
+and multimodal models combining text, image, audio, and/or
+structured inputs; retrieval-augmented generation pipelines;
+embedding-plus-nearest-neighbor classifiers; rule-plus-fuzzy-match systems; ensemble systems combining any of the foregoing;
+and any future model class — generative or discriminative,
+attention-based or otherwise — capable of producing a
+classification with an associated confidence. Similarly, the
+"ML head" protocol described in §5.10 is not limited to any
+specific learning algorithm; its protocol admits any supervised,
+semi-supervised, self-supervised, or few-shot learning method.
+
 ### 5.10 ML head protocol
 
 [0060] The ML head is specified by a protocol: any object with
-methods `fit(records) → None`, `predict(input, labels) →
-MLPrediction`, and `model_version() → str`. The preferred
+methods `fit(records) -> None`, `predict(input, labels) ->
+MLPrediction`, and `model_version() -> str`. The preferred
 embodiment ships a zero-config default: a TF-IDF vectorizer
 feeding a logistic-regression classifier (via scikit-learn).
 Alternative embodiments include sentence-transformer-encoded
@@ -757,14 +776,13 @@ structures; lists and tuples are space-joined element
 serializations; None becomes the empty string; scalar types use
 their repr; unknown types fall through to repr. This enables the
 default ML head to handle typical production input shapes (ticket
-dicts, request objects) without requiring explicit feature-
-extraction code.
+dicts, request objects) without requiring explicit feature-extraction code.
 
 ### 5.11 Storage Protocol and backend implementations
 
 [0062] The storage backend is specified by a protocol: any
-object with methods `append_outcome(switch_name, record) → None`
-and `load_outcomes(switch_name) → list`. The preferred embodiment
+object with methods `append_outcome(switch_name, record) -> None`
+and `load_outcomes(switch_name) -> list`. The preferred embodiment
 ships two implementations: an in-memory backend suitable for
 tests and embedded deployments; and the self-rotating file-based
 backend described in §5.4.
@@ -804,7 +822,7 @@ dependency that provides classification services.
 ### 5.13 Telemetry hooks
 
 [0067] The switch accepts an optional telemetry emitter object
-with a single method `emit(event_name, payload) → None`.
+with a single method `emit(event_name, payload) -> None`.
 Classification and outcome events are emitted via this interface
 to enable integration with external observability infrastructure.
 Emitter exceptions are caught and ignored — telemetry failure
@@ -813,7 +831,11 @@ cannot affect the classification decision path.
 [0068] The preferred embodiment ships three emitters: a null
 emitter (default, zero overhead); a JSON-lines emitter that
 writes to a configurable file handle; and an in-memory list
-emitter (for tests).
+emitter (for tests). The emitter interface is extensible;
+telemetry sinks implementing alternative protocols — including
+but not limited to OpenTelemetry, Prometheus, StatsD, Kafka,
+WebSocket streams, syslog, or application-specific backends —
+may be registered without modifying the switch instance.
 
 ### 5.14 Research instrumentation
 
@@ -851,16 +873,16 @@ is the product of a measured count drawn from the outcome record
 store and a user-supplied per-unit assumption. Example
 categories include:
 
-- Migration-effort deltas: (baseline unit effort − alternative
-  unit effort) × per-unit cost coefficient.
-- Time-to-deployment acceleration: months-accelerated count ×
+- Migration-effort deltas: (baseline unit effort - alternative
+  unit effort) x per-unit cost coefficient.
+- Time-to-deployment acceleration: months-accelerated count x
   per-site per-month coefficient, conditional on whether the
   switch has reached a phase other than the initial phase
   (evidenced by at least one outcome with a non-rule source).
-- Expected-failure-cost avoidance: expected-failure count ×
-  per-event cost coefficient × volume factor.
+- Expected-failure-cost avoidance: expected-failure count x
+  per-event cost coefficient x volume factor.
 - External-service call-cost avoidance: (count of classifications
-  not routed to an external service) × (tokens-per-call ×
+  not routed to an external service) x (tokens-per-call x
   price-per-token), annualized by a measured-interval scaling
   factor.
 
@@ -972,29 +994,40 @@ measurements, and the reference cost model. For each site:
 
 - Engineering savings are computed using site-independent assumptions.
 - Time-to-ML acceleration is adjusted per site based on the
-  measured call volume (higher volume → earlier crossover).
+  measured call volume (higher volume -> earlier crossover).
 - Regression avoidance is adjusted per site by volume.
 - Token-cost savings are computed per site as (measured call
-  volume) × (expected fraction routed through rule/ML) ×
+  volume) x (expected fraction routed through rule/ML) x
   (per-call token cost).
 
 ### 6.6 Report generation
 
 [0083] The analyzer emits two output artifacts:
 
-- **Machine-readable JSON**: a structured document comprising
+- **Machine-readable structured output** (illustrated as JSON in
+  the preferred embodiment): a structured document comprising
   the per-site findings, projected savings with decomposition,
-  and the reference cost model used. Suitable for continuous-
-  integration pipelines to diff across pull requests.
-- **Human-readable Markdown**: a ranked report sorted by
-  projected annual savings, including per-site summaries and a
-  portfolio-level total.
+  and the reference cost model used. Suitable for continuous-integration pipelines to diff across pull requests. Alternative
+  machine-readable formats — including but not limited to YAML,
+  Protocol Buffers, Apache Parquet, XML, CBOR, or custom binary
+  encodings — are expressly contemplated and interchangeable
+  without affecting the scope of the analyzer invention.
+- **Human-readable report** (illustrated as Markdown in the
+  preferred embodiment): a ranked report sorted by projected
+  annual savings, including per-site summaries and a portfolio-level total. Alternative human-readable formats — including
+  but not limited to HTML, PDF, reStructuredText, AsciiDoc, plain
+  text, or terminal-rendered output with ANSI styling — are
+  expressly contemplated and interchangeable without affecting
+  the scope of the analyzer invention.
 
 ### 6.7 Integration with CI/CD
 
 [0084] The analyzer is designed to be invocable from a CI/CD
-pipeline. A single command `analyze <repo-path> [--json OUTPUT]`
-runs the static stage and emits the JSON artifact. The dynamic
+pipeline. A single command of the form `analyze <repo-path>
+[--format <fmt>] [--output OUTPUT]` runs the static stage and
+emits the structured artifact in a configurable format. In the
+illustrative embodiment, a `--json` convenience flag is provided
+equivalent to `--format json`. The dynamic
 stage is run as a separate step in the CI environment or in
 production, with measurements attached to a later run of the
 savings projector.
@@ -1035,18 +1068,22 @@ include:
 
 [0087] A particularly important application is the classification
 of LLM-generated output before delivery to users. In this
-application, the invention's rule layer implements regular-
-expression-based PII detection, a blocklist-based toxicity rule,
+application, the invention's rule layer implements regular-expression-based PII detection, a blocklist-based toxicity rule,
 and marker-based confidential-content detection. Graduation to
 phases 1-4 brings in commodity moderation APIs (Perspective,
 OpenAI Moderation) and eventually in-house ML heads trained on
 organization-specific incident-labeled outputs.
 
-[0088] Critically, LLM-output safety classifiers are always
-safety-critical per §3.6; the `safety_critical` attribute is
-set to true, and the invention's construction-time check ensures
-the classifier never reaches ML_PRIMARY. The rule-based floor
-remains the contract.
+[0088] In the preferred configuration for this application,
+LLM-output safety classifiers are designated safety-critical
+per §3.6 — whether through the boolean `safety_critical`
+attribute or through any of the pluggable safety-critical
+policies described in §13.33 — so that the invention's
+construction-time check ensures the classifier never reaches
+ML_PRIMARY and the rule-based floor remains the contract.
+Whether a given deployment treats its LLM-output safety
+classifier as safety-critical is an operator-configurable
+decision; the invention contemplates and supports both postures.
 
 ### 7.3 Security-incident mitigation
 
@@ -1070,8 +1107,7 @@ security-incident prevention:
   ML output, confidence, source, timestamp).
 - **Adversarial shadow degradation resilience.** A shadow
   classifier that fails (by exception, timeout, or adversarial
-  input) cannot block, delay, or contaminate the decision-
-  maker's output, by virtue of the shadow-isolation invariant.
+  input) cannot block, delay, or contaminate the decision-maker's output, by virtue of the shadow-isolation invariant.
 
 ## 8. EXPERIMENTAL SUPPORT FOR THE TECHNICAL-IMPROVEMENT CLAIMS
 
@@ -1097,17 +1133,17 @@ evaluation against held-out test sets.
 
 | Benchmark | Labels | Rule acc | ML @ transition | ML final | Transition depth |
 |---|---:|---:|---:|---:|---:|
-| ATIS      | 26  | 70.0% | 75.6% | 88.7% | ≤ 250 outcomes |
-| HWU64     | 64  |  1.8% | 10.5% | 83.6% | ≤ 1,000 outcomes |
-| Banking77 | 77  |  1.3% |  8.8% | 87.8% | ≤ 1,000 outcomes |
-| CLINC150  | 151 |  0.5% |  7.9% | 81.9% | ≤ 1,500 outcomes |
+| ATIS      | 26  | 70.0% | 75.6% | 88.7% | <= 250 outcomes |
+| HWU64     | 64  |  1.8% | 10.5% | 83.6% | <= 1,000 outcomes |
+| Banking77 | 77  |  1.3% |  8.8% | 87.8% | <= 1,000 outcomes |
+| CLINC150  | 151 |  0.5% |  7.9% | 81.9% | <= 1,500 outcomes |
 
 [0093] Two regimes emerged: "narrow-domain rule-viable"
 (ATIS, ~70% rule floor, ML catches up with ~19pp final gap) and
 "high-cardinality rule-doomed" (other three, <7% rule,
-gap >80pp). Seed-size sensitivity at 10× (500 training examples
+gap >80pp). Seed-size sensitivity at 10x (500 training examples
 in the rule-construction window instead of 100) moved the rule
-ceiling by ≤ 6 percentage points — the two-regime finding is
+ceiling by <= 6 percentage points — the two-regime finding is
 robust to rule-construction thoroughness.
 
 ### 8.2 Latency measurements
@@ -1116,13 +1152,13 @@ robust to rule-construction thoroughness.
 
 | Path | p50 latency | Relative to rule |
 |---|---:|---:|
-| Bare rule function | 0.12 µs | 1× |
-| Real ML head (TF-IDF + LR on ATIS) | 105 µs | 868× slower |
-| Dendra switch at RULE | 0.62 µs | 5× overhead |
-| Dendra switch at ML_WITH_FALLBACK | ~110 µs | ML-dominated |
-| Local LLM (llama3.2:1b, Ollama) | ~250 ms | ~2,000,000× slower |
+| Bare rule function | 0.12 us | 1x |
+| Real ML head (TF-IDF + LR on ATIS) | 105 us | 868x slower |
+| Dendra switch at RULE | 0.62 us | 5x overhead |
+| Dendra switch at ML_WITH_FALLBACK | ~110 us | ML-dominated |
+| Local LLM (llama3.2:1b, Ollama) | ~250 ms | ~2,000,000x slower |
 
-[0095] Dendra's phase-routing overhead (0.5 µs over bare rule)
+[0095] Dendra's phase-routing overhead (0.5 us over bare rule)
 is negligible on any production hot path. The invention thus
 preserves rule-function latency characteristics while adding
 outcome logging, phase-state machinery, safety cap enforcement,
@@ -1186,16 +1222,13 @@ architectural guarantee (bounded regression probability).
 ### 9.4 Alternative ML backbones
 
 [0104] The preferred embodiment uses TF-IDF + logistic regression
-as the default ML head. Alternatives include: sentence-
-transformer embeddings + linear classifier; gradient-boosted
-trees; shallow transformer fine-tunes; ensemble voting; ONNX-
-exported production models from any of these.
+as the default ML head. Alternatives include: sentence-transformer embeddings + linear classifier; gradient-boosted
+trees; shallow transformer fine-tunes; ensemble voting; ONNX-exported production models from any of these.
 
 ### 9.5 Distributed / federated deployment
 
 [0105] In a federated deployment, multiple switch instances
-running at different institutions contribute anonymized outcome-
-pattern signatures to a shared aggregation layer. The aggregation
+running at different institutions contribute anonymized outcome-pattern signatures to a shared aggregation layer. The aggregation
 layer computes cross-institutional priors on transition depth
 as a function of dataset attributes (label cardinality,
 distribution stability, outcome-quality). Each institution's
@@ -1206,8 +1239,7 @@ statistics cross institutional boundaries.
 ### 9.6 Hardware acceleration
 
 [0106] In embedded or edge deployments, the rule path can be
-compiled to machine code (via ahead-of-time compilation or just-
-in-time specialization). The outcome log can be shipped via
+compiled to machine code (via ahead-of-time compilation or just-in-time specialization). The outcome log can be shipped via
 delta-sync to a cloud aggregator. The ML head can be exported
 to ONNX and run on edge TPUs or NPUs.
 
@@ -1244,8 +1276,7 @@ objections.
        among a plurality of classifier tiers (§15 [0196])
        including at least a deterministic rule tier and at least
        one learned tier, according to the switch's current phase,
-       such that in one phase the rule tier is the decision-
-       making tier and in at least one other phase a learned
+       such that in one phase the rule tier is the decision-making tier and in at least one other phase a learned
        tier is the decision-making tier;
    (c) recording each classification event to an outcome record
        store (§15 [0199]) having bounded retention;
@@ -1276,8 +1307,7 @@ shadow-observed outputs of classifier tiers not serving as the
 decision-making tier.
 
 **CC-5.** The method of CC-1 wherein the bounded retention of
-(c) is achieved by size-triggered segment rotation with segment-
-count-based retention, wherein total storage is bounded by the
+(c) is achieved by size-triggered segment rotation with segment-count-based retention, wherein total storage is bounded by the
 configured segment size times the retention count.
 
 **CC-6.** The method of CC-1 wherein the architectural
@@ -1342,8 +1372,7 @@ LLM-prompted classifiers, and rule-tree classifiers.
 
 CC-A3. The method of CC-A1 wherein the reference cost model
 comprises at least: a parameterized migration-effort coefficient
-tied to an engineering-time measurement, an expected-failure-
-cost coefficient tied to an event count, and a per-call
+tied to an engineering-time measurement, an expected-failure-cost coefficient tied to an event count, and a per-call
 external-service cost coefficient computed from a token count
 and a per-token price; and wherein the per-site projection
 emits each coefficient value alongside the computed figure.
@@ -1362,13 +1391,9 @@ embodiment") are used throughout.
 
 [0110] In one embodiment, the decision-making chain additionally
 includes a **deterministic-lookup tier** situated between the
-rule function 120 and the LLM classifier 130; the deterministic-
-lookup tier consults a content-addressed cache of previously-
-classified inputs and returns a cached label with high confidence
+rule function 120 and the LLM classifier 130; the deterministic-lookup tier consults a content-addressed cache of previously-classified inputs and returns a cached label with high confidence
 when an exact or near-exact match is found. In an alternative
-embodiment, the chain additionally includes a **retrieval-
-augmented tier** that searches a vector index of previously-
-classified inputs and returns the label of the nearest neighbor
+embodiment, the chain additionally includes a **retrieval-augmented tier** that searches a vector index of previously-classified inputs and returns the label of the nearest neighbor
 when its similarity score exceeds a configured threshold.
 
 [0111] In a further embodiment, the LLM classifier 130 is itself
@@ -1377,6 +1402,24 @@ ensemble, with the plurality's output determined by majority vote,
 by weighted average of confidence scores, or by a learned gating
 function. In yet another embodiment, the ML head 140 is an
 ensemble of a plurality of base learners.
+
+[0111a] The phase-name shorthand "LLM_*" and "ML_*" is not
+limited to the specific model families those names connote in
+the preferred embodiment. Alternative embodiments substitute,
+for the intermediate probabilistic tier (phases LLM_SHADOW and
+LLM_PRIMARY), any of the model classes enumerated in §5.9 [0059a]
+— including but not limited to small language models,
+encoder-only masked-language models, encoder-decoder models,
+state-space models, mixture-of-experts models, diffusion models
+producing categorical outputs, vision-language or multimodal
+models, retrieval-augmented pipelines, and hybrid ensembles.
+Alternative embodiments similarly substitute, for the trained-classifier tier (phases ML_SHADOW, ML_WITH_FALLBACK, ML_PRIMARY),
+any supervised, semi-supervised, self-supervised, few-shot,
+active-learning, online-learning, or reinforcement-learning
+trained classifier regardless of underlying architecture. The
+phase-routing semantics, the statistical transition gate, the
+safety-critical cap, and the shadow-phase isolation properties
+apply without modification when any such substitution is made.
 
 ### 13.2 Extended phase set
 
@@ -1406,8 +1449,7 @@ key-value container); a tuple or list of heterogeneous
 components; an audio-transcript representation; an image
 representation reduced to a feature vector via an image
 encoder; a video-frame-sequence representation similarly reduced;
-a multi-modal record combining any of the foregoing; a time-
-series of observations; a graph-structured input (e.g., a code
+a multi-modal record combining any of the foregoing; a time-series of observations; a graph-structured input (e.g., a code
 AST, a knowledge-graph subgraph); or a protocol-buffer, JSON,
 XML, or binary serialized record.
 
@@ -1438,7 +1480,7 @@ predictions; Bayesian posterior comparison with beta or
 Dirichlet priors; sequential-probability-ratio tests (Wald's
 SPRT); group-sequential designs with alpha-spending functions;
 permutation tests; cross-validated paired-difference tests
-(e.g., 5×2 cv paired t); and ensemble-of-tests where multiple
+(e.g., 5x2 cv paired t); and ensemble-of-tests where multiple
 statistical procedures must agree before advancement is permitted.
 
 ### 13.6 Extended storage backends
@@ -1451,16 +1493,12 @@ timestamp; PostgreSQL with time-partitioned tables; remote object
 stores (Amazon S3, Google Cloud Storage, Azure Blob Storage)
 with object-lifecycle rules enforcing retention; append-only
 columnar stores (Apache Parquet with date-partitioning); Kafka
-topics with time-based retention; blockchain or distributed-
-ledger persistence (providing a cryptographically tamper-evident
-audit log); or content-addressable distributed storage (IPFS-
-style).
+topics with time-based retention; blockchain or distributed-ledger persistence (providing a cryptographically tamper-evident
+audit log); or content-addressable distributed storage (IPFS-style).
 
 ### 13.7 Cryptographic provenance
 
-[0119] In one embodiment, each outcome record includes a Merkle-
-style hash linking it to its predecessor, producing a tamper-
-evident audit chain. In a further embodiment, each record
+[0119] In one embodiment, each outcome record includes a Merkle-style hash linking it to its predecessor, producing a tamper-evident audit chain. In a further embodiment, each record
 additionally includes a cryptographic signature produced by a
 principal-identity key (e.g., Ed25519), binding the record to
 an authenticated author identity. In yet another embodiment, the
@@ -1498,8 +1536,7 @@ operating at different institutional deployments contribute
 anonymized outcome-pattern summaries (§15 [0205]) to a shared
 aggregation layer, which computes cross-institutional priors on
 transition depth as a function of dataset attributes (label
-cardinality, distribution stability, outcome-quality, outcome-
-latency). Each institution's new-site deployment benefits from
+cardinality, distribution stability, outcome-quality, outcome-latency). Each institution's new-site deployment benefits from
 the federated prior. In an alternative embodiment, federated
 learning of the ML head itself is performed, with outcome
 records remaining local to each institution and only parameter
@@ -1507,13 +1544,10 @@ updates being aggregated.
 
 ### 13.11 Hardware acceleration and edge deployment
 
-[0123] In one embodiment, the rule function 120 is compiled ahead-
-of-time to machine code using a static compiler, resulting in
+[0123] In one embodiment, the rule function 120 is compiled ahead-of-time to machine code using a static compiler, resulting in
 sub-microsecond evaluation; in an alternative embodiment, the rule
 is JIT-compiled to native code at first invocation. In a further
-embodiment, the ML head 140 is exported to an inference-
-optimized format (including without limitation ONNX, TensorFlow-
-Lite, Core ML, OpenVINO) and deployed on an edge device (mobile
+embodiment, the ML head 140 is exported to an inference-optimized format (including without limitation ONNX, TensorFlow-Lite, Core ML, OpenVINO) and deployed on an edge device (mobile
 phone, embedded MCU, FPGA, TPU, NPU), while the outcome log is
 synchronized to a central aggregator over a delta-sync protocol.
 
@@ -1552,8 +1586,7 @@ Datadog, New Relic, Honeycomb, Splunk, Elastic Observability,
 Grafana Tempo). In a further embodiment, the emitter additionally
 produces Prometheus metrics, StatsD counters, or Sentry
 performance events. A telemetry-forwarder component, running as a
-sidecar process or in-process subscriber, translates classify-
-and outcome-events into any of the foregoing formats at the user's
+sidecar process or in-process subscriber, translates classify-and outcome-events into any of the foregoing formats at the user's
 choice.
 
 ### 13.15 Technical compliance specializations
@@ -1579,8 +1612,7 @@ showing which tier decided; the LLM's self-generated reasoning
 when the LLM was used; feature-importance scores for the ML head
 when the ML head was used; counterfactual examples showing inputs
 near the decision boundary; SHAP, LIME, or Integrated-Gradients
-attributions; attention-weight visualizations for transformer-
-based classifiers.
+attributions; attention-weight visualizations for transformer-based classifiers.
 
 ### 13.17 Adversarial-robustness specializations
 
@@ -1607,8 +1639,7 @@ scope.
 ### 13.19 Analyzer extensions for additional pattern types
 
 [0131] The static-analysis module's pattern library (§6.3) is
-extensible. Additional patterns include without limitation: class-
-based dispatcher patterns (visitor classes with per-subclass
+extensible. Additional patterns include without limitation: class-based dispatcher patterns (visitor classes with per-subclass
 methods returning labels); decorator-stack patterns (functions
 wrapped in one or more decorators that modify classification
 behavior); macro-expanded dispatchers (in languages supporting
@@ -1636,8 +1667,7 @@ savings projector (§6.5) combines any of the following cost
 categories, each parameterized as a ratio times a per-unit
 assumption: engineering effort per migration step; expected
 regression-event cost per candidate site; token cost per
-classifier call (computed as token-count times external LLM-
-service price); and time-to-deployment value (computed as
+classifier call (computed as token-count times external LLM-service price); and time-to-deployment value (computed as
 months-accelerated times a per-site per-month coefficient).
 Each category is independently includable, excludable, or
 reweightable; the cost-model plugin interface accepts additional
@@ -1647,8 +1677,7 @@ categories registered at runtime.
 
 [0134] In one embodiment, the ML head is trained using any of:
 fully-supervised learning with gradient descent; semi-supervised
-learning leveraging unlabeled examples; self-training (pseudo-
-labeling with confidence-based filtering); active learning
+learning leveraging unlabeled examples; self-training (pseudo-labeling with confidence-based filtering); active learning
 (querying a human labeler for the most-informative examples);
 curriculum learning (progressive-difficulty training order);
 meta-learning (learning to adapt to new label sets quickly);
@@ -1665,8 +1694,7 @@ locally; a specialized classification model fine-tuned from a
 general-purpose base; a quantized model running on consumer
 hardware; a distilled student model derived from a larger teacher;
 a routing meta-model that selects among a plurality of underlying
-models per call; or a hybrid (small-model fast path plus frontier-
-model slow path, with the small model's confidence gating the
+models per call; or a hybrid (small-model fast path plus frontier-model slow path, with the small model's confidence gating the
 choice).
 
 ### 13.24 Use for output classification and generation gating
@@ -1692,8 +1720,7 @@ among a plurality of registered tools an agent should call given
 a task description and conversation context; the switch's labels
 are tool identifiers; the rule layer implements deterministic
 tool-routing heuristics (keyword-to-tool mappings); the LLM
-layer parses intent; the ML layer learns from observed tool-
-invocation outcomes (success, failure, time-to-completion).
+layer parses intent; the ML layer learns from observed tool-invocation outcomes (success, failure, time-to-completion).
 
 [0138] In a further embodiment, the invention gates agent
 actions more broadly: before an agent executes any action with
@@ -1716,8 +1743,7 @@ query; the ML layer learns from observed retrieval success
 
 ### 13.27 Non-monotonic phase transitions
 
-[0140] In one embodiment, phase advancement is monotonic (forward-
-only after statistical gate passes); in an alternative embodiment,
+[0140] In one embodiment, phase advancement is monotonic (forward-only after statistical gate passes); in an alternative embodiment,
 phase regression is automatic — the drift detector (§13.9)
 triggers an automatic move to an earlier phase when evidence
 supports it. In a further embodiment, the system maintains a
@@ -1774,6 +1800,134 @@ this registry to verify, without trusting the switch's operator,
 that the switch is operating in a claimed configuration at a
 claimed point in time. This mechanism supports audit and
 certification workflows.
+
+### 13.33 Extended safety-critical policies
+
+[0145a] In one embodiment the `safety_critical` attribute
+described in §3.6 is a per-switch boolean. In alternative
+embodiments, the safety-critical determination is pluggable
+and user-defined, including without limitation:
+
+- A user-supplied predicate function that is evaluated at
+  classification time and returns a boolean or a policy decision
+  (e.g., allow / deny / escalate) for the invocation at hand.
+- A label-set criterion that marks specific output labels as
+  safety-critical — any classification whose candidate or final
+  output falls within a designated label set is treated as
+  safety-critical for the purpose of the ML_PRIMARY cap
+  (§3.6).
+- A confidence-based criterion under which decisions with
+  estimated confidence below a configured threshold are treated
+  as safety-critical, routing them through the rule floor
+  regardless of phase.
+- An input-classification criterion under which decisions on
+  inputs matching specified properties (regular-expression,
+  schema, provenance tag, tenant identifier, jurisdiction) are
+  treated as safety-critical.
+- A policy-engine decision under which an external policy
+  engine (e.g., Open Policy Agent, Cedar, XACML, AWS IAM
+  condition set, Kubernetes admission controller) returns a
+  per-invocation safety-critical status consumed by the switch.
+- A risk-score criterion under which a separate risk-scoring
+  function (itself potentially a classifier of any tier)
+  determines whether the invocation should be treated as
+  safety-critical.
+- A composite policy combining any of the foregoing via
+  logical OR / AND / precedence composition.
+- A temporal or rate-based criterion (e.g., during an active
+  security incident, a regulatory freeze window, or when outcome-log anomalies exceed a rate threshold, the switch is treated
+  as safety-critical for the duration of the condition).
+- A multi-signer cryptographic criterion under which the
+  safety-critical status can only be deasserted upon a
+  threshold of distinct signers approving the change.
+
+The construction-time cap described in §3.6 applies whenever
+the safety-critical determination — by whatever means, whether
+an attribute, a predicate, a policy, a score, or a composite —
+evaluates to true for the switch or the invocation at hand.
+The architectural invariant is that no classification treated
+as safety-critical may be decided purely by an ML head; the
+rule floor is always reached on any such classification.
+
+### 13.34 Compositional multi-switch patterns
+
+[0145b] The invention contemplates compositions of a plurality
+of switches into larger classification systems. The phased-autonomy, transition-gate, and safety-cap properties are
+preserved per-switch; the composition topology is additional
+and does not alter the per-switch invariants. Compositional
+patterns include, without limitation:
+
+- **Hierarchical (taxonomic) composition.** A first switch
+  classifies an input into a coarse category; based on the
+  coarse label, one of a plurality of downstream switches is
+  selected to produce a finer-grained classification. Each
+  level of the taxonomy is implemented as an independent
+  switch with its own phase, rule, optional LLM tier, and
+  optional ML head. Taxonomy trees of arbitrary depth are
+  contemplated.
+- **Parallel ensemble composition.** A plurality of switches
+  each classify the same input independently; their outputs
+  are aggregated by majority vote, weighted confidence
+  averaging, a learned gating function, a meta-classifier, or
+  any equivalent aggregation rule. Individual ensemble members
+  may be in different phases (e.g., one switch in RULE, another
+  in ML_PRIMARY); the aggregator observes and may act on the
+  phase distribution.
+- **Gated-routing composition.** A router switch selects, based
+  on its classification, which of a plurality of downstream
+  switches to invoke for a particular input. The router may
+  itself be a LearnedSwitch (graduating from a rule-based
+  router to an ML router over time).
+- **Cross-validation composition.** Two or more switches of
+  heterogeneous architecture classify the same input; a
+  disagreement-detection component compares their outputs and,
+  upon disagreement, routes the input to human review, to a
+  higher-authority switch, or to a quarantine outcome stream.
+  Useful for authorization and safety-critical classifications
+  where independent attestation is desired.
+- **Cascade-fallback composition.** A primary switch classifies;
+  when its confidence is below a threshold or its classification
+  raises its own exception, a fallback switch (potentially of
+  different model family or training corpus) is consulted.
+  Multiple cascade stages are contemplated.
+- **Sequential-pipeline composition.** Input passes through
+  switches in sequence, each stage filtering, enriching, or
+  refining the classification. For example, a PII-redaction
+  switch precedes a topical-classification switch; the topical
+  classifier receives the redacted input.
+- **Meta-switch composition (switch-of-switches).** A higher-level switch's rule tier, intermediate tier, and trained-classifier tier are themselves entire LearnedSwitch instances,
+  and the phase graduation applies not to individual models
+  but to whole sub-systems. Useful for managed phased rollout
+  of classifier-platform upgrades.
+- **Federated-ensemble composition.** A plurality of switches
+  deployed across organizational boundaries contribute
+  classifications to a shared aggregator while each organization
+  retains independent phase, rule, and outcome-log ownership.
+  Extends §13.10 with aggregation semantics beyond pure
+  training-data federation.
+- **Temporal-ensemble composition.** A historical ensemble
+  where past-version switches (e.g., frozen prior-generation ML
+  heads) continue to shadow the current decision-maker,
+  providing regression-detection signal without affecting the
+  decision path.
+- **Adversarial-cross-check composition.** An adversarially-trained switch classifies the same input as the primary
+  switch; divergence between the two triggers anomaly flags,
+  supporting adversarial-robustness monitoring.
+- **Multi-modal composition.** Different switches handle
+  different input modalities (text, image, audio, time-series);
+  a meta-aggregator combines per-modality classifications.
+
+In each compositional pattern, the per-switch architectural
+properties (phase semantics, transition gate, safety-critical
+cap, shadow isolation, outcome logging) apply unchanged. The
+composition layer adds topology-specific properties (taxonomic
+path consistency, ensemble calibration, router accuracy,
+disagreement thresholding, cascade confidence propagation, etc.)
+that are themselves contemplated as independently-patentable
+novel features when combined with the per-switch invariants of
+the present invention. Compositions of any of the foregoing
+patterns, including nested compositions (e.g., a hierarchical
+tree whose leaves are ensembles), are expressly contemplated.
 
 ---
 
@@ -1884,8 +2038,7 @@ is enforced either in the prompt or in a subsequent validation
 step.
 
 [0156] **Policy-module-driven phase.** In another embodiment,
-an external policy module (e.g., Open Policy Agent, a feature-
-flag service like LaunchDarkly or Split.io, a policy engine
+an external policy module (e.g., Open Policy Agent, a feature-flag service like LaunchDarkly or Split.io, a policy engine
 implementing the Common Expression Language) determines the
 current phase based on input attributes, rollout percentages,
 or business rules. The switch consults the policy module before
@@ -1923,8 +2076,7 @@ reviewing an outcome-log summary. No automated test is applied;
 the human's judgment is the gate.
 
 [0162] **Bayesian-posterior criterion.** Per §13.5, the gate can
-require that the posterior probability of candidate > decision-
-maker exceed a configured threshold (e.g., 0.99) under a stated
+require that the posterior probability of candidate > decision-maker exceed a configured threshold (e.g., 0.99) under a stated
 prior.
 
 [0163] **Cost-weighted expected-value criterion.** The gate
@@ -1965,15 +2117,13 @@ when `safety_critical = True`. Semantically equivalent to
 construction-time refusal for any switch that starts below the
 cap.
 
-[0170] **Static-analysis enforcement.** In another, a pre-
-deployment static-analysis check (lint rule or CI check) fails
+[0170] **Static-analysis enforcement.** In another, a pre-deployment static-analysis check (lint rule or CI check) fails
 the build when a switch is configured as `safety_critical = True`
 and its phase is `ML_PRIMARY`. The check runs before any runtime
 use of the switch.
 
 [0171] **Policy-engine enforcement.** In a further embodiment, a
-policy engine rejects phase configurations at the configuration-
-store layer, before any application reads the configuration.
+policy engine rejects phase configurations at the configuration-store layer, before any application reads the configuration.
 
 [0172] **Cryptographic enforcement.** In yet another, the
 safety-critical attribute is cryptographically signed by a
@@ -1989,7 +2139,7 @@ explicit operator reset (§5.6). Alternative embodiments include:
 [0174] **Time-based automatic reset.** After a configurable quiet
 period, the breaker attempts automatic recovery. This is a
 different policy choice but employs the same core mechanism
-(detect ML failure → route to safety floor).
+(detect ML failure -> route to safety floor).
 
 [0175] **Half-open probe recovery.** Per §5.6 [0053], the breaker
 enters a "half-open" state, attempts a single ML call, and
@@ -2092,8 +2242,7 @@ practice the architectural properties.
 
 ### 14.12 Training-pipeline variations
 
-[0187] Per §13.22, training may use any supervised / semi-
-supervised / self-supervised / active / meta / federated regime.
+[0187] Per §13.22, training may use any supervised / semi-supervised / self-supervised / active / meta / federated regime.
 Additional variations within scope:
 
 [0188] **Training-as-a-service.** The ML head is retrained by an
@@ -2235,8 +2384,7 @@ conditionals, runtime probing, or any equivalent.
 federated deployment) means any representation of aggregate
 classification-outcome statistics that does not permit
 reconstruction of individual outcome records. Acceptable forms
-include count summaries, distribution histograms, differential-
-privacy-noised aggregates, or secure-multi-party-computation
+include count summaries, distribution histograms, differential-privacy-noised aggregates, or secure-multi-party-computation
 shares.
 
 [0206] These functional definitions are intended to bind any
@@ -2257,8 +2405,7 @@ ML head per phase-specific semantics, recording each outcome
 to an append-only log with automatic size-bounded rotation, and
 permitting phase advancement only when a paired-proportion
 statistical test rejects a null hypothesis of equal-or-worse
-performance at a configured significance level. A safety-
-critical attribute refuses switch construction in the highest
+performance at a configured significance level. A safety-critical attribute refuses switch construction in the highest
 phase, protecting authorization-class decisions. A circuit
 breaker in the highest phase reverts routing to the rule upon
 ML-head failure and persists until explicit operator reset.
@@ -2269,8 +2416,7 @@ non-invasive measurement, and projects per-site annual savings
 using a transparent, ratio-decomposable reference cost model.
 The invention is applicable to customer-support triage,
 conversational-intent routing, content moderation, clinical
-coding, fraud detection, security alert triage, RAG retrieval-
-strategy selection, agent tool routing, tax/compliance coding,
+coding, fraud detection, security alert triage, RAG retrieval-strategy selection, agent tool routing, tax/compliance coding,
 and LLM-output safety classification — the last being
 particularly important because LLM-output classification is
 itself a classification problem and the same primitive applies.
@@ -2295,7 +2441,7 @@ repository as of priority date. Unit tests are at the sibling
 - `max_bytes_per_segment`: 64 megabytes (default).
 - `max_rotated_segments`: 8 (default).
 - Default confidence threshold: 0.85.
-- Default transition significance level α: 0.01.
+- Default transition significance level alpha: 0.01.
 - Default seed-window size for rule construction: 100 training examples.
 - Default keywords-per-label for rule generation: 5.
 - Default checkpoint interval: 250 outcomes.

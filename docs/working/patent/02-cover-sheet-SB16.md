@@ -18,9 +18,9 @@ as a paper-trail record.
 **Inventor 1:**
 - Given name: Benjamin
 - Family name: Booth
-- Residence city / state / country: [CITY], [STATE], [COUNTRY]
-- Citizenship: [US CITIZEN / OTHER]
-- Mailing address: [STREET ADDRESS, CITY, STATE, ZIP]
+- Residence city / state / country: Dripping Springs, TX, USA
+- Citizenship: US CITIZEN
+- Mailing address: 1060 Hidden Hills Drive, Dripping Springs, TX 78620
 
 > If there are additional inventors, add rows. Based on the
 > provenance record (`../patent-strategy.md` §7.1), there are no
@@ -36,11 +36,11 @@ Codebases
 ### CORRESPONDENCE ADDRESS
 
 - Name: Benjamin Booth
-- Mailing address: [STREET ADDRESS]
-- City / State / Zip: [CITY], [STATE], [ZIP]
-- Country: [COUNTRY]
+- Mailing address: 1060 Hidden Hills Drive
+- City / State / Zip: Dripping Springs, TX, 78620
+- Country: USA
 - Email: ben@b-treeventures.com
-- Phone: [PHONE]
+- Phone: (703) 728-9217
 
 > Correspondence address tells USPTO where to mail the official
 > filing receipt and any later notices. Use a stable address — you
@@ -50,7 +50,7 @@ Codebases
 
 Check each that applies. For this filing, check the following:
 
-- [x] Specification — Number of pages: [COUNT]
+- [x] Specification — Number of pages: 39
 - [x] Drawings — Number of sheets: 8
 - [ ] Application data sheet (optional; not required)
 - [ ] Claims (optional; not included in this provisional per
@@ -82,9 +82,9 @@ Check one:
 ### ASSIGNEE
 
 - Name: B-Tree Ventures, LLC
-- Address: [B-TREE VENTURES REGISTERED ADDRESS]
+- Address: 100 Commons Road, Suite 7 #249, Dripping Springs, TX 78620
 - Entity type: Limited Liability Company
-- State of incorporation: [STATE]
+- State of incorporation: Wyoming
 
 > Dendra was conceived and reduced to practice by Benjamin Booth
 > on personal time, using personal equipment, outside the scope
@@ -112,11 +112,16 @@ I hereby declare that:
   all statements made on information and belief are believed to
   be true.
 
-Signature: ________________________________
+Signature: /Benjamin Booth/
 
 Printed name: Benjamin Booth
 
-Date: ______________________
+Date: [FILING DATE — e.g., 2026-04-22]
+
+> USPTO S-signature per 37 CFR 1.4(d)(2) — the forward-slash notation
+> above is a legally binding signature for patent-office submissions.
+> Replace `[FILING DATE]` with the actual date you run the packet
+> generation command (should match the day you upload to Patent Center).
 
 ---
 

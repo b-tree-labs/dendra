@@ -73,11 +73,13 @@ above are true. Willful false statements made to the USPTO in
 connection with the filing of a patent application may be punishable
 under 18 USC 1001.
 
-Signature: ________________________________
+Signature: /Benjamin Booth/
 
 Printed name: Benjamin Booth
 
-Date: ______________________
+Date: [FILING DATE — e.g., 2026-04-22]
+
+> USPTO S-signature per 37 CFR 1.4(d)(2).
 
 ---
 

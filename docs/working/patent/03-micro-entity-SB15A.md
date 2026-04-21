@@ -26,7 +26,7 @@ I qualify as a **small entity** as defined in 37 CFR 1.27.
 > small-entity also qualifies. B-Tree Ventures LLC satisfies this
 > on its own account.
 
-- [ ] **I confirm I (or my assignee) qualify as a small entity.**
+- [x] **I confirm I (or my assignee) qualify as a small entity.**
 
 ### Condition 2 — Application filing limit
 
@@ -39,7 +39,7 @@ filed US patent applications, excluding:
 - Applications for which I was obligated to assign rights to an
   employer as part of ordinary employment.
 
-- [ ] **I confirm my prior-filings count is four or fewer under
+- [x] **I confirm my prior-filings count is four or fewer under
       this rule.**
 
 > If uncertain, check the USPTO Public Patent Search at
@@ -62,7 +62,7 @@ USPTO publishes the current number at
 [uspto.gov/patents/laws/micro-entity-status](https://www.uspto.gov/patents/laws/micro-entity-status)
 — confirm the current number immediately before filing.
 
-- [ ] **I confirm my gross income in 2025 did not exceed the
+- [x] **I confirm my gross income in 2025 did not exceed the
       published threshold** ($223,740 or current published value).
 
 ### Condition 4 — Assignment-income threshold
@@ -78,7 +78,7 @@ household income.
 > threshold (very likely at a pre-revenue / early-revenue stage),
 > this is met.
 
-- [ ] **I confirm no ownership interest has been assigned/
+- [x] **I confirm no ownership interest has been assigned/
       licensed to a non-qualifying entity.**
 
 ---
@@ -93,14 +93,19 @@ imprisonment, or both, under 18 USC 1001, and that such willful
 false statements may jeopardize the validity of the application
 or any patent issuing thereon.**
 
-Signature: ________________________________
+Signature: /Benjamin Booth/
 
 Printed name: Benjamin Booth
 
-Date: ______________________
+Date: [FILING DATE — e.g., 2026-04-22]
 
 Registration number (if attorney/agent; leave blank for pro se):
 N/A — pro se inventor
+
+> USPTO S-signature per 37 CFR 1.4(d)(2) — the forward-slash notation
+> above is a legally binding signature for patent-office submissions.
+> Replace `[FILING DATE]` with the actual date you run the packet
+> generation command (should match the day you upload to Patent Center).
 
 ---
 
@@ -116,8 +121,7 @@ If ANY of the four conditions above does not apply to you:
   much cheaper than attorney time.
 
 The most common reason someone who thinks they qualify as a
-micro entity actually doesn't: they forgot to exclude employment-
-related filings from their four-prior-applications count. Read
+micro entity actually doesn't: they forgot to exclude employment-related filings from their four-prior-applications count. Read
 Condition 2 carefully.
 
 ---

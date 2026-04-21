@@ -1,0 +1,8 @@
+% LaTeX header tweaks for patent-packet PDF rendering.
+% Loaded via pandoc --include-in-header=header-tex-tweaks.tex
+\usepackage{xurl}                       % break URLs at any character
+\PassOptionsToPackage{hyphens}{url}     % allow breaks at URL hyphens
+\sloppy                                 % relax underfull/overfull tolerance
+\emergencystretch=5em                   % last-resort line stretching
+\hyphenpenalty=500
+\exhyphenpenalty=500
