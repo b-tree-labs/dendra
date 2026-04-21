@@ -19,12 +19,12 @@ SQLite and Postgres backends share the :class:`Storage` protocol.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
-import time
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Optional, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 from dendra.core import OutcomeRecord
 
@@ -102,7 +102,7 @@ class FileStorage:
 
     def __init__(
         self,
-        base_path: "str | Path",
+        base_path: str | Path,
         *,
         max_bytes_per_segment: int = _DEFAULT_MAX_BYTES_PER_SEGMENT,
         max_rotated_segments: int = _DEFAULT_MAX_ROTATED_SEGMENTS,
@@ -157,17 +157,14 @@ class FileStorage:
 
     def _rotate(self, switch_name: str) -> None:
         """Shift segments up and drop anything beyond the retention cap."""
-        switch_dir = self._switch_dir(switch_name)
         # Drop segments beyond retention first (from oldest to newest so
         # we never clobber one we'd still be renaming into).
         for idx in range(self._max_rotated + 1, 1000):
             old = self._rotated_path(switch_name, idx)
             if not old.exists():
                 break
-            try:
+            with contextlib.suppress(OSError):
                 old.unlink()
-            except OSError:
-                pass
 
         # Shift rotated segments up by one slot (N → N+1).
         for idx in range(self._max_rotated, 0, -1):
@@ -176,23 +173,17 @@ class FileStorage:
             if src.exists():
                 if idx + 1 > self._max_rotated:
                     # Drop if shifting would push us past retention.
-                    try:
+                    with contextlib.suppress(OSError):
                         src.unlink()
-                    except OSError:
-                        pass
                     continue
-                try:
+                with contextlib.suppress(OSError):
                     src.replace(dst)
-                except OSError:
-                    pass
 
         # Move active → .1.
         active = self._active_path(switch_name)
         if active.exists():
-            try:
+            with contextlib.suppress(OSError):
                 active.replace(self._rotated_path(switch_name, 1))
-            except OSError:
-                pass
 
     # ------------------------------------------------------------------
     # Read path

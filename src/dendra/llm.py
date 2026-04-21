@@ -12,9 +12,9 @@ imports so ``pip install dendra`` stays dep-free).
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Iterable, Optional, Protocol, runtime_checkable
-
+from typing import Any, Protocol, runtime_checkable
 
 # ---------------------------------------------------------------------------
 # Protocol
@@ -41,9 +41,7 @@ class LLMClassifier(Protocol):
     ignore it for zero-shot behavior.
     """
 
-    def classify(
-        self, input: Any, labels: Iterable[str]
-    ) -> LLMPrediction: ...
+    def classify(self, input: Any, labels: Iterable[str]) -> LLMPrediction: ...
 
 
 # ---------------------------------------------------------------------------
@@ -88,9 +86,7 @@ class _BaseAdapter:
         if cleaned in lower_labels:
             return label_list[lower_labels.index(cleaned)]
         # Labels whose text matches the cleaned string in either direction.
-        containing_cleaned = [
-            lbl for lbl in label_list if cleaned and cleaned in lbl.lower()
-        ]
+        containing_cleaned = [lbl for lbl in label_list if cleaned and cleaned in lbl.lower()]
         if containing_cleaned:
             return min(containing_cleaned, key=len)
         hits = [lbl for lbl in label_list if lbl.lower() in cleaned]
@@ -111,8 +107,8 @@ class OpenAIAdapter(_BaseAdapter):
         self,
         *,
         model: str,
-        api_key: Optional[str] = None,
-        base_url: Optional[str] = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
         temperature: float = 0.0,
     ) -> None:
         try:
@@ -150,7 +146,7 @@ class AnthropicAdapter(_BaseAdapter):
         self,
         *,
         model: str,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         max_tokens: int = 32,
     ) -> None:
         try:
@@ -172,9 +168,7 @@ class AnthropicAdapter(_BaseAdapter):
             max_tokens=self._max_tokens,
             messages=[{"role": "user", "content": prompt}],
         )
-        text = "".join(
-            getattr(block, "text", "") for block in resp.content
-        ).strip()
+        text = "".join(getattr(block, "text", "") for block in resp.content).strip()
         # Anthropic doesn't expose token logprobs; approximate confidence as
         # 1.0 if the returned text exactly matches one of the allowed labels,
         # else a lower bound reflecting the uncertainty.

@@ -22,7 +22,6 @@ from __future__ import annotations
 import ast
 import difflib
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass
@@ -34,7 +33,7 @@ class WrapResult:
     function_name: str
     labels: list[str]
     decorator_line: int  # 1-indexed line where @ml_switch was inserted
-    import_line: int     # 1-indexed line where the dendra import was inserted
+    import_line: int  # 1-indexed line where the dendra import was inserted
     inferred_labels: bool  # True when labels came from source inspection
 
     def diff(self, filename: str = "<source>") -> str:
@@ -59,7 +58,7 @@ def wrap_function(
     function_name: str,
     *,
     author: str,
-    labels: Optional[list[str]] = None,
+    labels: list[str] | None = None,
     phase: str = "RULE",
     safety_critical: bool = False,
 ) -> WrapResult:
@@ -81,13 +80,9 @@ def wrap_function(
     tree = ast.parse(source)
     target = _find_function(tree, function_name)
     if target is None:
-        raise WrapError(
-            f"function {function_name!r} not found in source"
-        )
+        raise WrapError(f"function {function_name!r} not found in source")
     if _has_ml_switch_decorator(target):
-        raise WrapError(
-            f"function {function_name!r} is already decorated with @ml_switch"
-        )
+        raise WrapError(f"function {function_name!r} is already decorated with @ml_switch")
 
     # Infer labels if not supplied.
     inferred = False
@@ -96,30 +91,22 @@ def wrap_function(
         inferred = True
         if not labels:
             raise WrapError(
-                f"could not infer labels for {function_name!r}; "
-                "pass --labels a,b,c explicitly"
+                f"could not infer labels for {function_name!r}; pass --labels a,b,c explicitly"
             )
 
     source_lines = source.splitlines(keepends=True)
 
     # --- Insert import at the top of the file -------------------
     import_line = _find_import_insertion_line(tree, source_lines)
-    import_stmt = (
-        "from dendra import ml_switch, Phase, SwitchConfig\n"
-    )
+    import_stmt = "from dendra import ml_switch, Phase, SwitchConfig\n"
     # Add a blank line after the import if the next line isn't already blank.
     needs_trailing_blank = (
-        import_line < len(source_lines)
-        and source_lines[import_line].strip() != ""
+        import_line < len(source_lines) and source_lines[import_line].strip() != ""
     )
     new_import_block = [import_stmt]
     if needs_trailing_blank:
         new_import_block.append("\n")
-    source_lines = (
-        source_lines[:import_line]
-        + new_import_block
-        + source_lines[import_line:]
-    )
+    source_lines = source_lines[:import_line] + new_import_block + source_lines[import_line:]
 
     # --- Insert decorator above the function -------------------
     # Re-parse against the modified source to get accurate line numbers
@@ -137,19 +124,15 @@ def wrap_function(
         safety_critical=safety_critical,
         indent=indent,
     )
-    source_lines = (
-        source_lines[:decorator_line]
-        + [decorator_text]
-        + source_lines[decorator_line:]
-    )
+    source_lines = source_lines[:decorator_line] + [decorator_text] + source_lines[decorator_line:]
 
     return WrapResult(
         original_source=source,
         modified_source="".join(source_lines),
         function_name=function_name,
         labels=labels,
-        decorator_line=decorator_line + 1,   # 1-indexed
-        import_line=import_line + 1,         # 1-indexed
+        decorator_line=decorator_line + 1,  # 1-indexed
+        import_line=import_line + 1,  # 1-indexed
         inferred_labels=inferred,
     )
 
@@ -159,9 +142,7 @@ def wrap_function(
 # ---------------------------------------------------------------------------
 
 
-def _find_function(
-    tree: ast.Module, name: str
-) -> Optional[ast.FunctionDef]:
+def _find_function(tree: ast.Module, name: str) -> ast.FunctionDef | None:
     """Find a top-level or class-level function by name."""
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef) and node.name == name:
@@ -171,16 +152,10 @@ def _find_function(
 
 def _has_ml_switch_decorator(fn: ast.FunctionDef) -> bool:
     for dec in fn.decorator_list:
-        if isinstance(dec, ast.Call):
-            func = dec.func
-        else:
-            func = dec
+        func = dec.func if isinstance(dec, ast.Call) else dec
         if isinstance(func, ast.Name) and func.id == "ml_switch":
             return True
-        if (
-            isinstance(func, ast.Attribute)
-            and func.attr == "ml_switch"
-        ):
+        if isinstance(func, ast.Attribute) and func.attr == "ml_switch":
             return True
     return False
 
@@ -196,9 +171,7 @@ def _infer_labels(fn: ast.FunctionDef) -> list[str]:
     return seen
 
 
-def _find_import_insertion_line(
-    tree: ast.Module, source_lines: list[str]
-) -> int:
+def _find_import_insertion_line(tree: ast.Module, source_lines: list[str]) -> int:
     """Return a 0-indexed line at which the dendra import can be inserted.
 
     Rules:
@@ -245,9 +218,7 @@ def _render_decorator(
     labels_repr = "[" + ", ".join(repr(lbl) for lbl in labels) + "]"
     phase_expr = f"Phase.{phase}"
     if safety_critical:
-        config_expr = (
-            f"SwitchConfig(phase={phase_expr}, safety_critical=True)"
-        )
+        config_expr = f"SwitchConfig(phase={phase_expr}, safety_critical=True)"
     else:
         config_expr = f"SwitchConfig(phase={phase_expr})"
     return (

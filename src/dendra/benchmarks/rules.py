@@ -21,8 +21,8 @@ from __future__ import annotations
 
 import re
 from collections import Counter, defaultdict
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from typing import Callable, Iterable
 
 _TOKEN = re.compile(r"[A-Za-z]{3,}")
 
@@ -33,7 +33,7 @@ _STOPWORDS = frozenset(
     ours over under they them their there its here than then but our also
     any all out off not one two new get got make made use using used more
     most some such just only very like want need give take find look
-    """.split()
+    """.split()  # noqa: SIM905 — multiline readability beats a wrapped list literal
 )
 
 
@@ -63,11 +63,7 @@ class ReferenceRule:
 
 
 def _tokenize(text: str) -> list[str]:
-    return [
-        t.lower()
-        for t in _TOKEN.findall(text or "")
-        if t.lower() not in _STOPWORDS
-    ]
+    return [t.lower() for t in _TOKEN.findall(text or "") if t.lower() not in _STOPWORDS]
 
 
 def build_reference_rule(

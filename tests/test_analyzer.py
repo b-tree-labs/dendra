@@ -7,8 +7,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 from dendra.analyzer import analyze, render_json, render_text
 
 
@@ -153,11 +151,7 @@ class TestNonMatches:
     def test_numeric_computation_not_matched(self, tmp_path):
         _write(
             tmp_path / "compute.py",
-            "def add(a, b):\n"
-            "    return a + b\n"
-            "\n"
-            "def mul(a, b):\n"
-            "    return a * b\n",
+            "def add(a, b):\n    return a + b\n\ndef mul(a, b):\n    return a * b\n",
         )
         report = analyze(tmp_path)
         assert report.total_sites() == 0
@@ -166,8 +160,7 @@ class TestNonMatches:
         # One string return alone doesn't make it a classifier — no branching.
         _write(
             tmp_path / "const.py",
-            "def greeting():\n"
-            "    return 'hello'\n",
+            "def greeting():\n    return 'hello'\n",
         )
         report = analyze(tmp_path)
         assert report.total_sites() == 0
@@ -175,10 +168,7 @@ class TestNonMatches:
     def test_two_branches_but_no_strings(self, tmp_path):
         _write(
             tmp_path / "branch.py",
-            "def route(x):\n"
-            "    if x > 0:\n"
-            "        return x + 1\n"
-            "    return x - 1\n",
+            "def route(x):\n    if x > 0:\n        return x + 1\n    return x - 1\n",
         )
         report = analyze(tmp_path)
         assert report.total_sites() == 0
@@ -193,9 +183,7 @@ class TestTraversal:
     def test_walks_subdirectories(self, tmp_path):
         _write(
             tmp_path / "a.py",
-            "def triage(x):\n"
-            "    if 'crash' in x: return 'bug'\n"
-            "    return 'feat'\n",
+            "def triage(x):\n    if 'crash' in x: return 'bug'\n    return 'feat'\n",
         )
         _write(
             tmp_path / "sub" / "b.py",
@@ -212,21 +200,15 @@ class TestTraversal:
     def test_ignores_default_dirs(self, tmp_path):
         _write(
             tmp_path / "real.py",
-            "def triage(x):\n"
-            "    if 'a' in x: return 'x'\n"
-            "    return 'y'\n",
+            "def triage(x):\n    if 'a' in x: return 'x'\n    return 'y'\n",
         )
         _write(
             tmp_path / ".venv" / "noise.py",
-            "def noise(x):\n"
-            "    if 'a' in x: return 'x'\n"
-            "    return 'y'\n",
+            "def noise(x):\n    if 'a' in x: return 'x'\n    return 'y'\n",
         )
         _write(
             tmp_path / "__pycache__" / "gunk.py",
-            "def gunk(x):\n"
-            "    if 'a' in x: return 'x'\n"
-            "    return 'y'\n",
+            "def gunk(x):\n    if 'a' in x: return 'x'\n    return 'y'\n",
         )
         report = analyze(tmp_path)
         files = {s.file_path for s in report.sites}
@@ -253,9 +235,7 @@ class TestRender:
     def test_text_report_contains_file_lines(self, tmp_path):
         _write(
             tmp_path / "triage.py",
-            "def triage(x):\n"
-            "    if 'crash' in x: return 'bug'\n"
-            "    return 'feature'\n",
+            "def triage(x):\n    if 'crash' in x: return 'bug'\n    return 'feature'\n",
         )
         report = analyze(tmp_path)
         text = render_text(report)
@@ -267,9 +247,7 @@ class TestRender:
     def test_json_report_roundtrips(self, tmp_path):
         _write(
             tmp_path / "triage.py",
-            "def triage(x):\n"
-            "    if 'crash' in x: return 'bug'\n"
-            "    return 'feature'\n",
+            "def triage(x):\n    if 'crash' in x: return 'bug'\n    return 'feature'\n",
         )
         report = analyze(tmp_path)
         payload = json.loads(render_json(report))
@@ -350,9 +328,7 @@ class TestSavingsProjection:
         )
         report = analyze(tmp_path)
         default = project_savings(report)[0]
-        cheap = project_savings(
-            report, eng_cost_per_week_usd=1_000.0
-        )[0]
+        cheap = project_savings(report, eng_cost_per_week_usd=1_000.0)[0]
         assert cheap.engineering_savings_low_usd < default.engineering_savings_low_usd
 
     def test_markdown_with_projections_shows_totals(self, tmp_path):

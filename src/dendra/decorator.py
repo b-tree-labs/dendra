@@ -24,7 +24,8 @@ keeping the decorated name callable exactly like the original function.
 from __future__ import annotations
 
 import functools
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 from dendra.core import LearnedSwitch, SwitchConfig
 
@@ -78,14 +79,14 @@ class _MLSwitchWrapper:
 
 def ml_switch(
     *,
-    labels: Optional[list[str]] = None,
+    labels: list[str] | None = None,
     author: str,
-    name: Optional[str] = None,
-    config: Optional[SwitchConfig] = None,
-    storage: Optional[Any] = None,
-    llm: Optional[Any] = None,
-    ml_head: Optional[Any] = None,
-    telemetry: Optional[Any] = None,
+    name: str | None = None,
+    config: SwitchConfig | None = None,
+    storage: Any | None = None,
+    llm: Any | None = None,
+    ml_head: Any | None = None,
+    telemetry: Any | None = None,
 ) -> Callable[[Callable[..., Any]], _MLSwitchWrapper]:
     """Wrap a classification rule function as a :class:`LearnedSwitch`.
 

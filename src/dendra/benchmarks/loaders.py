@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 CACHE_DIR = Path.home() / ".cache" / "dendra" / "datasets"
 
@@ -44,7 +44,7 @@ def _require_datasets() -> Any:
     return load_dataset
 
 
-def _load(hf_id: str, config: Optional[str] = None) -> Any:
+def _load(hf_id: str, config: str | None = None) -> Any:
     load_dataset = _require_datasets()
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     if config:
@@ -62,10 +62,7 @@ def _rows_to_pairs(
     out: list[tuple[str, str]] = []
     for row in split:
         raw = row[label_key]
-        if isinstance(raw, int) and label_names:
-            label = label_names[raw]
-        else:
-            label = str(raw)
+        label = label_names[raw] if isinstance(raw, int) and label_names else str(raw)
         out.append((row[text_key], label))
     return out
 
@@ -110,7 +107,10 @@ def load_clinc150() -> BenchmarkDataset:
         train=train,
         test=test,
         labels=labels,
-        citation="Larson et al. 2019, 'An Evaluation Dataset for Intent Classification and Out-of-Scope Prediction'",
+        citation=(
+            "Larson et al. 2019, 'An Evaluation Dataset for Intent "
+            "Classification and Out-of-Scope Prediction'"
+        ),
     )
 
 
@@ -131,7 +131,10 @@ def load_hwu64() -> BenchmarkDataset:
         train=train,
         test=test,
         labels=labels,
-        citation="Liu et al. 2019, 'Benchmarking Natural Language Understanding Services for Building Conversational Agents'",
+        citation=(
+            "Liu et al. 2019, 'Benchmarking Natural Language Understanding "
+            "Services for Building Conversational Agents'"
+        ),
     )
 
 

@@ -3,7 +3,23 @@
 
 """Dendra — graduated-autonomy classification primitive.
 
-v0.2.0 — Phase 1 (LLM_SHADOW). See README.md.
+Six-phase lifecycle from hand-written rule to learned classifier,
+with a statistical transition gate at every phase, a safety-critical
+cap that refuses construction in the highest-autonomy phase for
+authorization-class decisions, a circuit breaker that reverts to the
+rule on ML failure, and shadow-path isolation that keeps observational
+classifiers from affecting user-visible output.
+
+Core public API: :class:`LearnedSwitch`, :func:`ml_switch` decorator,
+:class:`Phase`, :class:`SwitchConfig`, :class:`OutcomeRecord`,
+:class:`FileStorage`, and the LLM/ML protocol interfaces.
+
+Tooling (analyzer, ROI reporter, AST-based `wrap_function`, viz,
+research runners) ships in submodules — import directly:
+``from dendra.analyzer import analyze``, ``from dendra.roi import
+compute_switch_roi``, etc.
+
+See README.md and https://dendra.dev.
 """
 
 __version__ = "0.2.0"
@@ -20,9 +36,9 @@ from dendra.core import (
 from dendra.decorator import ml_switch
 from dendra.llm import (
     AnthropicAdapter,
+    LlamafileAdapter,
     LLMClassifier,
     LLMPrediction,
-    LlamafileAdapter,
     OllamaAdapter,
     OpenAIAdapter,
 )

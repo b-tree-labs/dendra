@@ -17,8 +17,6 @@ them when suggesting tuning.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Optional
 
 from dendra.storage import FileStorage
 
@@ -56,8 +54,8 @@ class ROIAssumptions:
     llm_output_tokens_per_call: int = 5
     # Pricing bands cover Haiku/Mini-class (low) through Sonnet-class (high).
     # Units: USD per 1M tokens. April 2026 public rates.
-    llm_input_usd_per_1m_tokens_low: float = 0.15     # GPT-4o-mini / Haiku 4.5
-    llm_input_usd_per_1m_tokens_high: float = 3.00    # Claude Sonnet 4.6
+    llm_input_usd_per_1m_tokens_low: float = 0.15  # GPT-4o-mini / Haiku 4.5
+    llm_input_usd_per_1m_tokens_high: float = 3.00  # Claude Sonnet 4.6
     llm_output_usd_per_1m_tokens_low: float = 0.60
     llm_output_usd_per_1m_tokens_high: float = 15.00
     # Counter-factual: if the team had shipped LLM-only instead of
@@ -96,7 +94,7 @@ def compute_switch_roi(
     *,
     switch_name: str,
     storage: FileStorage,
-    assumptions: Optional[ROIAssumptions] = None,
+    assumptions: ROIAssumptions | None = None,
 ) -> SwitchROI:
     """Compute ROI for one switch from its outcome log."""
     a = assumptions or ROIAssumptions()
@@ -107,8 +105,7 @@ def compute_switch_roi(
     acc = correct / total if total else 0.0
 
     graduated = any(
-        getattr(r, "source", "rule") in {"llm", "ml", "rule_fallback"}
-        for r in outcomes
+        getattr(r, "source", "rule") in {"llm", "ml", "rule_fallback"} for r in outcomes
     )
 
     # Direct engineering savings: (baseline - dendra) weeks × cost.
@@ -139,32 +136,19 @@ def compute_switch_roi(
     # over 1 year (overestimates if faster, underestimates if slower —
     # we cap at 1 to stay conservative).
     regression_year_fraction = min(1.0, max(0.1, total / 100_000.0))
-    reg_low = (
-        a.regressions_per_site_per_year
-        * regression_year_fraction
-        * a.regression_cost_low_usd
-    )
+    reg_low = a.regressions_per_site_per_year * regression_year_fraction * a.regression_cost_low_usd
     reg_high = (
-        a.regressions_per_site_per_year
-        * regression_year_fraction
-        * a.regression_cost_high_usd
+        a.regressions_per_site_per_year * regression_year_fraction * a.regression_cost_high_usd
     )
 
     # Token-cost savings: every outcome that Dendra routed through
     # rule/ML is an LLM call the counter-factual design would have paid
     # for. We count outcomes whose source is NOT "llm" (i.e., handled
     # without calling the LLM) and multiply by per-call token cost.
-    llm_calls_avoided = sum(
-        1
-        for r in outcomes
-        if getattr(r, "source", "rule") != "llm"
-    )
+    llm_calls_avoided = sum(1 for r in outcomes if getattr(r, "source", "rule") != "llm")
     # Scale by the "what fraction would have gone to LLM in the counter-
     # factual" knob. Default 1.0 = "team would have shipped LLM-only".
-    counterfactual_llm_calls = (
-        llm_calls_avoided
-        * a.pct_outcomes_that_would_use_llm_without_dendra
-    )
+    counterfactual_llm_calls = llm_calls_avoided * a.pct_outcomes_that_would_use_llm_without_dendra
     cost_per_call_low = (
         a.llm_input_tokens_per_call * a.llm_input_usd_per_1m_tokens_low / 1e6
         + a.llm_output_tokens_per_call * a.llm_output_usd_per_1m_tokens_low / 1e6
@@ -204,7 +188,7 @@ def compute_switch_roi(
 def compute_portfolio_roi(
     *,
     storage: FileStorage,
-    assumptions: Optional[ROIAssumptions] = None,
+    assumptions: ROIAssumptions | None = None,
 ) -> list[SwitchROI]:
     """Compute ROI for every switch in the storage root."""
     a = assumptions or ROIAssumptions()
@@ -215,7 +199,7 @@ def compute_portfolio_roi(
 
 
 def format_portfolio_report(
-    rois: list[SwitchROI], *, assumptions: Optional[ROIAssumptions] = None
+    rois: list[SwitchROI], *, assumptions: ROIAssumptions | None = None
 ) -> str:
     """Render a human-readable ROI report."""
     a = assumptions or ROIAssumptions()
@@ -236,20 +220,15 @@ def format_portfolio_report(
         f"LLM calls avoided:    {total_llm_avoided:,}",
         f"Disk usage:           {total_bytes / 1024:,.1f} KB",
         "",
-        f"{'switch':<26} {'outcomes':>9} {'acc':>6} "
-        f"{'eng+ttm+reg (USD)':>20} {'tokens (USD)':>18}",
+        f"{'switch':<26} {'outcomes':>9} {'acc':>6} {'eng+ttm+reg (USD)':>20} {'tokens (USD)':>18}",
         "-" * 86,
     ]
     for r in rois:
         non_tok_low = (
-            r.direct_eng_savings_low_usd
-            + r.ttm_value_low_usd
-            + r.regression_avoidance_low_usd
+            r.direct_eng_savings_low_usd + r.ttm_value_low_usd + r.regression_avoidance_low_usd
         )
         non_tok_high = (
-            r.direct_eng_savings_high_usd
-            + r.ttm_value_high_usd
-            + r.regression_avoidance_high_usd
+            r.direct_eng_savings_high_usd + r.ttm_value_high_usd + r.regression_avoidance_high_usd
         )
         lines.append(
             f"{r.switch_name:<26} "
@@ -268,18 +247,15 @@ def format_portfolio_report(
         f"  baseline_weeks={a.baseline_weeks_per_graduation_low}-"
         f"{a.baseline_weeks_per_graduation_high}",
         f"  dendra_subsequent_site={a.dendra_subsequent_site_weeks}w",
-        f"  months_accelerated={a.months_accelerated_low}-"
-        f"{a.months_accelerated_high}",
+        f"  months_accelerated={a.months_accelerated_low}-{a.months_accelerated_high}",
         f"  monthly_value_per_site=${a.monthly_value_per_site_low_usd:,.0f}-"
         f"${a.monthly_value_per_site_high_usd:,.0f}",
-        f"  tokens_per_call={a.llm_input_tokens_per_call}in/"
-        f"{a.llm_output_tokens_per_call}out",
+        f"  tokens_per_call={a.llm_input_tokens_per_call}in/{a.llm_output_tokens_per_call}out",
         f"  llm_price_per_1M={a.llm_input_usd_per_1m_tokens_low}-"
         f"${a.llm_input_usd_per_1m_tokens_high}in / "
         f"${a.llm_output_usd_per_1m_tokens_low}-"
         f"${a.llm_output_usd_per_1m_tokens_high}out",
-        f"  counter_factual_llm_pct="
-        f"{a.pct_outcomes_that_would_use_llm_without_dendra:.0%}",
+        f"  counter_factual_llm_pct={a.pct_outcomes_that_would_use_llm_without_dendra:.0%}",
         "",
         "Every dollar figure = ratio × per-unit assumption. "
         "See docs/marketing/industry-applicability.md §4-§8 for derivation.",

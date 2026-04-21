@@ -1,0 +1,17 @@
+# Copyright (c) 2026 B-Tree Ventures, LLC
+# SPDX-License-Identifier: Apache-2.0
+name: security
+
+on:
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 7 * * 1'  # Mondays 07:00 UTC
+
+jobs:
+  scan:
+    uses: axiom-labs-os/.github/.github/workflows/security-scan.yml@v1
+    with:
+      package-name: dendra
+      fail-on-severity: high
+    secrets: inherit

@@ -26,10 +26,10 @@ from __future__ import annotations
 
 import ast
 import json
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Optional
-
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Results
@@ -44,11 +44,11 @@ class ClassificationSite:
     function_name: str
     line_start: int
     line_end: int
-    pattern: str          # one of "P1".."P6"
+    pattern: str  # one of "P1".."P6"
     labels: list[str] = field(default_factory=list)
     label_cardinality: int = 0
-    regime: str = "unknown"   # "narrow" | "medium" | "high" | "unknown"
-    fit_score: float = 0.0    # 0-5
+    regime: str = "unknown"  # "narrow" | "medium" | "high" | "unknown"
+    fit_score: float = 0.0  # 0-5
 
 
 @dataclass
@@ -89,20 +89,22 @@ def _body_has_if_elif_string_returns(fn: ast.FunctionDef) -> bool:
         return False
     # Look for at least one top-level If with a string-return branch.
     for stmt in fn.body:
-        if isinstance(stmt, ast.If):
-            if _if_branch_returns_string(stmt):
-                # Require at least 2 distinct return labels for it to count.
-                labels = _collect_return_strings(fn)
-                return len(labels) >= 2
+        if isinstance(stmt, ast.If) and _if_branch_returns_string(stmt):
+            # Require at least 2 distinct return labels for it to count.
+            labels = _collect_return_strings(fn)
+            return len(labels) >= 2
     return False
 
 
 def _if_branch_returns_string(stmt: ast.If) -> bool:
     """Does this If (and any elif/else it chains to) include a string return?"""
     for node in ast.walk(stmt):
-        if isinstance(node, ast.Return) and isinstance(node.value, ast.Constant):
-            if isinstance(node.value.value, str):
-                return True
+        if (
+            isinstance(node, ast.Return)
+            and isinstance(node.value, ast.Constant)
+            and isinstance(node.value.value, str)
+        ):
+            return True
     return False
 
 
@@ -125,17 +127,19 @@ def _body_is_dict_lookup(fn: ast.FunctionDef) -> bool:
     """Pattern P3 — function body looks like: dict[key], returning labels."""
     # Very narrow: require a local dict literal with ≥ 3 string-string entries.
     for stmt in fn.body:
-        if isinstance(stmt, ast.Assign):
-            if isinstance(stmt.value, ast.Dict):
-                if _dict_is_str_to_str(stmt.value):
-                    return True
+        if (
+            isinstance(stmt, ast.Assign)
+            and isinstance(stmt.value, ast.Dict)
+            and _dict_is_str_to_str(stmt.value)
+        ):
+            return True
     return False
 
 
 def _dict_is_str_to_str(d: ast.Dict) -> bool:
     if len(d.keys) < 3:
         return False
-    for k, v in zip(d.keys, d.values):
+    for k, v in zip(d.keys, d.values, strict=True):
         if not (isinstance(k, ast.Constant) and isinstance(k.value, str)):
             return False
         if not (isinstance(v, ast.Constant) and isinstance(v.value, str)):
@@ -150,11 +154,7 @@ def _body_has_keyword_scanner(fn: ast.FunctionDef) -> bool:
         if isinstance(node, ast.If):
             # Look for Compare with In operator
             test = node.test
-            if (
-                isinstance(test, ast.Compare)
-                and test.ops
-                and isinstance(test.ops[0], ast.In)
-            ):
+            if isinstance(test, ast.Compare) and test.ops and isinstance(test.ops[0], ast.In):
                 # And body returns a string literal
                 for stmt in node.body:
                     if (
@@ -197,7 +197,10 @@ def _body_is_llm_prompted(fn: ast.FunctionDef) -> bool:
     (openai.chat, anthropic.messages, requests.post, httpx.post).
     """
     llm_markers = {
-        "chat", "completions", "messages", "generate",
+        "chat",
+        "completions",
+        "messages",
+        "generate",
     }
     has_llm_call = False
     for node in ast.walk(fn):
@@ -266,9 +269,7 @@ def _compute_fit_score(labels: list[str], pattern: str) -> float:
 # ---------------------------------------------------------------------------
 
 
-def _analyze_file(
-    path: Path, root: Path
-) -> tuple[list[ClassificationSite], list[str]]:
+def _analyze_file(path: Path, root: Path) -> tuple[list[ClassificationSite], list[str]]:
     sites: list[ClassificationSite] = []
     errors: list[str] = []
     try:
@@ -286,7 +287,7 @@ def _analyze_file(
     for node in ast.walk(tree):
         if not isinstance(node, ast.FunctionDef):
             continue
-        matched_pattern: Optional[str] = None
+        matched_pattern: str | None = None
         for pattern_name, detector in _PATTERNS:
             try:
                 if detector(node):
@@ -320,16 +321,25 @@ def _analyze_file(
 
 
 _DEFAULT_IGNORE_DIRS = {
-    ".git", ".venv", "venv", "env", "node_modules",
-    "__pycache__", ".tox", ".mypy_cache", ".pytest_cache",
-    "build", "dist", ".ruff_cache",
+    ".git",
+    ".venv",
+    "venv",
+    "env",
+    "node_modules",
+    "__pycache__",
+    ".tox",
+    ".mypy_cache",
+    ".pytest_cache",
+    "build",
+    "dist",
+    ".ruff_cache",
 }
 
 
 def analyze(
-    root_path: "str | Path",
+    root_path: str | Path,
     *,
-    ignore_dirs: Optional[Iterable[str]] = None,
+    ignore_dirs: Iterable[str] | None = None,
 ) -> AnalyzerReport:
     """Walk ``root_path`` and identify classification sites."""
     root = Path(root_path).resolve()
@@ -404,8 +414,7 @@ def render_text(report: AnalyzerReport) -> str:
         return "\n".join(lines)
 
     lines.append(
-        f"{'file:line':<40} {'function':<22} {'ptn':>4} "
-        f"{'labels':>8} {'regime':>8} {'fit':>4}"
+        f"{'file:line':<40} {'function':<22} {'ptn':>4} {'labels':>8} {'regime':>8} {'fit':>4}"
     )
     lines.append("-" * 92)
     for s in report.by_score_desc():
@@ -544,7 +553,7 @@ def project_savings(
 def render_markdown(
     report: AnalyzerReport,
     *,
-    projections: Optional[list[SavingsProjection]] = None,
+    projections: list[SavingsProjection] | None = None,
 ) -> str:
     """Markdown report suitable for CI PR comments and the pricing page.
 
@@ -581,9 +590,7 @@ def render_markdown(
 
     lines.append("## Sites ranked by Dendra-fit")
     lines.append("")
-    lines.append(
-        "| File:Line | Function | Pattern | Labels | Regime | Fit |"
-    )
+    lines.append("| File:Line | Function | Pattern | Labels | Regime | Fit |")
     lines.append("|---|---|---|---:|---|---:|")
     for s in report.by_score_desc():
         file_label = f"`{s.file_path}:{s.line_start}`"
@@ -603,9 +610,7 @@ def render_markdown(
             "`project_savings()` to recalculate._"
         )
         lines.append("")
-        lines.append(
-            "| File:Line | Vol/mo | Eng ($) | Token ($) | Regression ($) | Total ($) |"
-        )
+        lines.append("| File:Line | Vol/mo | Eng ($) | Token ($) | Regression ($) | Total ($) |")
         lines.append("|---|---:|---:|---:|---:|---:|")
         total_low = total_high = 0.0
         for p in projections:
@@ -631,8 +636,7 @@ def render_markdown(
             total_high += p.total_high_usd
         lines.append("")
         lines.append(
-            f"**Portfolio projected value: ${total_low:,.0f}"
-            f"–${total_high:,.0f} per year.**"
+            f"**Portfolio projected value: ${total_low:,.0f}–${total_high:,.0f} per year.**"
         )
         lines.append("")
 
@@ -649,11 +653,7 @@ def render_markdown(
 
     lines.append("## Next step")
     lines.append("")
-    lines.append(
-        "```bash\n"
-        "dendra init <file>:<function> --author @you:team\n"
-        "```"
-    )
+    lines.append("```bash\ndendra init <file>:<function> --author @you:team\n```")
     lines.append("")
     lines.append(
         "Wrap the highest-fit site with the `@ml_switch` decorator. "

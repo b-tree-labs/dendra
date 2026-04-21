@@ -13,8 +13,9 @@ fake for tests.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Iterable, Optional, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 
 @dataclass(frozen=True)
@@ -31,9 +32,7 @@ class MLHead(Protocol):
 
     def fit(self, records: Iterable[Any]) -> None: ...
 
-    def predict(
-        self, input: Any, labels: Iterable[str]
-    ) -> MLPrediction: ...
+    def predict(self, input: Any, labels: Iterable[str]) -> MLPrediction: ...
 
     def model_version(self) -> str: ...
 
@@ -59,13 +58,12 @@ class SklearnTextHead:
             from sklearn.pipeline import Pipeline
         except ImportError as e:
             raise ImportError(
-                "SklearnTextHead requires scikit-learn. "
-                "Install with `pip install dendra[train]`."
+                "SklearnTextHead requires scikit-learn. Install with `pip install dendra[train]`."
             ) from e
         self._Pipeline = Pipeline
         self._Tfidf = TfidfVectorizer
         self._LR = LogisticRegression
-        self._pipeline: Optional[Any] = None
+        self._pipeline: Any | None = None
         self._min_outcomes = min_outcomes
         self._version = "sklearn-untrained"
 
@@ -99,9 +97,7 @@ class SklearnTextHead:
             # Untrained — surface a low-confidence guess so the caller
             # routes to the fallback.
             return MLPrediction(label="", confidence=0.0)
-        probs = self._pipeline.predict_proba(
-            [serialize_input_for_features(input)]
-        )[0]
+        probs = self._pipeline.predict_proba([serialize_input_for_features(input)])[0]
         classes = list(self._pipeline.classes_)
         idx = int(probs.argmax())
         return MLPrediction(label=classes[idx], confidence=float(probs[idx]))

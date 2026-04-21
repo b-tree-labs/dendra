@@ -1,0 +1,35 @@
+* text=auto eol=lf
+
+# Binary types — do not convert line endings.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.svg binary
+*.gif binary
+*.pdf binary
+*.onnx binary
+*.joblib binary
+*.pkl binary
+*.whl binary
+*.tar.gz binary
+*.bundle binary
+
+# Text explicit — ensure LF line endings across platforms.
+*.py text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+*.json text eol=lf
+*.jsonl text eol=lf
+*.sh text eol=lf
+
+# Linguist overrides for GitHub stats.
+docs/**         linguist-documentation
+tests/**        linguist-vendored=false
+*.jsonl         linguist-generated=true
+
+# Export-ignore: what a `git archive` excludes (cleaner release tarballs).
+docs/working/patent/**                                export-ignore
+docs/papers/**/results/multi-seed/**                  export-ignore
+docs/papers/**/results/*.jsonl                        export-ignore

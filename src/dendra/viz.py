@@ -11,9 +11,10 @@ is pure-Python and testable without a display.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -36,22 +37,20 @@ class BenchmarkRun:
     def ml_accs(self) -> list[float]:
         return [c["ml_test_accuracy"] for c in self.checkpoints]
 
-    def llm_accs(self) -> list[Optional[float]]:
+    def llm_accs(self) -> list[float | None]:
         return [c.get("llm_test_accuracy") for c in self.checkpoints]
 
     def has_llm(self) -> bool:
         return any(c.get("llm_test_accuracy") is not None for c in self.checkpoints)
 
-    def crossover_outcomes(self) -> Optional[int]:
+    def crossover_outcomes(self) -> int | None:
         """Training-outcome count where ML first exceeds the rule."""
         for c in self.checkpoints:
             if c["ml_test_accuracy"] > c["rule_test_accuracy"]:
                 return c["training_outcomes"]
         return None
 
-    def transition_depth(
-        self, *, alpha: float = 0.01, prefer_paired: bool = True
-    ) -> Optional[int]:
+    def transition_depth(self, *, alpha: float = 0.01, prefer_paired: bool = True) -> int | None:
         """Outcome count at which ML beats rule with ``p < alpha``.
 
         When per-example ``rule_correct``/``ml_correct`` arrays are
@@ -64,7 +63,7 @@ class BenchmarkRun:
         for c in self.checkpoints:
             if not c.get("ml_trained"):
                 continue
-            p_value: Optional[float] = None
+            p_value: float | None = None
             if (
                 prefer_paired
                 and c.get("rule_correct") is not None
@@ -89,7 +88,7 @@ class BenchmarkRun:
         return last["ml_test_accuracy"] - last["rule_test_accuracy"]
 
 
-def _two_proportion_z_p(*, p1: float, p2: float, n: int) -> Optional[float]:
+def _two_proportion_z_p(*, p1: float, p2: float, n: int) -> float | None:
     """One-sided two-proportion z-test p-value (H1: p1 > p2).
 
     Returns None when the pooled variance is zero (degenerate) or when
@@ -110,9 +109,7 @@ def _two_proportion_z_p(*, p1: float, p2: float, n: int) -> Optional[float]:
     return 0.5 * math.erfc(z / math.sqrt(2))
 
 
-def mcnemar_p(
-    rule_correct: list[bool], ml_correct: list[bool]
-) -> Optional[float]:
+def mcnemar_p(rule_correct: list[bool], ml_correct: list[bool]) -> float | None:
     """One-sided McNemar's paired-test p-value (H1: ML beats rule).
 
     Uses the exact binomial on disagreement pairs when the count is
@@ -122,14 +119,10 @@ def mcnemar_p(
     over the same test set. Returns None if the lists are empty or
     mismatched.
     """
-    if (
-        not rule_correct
-        or not ml_correct
-        or len(rule_correct) != len(ml_correct)
-    ):
+    if not rule_correct or not ml_correct or len(rule_correct) != len(ml_correct):
         return None
-    b = sum(1 for r, m in zip(rule_correct, ml_correct) if (not r) and m)
-    c = sum(1 for r, m in zip(rule_correct, ml_correct) if r and (not m))
+    b = sum(1 for r, m in zip(rule_correct, ml_correct, strict=True) if (not r) and m)
+    c = sum(1 for r, m in zip(rule_correct, ml_correct, strict=True) if r and (not m))
     n = b + c
     if n == 0:
         return 1.0  # no disagreements → cannot reject H0
@@ -148,7 +141,7 @@ def mcnemar_p(
     return 0.5 * math.erfc(z / math.sqrt(2))
 
 
-def load_run(jsonl_path: "str | Path") -> BenchmarkRun:
+def load_run(jsonl_path: str | Path) -> BenchmarkRun:
     path = Path(jsonl_path)
     summary: dict[str, Any] = {}
     checkpoints: list[dict[str, Any]] = []
@@ -177,7 +170,7 @@ def load_run(jsonl_path: "str | Path") -> BenchmarkRun:
 def plot_transition_curves(
     runs: Iterable[BenchmarkRun],
     *,
-    output_path: "str | Path",
+    output_path: str | Path,
     title: str = "Dendra transition curves",
 ) -> None:
     """Render a multi-panel transition-curve figure.
@@ -201,11 +194,14 @@ def plot_transition_curves(
     cols = 2 if len(runs) > 1 else 1
     rows = (len(runs) + cols - 1) // cols
     fig, axes_grid = plt.subplots(
-        rows, cols, figsize=(6.5 * cols, 4.2 * rows), squeeze=False,
+        rows,
+        cols,
+        figsize=(6.5 * cols, 4.2 * rows),
+        squeeze=False,
     )
     axes = [ax for row in axes_grid for ax in row]
 
-    for ax, run in zip(axes, runs):
+    for ax, run in zip(axes, runs, strict=False):
         xs = run.outcomes()
         ax.plot(xs, run.rule_accs(), label="Rule", linestyle="--", color="#c04040")
         ax.plot(xs, run.ml_accs(), label="ML", color="#2a7fb8", linewidth=2)
@@ -239,7 +235,7 @@ def plot_transition_curves(
         ax.legend(loc="lower right", fontsize=9)
 
     # Hide any unused subplots (odd run count).
-    for extra_ax in axes[len(runs):]:
+    for extra_ax in axes[len(runs) :]:
         extra_ax.set_visible(False)
 
     fig.suptitle(title, fontsize=13)

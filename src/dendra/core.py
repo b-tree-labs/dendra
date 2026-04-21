@@ -16,10 +16,16 @@ outcome for later analysis. Phases 2+ add their own routing rules.
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import TYPE_CHECKING, Any
 
+if TYPE_CHECKING:
+    from dendra.llm import LLMClassifier
+    from dendra.ml import MLHead
+    from dendra.storage import Storage
+    from dendra.telemetry import TelemetryEmitter
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -75,12 +81,12 @@ class OutcomeRecord:
     source: str  # which path produced `output` at classify time
     confidence: float
     # Phase 1+ shadow observations (optional; omitted at Phase 0).
-    rule_output: Optional[Any] = None
-    llm_output: Optional[Any] = None
-    llm_confidence: Optional[float] = None
+    rule_output: Any | None = None
+    llm_output: Any | None = None
+    llm_confidence: float | None = None
     # Phase 3+ ML shadow observations.
-    ml_output: Optional[Any] = None
-    ml_confidence: Optional[float] = None
+    ml_output: Any | None = None
+    ml_confidence: float | None = None
 
 
 @dataclass
@@ -92,12 +98,12 @@ class SwitchStatus:
     outcomes_total: int
     outcomes_correct: int
     outcomes_incorrect: int
-    model_version: Optional[str] = None
+    model_version: str | None = None
     # Phase 1 observability — fraction of outcomes where the LLM agreed
     # with the rule. ``None`` when no shadow observations are recorded.
-    shadow_agreement_rate: Optional[float] = None
+    shadow_agreement_rate: float | None = None
     # Phase 3 observability — fraction where ML shadow matched the primary.
-    ml_agreement_rate: Optional[float] = None
+    ml_agreement_rate: float | None = None
     # Phase 5 circuit-breaker state.
     circuit_breaker_tripped: bool = False
 
@@ -142,11 +148,11 @@ class LearnedSwitch:
         name: str,
         rule: RuleFunc,
         author: str,
-        config: Optional[SwitchConfig] = None,
-        storage: Optional["Storage"] = None,
-        llm: Optional["LLMClassifier"] = None,
-        ml_head: Optional["MLHead"] = None,
-        telemetry: Optional["TelemetryEmitter"] = None,
+        config: SwitchConfig | None = None,
+        storage: Storage | None = None,
+        llm: LLMClassifier | None = None,
+        ml_head: MLHead | None = None,
+        telemetry: TelemetryEmitter | None = None,
     ) -> None:
         if not name:
             raise ValueError("name is required")
@@ -156,10 +162,7 @@ class LearnedSwitch:
             raise ValueError("author is required")
 
         resolved_config = config or SwitchConfig()
-        if (
-            resolved_config.safety_critical
-            and resolved_config.phase is Phase.ML_PRIMARY
-        ):
+        if resolved_config.safety_critical and resolved_config.phase is Phase.ML_PRIMARY:
             raise ValueError(
                 "safety_critical switches cannot start in ML_PRIMARY; "
                 "cap at ML_WITH_FALLBACK (paper §7.1)."
@@ -183,9 +186,9 @@ class LearnedSwitch:
         self._telemetry = telemetry
         # Track the last LLM/ML observations so record_outcome can attach them
         # to the outcome row without the caller passing them through.
-        self._last_shadow: Optional[tuple[Any, float]] = None
-        self._last_ml: Optional[tuple[Any, float]] = None
-        self._last_rule_output: Optional[Any] = None
+        self._last_shadow: tuple[Any, float] | None = None
+        self._last_ml: tuple[Any, float] | None = None
+        self._last_rule_output: Any | None = None
         self._circuit_tripped: bool = False
         # Labels are set by the decorator; bare construction leaves them empty.
         self.labels: list[str] = []
@@ -279,8 +282,7 @@ class LearnedSwitch:
         if phase is Phase.ML_SHADOW:
             if self._ml_head is None:
                 raise ValueError(
-                    f"switch {self.name!r} is in phase {phase.value} but no "
-                    "ml_head was provided"
+                    f"switch {self.name!r} is in phase {phase.value} but no ml_head was provided"
                 )
             self._last_rule_output = rule_output
 
@@ -298,8 +300,7 @@ class LearnedSwitch:
         if phase is Phase.ML_WITH_FALLBACK:
             if self._ml_head is None:
                 raise ValueError(
-                    f"switch {self.name!r} is in phase {phase.value} but no "
-                    "ml_head was provided"
+                    f"switch {self.name!r} is in phase {phase.value} but no ml_head was provided"
                 )
             self._last_rule_output = rule_output
             try:
@@ -330,8 +331,7 @@ class LearnedSwitch:
         if phase is Phase.ML_PRIMARY:
             if self._ml_head is None:
                 raise ValueError(
-                    f"switch {self.name!r} is in phase {phase.value} but no "
-                    "ml_head was provided"
+                    f"switch {self.name!r} is in phase {phase.value} but no ml_head was provided"
                 )
             self._last_rule_output = rule_output
             if self._circuit_tripped:
@@ -371,9 +371,7 @@ class LearnedSwitch:
             phase=phase,
         )
 
-    def _phase_primary_decision(
-        self, input: Any, rule_output: Any, phase: Phase
-    ) -> SwitchResult:
+    def _phase_primary_decision(self, input: Any, rule_output: Any, phase: Phase) -> SwitchResult:
         """Primary decision for phases where an ML head runs in shadow.
 
         Routes through the LLM when configured (LLM_PRIMARY semantics),
@@ -428,17 +426,16 @@ class LearnedSwitch:
         """
         if outcome not in {o.value for o in Outcome}:
             raise ValueError(
-                f"outcome must be one of {[o.value for o in Outcome]}; "
-                f"got {outcome!r}"
+                f"outcome must be one of {[o.value for o in Outcome]}; got {outcome!r}"
             )
-        llm_output: Optional[Any] = None
-        llm_confidence: Optional[float] = None
+        llm_output: Any | None = None
+        llm_confidence: float | None = None
         if self._last_shadow is not None:
             llm_output, llm_confidence = self._last_shadow
             self._last_shadow = None
 
-        ml_output: Optional[Any] = None
-        ml_confidence: Optional[float] = None
+        ml_output: Any | None = None
+        ml_confidence: float | None = None
         if self._last_ml is not None:
             ml_output, ml_confidence = self._last_ml
             self._last_ml = None
@@ -490,16 +487,13 @@ class LearnedSwitch:
         correct = sum(1 for r in outcomes if r.outcome == Outcome.CORRECT.value)
         incorrect = sum(1 for r in outcomes if r.outcome == Outcome.INCORRECT.value)
 
-        shadow_rate: Optional[float] = None
-        shadow_obs = [
-            r for r in outcomes
-            if r.llm_output is not None and r.rule_output is not None
-        ]
+        shadow_rate: float | None = None
+        shadow_obs = [r for r in outcomes if r.llm_output is not None and r.rule_output is not None]
         if shadow_obs:
             agreements = sum(1 for r in shadow_obs if r.llm_output == r.rule_output)
             shadow_rate = agreements / len(shadow_obs)
 
-        ml_rate: Optional[float] = None
+        ml_rate: float | None = None
         ml_obs = [r for r in outcomes if r.ml_output is not None]
         if ml_obs:
             # Compare ML against whatever the user-visible decision was
@@ -508,11 +502,7 @@ class LearnedSwitch:
             ml_agreements = sum(1 for r in ml_obs if r.ml_output == r.output)
             ml_rate = ml_agreements / len(ml_obs)
 
-        version = (
-            self._ml_head.model_version()
-            if self._ml_head is not None
-            else None
-        )
+        version = self._ml_head.model_version() if self._ml_head is not None else None
 
         return SwitchStatus(
             name=self.name,
@@ -538,6 +528,6 @@ class LearnedSwitch:
     # --- Diagnostics -------------------------------------------------------
 
     @property
-    def storage(self) -> "Storage":
+    def storage(self) -> Storage:
         """Public accessor — useful for tests and advanced wiring."""
         return self._storage

@@ -101,9 +101,7 @@ class TestSwitchROI:
         halved = compute_switch_roi(
             switch_name="a",
             storage=s,
-            assumptions=ROIAssumptions(
-                pct_outcomes_that_would_use_llm_without_dendra=0.5
-            ),
+            assumptions=ROIAssumptions(pct_outcomes_that_would_use_llm_without_dendra=0.5),
         )
         # Halving the counter-factual halves the token savings.
         assert abs(halved.token_savings_low_usd - default.token_savings_low_usd / 2) < 1.0

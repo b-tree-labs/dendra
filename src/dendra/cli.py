@@ -17,9 +17,8 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Sequence
 from dataclasses import asdict
-from typing import Optional, Sequence
-
 
 _BENCHMARKS = {
     "banking77": "load_banking77",
@@ -38,8 +37,7 @@ def _load_bench(name: str):
 def cmd_bench(args: argparse.Namespace) -> int:
     if args.benchmark not in _BENCHMARKS:
         print(
-            f"unknown benchmark {args.benchmark!r}; "
-            f"choose from {sorted(_BENCHMARKS)}",
+            f"unknown benchmark {args.benchmark!r}; choose from {sorted(_BENCHMARKS)}",
             file=sys.stderr,
         )
         return 2
@@ -50,7 +48,9 @@ def cmd_bench(args: argparse.Namespace) -> int:
 
     ds = _load_bench(args.benchmark)
     rule = build_reference_rule(
-        ds.train, seed_size=args.seed_size, keywords_per_label=args.kw_per_label,
+        ds.train,
+        seed_size=args.seed_size,
+        keywords_per_label=args.kw_per_label,
     ).as_callable()
     head = SklearnTextHead(min_outcomes=args.min_train_for_ml)
 
@@ -236,13 +236,15 @@ def cmd_plot(args: argparse.Namespace) -> int:
 
     runs = [load_run(p) for p in args.jsonl]
     plot_transition_curves(
-        runs, output_path=args.output, title=args.title,
+        runs,
+        output_path=args.output,
+        title=args.title,
     )
     print(f"wrote {args.output}", file=sys.stderr)
     return 0
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="dendra")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
@@ -255,26 +257,38 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         choices=sorted(_BENCHMARKS),
         help="Benchmark ID (banking77 | clinc150 | hwu64 | atis).",
     )
-    p_bench.add_argument("--seed-size", type=int, default=100,
-                         help="Training examples used to construct the rule (paper §4.2).")
-    p_bench.add_argument("--kw-per-label", type=int, default=5,
-                         help="Keywords selected per label.")
-    p_bench.add_argument("--checkpoint-every", type=int, default=250,
-                         help="Outcomes between checkpoints.")
-    p_bench.add_argument("--min-train-for-ml", type=int, default=100,
-                         help="Smallest training count at which the ML head is fit.")
-    p_bench.add_argument("--max-train", type=int, default=None,
-                         help="Cap on training examples (smoke-test knob).")
+    p_bench.add_argument(
+        "--seed-size",
+        type=int,
+        default=100,
+        help="Training examples used to construct the rule (paper §4.2).",
+    )
+    p_bench.add_argument("--kw-per-label", type=int, default=5, help="Keywords selected per label.")
+    p_bench.add_argument(
+        "--checkpoint-every", type=int, default=250, help="Outcomes between checkpoints."
+    )
+    p_bench.add_argument(
+        "--min-train-for-ml",
+        type=int,
+        default=100,
+        help="Smallest training count at which the ML head is fit.",
+    )
+    p_bench.add_argument(
+        "--max-train", type=int, default=None, help="Cap on training examples (smoke-test knob)."
+    )
     p_bench.add_argument(
         "--llm",
         choices=["ollama", "llamafile", "openai", "anthropic"],
         default=None,
         help="Enable LLM shadow evaluation with the named provider.",
     )
-    p_bench.add_argument("--llm-model", default=None,
-                         help="Model ID passed to the LLM provider.")
-    p_bench.add_argument("--llm-test-sample", type=int, default=None,
-                         help="Subsample size for LLM test evaluation (default: full test set).")
+    p_bench.add_argument("--llm-model", default=None, help="Model ID passed to the LLM provider.")
+    p_bench.add_argument(
+        "--llm-test-sample",
+        type=int,
+        default=None,
+        help="Subsample size for LLM test evaluation (default: full test set).",
+    )
     p_bench.set_defaults(fn=cmd_bench)
 
     p_analyze = sub.add_parser(
@@ -299,15 +313,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     p_analyze.add_argument(
         "--project-savings",
         action="store_true",
-        help="Include per-site annual savings projection "
-             "(uses dendra.roi default cost model).",
+        help="Include per-site annual savings projection (uses dendra.roi default cost model).",
     )
     p_analyze.set_defaults(fn=cmd_analyze)
+
     # Back-compat: --json flag overrides --format.
     def _analyze_wrapper(args: argparse.Namespace) -> int:
         if args.json:
             args.format = "json"
         return cmd_analyze(args)
+
     p_analyze.set_defaults(fn=_analyze_wrapper)
 
     p_init = sub.add_parser(
@@ -331,8 +346,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "--phase",
         default="RULE",
         choices=[
-            "RULE", "LLM_SHADOW", "LLM_PRIMARY",
-            "ML_SHADOW", "ML_WITH_FALLBACK", "ML_PRIMARY",
+            "RULE",
+            "LLM_SHADOW",
+            "LLM_PRIMARY",
+            "ML_SHADOW",
+            "ML_WITH_FALLBACK",
+            "ML_PRIMARY",
         ],
         help="Initial phase. Default: RULE.",
     )
@@ -354,24 +373,37 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
     p_roi.add_argument("storage", help="FileStorage base path (dir containing per-switch subdirs).")
     p_roi.add_argument("--json", action="store_true", help="Emit JSON instead of a text report.")
-    p_roi.add_argument("--engineer-cost-per-week", type=float, default=None,
-                       help="Override fully-loaded eng cost in USD/week.")
-    p_roi.add_argument("--monthly-value-low", type=float, default=None,
-                       help="Override monthly value per site (low bound).")
-    p_roi.add_argument("--monthly-value-high", type=float, default=None,
-                       help="Override monthly value per site (high bound).")
+    p_roi.add_argument(
+        "--engineer-cost-per-week",
+        type=float,
+        default=None,
+        help="Override fully-loaded eng cost in USD/week.",
+    )
+    p_roi.add_argument(
+        "--monthly-value-low",
+        type=float,
+        default=None,
+        help="Override monthly value per site (low bound).",
+    )
+    p_roi.add_argument(
+        "--monthly-value-high",
+        type=float,
+        default=None,
+        help="Override monthly value per site (high bound).",
+    )
     p_roi.set_defaults(fn=cmd_roi)
 
     p_plot = sub.add_parser(
         "plot",
         help="Plot transition curves from one or more `dendra bench` JSONL files.",
     )
-    p_plot.add_argument("jsonl", nargs="+",
-                        help="One or more JSONL files produced by `dendra bench`.")
-    p_plot.add_argument("-o", "--output", required=True,
-                        help="Output image path (.png / .svg / .pdf).")
-    p_plot.add_argument("--title", default="Dendra transition curves",
-                        help="Figure title.")
+    p_plot.add_argument(
+        "jsonl", nargs="+", help="One or more JSONL files produced by `dendra bench`."
+    )
+    p_plot.add_argument(
+        "-o", "--output", required=True, help="Output image path (.png / .svg / .pdf)."
+    )
+    p_plot.add_argument("--title", default="Dendra transition curves", help="Figure title.")
     p_plot.set_defaults(fn=cmd_plot)
 
     args = parser.parse_args(argv)
