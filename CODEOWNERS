@@ -1,0 +1,34 @@
+# Dendra code ownership — see
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+#
+# Default owner reviews every PR unless a more specific pattern applies.
+# The repo is currently maintained by a single owner; keep this file
+# current as contributors join.
+
+*                                   @benjaminbooth
+
+# License + IP — changes here require explicit owner approval.
+/LICENSE*                           @benjaminbooth
+/LICENSE.md                         @benjaminbooth
+/LICENSING.md                       @benjaminbooth
+/NOTICE                             @benjaminbooth
+/TRADEMARKS.md                      @benjaminbooth
+/docs/working/license-strategy.md   @benjaminbooth
+/docs/working/trademark-strategy.md @benjaminbooth
+/docs/working/patent-strategy.md    @benjaminbooth
+/docs/working/patent/               @benjaminbooth
+
+# CI and release paths — owner approval required; supply-chain risk.
+/.github/                           @benjaminbooth
+/pyproject.toml                     @benjaminbooth
+
+# Core primitive — breaking changes here are patent-adjacent; issue first.
+/src/dendra/core.py                 @benjaminbooth
+/src/dendra/decorator.py            @benjaminbooth
+/src/dendra/storage.py              @benjaminbooth
+
+# BSL-licensed surfaces — product-surface changes also go through owner.
+/src/dendra/analyzer.py             @benjaminbooth
+/src/dendra/cli.py                  @benjaminbooth
+/src/dendra/research.py             @benjaminbooth
+/src/dendra/roi.py                  @benjaminbooth
