@@ -97,7 +97,7 @@ Signature: /Benjamin Booth/
 
 Printed name: Benjamin Booth
 
-Date: [FILING DATE — e.g., 2026-04-22]
+Date: 2026-04-21
 
 Registration number (if attorney/agent; leave blank for pro se):
 N/A — pro se inventor

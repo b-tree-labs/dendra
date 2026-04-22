@@ -116,7 +116,7 @@ Signature: /Benjamin Booth/
 
 Printed name: Benjamin Booth
 
-Date: [FILING DATE — e.g., 2026-04-22]
+Date: 2026-04-21
 
 > USPTO S-signature per 37 CFR 1.4(d)(2) — the forward-slash notation
 > above is a legally binding signature for patent-office submissions.
