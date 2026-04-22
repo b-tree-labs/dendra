@@ -10,7 +10,98 @@ hours if you clear your calendar.
 
 ---
 
+## Progress snapshot — 2026-04-22 (~T+24h)
+
+Updated mid-launch. The original hour-by-hour plan below is kept
+as reference; actual execution has reshuffled the order and
+already landed several items beyond what the original 48-hour
+scope contemplated (license split, governance hygiene).
+
+### Completed
+
+- [x] **Provisional patent filed (2026-04-21).** USPTO Patent
+      Center, $75 micro-entity. Filing date stamped into packet
+      docs; payment receipt committed alongside.
+- [x] **Clean-IP provenance** — B-Tree Ventures LLC sole inventor
+      and assignee; tarball `provenance-2026-04-21.tar.gz` at
+      repo root.
+- [x] **Public GitHub repo created** at
+      `github.com/axiom-labs-os/dendra` (repo is now public;
+      confirmed via API).
+- [x] **GitHub Actions CI green** on main — CI, install-smoke,
+      DCO, provenance scan all passing. Security workflow
+      scoped to schedule-only due to upstream reusable-workflow
+      bugs (see GH issue tracking the grype/gitleaks/REUSE
+      fixes).
+- [x] **Split-license posture shipped** — Apache 2.0 on client
+      SDK, BSL 1.1 (Change Date 2030-05-01 → Apache 2.0) on
+      Dendra-operated components. Per-file headers, PEP 639
+      metadata, LICENSE.md / LICENSING.md / TRADEMARKS.md,
+      NOTICE, CODEOWNERS, DCO enforcement. Merged as PR #1.
+- [x] **Cross-OS install-smoke workflow** (ubuntu + macOS ×
+      Python 3.10 / 3.12 / 3.13) — verifies `pip install .`,
+      `dendra --help`, and a minimal switch decision from a
+      fresh wheel on every PR.
+
+### In-flight (this session)
+
+- [ ] Trademark filing for DENDRA (IC 9 + IC 42, $700 TEAS Plus).
+      Strategy doc at `docs/working/trademark-strategy.md`.
+      **User action required** — you file the application.
+- [ ] SUPPORT.md + GitHub issue templates.
+- [ ] Upstream security-scan tracking issue on
+      `axiom-labs-os/.github` documenting the grype / gitleaks /
+      REUSE upstream bugs.
+
+### Next launch-milestone tasks (shortest path to "first aspect in production")
+
+Ordered by what unlocks the most downstream work:
+
+1. **`dendra.dev` domain registration** — ~$15 at
+   Cloudflare / Porkbun / Namecheap. Blocker for the landing
+   page. Do today.
+2. **PyPI release of v0.2.0** — tag `git tag v0.2.0 && git
+   push --tags`. The `release.yml` workflow is wired to
+   PyPI trusted-publishing. Verify `pip install dendra` from
+   a fresh venv afterwards.
+3. **Landing page at dendra.dev** — single page, static,
+   Cloudflare Pages or Vercel. Copy deck at
+   `docs/marketing/landing-page-copy.md`. Needs to mention
+   the split license accurately (Apache SDK + BSL analyzer).
+4. **arXiv preprint** — convert the paper outline at
+   `docs/papers/2026-when-should-a-rule-learn/outline.md`
+   into a submittable PDF. Paper-strengthening items in
+   `roadmap-2026-04-20.md` workstream 3 can ship as a v2 later.
+5. **Hacker News + r/ML post** — after arXiv ID assigned and
+   PyPI live. Use the launch-day windows in §Day-2-Morning.
+6. **First-wave outreach** (Template 1-2 from
+   `docs/marketing/outreach-templates.md`) to 20 tier-1 targets.
+
+### Key changes vs the original hour-by-hour plan
+
+- **License posture** — original plan assumed Apache 2.0
+  throughout; current posture is split-license (see
+  `docs/working/license-strategy.md`). Adjust any
+  launch-copy references to Apache-only accordingly.
+- **Repo visibility** — repo is already public as of
+  2026-04-22. H+2 "create public repo" is done.
+- **CI state** — original plan references
+  `.github/workflows/test.yml`; the workflows are now
+  `ci.yml` (shared reusable), `install-smoke.yml`,
+  `release.yml`, `security.yml`, `dco.yml`.
+- **Trademark** — the original plan didn't include a
+  trademark filing; it's now P0 for launch week per
+  `trademark-strategy.md`. Cannot block on launch (no
+  pre-filing requirement), but filing same-week as launch
+  gets the priority date locked.
+
+---
+
 ## Hour-by-hour plan
+
+> Historical reference. The plan below describes the original
+> clean-slate launch sequence. Use the Progress snapshot above
+> for current prioritization.
 
 ### Day 1 — Morning (hours 0-4)
 
