@@ -1,0 +1,78 @@
+/*
+ * Dendra landing page — brand tokens
+ *
+ * Derived from the Axiom Labs brand system (palette, typography, usage).
+ * The brand kit lives in axiom-labs-os/.github/brand/; this file is the
+ * web-rendering expression of that system scoped to Dendra.
+ *
+ * Changes to the source brand system should be mirrored here.
+ */
+
+:root {
+  /* Primary palette */
+  --ink: #1a1a1f;
+  --ground: #f8f6f1;
+  --accent: #bf5700;
+
+  /* Extended (use sparingly) */
+  --ink-soft: #6a6a72;
+  --ground-soft: #efece6;
+  --rule: #d8d3c9;
+  --accent-deep: #8a3d00;
+  --accent-wash: #f4e4d8;
+
+  /* Typography stacks */
+  --font-display: "Space Grotesk", system-ui, -apple-system, sans-serif;
+  --font-body:
+    -apple-system, "SF Pro Text", system-ui, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono:
+    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Type scale — base 16, ratio 1.25 (major third) */
+  --size-display: 4rem; /* 64 */
+  --size-h1: 3rem; /* 48 */
+  --size-h2: 2rem; /* 32 */
+  --size-h3: 1.5rem; /* 24 */
+  --size-h4: 1.25rem; /* 20 */
+  --size-body: 1rem; /* 16 */
+  --size-caption: 0.8125rem; /* 13 */
+  --size-micro: 0.6875rem; /* 11 */
+
+  /* Line heights mirror the brand spec */
+  --lh-display: 1.05;
+  --lh-h1: 1.1;
+  --lh-h2: 1.2;
+  --lh-h3: 1.3;
+  --lh-h4: 1.35;
+  --lh-body: 1.55;
+  --lh-caption: 1.45;
+  --lh-micro: 1.4;
+
+  /* Layout rhythm */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
+
+  --max-content: 1120px;
+  --max-prose: 680px;
+  --radius: 8px;
+  --border: 1px solid var(--rule);
+}
+
+/* Fluid headline ramp for smaller viewports */
+@media (max-width: 768px) {
+  :root {
+    --size-display: 2.75rem; /* 44 */
+    --size-h1: 2.25rem; /* 36 */
+    --size-h2: 1.625rem; /* 26 */
+    --size-h3: 1.25rem; /* 20 */
+  }
+}
