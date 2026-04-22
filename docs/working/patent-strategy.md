@@ -486,26 +486,45 @@ forfeit if you disclose before filing.
 
 ## 9. Open source compatibility
 
-A patent on the graduated-autonomy method does **not** conflict with
-the Apache 2.0 license on the code. The Apache 2.0 license
-explicitly grants a **patent license** to recipients — meaning any
-Dendra user gets the right to practice the patented invention as
-part of using the code.
+> **2026-04-22 update.** The original framing in this section —
+> "Apache 2.0 + patent = the Temporal / Elastic / MongoDB
+> pattern" — overstates the commercial-licensing leverage that
+> pure Apache 2.0 retains. See
+> `docs/working/license-strategy.md` for the revised split-
+> license posture (Apache 2.0 on the client SDK; BSL 1.1 with
+> Change Date 2030-05-01 on the analyzer and Dendra-operated
+> surfaces). The patent analysis in this file remains correct;
+> only the license-interaction paragraphs below are superseded.
 
-What a patent DOES protect:
+The provisional patent on the graduated-autonomy method
+interacts with Dendra's two licenses differently:
+
+- **On the Apache-2.0 client SDK:** the Apache 2.0 license
+  grants a patent license to recipients, so Dendra SDK users
+  are free to practice the patented invention as part of using
+  the client code.
+- **On the BSL-1.1 components:** no Apache-style patent grant
+  applies; the BSL governs both copyright and (by virtue of
+  restricting what you may do with the code) the scope under
+  which the invention may be practiced via the BSL-licensed
+  surfaces. Commercial licensing (separate from BSL) is how
+  the patent is monetized against non-customer practitioners.
+
+What a patent DOES protect (unchanged):
 
 - Third parties who *don't* use our code but implement the same
   method independently. They need a patent license from us.
 - Enterprise customers who want stronger indemnification than
   Apache 2.0 provides — we can sell commercial licenses that
   include patent indemnity.
-- Competitors who want to ship a forked version under a different
-  license (e.g., a SaaS provider wanting to strip Apache
-  attribution requirements). They'd need a patent grant from us.
+- Competitors who want to offer a hosted Dendra-derivative
+  service. Under the split license, the BSL's Additional Use
+  Grant excludes competing hosted services, which — combined
+  with the patent — forms the real commercial lever.
 
-This is the **Temporal / Elastic / MongoDB pattern** — open-source
-code, commercial licensing enforced via the patent + trademark
-layers.
+The end-state pattern is **HashiCorp / CockroachDB / Sentry**
+(split-license, not pure Apache), with the patent providing
+additional leverage beyond what the BSL alone provides.
 
 ---
 

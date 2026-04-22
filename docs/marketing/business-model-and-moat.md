@@ -124,7 +124,7 @@ Enterprise.
 
 | Tier | Price | Classifications/mo | Retention | Switches | Team seats | Support | Buyer persona |
 |---|---|---:|---:|---:|---:|---|---|
-| **OSS library** | free | unlimited (self-hosted) | any | any | any | GitHub issues | Everyone; primitive adoption |
+| **OSS library** | free (Apache 2.0 client SDK + BSL 1.1 analyzer/server, BSL Change Date 2030-05-01 → Apache 2.0) | unlimited (self-hosted) | any | any | any | GitHub issues | Everyone; primitive adoption |
 | **Free (hosted)** | **$0** | 10,000 | 7 days | 1 | 1 | Community forum | Hobbyist; side projects; eval |
 | **Solo** | **$19/mo** | 100,000 | 30 days | Unlimited | 1 | Email, best-effort | Freelancer; side-SaaS; indie dev |
 | **Team** | **$99/mo** | 1,000,000 | 90 days | Unlimited | 10 | Email, 1 biz-day | Startup eng team; small product |

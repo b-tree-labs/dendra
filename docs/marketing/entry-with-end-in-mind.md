@@ -172,13 +172,19 @@ Being clear about this is what keeps positioning coherent.
   uses.
 - **No competitive comparisons in marketing.** Indirect framing
   only (per feedback memory).
-- **No closed-source anything** in the core library. Year one is
-  100% Apache-2.0 on the core. Paid tiers (§7) are orthogonal.
+- **No closed-source anything** in the core library. Year one
+  ships **Apache 2.0 on the client SDK** (decorator, config,
+  storage, adapters, telemetry, viz, benchmarks). The analyzer
+  and Dendra-operated product surfaces ship **BSL 1.1 with
+  Change Date 2030-05-01 → Apache 2.0** — source-available and
+  automatically converting, per the 2026-04-22 license decision.
+  See `docs/working/license-strategy.md`.
 - **No data-sharing federation yet.** It's on the roadmap (opt-in
   year 2), but we don't promise it year one.
-- **No SSPL / BSL / ELv2 relicensing.** These licenses
-  disqualify Dendra from most enterprise procurement. Stay
-  Apache-2.0 on core indefinitely.
+- **No SSPL relicensing.** SSPL remains disqualifying in most
+  enterprise procurement. BSL 1.1 (our choice) does not — it
+  is broadly accepted (HashiCorp, CockroachDB, Sentry,
+  Couchbase).
 - **No SOC2 / FedRAMP / HIPAA certifications in year one.**
   They cost $50k-$300k each and can't be achieved in a quarter
   anyway. They are a year-2+ commitment.
