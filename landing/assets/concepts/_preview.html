@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dendra — brand mark concepts</title>
+    <link
+      rel="preconnect"
+      href="https://fonts.googleapis.com"
+    />
+    <link
+      rel="preconnect"
+      href="https://fonts.gstatic.com"
+      crossorigin
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400&display=swap"
+    />
+    <style>
+      :root {
+        --ink: #1a1a1f;
+        --ground: #f8f6f1;
+        --accent: #bf5700;
+        --ink-soft: #6a6a72;
+        --ground-soft: #efece6;
+        --rule: #d8d3c9;
+      }
+      body {
+        margin: 0;
+        padding: 48px 32px 96px;
+        background: var(--ground);
+        color: var(--ink);
+        font-family: -apple-system, "SF Pro Text", system-ui,
+          "Segoe UI", Roboto, sans-serif;
+        font-size: 15px;
+        line-height: 1.55;
+      }
+      h1,
+      h2,
+      h3 {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        font-weight: 500;
+      }
+      h1 {
+        font-size: 40px;
+        margin: 0 0 8px;
+      }
+      h2 {
+        font-size: 22px;
+        margin: 56px 0 8px;
+      }
+      h3 {
+        font-size: 16px;
+        margin: 0 0 6px;
+      }
+      .wrap {
+        max-width: 1120px;
+        margin: 0 auto;
+      }
+      .lede {
+        color: var(--ink-soft);
+        max-width: 680px;
+        margin-bottom: 24px;
+      }
+      .concept {
+        border-top: 1px solid var(--rule);
+        padding-top: 40px;
+        margin-top: 40px;
+      }
+      .concept h2 {
+        margin-top: 0;
+      }
+      .tagline {
+        color: var(--ink-soft);
+        font-style: italic;
+        margin-bottom: 24px;
+      }
+      .row {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+        align-items: flex-end;
+      }
+      .cell {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+      }
+      .cell img {
+        display: block;
+        background: var(--ground);
+        border-radius: 8px;
+      }
+      .cell .caption {
+        font-size: 11px;
+        letter-spacing: 0.05em;
+        color: var(--ink-soft);
+        text-transform: uppercase;
+      }
+      .cell.dark img {
+        background: var(--ink);
+      }
+      .wordmark-row {
+        background: var(--ground);
+        padding: 24px;
+        border-radius: 10px;
+        border: 1px solid var(--rule);
+        margin-top: 12px;
+      }
+      .wordmark-row img {
+        display: block;
+        width: 100%;
+        max-width: 640px;
+      }
+      .rationale {
+        max-width: 680px;
+        margin-top: 20px;
+      }
+      .rationale p {
+        margin-top: 0;
+      }
+      .rationale ul {
+        padding-left: 18px;
+      }
+      .rationale li {
+        margin-bottom: 4px;
+      }
+      .rationale .hits {
+        background: var(--ground-soft);
+        border-left: 3px solid var(--accent);
+        padding: 12px 16px;
+        margin-top: 12px;
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 13px;
+        color: var(--ink);
+      }
+      .tradeoffs {
+        border-collapse: collapse;
+        width: 100%;
+        margin-top: 16px;
+      }
+      .tradeoffs th,
+      .tradeoffs td {
+        text-align: left;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--rule);
+        font-size: 13px;
+        vertical-align: top;
+      }
+      .tradeoffs th {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-size: 11px;
+        color: var(--ink-soft);
+      }
+      .tradeoffs td:first-child {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        font-weight: 500;
+        white-space: nowrap;
+      }
+      .summary {
+        margin-top: 80px;
+        padding-top: 40px;
+        border-top: 1px solid var(--rule);
+      }
+      code {
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 13px;
+        background: var(--ground-soft);
+        padding: 1px 6px;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>Dendra — brand mark concepts</h1>
+        <p class="lede">
+          Four concepts. Each ties the mark to a different facet of
+          the innovation (name, phase lifecycle, measurement,
+          theorem). All share the Axiom Labs visual vocabulary —
+          34-px square-capped strokes at 512 viewBox, graphite on
+          warm off-white, a single accent tick in
+          <code>#bf5700</code>. Distinct glyphs, not variations of
+          the origin mark, per brand <code>usage.md</code> portfolio
+          rule.
+        </p>
+      </header>
+
+      <!-- CONCEPT A ==================================================== -->
+      <section class="concept">
+        <h2>A · Dendrite</h2>
+        <p class="tagline">
+          Name resonance. The tree you're wrapping decisions around.
+        </p>
+
+        <div class="row">
+          <div class="cell">
+            <img src="./01-dendrite-mark.svg" width="16" height="16" />
+            <span class="caption">16</span>
+          </div>
+          <div class="cell">
+            <img src="./01-dendrite-mark.svg" width="32" height="32" />
+            <span class="caption">32</span>
+          </div>
+          <div class="cell">
+            <img src="./01-dendrite-mark.svg" width="96" height="96" />
+            <span class="caption">96</span>
+          </div>
+          <div class="cell">
+            <img
+              src="./01-dendrite-mark.svg"
+              width="200"
+              height="200"
+            />
+            <span class="caption">200</span>
+          </div>
+        </div>
+
+        <div class="wordmark-row">
+          <img src="./01-dendrite-wordmark.svg" />
+        </div>
+
+        <div class="rationale">
+          <p>
+            A stylized upward-branching tree: one trunk, a split
+            node, and two branches. The trunk is the rule; the split
+            is the graduation point; the branches are the two
+            modalities (LLM, ML) that can take over after the
+            evidence clears. One branch tip carries the accent tick —
+            the graduation that's been earned.
+          </p>
+          <div class="hits">
+            hits: name etymology · graduated autonomy · safety floor
+            · branching decision
+          </div>
+        </div>
+      </section>
+
+      <!-- CONCEPT B ==================================================== -->
+      <section class="concept">
+        <h2>B · Ascend</h2>
+        <p class="tagline">
+          Lifecycle as shape. Six steps, literally, with the rule
+          floor beneath them.
+        </p>
+
+        <div class="row">
+          <div class="cell">
+            <img src="./02-ascend-mark.svg" width="16" height="16" />
+            <span class="caption">16</span>
+          </div>
+          <div class="cell">
+            <img src="./02-ascend-mark.svg" width="32" height="32" />
+            <span class="caption">32</span>
+          </div>
+          <div class="cell">
+            <img src="./02-ascend-mark.svg" width="96" height="96" />
+            <span class="caption">96</span>
+          </div>
+          <div class="cell">
+            <img
+              src="./02-ascend-mark.svg"
+              width="200"
+              height="200"
+            />
+            <span class="caption">200</span>
+          </div>
+        </div>
+
+        <div class="wordmark-row">
+          <img src="./02-ascend-wordmark.svg" />
+        </div>
+
+        <div class="rationale">
+          <p>
+            Six short horizontal segments ascending from the rule
+            floor — one per phase (RULE → LLM_SHADOW → LLM_PRIMARY →
+            ML_SHADOW → ML_WITH_FALLBACK → ML_PRIMARY). The dust-grey
+            baseline is the rule, always present. The top step is
+            the accent — the phase that required the most evidence
+            to reach. The shape IS the six-phase lifecycle, not a
+            reference to it.
+          </p>
+          <div class="hits">
+            hits: six phases (literal) · graduated autonomy · safety
+            floor · evidence-gated advancement
+          </div>
+        </div>
+      </section>
+
+      <!-- CONCEPT C ==================================================== -->
+      <section class="concept">
+        <h2>C · Curve</h2>
+        <p class="tagline">
+          The paper's Figure 1 collapsed into a glyph.
+        </p>
+
+        <div class="row">
+          <div class="cell">
+            <img src="./03-curve-mark.svg" width="16" height="16" />
+            <span class="caption">16</span>
+          </div>
+          <div class="cell">
+            <img src="./03-curve-mark.svg" width="32" height="32" />
+            <span class="caption">32</span>
+          </div>
+          <div class="cell">
+            <img src="./03-curve-mark.svg" width="96" height="96" />
+            <span class="caption">96</span>
+          </div>
+          <div class="cell">
+            <img
+              src="./03-curve-mark.svg"
+              width="200"
+              height="200"
+            />
+            <span class="caption">200</span>
+          </div>
+        </div>
+
+        <div class="wordmark-row">
+          <img src="./03-curve-wordmark.svg" />
+        </div>
+
+        <div class="rationale">
+          <p>
+            An ascending quadratic arc from rule-floor to ML-ceiling,
+            with five checkpoint dots along it — the five
+            statistical gates between the six phases. The last
+            checkpoint is the accent: the graduation that cleared
+            its paired-proportion test. This is the mark most
+            directly traceable to the paper itself — every academic
+            reader will recognize the transition-curve shape and
+            know exactly what the checkpoints represent.
+          </p>
+          <div class="hits">
+            hits: measurement artifact · statistical gates · paper
+            continuity · graduated autonomy
+          </div>
+        </div>
+      </section>
+
+      <!-- CONCEPT D ==================================================== -->
+      <section class="concept">
+        <h2>D · Gate</h2>
+        <p class="tagline">
+          Theorem as architecture. The rule-floor is the ground; the
+          accent is what passes through.
+        </p>
+
+        <div class="row">
+          <div class="cell">
+            <img src="./04-gate-mark.svg" width="16" height="16" />
+            <span class="caption">16</span>
+          </div>
+          <div class="cell">
+            <img src="./04-gate-mark.svg" width="32" height="32" />
+            <span class="caption">32</span>
+          </div>
+          <div class="cell">
+            <img src="./04-gate-mark.svg" width="96" height="96" />
+            <span class="caption">96</span>
+          </div>
+          <div class="cell">
+            <img src="./04-gate-mark.svg" width="200" height="200" />
+            <span class="caption">200</span>
+          </div>
+        </div>
+
+        <div class="wordmark-row">
+          <img src="./04-gate-wordmark.svg" />
+        </div>
+
+        <div class="rationale">
+          <p>
+            A horizontal rule floor with two vertical gate posts and
+            a lintel — the shape of a threshold. An accent tick
+            rises upward through the gate: evidence crossing,
+            advancement earned. The most theorem-forward concept —
+            the mark argues the paper's central claim (phase
+            transitions gated by evidence, with a rule floor
+            beneath). Reads as a stylized Π with an ember rising.
+          </p>
+          <div class="hits">
+            hits: statistical gate (literal) · safety floor (literal)
+            · threshold-crossing metaphor
+          </div>
+        </div>
+      </section>
+
+      <!-- SUMMARY ==================================================== -->
+      <section class="summary">
+        <h2>Trade-offs</h2>
+        <table class="tradeoffs">
+          <thead>
+            <tr>
+              <th>Concept</th>
+              <th>Strength</th>
+              <th>Tension</th>
+              <th>Legibility at 16 px</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>A · Dendrite</td>
+              <td>
+                Direct name etymology; ties to both "decision tree"
+                and the Greek root. Easiest mark to read as a logo.
+              </td>
+              <td>
+                Could be read as "neural network" branding. Risk of
+                category-cliché if not handled carefully.
+              </td>
+              <td>Excellent — 3 lines + dot + tick, very distinct.</td>
+            </tr>
+            <tr>
+              <td>B · Ascend</td>
+              <td>
+                Most literal mapping to the product (six phases IS
+                the product). Unambiguous intellectual claim.
+              </td>
+              <td>
+                Slightly "infographic-y" at small sizes; steps may
+                blur. Reads as a staircase more than as a glyph.
+              </td>
+              <td>
+                Good — the stepped rhythm holds but individual
+                steps become indistinct under ~32 px.
+              </td>
+            </tr>
+            <tr>
+              <td>C · Curve</td>
+              <td>
+                Most academically-coherent — matches Figure 1 of the
+                paper. Reads as "measurement" not "marketing."
+              </td>
+              <td>
+                Curves are harder to reproduce consistently across
+                media (print, embroidery, low-DPI screens). More
+                maintenance risk.
+              </td>
+              <td>
+                Fair — the curve reads; the checkpoint dots merge at
+                ~16 px.
+              </td>
+            </tr>
+            <tr>
+              <td>D · Gate</td>
+              <td>
+                Most theorem-forward. The mark argues the paper's
+                safety bound visually. Reads well across sizes.
+              </td>
+              <td>
+                Read could drift to "doorway" / "architecture" which
+                is less precise than the other three. Π shape is
+                more generic than a branching tree.
+              </td>
+              <td>
+                Excellent — Π + tick, very distinct even at favicon
+                size.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2>Recommendation</h2>
+        <p>
+          If you want <strong>the mark to say "Dendra"</strong>
+          (name-first), pick <strong>A · Dendrite</strong>. If you
+          want <strong>the mark to say what Dendra does</strong>
+          (product-first), pick <strong>B · Ascend</strong>. If you
+          want <strong>the mark to anchor to the paper</strong>
+          (research-first), pick <strong>C · Curve</strong>. If you
+          want <strong>the mark to argue the safety theorem</strong>
+          (claim-first), pick <strong>D · Gate</strong>.
+        </p>
+
+        <p>
+          My personal lean: <strong>A · Dendrite</strong> for the
+          primary mark (works across every surface, strongest
+          primitive-brand archetype) with <strong>C · Curve</strong>
+          as a secondary motif for the paper / research contexts.
+          Axiom Labs precedent supports one-mark-per-product; a
+          secondary Curve motif could live as a "research" sub-brand
+          only, not as an alternate logo.
+        </p>
+
+        <h2>Next steps</h2>
+        <ul>
+          <li>
+            Pick one (or one-plus-a-secondary-motif) — reply with
+            the concept letter.
+          </li>
+          <li>
+            I'll generate the full export set (dark-ground, mono,
+            favicon variants, Open Graph social card) matching the
+            Axiom Labs brand-kit structure.
+          </li>
+          <li>
+            Replace the placeholder typographic "D" at
+            <code>landing/assets/favicon.svg</code> and add the
+            chosen mark to the landing-page header.
+          </li>
+          <li>
+            Commit the chosen mark into a <code>brand/</code>
+            directory at repo root so it can be referenced from
+            places beyond the landing page.
+          </li>
+        </ul>
+      </section>
+    </div>
+  </body>
+</html>
