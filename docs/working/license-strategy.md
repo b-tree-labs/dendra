@@ -278,12 +278,10 @@ Implementation status as of 2026-04-22 (branch
       as end-state analog.
 - [x] `docs/marketing/business-model-and-moat.md` §3.1 — OSS
       library row clarifies Apache SDK + BSL analyzer/server.
-- [ ] **Follow-up:** split `tests/test_telemetry_and_research.py`
-      into `test_telemetry.py` (Apache, tests `telemetry.py`)
-      and `test_research.py` (BSL, tests `research.py`).
-      Currently left intact as a mixed-license file — it stays
-      Apache-header-only and tests a BSL module; this is a
-      pragmatic compromise pending follow-up.
+- [x] Split `tests/test_telemetry_and_research.py` into
+      `test_telemetry.py` (Apache, tests `telemetry.py`) and
+      `test_research.py` (BSL, tests `research.py`). Shipped
+      as a follow-up commit on the same branch.
 
 ---
 

@@ -1,7 +1,18 @@
 # Copyright (c) 2026 B-Tree Ventures, LLC
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: LicenseRef-BSL-1.1
+#
+# Licensed under the Business Source License 1.1 (the "License").
+# You may not use this file except in compliance with the License.
+# You may obtain a copy of the License at LICENSE-BSL in the
+# repository root, or at https://mariadb.com/bsl11/.
+#
+# Change Date:    2030-05-01
+# Change License: Apache License, Version 2.0
+#
+# Additional Use Grant: see LICENSE-BSL. Production use is
+# permitted; offering a competing hosted service is not.
 
-"""Tests for telemetry emitters and the transition-curve runner."""
+"""Tests for the transition-curve runner and research instrumentation."""
 
 from __future__ import annotations
 
@@ -12,72 +23,16 @@ import pytest
 from dendra import (
     LearnedSwitch,
     LLMPrediction,
-    Outcome,
     Phase,
     SwitchConfig,
 )
 from dendra.research import BenchmarkExample, Checkpoint, run_transition_curve
-from dendra.telemetry import ListEmitter, NullEmitter
 
 
 def _rule(ticket: dict) -> str:
     if "crash" in (ticket.get("title", "") or "").lower():
         return "bug"
     return "feature_request"
-
-
-# ---------------------------------------------------------------------------
-# Telemetry
-# ---------------------------------------------------------------------------
-
-
-class TestTelemetry:
-    def test_default_emitter_is_null(self):
-        s = LearnedSwitch(name="t", rule=_rule, author="alice")
-        s.classify({"title": "crash"})
-        # NullEmitter captures nothing and does not crash.
-        assert isinstance(s._telemetry, NullEmitter)
-
-    def test_list_emitter_captures_classify_events(self):
-        em = ListEmitter()
-        s = LearnedSwitch(name="t", rule=_rule, author="alice", telemetry=em)
-        s.classify({"title": "crash"})
-        events = [(name, p) for name, p in em.events if name == "classify"]
-        assert len(events) == 1
-        assert events[0][1]["switch"] == "t"
-        assert events[0][1]["source"] == "rule"
-
-    def test_list_emitter_captures_outcome_events(self):
-        em = ListEmitter()
-        s = LearnedSwitch(name="t", rule=_rule, author="alice", telemetry=em)
-        s.classify({"title": "crash"})
-        s.record_outcome(
-            input={"title": "crash"},
-            output="bug",
-            outcome=Outcome.CORRECT.value,
-        )
-        names = [n for n, _ in em.events]
-        assert "classify" in names
-        assert "outcome" in names
-
-    def test_broken_emitter_does_not_crash_decision(self):
-        class BrokenEmitter:
-            def emit(self, event, payload):
-                raise RuntimeError("emitter down")
-
-        s = LearnedSwitch(
-            name="t",
-            rule=_rule,
-            author="alice",
-            telemetry=BrokenEmitter(),
-        )
-        r = s.classify({"title": "crash"})
-        assert r.output == "bug"
-
-
-# ---------------------------------------------------------------------------
-# Research instrumentation — transition-curve runner
-# ---------------------------------------------------------------------------
 
 
 @dataclass
