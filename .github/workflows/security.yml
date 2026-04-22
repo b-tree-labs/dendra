@@ -1,16 +1,25 @@
 # Copyright (c) 2026 B-Tree Ventures, LLC
 # SPDX-License-Identifier: Apache-2.0
+#
+# Scheduled-only for now — the shared security-scan reusable in
+# axiom-labs-os/.github@v1 has three independent upstream bugs
+# (stale grype DB pinning, gitleaks org-license requirement, REUSE
+# convention mismatch with our split-license layout). Enabling the
+# workflow on pull_request produces noise without signal until
+# those are fixed. See the follow-up tracking issue for details.
+#
+# Runs weekly on Mondays 07:00 UTC (independent of PR cadence) so
+# the weekly dashboard still receives vulnerability scans, and
+# against main on push so regressions in the default branch are
+# surfaced without waiting a week.
 name: security
 
 on:
-  pull_request:
+  push:
     branches: [main]
   schedule:
     - cron: '0 7 * * 1'  # Mondays 07:00 UTC
 
-# Declared at the caller level so the reusable workflow's
-# `security-events: write` request is allowed to propagate.
-# Without this, the reusable startup-fails before any job runs.
 permissions:
   contents: read
   security-events: write
