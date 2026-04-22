@@ -8,6 +8,13 @@ on:
   schedule:
     - cron: '0 7 * * 1'  # Mondays 07:00 UTC
 
+# Declared at the caller level so the reusable workflow's
+# `security-events: write` request is allowed to propagate.
+# Without this, the reusable startup-fails before any job runs.
+permissions:
+  contents: read
+  security-events: write
+
 jobs:
   scan:
     uses: axiom-labs-os/.github/.github/workflows/security-scan.yml@v1
@@ -15,3 +22,6 @@ jobs:
       package-name: dendra
       fail-on-severity: high
     secrets: inherit
+    permissions:
+      contents: read
+      security-events: write
