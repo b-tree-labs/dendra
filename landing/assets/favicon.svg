@@ -1,0 +1,12 @@
+<!-- Copyright (c) 2026 B-Tree Ventures, LLC. Placeholder favicon — typographic
+     D in the Axiom Labs palette with the accent tick. Replace with the
+     finalized Dendra mark when designed. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Dendra">
+  <rect width="64" height="64" rx="10" fill="#1a1a1f"/>
+  <text x="50%" y="50%"
+        text-anchor="middle" dominant-baseline="central"
+        font-family="'Space Grotesk', system-ui, sans-serif"
+        font-size="38" font-weight="500" fill="#f8f6f1"
+        letter-spacing="0">D</text>
+  <rect x="48" y="14" width="4" height="4" fill="#BF5700"/>
+</svg>
