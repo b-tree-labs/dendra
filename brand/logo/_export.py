@@ -18,7 +18,6 @@ from pathlib import Path
 
 import cairosvg
 
-
 HERE = Path(__file__).parent
 
 # (svg_stem, [output_size_px ...])
@@ -30,11 +29,11 @@ EXPORTS: dict[str, list[int | None]] = {
     "dendra-mark-dark": [1024],
     "dendra-mark-mono-light": [1024],
     "dendra-mark-mono-dark": [1024],
-    "dendra-wordmark-horizontal": [None],        # 1200×300 native
+    "dendra-wordmark-horizontal": [None],  # 1200×300 native
     "dendra-wordmark-horizontal-dark": [None],
-    "dendra-wordmark-stacked": [None],           # 600×720 native
+    "dendra-wordmark-stacked": [None],  # 600×720 native
     "dendra-wordmark-stacked-dark": [None],
-    "dendra-social-card": [None],                # 1200×630 native
+    "dendra-social-card": [None],  # 1200×630 native
     "dendra-social-card-dark": [None],
 }
 
