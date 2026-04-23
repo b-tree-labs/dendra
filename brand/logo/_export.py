@@ -35,6 +35,15 @@ EXPORTS: dict[str, list[int | None]] = {
     "dendra-wordmark-stacked-dark": [None],
     "dendra-social-card": [None],  # 1200×630 native
     "dendra-social-card-dark": [None],
+    # Sub-brand lockups
+    "dendra-cloud-wordmark": [None],  # 1400×300 native
+    "dendra-analyze-wordmark": [None],
+    "dendra-insight-wordmark": [None],
+    "dendra-research-wordmark": [None],  # 1500×300 native
+    # Applied assets — social banners + share previews
+    "dendra-github-social-preview": [None],  # 1280×640 native
+    "dendra-twitter-banner": [None],  # 1500×500 native
+    "dendra-linkedin-banner": [None],  # 1128×191 native
 }
 
 

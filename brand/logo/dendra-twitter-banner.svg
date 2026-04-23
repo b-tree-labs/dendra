@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Twitter / X profile banner — 1500×500. Dark ground so the
+  banner has presence in a feed full of light-ground avatars.
+  Upload via X profile → Edit profile → Header.
+
+  Safe area (avatar doesn't cover): top-half and right two-
+  thirds. The avatar circle obscures the bottom-left ~180×180.
+  Composition places the mark and wordmark in the right
+  safe area.
+-->
+<svg viewBox="0 0 1500 500" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1500" height="500" fill="#1a1a1f"/>
+
+  <!-- Mark, positioned in center-left of right safe area -->
+  <g transform="translate(380, 100) scale(0.6)">
+    <line x1="72" y1="400" x2="222" y2="400"
+          stroke="#f8f6f1" stroke-width="34" stroke-linecap="square"/>
+    <line x1="290" y1="400" x2="440" y2="400"
+          stroke="#f8f6f1" stroke-width="34" stroke-linecap="square"/>
+    <polyline points="172,400 172,200 340,200 340,400"
+              fill="none"
+              stroke="#f8f6f1" stroke-width="34"
+              stroke-linecap="square" stroke-linejoin="miter"/>
+    <line x1="256" y1="448" x2="256" y2="96"
+          stroke="#BF5700" stroke-width="34" stroke-linecap="square"/>
+    <circle cx="256" cy="200" r="28"
+            fill="none" stroke="#f8f6f1" stroke-width="12"/>
+  </g>
+
+  <!-- Wordmark -->
+  <text x="700" y="235"
+        font-family="'Space Grotesk', 'Helvetica Neue', sans-serif"
+        font-weight="500" font-size="108" letter-spacing="19.4"
+        fill="#f8f6f1">DENDRA</text>
+
+  <!-- Tagline -->
+  <text x="700" y="295"
+        font-family="'Space Grotesk', 'Helvetica Neue', sans-serif"
+        font-weight="400" font-size="26"
+        fill="#a8a8ae">The classification primitive every</text>
+  <text x="700" y="332"
+        font-family="'Space Grotesk', 'Helvetica Neue', sans-serif"
+        font-weight="400" font-size="26"
+        fill="#a8a8ae">production codebase is missing.</text>
+</svg>
