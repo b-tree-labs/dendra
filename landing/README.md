@@ -13,8 +13,11 @@ landing/
 ├── _headers                # Cloudflare Pages / Netlify security + caching
 ├── README.md               # this file
 └── assets/
-    ├── favicon.svg         # placeholder typographic "D" — replace with final mark when designed
-    └── figure-1-transition-curves.svg  # copied from docs/papers/.../results/
+    ├── favicon.svg                     # Dendra rounded-tile favicon
+    ├── dendra-mark.svg                 # site-header mark, light
+    ├── dendra-mark-dark.svg            # site-header mark, dark
+    ├── social-card.png                 # 1200×630 OG / Twitter card
+    └── figure-1-transition-curves.svg  # paper results figure
 ```
 
 ## Design system
@@ -23,11 +26,14 @@ Tokens and type-scale come from the Axiom Labs brand kit at
 [`axiom-labs-os/.github/brand/`](https://github.com/axiom-labs-os/.github/tree/main/brand).
 See `brand-tokens.css` for the semantic CSS-variable expression.
 
-Per `usage.md` in the brand kit: **Dendra gets its own distinct
-mark in the same visual language** (same palette, same stroke
-weight, different glyph) — it is NOT a variation of the Axiom
-Labs origin glyph. `assets/favicon.svg` is a placeholder
-typographic treatment until a proper Dendra mark is designed.
+The Dendra mark is finalized — the **D2' · Node** glyph (a rule
+floor parted by a rising accent stroke that crosses through a
+phase-gate lintel, with a hollow 28-r ink ring at the threshold-
+crossing point). Canonical assets live at
+[`brand/logo/`](../brand/logo/) with SVG masters + PNG exports;
+the landing page's `assets/favicon.svg`, `assets/dendra-mark.svg`,
+and `assets/social-card.png` are production copies from that kit
+ready for deploy.
 
 ## Deploy — Cloudflare Pages (recommended)
 

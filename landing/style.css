@@ -142,17 +142,16 @@ section:first-of-type {
   text-transform: uppercase;
   color: var(--ink);
   text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6em;
 }
 
-.wordmark::after {
-  content: "";
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  background: var(--accent);
-  margin-left: 0.5em;
-  vertical-align: middle;
-  border-radius: 1px;
+.wordmark-mark {
+  display: block;
+  height: 1.9em;
+  width: auto;
+  flex-shrink: 0;
 }
 
 .primary-nav {
