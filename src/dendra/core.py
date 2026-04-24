@@ -300,8 +300,14 @@ class SwitchConfig:
     # ``record_verdict``, the switch asks the gate whether it's
     # earned the next phase. Set ``auto_advance=False`` for
     # operator-only workflows.
+    #
+    # Default interval is 500 — each gate evaluation walks the whole
+    # outcome log, so a lower interval bills the walk more often and
+    # shows up as a p99 spike at the boundary (v1-readiness.md §2
+    # finding #30). 500 keeps the gate cost < 0.2% of classify
+    # latency on a 10k-record log.
     auto_advance: bool = True
-    auto_advance_interval: int = 100
+    auto_advance_interval: int = 500
     # Optional hook fired after every successful ``record_verdict``.
     # Receives the persisted :class:`ClassificationRecord`. Useful
     # for mirroring verdicts to an external audit store, triggering
@@ -616,16 +622,21 @@ class LearnedSwitch:
             )
         if storage is None:
             if persist:
-                # persist=True wraps a FileStorage in ResilientStorage so a
-                # transient disk failure (full disk, permission glitch,
-                # rotated directory) does NOT take down classification.
-                # Fallback lives in an in-memory buffer that drains back
-                # to FileStorage when primary recovers. Users who want
-                # hard-fail-on-IO-error semantics should pass an explicit
-                # ``storage=FileStorage(...)`` and skip the wrapper.
+                # persist=True wraps a batched FileStorage in
+                # ResilientStorage. Batching decouples classify
+                # latency from disk-durability latency: append goes
+                # to an in-memory queue, a background thread flushes
+                # every 50 ms or every 64 records. See
+                # docs/storage-backends.md for the full durability
+                # contract. Users who want per-call fsync-strict
+                # durability pass an explicit ``storage=FileStorage(
+                # base_path, batching=False, fsync=True)`` and skip
+                # the shortcut.
                 from dendra.storage import FileStorage, ResilientStorage
 
-                storage = ResilientStorage(FileStorage("runtime/dendra"))
+                storage = ResilientStorage(
+                    FileStorage("runtime/dendra", batching=True)
+                )
             else:
                 from dendra.storage import BoundedInMemoryStorage
 

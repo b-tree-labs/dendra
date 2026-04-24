@@ -42,13 +42,16 @@ decision tree, and custom-backend recipe.
 
 from __future__ import annotations
 
+import atexit
 import contextlib
 import json
 import os
 import sqlite3
 import sys
+import threading
 import time
 import warnings
+import weakref
 from abc import ABC, abstractmethod
 from collections import deque
 from collections.abc import Callable
@@ -401,17 +404,63 @@ class FileStorage(StorageBase):
         max_rotated_segments: int = _DEFAULT_MAX_ROTATED_SEGMENTS,
         lock: bool = True,
         fsync: bool = False,
+        batching: bool = False,
+        batch_size: int = 64,
+        flush_interval_ms: int = 50,
     ) -> None:
         if max_bytes_per_segment <= 0:
             raise ValueError("max_bytes_per_segment must be positive")
         if max_rotated_segments < 0:
             raise ValueError("max_rotated_segments must be >= 0")
+        if batch_size <= 0:
+            raise ValueError("batch_size must be positive")
+        if flush_interval_ms <= 0:
+            raise ValueError("flush_interval_ms must be positive")
         self._base = Path(base_path)
         self._base.mkdir(parents=True, exist_ok=True)
         self._max_bytes = max_bytes_per_segment
         self._max_rotated = max_rotated_segments
         self._lock_enabled = lock
         self._fsync = fsync
+        # fd-cache for sync path: keep append fds open across calls so
+        # ``append_record`` doesn't open/close per invocation. Keyed by
+        # resolved switch directory (not the raw switch_name) to stay
+        # consistent with the path-traversal guard. Cleared on rotation
+        # and ``close()``.
+        self._fd_cache: dict[str, int] = {}
+        self._fd_cache_lock = threading.Lock()
+        # Batched-async path — when batching is on, ``append_record``
+        # enqueues and a background thread drains every
+        # ``flush_interval_ms`` (or when the queue reaches
+        # ``batch_size``). Much faster on the hot path; trades a
+        # bounded crash-window for throughput. See
+        # v1-readiness.md §2 finding #29 for why this exists.
+        self._batching = batching
+        self._batch_size = batch_size
+        self._flush_interval_ms = flush_interval_ms
+        self._queue: dict[str, list[ClassificationRecord]] = {}
+        self._queue_lock = threading.Lock()
+        self._flush_event = threading.Event()
+        self._stop_event = threading.Event()
+        self._flusher_thread: threading.Thread | None = None
+        self._closed = False
+        if batching:
+            self._flusher_thread = threading.Thread(
+                target=self._flusher_loop,
+                name=f"dendra-filestorage-flusher-{id(self):x}",
+                daemon=True,
+            )
+            self._flusher_thread.start()
+            # Best-effort: drain on interpreter shutdown. Using
+            # weakref means the atexit hook doesn't keep the storage
+            # alive past its natural lifetime.
+            ref = weakref.ref(self)
+
+            def _atexit_drain() -> None:
+                inst = ref()
+                if inst is not None:
+                    inst.close()
+            atexit.register(_atexit_drain)
 
     # ------------------------------------------------------------------
     # Paths
@@ -500,29 +549,187 @@ class FileStorage(StorageBase):
     # ------------------------------------------------------------------
 
     def append_record(self, switch_name: str, record: ClassificationRecord) -> None:
-        self._switch_dir(switch_name).mkdir(parents=True, exist_ok=True)
-        payload = self._serialize_line(record) + os.linesep.encode("utf-8")
-        path = self._active_path(switch_name)
+        # Validate the switch name before any I/O (path-traversal guard).
+        self._switch_dir(switch_name)
+        if self._batching:
+            if self._closed:
+                raise RuntimeError(
+                    "FileStorage.append_record called after close()"
+                )
+            should_flush = False
+            with self._queue_lock:
+                buf = self._queue.setdefault(switch_name, [])
+                buf.append(record)
+                total = sum(len(b) for b in self._queue.values())
+                if total >= self._batch_size:
+                    should_flush = True
+            if should_flush:
+                self._flush_event.set()
+            return
+        self._append_sync(switch_name, [record])
 
+    # ------------------------------------------------------------------
+    # Sync write path — fd-cached for perf
+    # ------------------------------------------------------------------
+
+    def _append_sync(
+        self, switch_name: str, records: list[ClassificationRecord]
+    ) -> None:
+        """Write one or more records to the active segment synchronously.
+
+        Shared between the non-batching append path and the
+        background-flusher drain. Holds the exclusive lock across
+        the whole batch so the check-then-rotate and multi-record
+        write are atomic from the perspective of other writers.
+        """
+        if not records:
+            return
+        self._switch_dir(switch_name).mkdir(parents=True, exist_ok=True)
+        linesep = os.linesep.encode("utf-8")
+        payloads = [self._serialize_line(r) + linesep for r in records]
+        total_bytes = sum(len(p) for p in payloads)
+        path = self._active_path(switch_name)
         with self._exclusive_lock(switch_name):
-            # Rotate BEFORE writing if the new line would put us over cap.
+            # Rotate BEFORE writing if the new batch would push over cap.
             # Under the exclusive lock the check-then-rotate is atomic.
             if path.exists():
                 try:
                     current = path.stat().st_size
                 except OSError:
                     current = 0
-                if current + len(payload) > self._max_bytes:
+                if current + total_bytes > self._max_bytes:
                     self._rotate(switch_name)
-
-            # Binary append + explicit fsync gives predictable durability.
-            fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644)
+            fd = self._get_append_fd(switch_name)
             try:
-                os.write(fd, payload)
+                for payload in payloads:
+                    os.write(fd, payload)
                 if self._fsync:
                     os.fsync(fd)
-            finally:
+            except OSError:
+                # If a write fails, drop the cached fd so the next
+                # call reopens fresh instead of looping on a dead fd.
+                self._invalidate_fd(switch_name)
+                raise
+
+    def _cache_key(self, switch_name: str) -> str:
+        """Deterministic cache key for the fd / lock caches."""
+        return str(self._switch_dir(switch_name))
+
+    def _get_append_fd(self, switch_name: str) -> int:
+        """Return a cached append fd, opening on first use.
+
+        The cache turns repeated ``append_record`` calls on the same
+        switch from open/close-per-call into a single persistent fd
+        — the main single-call latency win vs v0.2. Rotation calls
+        ``_invalidate_fd`` so writes after rotation land in the
+        fresh active segment, not the just-rotated file.
+        """
+        key = self._cache_key(switch_name)
+        with self._fd_cache_lock:
+            fd = self._fd_cache.get(key)
+            if fd is not None:
+                return fd
+            path = self._active_path(switch_name)
+            fd = os.open(
+                str(path), os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644
+            )
+            self._fd_cache[key] = fd
+            return fd
+
+    def _invalidate_fd(self, switch_name: str) -> None:
+        """Close and evict the cached append fd for ``switch_name``."""
+        key = self._cache_key(switch_name)
+        with self._fd_cache_lock:
+            fd = self._fd_cache.pop(key, None)
+        if fd is not None:
+            with contextlib.suppress(OSError):
                 os.close(fd)
+
+    # ------------------------------------------------------------------
+    # Batched-async write path
+    # ------------------------------------------------------------------
+
+    def _flusher_loop(self) -> None:
+        """Background thread: drain the queue every flush_interval_ms."""
+        interval = self._flush_interval_ms / 1000.0
+        while not self._stop_event.is_set():
+            self._flush_event.wait(timeout=interval)
+            self._flush_event.clear()
+            try:
+                self._drain_once()
+            except Exception:
+                # A drain failure must not kill the flusher thread
+                # — queued records stay queued for the next pass.
+                # A sticky-failing primary will accumulate queue
+                # pressure; bounded queueing is the caller's
+                # responsibility via ``ResilientStorage``.
+                continue
+        # Final drain on stop.
+        try:
+            self._drain_once()
+        except Exception:
+            pass
+
+    def _drain_once(self) -> None:
+        """Move the queued records to disk in one pass."""
+        with self._queue_lock:
+            if not self._queue:
+                return
+            snapshot = self._queue
+            self._queue = {}
+        for switch_name, records in snapshot.items():
+            if records:
+                try:
+                    self._append_sync(switch_name, records)
+                except Exception:
+                    # Re-queue on failure so the next drain retries.
+                    # This preserves at-least-once durability as long
+                    # as the process stays alive.
+                    with self._queue_lock:
+                        existing = self._queue.setdefault(switch_name, [])
+                        self._queue[switch_name] = records + existing
+                    raise
+
+    def flush(self) -> None:
+        """Drain all pending batched writes synchronously now.
+
+        Called by :meth:`load_records` so reads see the most recent
+        writes, and by :meth:`close` on shutdown. Safe to call even
+        when batching is off (no-op).
+        """
+        if not self._batching:
+            return
+        self._drain_once()
+
+    def close(self) -> None:
+        """Stop the flusher thread, drain pending, and release fds.
+
+        Idempotent. Safe to call from atexit and from user code.
+        """
+        if self._closed:
+            return
+        self._closed = True
+        if self._batching:
+            self._stop_event.set()
+            self._flush_event.set()
+            if self._flusher_thread is not None:
+                self._flusher_thread.join(timeout=2.0)
+        # Close any cached append fds.
+        with self._fd_cache_lock:
+            fds = list(self._fd_cache.values())
+            self._fd_cache.clear()
+        for fd in fds:
+            with contextlib.suppress(OSError):
+                os.close(fd)
+
+    def __del__(self) -> None:
+        # Best-effort — Python may have already cleaned up dependencies
+        # (threads, atexit, os module) by the time this runs, so we
+        # swallow any failure.
+        try:
+            self.close()
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------
     # Rotation (call only while holding the exclusive lock)
@@ -535,6 +742,10 @@ class FileStorage(StorageBase):
         single-writer mode). Public callers should use
         :meth:`compact`, which takes the lock itself.
         """
+        # Close the cached append fd first — otherwise subsequent
+        # writes land in the just-rotated file (same inode via the
+        # open fd) rather than the fresh active segment.
+        self._invalidate_fd(switch_name)
         # Drop segments beyond retention first (from oldest to newest so
         # we never clobber one we'd still be renaming into).
         for idx in range(self._max_rotated + 1, 1000):
@@ -568,6 +779,9 @@ class FileStorage(StorageBase):
     # ------------------------------------------------------------------
 
     def load_records(self, switch_name: str) -> list[ClassificationRecord]:
+        # Drain any queued batched writes so readers see a
+        # consistent view. Cheap no-op when batching is off.
+        self.flush()
         records: list[ClassificationRecord] = []
         if not self._switch_dir(switch_name).exists():
             return records
