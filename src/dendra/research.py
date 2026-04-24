@@ -130,14 +130,10 @@ def run_transition_curve(
     total = 0
     for ex in examples:
         result = switch.classify(ex.input)
-        outcome = Verdict.CORRECT.value if result.label == ex.label else Verdict.INCORRECT.value
-        switch.record_verdict(
-            input=ex.input,
-            label=result.label,
-            outcome=outcome,
-            source=result.source,
-            confidence=result.confidence,
-        )
+        if result.label == ex.label:
+            result.mark_correct()
+        else:
+            result.mark_incorrect()
         total += 1
 
         if total % checkpoint_every == 0:
@@ -306,17 +302,19 @@ def run_benchmark_experiment(
     checkpoints: list[BenchmarkCheckpoint] = []
     for i, (text, label) in enumerate(train_list, start=1):
         # Route through the switch so phase-specific shadow observations
-        # are recorded. The return value is unused here — we record the
-        # *ground truth* (the actual label) as the outcome so the ML
-        # head trains on real labels regardless of what the rule said.
+        # are recorded. We override ``label`` / ``source`` with the
+        # oracle truth for training, but thread the classify result
+        # (_result_ctx) so the per-call shadow observations still
+        # attach to the persisted record.
         # See §6.1 "direct human label" assumption in the paper.
-        switch.classify(text)
+        result = switch.classify(text)
         switch.record_verdict(
             input=text,
             label=label,
             outcome=Verdict.CORRECT.value,
             source="oracle",
             confidence=1.0,
+            _result_ctx=result,
         )
 
         if i % checkpoint_every == 0:

@@ -418,7 +418,35 @@ class FileStorage(StorageBase):
     # ------------------------------------------------------------------
 
     def _switch_dir(self, switch_name: str) -> Path:
-        return self._base / switch_name
+        """Resolve the per-switch directory, refusing path-escape attempts.
+
+        A malicious or mistaken ``switch_name`` (``"../other"``,
+        ``"/etc/passwd"``, ``"a/b"``) must not be able to address
+        files outside the configured ``base_path``. We reject
+        absolute names and any component equal to ``".."``, then
+        confirm the resolved path stays inside the resolved base.
+        """
+        if not switch_name:
+            raise ValueError("switch_name cannot be empty")
+        if switch_name.startswith(("/", "\\")):
+            raise ValueError(
+                f"switch_name must be relative; got absolute path {switch_name!r}"
+            )
+        parts = Path(switch_name).parts
+        if any(p == ".." for p in parts):
+            raise ValueError(
+                f"switch_name must not contain '..'; got {switch_name!r}"
+            )
+        candidate = (self._base / switch_name).resolve()
+        base_resolved = self._base.resolve()
+        try:
+            candidate.relative_to(base_resolved)
+        except ValueError as e:
+            raise ValueError(
+                f"switch_name {switch_name!r} resolves outside base_path "
+                f"{self._base}"
+            ) from e
+        return candidate
 
     def _active_path(self, switch_name: str) -> Path:
         return self._switch_dir(switch_name) / "outcomes.jsonl"
@@ -833,6 +861,7 @@ class ResilientStorage(StorageBase):
         self._degraded: bool = False
         self._degraded_since: float | None = None
         self._degraded_writes: int = 0
+        self._degraded_evictions: int = 0
         self._writes_since_probe: int = 0
         self._tracked_switches: set[str] = set()
 
@@ -852,6 +881,18 @@ class ResilientStorage(StorageBase):
     def degraded_writes(self) -> int:
         """Total writes that landed in fallback (running counter)."""
         return self._degraded_writes
+
+    @property
+    def degraded_evictions(self) -> int:
+        """Records evicted from a bounded fallback while degraded.
+
+        When the fallback is a bounded buffer (e.g.
+        :class:`BoundedInMemoryStorage`), records beyond the cap are
+        silently FIFO-evicted by the fallback's own logic. This
+        counter surfaces those drops so the audit chain doesn't
+        claim records survived when they didn't.
+        """
+        return self._degraded_evictions
 
     @property
     def primary(self) -> Storage:
@@ -874,7 +915,23 @@ class ResilientStorage(StorageBase):
                 self._enter_degraded(e)
                 # fall through — append to fallback below
 
+        # Detect eviction: if the fallback is bounded and the append
+        # didn't grow its stored count, the record was silently
+        # evicted by the fallback's retention policy (e.g.
+        # :class:`BoundedInMemoryStorage`'s FIFO cap). Surface the
+        # drop so ``degraded_writes`` doesn't over-claim.
+        try:
+            before = len(self._fallback.load_records(switch_name))
+        except Exception:
+            before = None
         self._fallback.append_record(switch_name, record)
+        if before is not None:
+            try:
+                after = len(self._fallback.load_records(switch_name))
+            except Exception:
+                after = before + 1
+            if after <= before:
+                self._degraded_evictions += 1
         self._degraded_writes += 1
         self._writes_since_probe += 1
         if self._writes_since_probe >= self._recovery_probe_every:
@@ -918,24 +975,30 @@ class ResilientStorage(StorageBase):
     def _try_recover(self) -> None:
         """Attempt to drain the fallback buffer into the primary.
 
+        Drains **record-by-record**: after each successful primary
+        append, the record is popped from the fallback. If the
+        primary fails mid-list, the drain aborts with the
+        remaining records still in fallback (not duplicated) —
+        the next probe resumes from where we stopped.
+
         On full success: mark healthy and fire ``on_recover``. On
-        partial success or failure: stay degraded; records remain
-        in fallback for the next probe.
+        partial success or failure: stay degraded; un-drained
+        records remain in fallback for the next probe.
         """
         drained = 0
         try:
             for switch_name in sorted(self._tracked_switches):
-                fallback_recs = self._fallback.load_records(switch_name)
-                if not fallback_recs:
-                    continue
-                # Replay in append order. Any exception aborts the drain
-                # — we leave the un-drained records in fallback.
-                for rec in fallback_recs:
+                while True:
+                    recs = self._fallback.load_records(switch_name)
+                    if not recs:
+                        break
+                    rec = recs[0]
+                    # Primary append may raise — if so, we exit with
+                    # ``rec`` still at the head of fallback, no
+                    # duplicate in primary.
                     self._primary.append_record(switch_name, rec)
+                    self._pop_fallback_head(switch_name)
                     drained += 1
-                # All records for this switch made it over — clear the
-                # fallback entries for this switch to avoid re-replay.
-                self._clear_fallback_for(switch_name)
         except Exception:
             return  # Still degraded; try again next probe.
 
@@ -954,6 +1017,27 @@ class ResilientStorage(StorageBase):
                 self._on_recover(drained)
             except Exception:
                 pass
+
+    def _pop_fallback_head(self, switch_name: str) -> None:
+        """Remove the oldest record for ``switch_name`` from the fallback.
+
+        Drain-resumable fix for v1 finding #5: if primary fails
+        mid-list, the not-yet-drained tail stays put. Works with
+        :class:`InMemoryStorage` and :class:`BoundedInMemoryStorage`
+        (both expose a ``_log`` dict of lists/deques). Custom
+        fallbacks that don't expose a popable internal structure
+        can override this method.
+        """
+        log = getattr(self._fallback, "_log", None)
+        if isinstance(log, dict) and switch_name in log:
+            buf = log[switch_name]
+            if buf:
+                if hasattr(buf, "popleft"):
+                    buf.popleft()
+                else:
+                    buf.pop(0)
+                if not buf:
+                    del log[switch_name]
 
     def _clear_fallback_for(self, switch_name: str) -> None:
         """Reset fallback storage for one switch after a successful drain.

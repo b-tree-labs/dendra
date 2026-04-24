@@ -23,6 +23,7 @@ import weakref
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -131,6 +132,15 @@ class ClassificationResult:
     was produced by a detached construction (tests, manual instantiation),
     the shortcuts raise :class:`RuntimeError` instead of silently
     no-op'ing.
+
+    **Shadow observations travel on the result**, not on the
+    switch. Each :class:`ClassificationResult` carries the
+    per-source predictions captured during its own classify call —
+    so calling ``.mark_correct()`` minutes later (or from a
+    different thread, or after many intervening calls) still
+    attaches the CORRECT shadow data to the verdict record. This
+    is the fix for the shadow-stash cross-contamination race
+    (v1-readiness.md §2 finding #3).
     """
 
     label: Any
@@ -143,9 +153,17 @@ class ClassificationResult:
     action_elapsed_ms: float | None = None
     # Private back-references so ``.mark_*()`` methods can record a
     # verdict without the caller re-threading the switch and input.
-    # Not part of equality or repr; never serialized.
+    # Per-call shadow observations travel on the result so
+    # concurrent classifies can't cross-contaminate each other's
+    # verdict records. None of these private fields participate in
+    # equality or repr; none are serialized.
     _switch: Any = field(default=None, repr=False, compare=False)
     _input: Any = field(default=None, repr=False, compare=False)
+    _rule_output: Any = field(default=None, repr=False, compare=False)
+    _model_output: Any = field(default=None, repr=False, compare=False)
+    _model_confidence: float | None = field(default=None, repr=False, compare=False)
+    _ml_output: Any = field(default=None, repr=False, compare=False)
+    _ml_confidence: float | None = field(default=None, repr=False, compare=False)
 
     def mark_correct(self) -> None:
         """Record that this classification matched ground truth."""
@@ -172,6 +190,7 @@ class ClassificationResult:
             outcome=verdict.value,
             source=self.source,
             confidence=self.confidence,
+            _result_ctx=self,
         )
 
 
@@ -644,19 +663,28 @@ class LearnedSwitch:
 
             telemetry = NullEmitter()
         self._telemetry = telemetry
-        # Track the last LLM/ML observations so record_verdict can attach them
-        # to the outcome row without the caller passing them through.
-        self._last_shadow: tuple[Any, float] | None = None
-        self._last_ml: tuple[Any, float] | None = None
-        self._last_rule_output: Any | None = None
-        self._last_action: tuple[Any, str | None, float] | None = None
+        # Single RLock serializing all mutations to per-switch state
+        # (breaker, auto-advance counter, config.starting_phase,
+        # rotation-style bookkeeping). Classify calls take it while
+        # checking the breaker and updating its state; record_verdict
+        # takes it around the auto-advance counter; advance() takes it
+        # across the read-log / evaluate-gate / mutate-phase sequence.
+        # RLock (not Lock) because advance() invoked from within a
+        # locked record_verdict re-enters.
+        self._lock = threading.RLock()
         self._circuit_tripped: bool = False
-        # Counter driving auto-advance — incremented by record_verdict,
-        # reset when the gate is asked (whether it said yes or no).
+        # Counter driving auto-advance — incremented by record_verdict
+        # under the lock, reset when the gate is asked (whether it
+        # said yes or no).
         self._records_since_advance_check: int = 0
         # Canonical labels list (Label objects). Assignment via the setter
         # normalizes strings / dicts.
         self._labels_raw: list[Label] = _normalize_labels(labels)
+        # Rehydrate persisted breaker state (paper §7.1 promise must
+        # survive a process restart when durable storage is configured).
+        self._persist: bool = bool(persist)
+        if self._persist:
+            self._load_breaker_state()
 
     # --- Labels ------------------------------------------------------------
 
@@ -698,7 +726,6 @@ class LearnedSwitch:
         ``auto_record=False`` to suppress.
         """
         result = self._classify_impl(input)
-        self._last_action = None
         result._switch = self
         result._input = input
         if self.config.auto_record:
@@ -759,16 +786,11 @@ class LearnedSwitch:
     def _auto_log(self, input: Any, result: ClassificationResult) -> None:
         """Append an UNKNOWN-outcome record from the just-completed call.
 
-        Reads shadow observations from the per-call stashes populated
-        by ``_classify_impl`` — they are still fresh at this point.
-        Verdict-bearing records come later via :meth:`record_verdict`.
+        Pulls shadow observations from the result itself (populated
+        by ``_classify_impl``), not from any per-switch instance
+        stash — which is what keeps concurrent classifies from
+        cross-contaminating each other's records.
         """
-        model_output, model_confidence = (None, None)
-        if self._last_shadow is not None:
-            model_output, model_confidence = self._last_shadow
-        ml_output, ml_confidence = (None, None)
-        if self._last_ml is not None:
-            ml_output, ml_confidence = self._last_ml
         record = ClassificationRecord(
             timestamp=time.time(),
             input=input,
@@ -776,11 +798,11 @@ class LearnedSwitch:
             outcome=Verdict.UNKNOWN.value,
             source=result.source,
             confidence=result.confidence,
-            rule_output=self._last_rule_output,
-            model_output=model_output,
-            model_confidence=model_confidence,
-            ml_output=ml_output,
-            ml_confidence=ml_confidence,
+            rule_output=result._rule_output,
+            model_output=result._model_output,
+            model_confidence=result._model_confidence,
+            ml_output=result._ml_output,
+            ml_confidence=result._ml_confidence,
             action_result=result.action_result,
             action_raised=result.action_raised,
             action_elapsed_ms=result.action_elapsed_ms,
@@ -823,11 +845,12 @@ class LearnedSwitch:
 
         Captures failures rather than propagating; the caller sees
         ``action_raised`` populated. Timing is recorded on success and
-        failure.
+        failure. The shadow observations threaded on ``result`` are
+        preserved through to the new result so ``_auto_log`` still
+        sees them.
         """
         label = self._find_label(result.label)
         if label is None or label.on is None:
-            self._last_action = None
             return result
 
         start = time.perf_counter()
@@ -838,9 +861,8 @@ class LearnedSwitch:
         except Exception as e:
             action_raised = f"{type(e).__name__}: {e}"
         elapsed_ms = (time.perf_counter() - start) * 1000.0
-        self._last_action = (action_result, action_raised, elapsed_ms)
 
-        return ClassificationResult(
+        new_result = ClassificationResult(
             label=result.label,
             source=result.source,
             confidence=result.confidence,
@@ -849,20 +871,58 @@ class LearnedSwitch:
             action_raised=action_raised,
             action_elapsed_ms=elapsed_ms,
         )
+        # Re-thread shadow observations through the dispatch-returned
+        # result so record_verdict / auto_log still sees them.
+        new_result._rule_output = result._rule_output
+        new_result._model_output = result._model_output
+        new_result._model_confidence = result._model_confidence
+        new_result._ml_output = result._ml_output
+        new_result._ml_confidence = result._ml_confidence
+        return new_result
 
     def _classify_impl(self, input: Any) -> ClassificationResult:
         phase = self.phase()
+        # Runtime re-check of the paper §7.1 architectural guarantee.
+        # Construction-time checks catch the common case, but
+        # ``config`` is a mutable dataclass — users (or bugs) can
+        # raise the phase after construction. The rule-floor promise
+        # must survive that. Refuse to serve ML_PRIMARY when
+        # safety_critical is set, regardless of how the phase got here.
+        if self.config.safety_critical and phase is Phase.ML_PRIMARY:
+            raise RuntimeError(
+                f"switch {self.name!r} is safety_critical=True but phase "
+                f"is ML_PRIMARY. The rule floor cannot be removed "
+                f"architecturally (paper §7.1); this state should be "
+                f"unreachable. Check for direct mutation of "
+                f"config.starting_phase."
+            )
         rule_output = self._rule(input)
 
-        if phase is Phase.RULE:
-            self._last_shadow = None
-            self._last_rule_output = rule_output
-            return ClassificationResult(
-                label=rule_output,
-                source="rule",
-                confidence=1.0,
+        def _result(
+            label: Any,
+            source: str,
+            confidence: float,
+            *,
+            model_output: Any = None,
+            model_confidence: float | None = None,
+            ml_output: Any = None,
+            ml_confidence: float | None = None,
+        ) -> ClassificationResult:
+            r = ClassificationResult(
+                label=label,
+                source=source,
+                confidence=confidence,
                 phase=phase,
             )
+            r._rule_output = rule_output
+            r._model_output = model_output
+            r._model_confidence = model_confidence
+            r._ml_output = ml_output
+            r._ml_confidence = ml_confidence
+            return r
+
+        if phase is Phase.RULE:
+            return _result(rule_output, "rule", 1.0)
 
         if phase is Phase.MODEL_SHADOW:
             if self._model is None:
@@ -872,17 +932,17 @@ class LearnedSwitch:
                 )
             # Shadow: run the LLM for observation but never let failure
             # propagate — the rule is the user-visible decision.
+            model_output: Any = None
+            model_confidence: float | None = None
             try:
                 pred = self._model.classify(input, self._label_names())
-                self._last_shadow = (pred.label, float(pred.confidence))
+                model_output = pred.label
+                model_confidence = float(pred.confidence)
             except Exception:
-                self._last_shadow = None
-            self._last_rule_output = rule_output
-            return ClassificationResult(
-                label=rule_output,
-                source="rule",
-                confidence=1.0,
-                phase=phase,
+                pass
+            return _result(
+                rule_output, "rule", 1.0,
+                model_output=model_output, model_confidence=model_confidence,
             )
 
         if phase is Phase.MODEL_PRIMARY:
@@ -891,30 +951,20 @@ class LearnedSwitch:
                     f"switch {self.name!r} is in phase {phase.value} but no "
                     "model classifier was provided"
                 )
-            self._last_rule_output = rule_output
             try:
                 pred = self._model.classify(input, self._label_names())
             except Exception:
-                self._last_shadow = None
-                return ClassificationResult(
-                    label=rule_output,
-                    source="rule_fallback",
-                    confidence=1.0,
-                    phase=phase,
-                )
-            self._last_shadow = (pred.label, float(pred.confidence))
+                return _result(rule_output, "rule_fallback", 1.0)
             if float(pred.confidence) < self.config.confidence_threshold:
-                return ClassificationResult(
-                    label=rule_output,
-                    source="rule_fallback",
-                    confidence=1.0,
-                    phase=phase,
+                return _result(
+                    rule_output, "rule_fallback", 1.0,
+                    model_output=pred.label,
+                    model_confidence=float(pred.confidence),
                 )
-            return ClassificationResult(
-                label=pred.label,
-                source="model",
-                confidence=float(pred.confidence),
-                phase=phase,
+            return _result(
+                pred.label, "model", float(pred.confidence),
+                model_output=pred.label,
+                model_confidence=float(pred.confidence),
             )
 
         if phase is Phase.ML_SHADOW:
@@ -922,17 +972,19 @@ class LearnedSwitch:
                 raise ValueError(
                     f"switch {self.name!r} is in phase {phase.value} but no ml_head was provided"
                 )
-            self._last_rule_output = rule_output
-
             # Primary decision path at Phase 3 mirrors MODEL_PRIMARY when an
             # LLM is configured, else falls to rule. ML runs only in shadow.
             primary = self._phase_primary_decision(input, rule_output, phase)
-
+            ml_output: Any = None
+            ml_confidence: float | None = None
             try:
                 ml_pred = self._ml_head.predict(input, self._label_names())
-                self._last_ml = (ml_pred.label, float(ml_pred.confidence))
+                ml_output = ml_pred.label
+                ml_confidence = float(ml_pred.confidence)
             except Exception:
-                self._last_ml = None
+                pass
+            primary._ml_output = ml_output
+            primary._ml_confidence = ml_confidence
             return primary
 
         if phase is Phase.ML_WITH_FALLBACK:
@@ -940,30 +992,20 @@ class LearnedSwitch:
                 raise ValueError(
                     f"switch {self.name!r} is in phase {phase.value} but no ml_head was provided"
                 )
-            self._last_rule_output = rule_output
             try:
                 ml_pred = self._ml_head.predict(input, self._label_names())
             except Exception:
-                self._last_ml = None
-                return ClassificationResult(
-                    label=rule_output,
-                    source="rule_fallback",
-                    confidence=1.0,
-                    phase=phase,
-                )
-            self._last_ml = (ml_pred.label, float(ml_pred.confidence))
+                return _result(rule_output, "rule_fallback", 1.0)
             if float(ml_pred.confidence) < self.config.confidence_threshold:
-                return ClassificationResult(
-                    label=rule_output,
-                    source="rule_fallback",
-                    confidence=1.0,
-                    phase=phase,
+                return _result(
+                    rule_output, "rule_fallback", 1.0,
+                    ml_output=ml_pred.label,
+                    ml_confidence=float(ml_pred.confidence),
                 )
-            return ClassificationResult(
-                label=ml_pred.label,
-                source="ml",
-                confidence=float(ml_pred.confidence),
-                phase=phase,
+            return _result(
+                ml_pred.label, "ml", float(ml_pred.confidence),
+                ml_output=ml_pred.label,
+                ml_confidence=float(ml_pred.confidence),
             )
 
         if phase is Phase.ML_PRIMARY:
@@ -971,43 +1013,27 @@ class LearnedSwitch:
                 raise ValueError(
                     f"switch {self.name!r} is in phase {phase.value} but no ml_head was provided"
                 )
-            self._last_rule_output = rule_output
-            if self._circuit_tripped:
-                # Safety floor: rule takes over until the breaker is reset.
-                return ClassificationResult(
-                    label=rule_output,
-                    source="rule_fallback",
-                    confidence=1.0,
-                    phase=phase,
+            # Lock the breaker check-and-call sequence so the first
+            # failure trips the circuit and subsequent callers
+            # short-circuit to the rule rather than stampeding the
+            # broken ML head (v1-readiness.md §2 finding #16, F2).
+            with self._lock:
+                if self._circuit_tripped:
+                    return _result(rule_output, "rule_fallback", 1.0)
+                try:
+                    ml_pred = self._ml_head.predict(input, self._label_names())
+                except Exception:
+                    self._circuit_tripped = True
+                    self._save_breaker_state()
+                    return _result(rule_output, "rule_fallback", 1.0)
+                return _result(
+                    ml_pred.label, "ml", float(ml_pred.confidence),
+                    ml_output=ml_pred.label,
+                    ml_confidence=float(ml_pred.confidence),
                 )
-            try:
-                ml_pred = self._ml_head.predict(input, self._label_names())
-            except Exception:
-                self._last_ml = None
-                self._circuit_tripped = True
-                return ClassificationResult(
-                    label=rule_output,
-                    source="rule_fallback",
-                    confidence=1.0,
-                    phase=phase,
-                )
-            self._last_ml = (ml_pred.label, float(ml_pred.confidence))
-            return ClassificationResult(
-                label=ml_pred.label,
-                source="ml",
-                confidence=float(ml_pred.confidence),
-                phase=phase,
-            )
 
         # Unreachable — exhaustive enum handled above.
-        self._last_shadow = None
-        self._last_rule_output = rule_output
-        return ClassificationResult(
-            label=rule_output,
-            source="rule",
-            confidence=1.0,
-            phase=phase,
-        )
+        return _result(rule_output, "rule", 1.0)
 
     def _phase_primary_decision(
         self, input: Any, rule_output: Any, phase: Phase
@@ -1018,36 +1044,36 @@ class LearnedSwitch:
         otherwise falls back to the rule. Never touches the ML head —
         that's the shadow layer's job.
         """
-        if self._model is None:
-            return ClassificationResult(
-                label=rule_output,
-                source="rule",
-                confidence=1.0,
-                phase=phase,
+        def _r(
+            label: Any, source: str, confidence: float,
+            *,
+            model_output: Any = None,
+            model_confidence: float | None = None,
+        ) -> ClassificationResult:
+            r = ClassificationResult(
+                label=label, source=source, confidence=confidence, phase=phase,
             )
+            r._rule_output = rule_output
+            r._model_output = model_output
+            r._model_confidence = model_confidence
+            return r
+
+        if self._model is None:
+            return _r(rule_output, "rule", 1.0)
         try:
             pred = self._model.classify(input, self._label_names())
         except Exception:
-            self._last_shadow = None
-            return ClassificationResult(
-                label=rule_output,
-                source="rule_fallback",
-                confidence=1.0,
-                phase=phase,
-            )
-        self._last_shadow = (pred.label, float(pred.confidence))
+            return _r(rule_output, "rule_fallback", 1.0)
         if float(pred.confidence) < self.config.confidence_threshold:
-            return ClassificationResult(
-                label=rule_output,
-                source="rule_fallback",
-                confidence=1.0,
-                phase=phase,
+            return _r(
+                rule_output, "rule_fallback", 1.0,
+                model_output=pred.label,
+                model_confidence=float(pred.confidence),
             )
-        return ClassificationResult(
-            label=pred.label,
-            source="model",
-            confidence=float(pred.confidence),
-            phase=phase,
+        return _r(
+            pred.label, "model", float(pred.confidence),
+            model_output=pred.label,
+            model_confidence=float(pred.confidence),
         )
 
     def record_verdict(
@@ -1058,45 +1084,53 @@ class LearnedSwitch:
         outcome: str,
         source: str = "rule",
         confidence: float = 1.0,
+        _result_ctx: ClassificationResult | None = None,
     ) -> None:
         """Append a labeled outcome to the storage log.
 
         ``label`` is the decision the switch returned (or that the
         caller assigned). ``outcome`` is the :class:`Verdict` — did
-        that decision match ground truth? If the most recent
-        ``classify()`` / ``dispatch()`` invocation produced a shadow
-        prediction or fired an action, those details are attached to
-        this record automatically.
+        that decision match ground truth?
+
+        When this is called via a :class:`ClassificationResult`'s
+        ``mark_*()`` / ``verdict_for`` path, the result's captured
+        shadow observations (rule output, model prediction, ML
+        prediction) are threaded through to the persisted record
+        automatically. When called directly on the switch (e.g.
+        from a webhook with ``record_verdict(input=..., label=...,
+        outcome=...)``), the switch has no reliable way to pair the
+        verdict with its originating classify — so no shadow
+        observations are attached. Use the result-aware path when
+        per-call paired data is load-bearing.
         """
         if outcome not in {o.value for o in Verdict}:
             raise ValueError(
                 f"outcome must be one of {[o.value for o in Verdict]}; got {outcome!r}"
             )
-        model_output: Any | None = None
-        model_confidence: float | None = None
-        if self._last_shadow is not None:
-            model_output, model_confidence = self._last_shadow
-            self._last_shadow = None
-
-        ml_output: Any | None = None
-        ml_confidence: float | None = None
-        if self._last_ml is not None:
-            ml_output, ml_confidence = self._last_ml
-            self._last_ml = None
-
-        action_result: Any | None = None
-        action_raised: str | None = None
-        action_elapsed_ms: float | None = None
-        if self._last_action is not None:
-            action_result, action_raised, action_elapsed_ms = self._last_action
-            self._last_action = None
-
-        # Always capture the rule output when classify() produced one, so
-        # transition-curve analysis can compare all three (rule, llm, ml).
-        rule_output = self._last_rule_output
-        if rule_output is None and source == "rule":
-            rule_output = label
-        self._last_rule_output = None
+        # Pull shadow observations from the paired result when
+        # available; otherwise fall back to a minimal record with
+        # just the user-supplied fields. No instance-level stash —
+        # that was the source of the cross-contamination bug.
+        if _result_ctx is not None:
+            rule_output = _result_ctx._rule_output
+            if rule_output is None and source == "rule":
+                rule_output = label
+            model_output = _result_ctx._model_output
+            model_confidence = _result_ctx._model_confidence
+            ml_output = _result_ctx._ml_output
+            ml_confidence = _result_ctx._ml_confidence
+            action_result = _result_ctx.action_result
+            action_raised = _result_ctx.action_raised
+            action_elapsed_ms = _result_ctx.action_elapsed_ms
+        else:
+            rule_output = label if source == "rule" else None
+            model_output = None
+            model_confidence = None
+            ml_output = None
+            ml_confidence = None
+            action_result = None
+            action_raised = None
+            action_elapsed_ms = None
 
         record = ClassificationRecord(
             timestamp=time.time(),
@@ -1140,12 +1174,18 @@ class LearnedSwitch:
 
         # Auto-advance: every ``auto_advance_interval`` recorded
         # predictions, ask the gate whether we've earned the next
-        # phase. Gate refusals and exceptions never break
+        # phase. The counter increment is locked so concurrent
+        # record_verdicts can't race on read-modify-write (v1
+        # finding #16). Gate refusals and exceptions never break
         # record_verdict.
         if self.config.auto_advance:
-            self._records_since_advance_check += 1
-            if self._records_since_advance_check >= self.config.auto_advance_interval:
-                self._records_since_advance_check = 0
+            should_advance = False
+            with self._lock:
+                self._records_since_advance_check += 1
+                if self._records_since_advance_check >= self.config.auto_advance_interval:
+                    self._records_since_advance_check = 0
+                    should_advance = True
+            if should_advance:
                 try:
                     self.advance(_auto=True)
                 except Exception:
@@ -1191,42 +1231,48 @@ class LearnedSwitch:
         """
         from dendra.gates import GateDecision, next_phase
 
-        current = self.config.starting_phase
-        target = next_phase(current)
-        if target is None:
-            return GateDecision(
-                advance=False,
-                rationale=f"already at terminal phase {current.name}",
-            )
-        if _PHASE_ORDER[target] > _PHASE_ORDER[self.config.phase_limit]:
-            return GateDecision(
-                advance=False,
-                rationale=(
-                    f"target phase {target.name} exceeds phase_limit "
-                    f"{self.config.phase_limit.name}"
-                ),
-            )
-        if (
-            self.config.safety_critical
-            and target is Phase.ML_PRIMARY
-        ):
-            # safety_critical refuses ML_PRIMARY on the hot path per
-            # paper §7.1, regardless of gate evidence. Belt + suspenders
-            # on top of phase_limit — if anyone ever widens that cap,
-            # this check still enforces the architectural guarantee.
-            return GateDecision(
-                advance=False,
-                rationale=(
-                    "safety_critical=True refuses advancement to "
-                    "ML_PRIMARY (paper §7.1)"
-                ),
-            )
+        # Serialize the read-log / evaluate-gate / mutate-phase
+        # sequence against concurrent classifies (which read
+        # starting_phase) and other advance() callers.
+        with self._lock:
+            current = self.config.starting_phase
+            target = next_phase(current)
+            if target is None:
+                return GateDecision(
+                    advance=False,
+                    rationale=f"already at terminal phase {current.name}",
+                )
+            if _PHASE_ORDER[target] > _PHASE_ORDER[self.config.phase_limit]:
+                return GateDecision(
+                    advance=False,
+                    rationale=(
+                        f"target phase {target.name} exceeds phase_limit "
+                        f"{self.config.phase_limit.name}"
+                    ),
+                )
+            if (
+                self.config.safety_critical
+                and target is Phase.ML_PRIMARY
+            ):
+                # safety_critical refuses ML_PRIMARY on the hot path per
+                # paper §7.1, regardless of gate evidence. Belt + suspenders
+                # on top of phase_limit — if anyone ever widens that cap,
+                # this check still enforces the architectural guarantee.
+                return GateDecision(
+                    advance=False,
+                    rationale=(
+                        "safety_critical=True refuses advancement to "
+                        "ML_PRIMARY (paper §7.1)"
+                    ),
+                )
 
-        records = self._storage.load_records(self.name)
-        decision = self.config.gate.evaluate(records, current, target)
+            records = self._storage.load_records(self.name)
+            decision = self.config.gate.evaluate(records, current, target)
+
+            if decision.advance:
+                self.config.starting_phase = target
 
         if decision.advance:
-            self.config.starting_phase = target
             try:
                 self._telemetry.emit(
                     "advance",
@@ -1292,7 +1338,56 @@ class LearnedSwitch:
         (ML_PRIMARY); calling this signals that the operator has
         investigated and is ready to resume ML-primary decisions.
         """
-        self._circuit_tripped = False
+        with self._lock:
+            self._circuit_tripped = False
+            self._save_breaker_state()
+
+    # --- Breaker-state persistence (paper §7.1 survives restart) ---------
+
+    def _breaker_path(self) -> Path | None:
+        """Path to the breaker-state sidecar file, or ``None`` if unsupported.
+
+        Breaker persistence is enabled when ``persist=True`` was
+        passed at construction — see v1-readiness.md §5 D2.
+        """
+        if not getattr(self, "_persist", False):
+            return None
+        return Path("runtime") / "dendra" / self.name / ".breaker"
+
+    def _save_breaker_state(self) -> None:
+        """Persist ``_circuit_tripped`` to disk when configured.
+
+        Called from the lock holders that mutate the breaker
+        (``_classify_impl`` ML_PRIMARY branch, ``reset_circuit_breaker``).
+        A failure here never propagates — persistence is best-effort;
+        crashing the classifier over a sidecar-file write is a worse
+        outcome than losing a restart-survival on one trip.
+        """
+        path = self._breaker_path()
+        if path is None:
+            return
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("1" if self._circuit_tripped else "0")
+        except OSError:
+            pass
+
+    def _load_breaker_state(self) -> None:
+        """Rehydrate ``_circuit_tripped`` from disk at construction.
+
+        Called from ``__init__`` only when ``persist=True``. A
+        missing or unreadable file leaves the breaker untripped
+        (the safe default).
+        """
+        path = self._breaker_path()
+        if path is None:
+            return
+        try:
+            raw = path.read_text().strip()
+        except (OSError, FileNotFoundError):
+            return
+        if raw == "1":
+            self._circuit_tripped = True
 
     # --- Diagnostics -------------------------------------------------------
 
