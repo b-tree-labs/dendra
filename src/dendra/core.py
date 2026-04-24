@@ -1390,16 +1390,32 @@ class LearnedSwitch:
             circuit_breaker_tripped=self._circuit_tripped,
         )
 
-    def reset_circuit_breaker(self) -> None:
+    def reset_circuit_breaker(self, *, operator: str | None = None) -> None:
         """Clear a tripped circuit breaker and allow ML decisions again.
 
         The breaker trips automatically on ML failures in Phase 5
         (ML_PRIMARY); calling this signals that the operator has
         investigated and is ready to resume ML-primary decisions.
+
+        ``operator`` is an opaque string stored on the emitted
+        telemetry event and in the operator-action record — useful
+        for audit trails. It is provenance, not authorization:
+        Dendra does not verify the string; any access-control
+        gating happens in the calling layer. See v1-readiness.md
+        §2 finding #21.
         """
         with self._lock:
             self._circuit_tripped = False
             self._save_breaker_state()
+        try:
+            self._telemetry.emit(
+                "reset_circuit_breaker",
+                {"switch": self.name, "operator": operator},
+            )
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except BaseException:
+            pass
 
     # --- Breaker-state persistence (paper §7.1 survives restart) ---------
 
