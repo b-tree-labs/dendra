@@ -344,9 +344,177 @@ class LLMCommitteeSource:
         return winners[0]
 
 
+# ---------------------------------------------------------------------------
+# HumanReviewerSource — queue-backed manual labeling
+# ---------------------------------------------------------------------------
+
+
+import queue as _queue_mod
+
+
+class HumanReviewerSource:
+    """Queue-backed verdict source for human reviewers.
+
+    Every ``judge(input, label)`` call pushes a request onto a
+    pending queue and then **blocks** until a matching verdict
+    appears on a verdicts queue. The reviewer tool (a web UI, a
+    Slack bot, a CLI) dequeues from ``pending``, presents the row
+    to a human, and puts the resulting verdict back on
+    ``verdicts``. A timeout on the blocking wait keeps the switch
+    from stalling indefinitely when no reviewer is on shift — on
+    timeout the verdict is ``UNKNOWN``.
+
+    For v1 the queues are stdlib ``queue.Queue``. Subclass and
+    override :meth:`_push` / :meth:`_pop_verdict` to route through
+    Redis, SQS, Kafka, or a reviewer-tool's webhook.
+
+    Intended for ``bulk_record_verdicts_from_source`` cold-start
+    pipelines (seed the log with reviewer-labeled rows) and for
+    ``export_for_review`` / ``apply_reviews`` periodic-drain
+    workflows. Also works inline on ``classify`` for small-volume,
+    human-in-the-loop production paths.
+    """
+
+    def __init__(
+        self,
+        *,
+        pending: _queue_mod.Queue | None = None,
+        verdicts: _queue_mod.Queue | None = None,
+        timeout: float = 30.0,
+        name: str = "default",
+    ) -> None:
+        if timeout <= 0:
+            raise ValueError("timeout must be positive")
+        self._pending = pending if pending is not None else _queue_mod.Queue()
+        self._verdicts = verdicts if verdicts is not None else _queue_mod.Queue()
+        self._timeout = timeout
+        self.source_name = f"human-reviewer:{name}"
+
+    @property
+    def pending(self) -> _queue_mod.Queue:
+        """Queue that reviewer tools consume from. Each item is a
+        ``(input, label)`` tuple."""
+        return self._pending
+
+    @property
+    def verdicts(self) -> _queue_mod.Queue:
+        """Queue that reviewer tools produce onto. Each item is a
+        :class:`dendra.core.Verdict`."""
+        return self._verdicts
+
+    def _push(self, input: Any, label: Any) -> None:
+        self._pending.put((input, label))
+
+    def _pop_verdict(self) -> Verdict:
+        try:
+            return self._verdicts.get(timeout=self._timeout)
+        except _queue_mod.Empty:
+            return Verdict.UNKNOWN
+
+    def judge(self, input: Any, label: Any, /) -> Verdict:
+        self._push(input, label)
+        v = self._pop_verdict()
+        if isinstance(v, Verdict):
+            return v
+        # Allow reviewer-tool implementations to put str values for
+        # convenience (common when coming off a JSON queue).
+        if isinstance(v, str):
+            try:
+                return Verdict(v)
+            except ValueError:
+                return Verdict.UNKNOWN
+        return Verdict.UNKNOWN
+
+
+# ---------------------------------------------------------------------------
+# WebhookVerdictSource — poll an HTTP endpoint for verdicts
+# ---------------------------------------------------------------------------
+
+
+class WebhookVerdictSource:
+    """Poll an HTTP endpoint that returns verdicts for pending inputs.
+
+    The pattern: your external system (ticketing tool, fraud
+    detector, downstream consumer) can report outcomes but
+    doesn't push them — you pull. Each ``judge(input, label)``
+    call performs a POST to ``endpoint`` with a JSON body
+    ``{"input": <input>, "label": <label>}`` and parses a response
+    body ``{"outcome": "correct"|"incorrect"|"unknown"}``.
+
+    Failure modes handled:
+
+    - HTTP non-2xx, connection error, timeout → ``Verdict.UNKNOWN``
+      (external outage must not break the caller's audit loop).
+    - Malformed JSON or missing ``outcome`` key → ``Verdict.UNKNOWN``.
+    - ``outcome`` value not matching a :class:`Verdict` → ``Verdict.UNKNOWN``.
+
+    Requires :mod:`httpx`. Install with ``pip install dendra[ollama]``
+    (same optional dep as the Ollama adapter) or ``pip install httpx``.
+
+    Skeleton: v1 ships the blocking HTTP call. An async peer lands
+    in Session 7. For webhook-push semantics (the external system
+    POSTs to you), accept the push in your own HTTP route and call
+    ``switch.record_verdict`` or ``switch.apply_reviews`` directly.
+    """
+
+    def __init__(
+        self,
+        endpoint: str,
+        *,
+        timeout: float = 10.0,
+        headers: dict[str, str] | None = None,
+        auth: tuple[str, str] | None = None,
+        name: str | None = None,
+    ) -> None:
+        try:
+            import httpx  # type: ignore[import-untyped]
+        except ImportError as e:
+            raise ImportError(
+                "WebhookVerdictSource requires httpx. "
+                "Install with `pip install dendra[ollama]` (shares the "
+                "Ollama adapter's optional dep) or `pip install httpx`."
+            ) from e
+        if not endpoint:
+            raise ValueError("endpoint must be a non-empty URL")
+        if timeout <= 0:
+            raise ValueError("timeout must be positive")
+        self._httpx = httpx
+        self._endpoint = endpoint
+        self._timeout = timeout
+        self._headers = headers or {}
+        self._auth = auth
+        tag = name if name is not None else endpoint
+        self.source_name = f"webhook:{tag}"
+
+    def judge(self, input: Any, label: Any, /) -> Verdict:
+        try:
+            r = self._httpx.post(
+                self._endpoint,
+                json={"input": input, "label": label},
+                headers=self._headers,
+                auth=self._auth,
+                timeout=self._timeout,
+            )
+            r.raise_for_status()
+            data = r.json()
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except BaseException:
+            return Verdict.UNKNOWN
+        outcome = data.get("outcome") if isinstance(data, dict) else None
+        if not isinstance(outcome, str):
+            return Verdict.UNKNOWN
+        try:
+            return Verdict(outcome)
+        except ValueError:
+            return Verdict.UNKNOWN
+
+
 __all__ = [
     "CallableVerdictSource",
+    "HumanReviewerSource",
     "LLMCommitteeSource",
     "LLMJudgeSource",
     "VerdictSource",
+    "WebhookVerdictSource",
 ]

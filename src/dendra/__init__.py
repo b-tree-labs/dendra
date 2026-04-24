@@ -25,6 +25,8 @@ See README.md and https://dendra.dev.
 __version__ = "0.2.0"
 
 from dendra.core import (
+    BulkVerdict,
+    BulkVerdictSummary,
     ClassificationRecord,
     ClassificationResult,
     Label,
@@ -74,15 +76,19 @@ from dendra.telemetry import (
 )
 from dendra.verdicts import (
     CallableVerdictSource,
+    HumanReviewerSource,
     LLMCommitteeSource,
     LLMJudgeSource,
     VerdictSource,
+    WebhookVerdictSource,
 )
 
 __all__ = [
     "AccuracyMarginGate",
     "AnthropicAdapter",
     "BoundedInMemoryStorage",
+    "BulkVerdict",
+    "BulkVerdictSummary",
     "CompositeGate",
     "ClassificationRecord",
     "ClassificationResult",
@@ -114,11 +120,13 @@ __all__ = [
     "SwitchConfig",
     "SwitchStatus",
     "CallableVerdictSource",
+    "HumanReviewerSource",
     "LLMCommitteeSource",
     "LLMJudgeSource",
     "TelemetryEmitter",
     "Verdict",
     "VerdictSource",
+    "WebhookVerdictSource",
     "__version__",
     "deserialize_record",
     "flock_supported",

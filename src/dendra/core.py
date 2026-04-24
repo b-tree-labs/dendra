@@ -20,7 +20,7 @@ import inspect
 import threading
 import time
 import weakref
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -250,6 +250,44 @@ class SwitchStatus:
     circuit_breaker_tripped: bool = False
 
 
+@dataclass(frozen=True)
+class BulkVerdict:
+    """One entry in a :meth:`LearnedSwitch.bulk_record_verdicts` batch.
+
+    ``input``, ``label``, ``outcome`` are required; ``source`` and
+    ``confidence`` default to the same values ``record_verdict``
+    uses when called without them. ``BulkVerdict`` is a plain
+    dataclass (no business logic) so callers can construct one per
+    row from any source — CSV, JSON, DB query, reviewer-tool
+    export.
+    """
+
+    input: Any
+    label: Any
+    outcome: str  # a Verdict value ("correct" / "incorrect" / "unknown")
+    source: str = "bulk"
+    confidence: float = 1.0
+
+
+@dataclass
+class BulkVerdictSummary:
+    """What came back from a bulk_record_verdicts call.
+
+    - ``total`` — rows attempted.
+    - ``recorded`` — rows that landed in storage.
+    - ``failed`` — rows the storage refused (exceptions absorbed;
+      a single flaky record mustn't poison the whole batch).
+    - ``auto_advance_decision`` — populated with the gate's
+      decision when auto-advance fired at end-of-batch; ``None``
+      otherwise.
+    """
+
+    total: int = 0
+    recorded: int = 0
+    failed: int = 0
+    auto_advance_decision: Any = None
+
+
 # Phase ordering for <= / >= comparisons. RULE = 0, ML_PRIMARY = 5.
 _PHASE_ORDER: dict[Phase, int] = {
     Phase.RULE: 0,
@@ -371,6 +409,30 @@ class SwitchConfig:
 
 
 RuleFunc = Callable[[Any], Any]
+
+
+def _input_hash(value: Any) -> str:
+    """Stable short identifier for a classifier input.
+
+    Used by :meth:`LearnedSwitch.export_for_review` and
+    :meth:`LearnedSwitch.apply_reviews` to correlate reviewer
+    annotations back to originating records. Uses the stdlib
+    ``hashlib.sha256`` on the JSON-serialized form of the input,
+    falling back to ``repr`` for non-JSON-serializable values.
+    The hash is **truncated to 16 hex chars** — enough collision
+    resistance for a per-switch review queue; not a cryptographic
+    identifier. Callers writing cross-process reviewer tooling
+    should use the full input payload, not the hash, as the join
+    key when collisions matter.
+    """
+    import hashlib
+    import json
+
+    try:
+        encoded = json.dumps(value, sort_keys=True, default=str).encode("utf-8")
+    except (TypeError, ValueError):
+        encoded = repr(value).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()[:16]
 
 
 def _clamp_conf(v: float | None) -> float | None:
@@ -1425,6 +1487,213 @@ class LearnedSwitch:
             ml_agreement_rate=ml_rate,
             circuit_breaker_tripped=self._circuit_tripped,
         )
+
+    # --- Bulk ingestion + reviewer round-trip -----------------------------
+
+    def bulk_record_verdicts(
+        self,
+        verdicts: Iterable[BulkVerdict],
+        /,
+    ) -> BulkVerdictSummary:
+        """Append many verdicts in one pass.
+
+        Each entry is a :class:`BulkVerdict`. Storage failures on
+        individual rows are absorbed so a single flaky record
+        doesn't poison the whole batch — they're counted in
+        ``summary.failed``. Auto-advance is deferred: at most one
+        gate evaluation fires per ``bulk_record_verdicts`` call,
+        not N evaluations on every interval boundary the batch
+        crosses.
+
+        Intended for cold-start preload (feed historical labeled
+        data to seed the outcome log before going live), periodic
+        reviewer-queue ingestion (``apply_reviews`` is built on
+        this), and verdict-source-driven pipelines
+        (``bulk_record_verdicts_from_source``).
+        """
+        summary = BulkVerdictSummary()
+        # Preserve the currently-enabled auto_advance flag, then
+        # disable it for the duration of the batch. One advance()
+        # call at the end amortizes the gate walk over the whole
+        # batch rather than firing mid-iteration on every interval.
+        prior_auto_advance = self.config.auto_advance
+        self.config.auto_advance = False
+        try:
+            for v in verdicts:
+                summary.total += 1
+                try:
+                    self.record_verdict(
+                        input=v.input,
+                        label=v.label,
+                        outcome=v.outcome,
+                        source=v.source,
+                        confidence=v.confidence,
+                    )
+                    summary.recorded += 1
+                except (KeyboardInterrupt, SystemExit):
+                    raise
+                except BaseException:
+                    summary.failed += 1
+        finally:
+            self.config.auto_advance = prior_auto_advance
+        if prior_auto_advance and summary.recorded:
+            # End-of-batch gate probe, regardless of how far the
+            # counter moved during the batch. Reset the counter so
+            # the next N record_verdict calls start a fresh interval.
+            with self._lock:
+                self._records_since_advance_check = 0
+            try:
+                summary.auto_advance_decision = self.advance(_auto=True)
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except BaseException:
+                pass
+        return summary
+
+    def bulk_record_verdicts_from_source(
+        self,
+        inputs: Iterable[Any],
+        source: Any,  # VerdictSource — typed in dendra.verdicts
+        /,
+    ) -> BulkVerdictSummary:
+        """Classify each input, judge via ``source``, record verdicts.
+
+        The composition that turns "I have 1,000 production inputs
+        and a VerdictSource" into "the outcome log is seeded with
+        paired observations and the right source stamps." Classify
+        happens through the switch (so phase-appropriate routing +
+        shadow capture applies); the verdict source judges the
+        resulting label; the verdict is recorded with the source's
+        stable ``source_name`` on the record's ``source`` field
+        for audit-chain filtering.
+        """
+        summary = BulkVerdictSummary()
+        prior_auto_advance = self.config.auto_advance
+        self.config.auto_advance = False
+        try:
+            for input in inputs:
+                summary.total += 1
+                try:
+                    result = self.classify(input)
+                    verdict = source.judge(input, result.label)
+                    self.record_verdict(
+                        input=input,
+                        label=result.label,
+                        outcome=verdict.value,
+                        source=source.source_name,
+                        confidence=result.confidence,
+                        _result_ctx=result,
+                    )
+                    summary.recorded += 1
+                except (KeyboardInterrupt, SystemExit):
+                    raise
+                except BaseException:
+                    summary.failed += 1
+        finally:
+            self.config.auto_advance = prior_auto_advance
+        if prior_auto_advance and summary.recorded:
+            with self._lock:
+                self._records_since_advance_check = 0
+            try:
+                summary.auto_advance_decision = self.advance(_auto=True)
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except BaseException:
+                pass
+        return summary
+
+    def export_for_review(
+        self,
+        *,
+        limit: int | None = None,
+        since: float | None = None,
+        filter: Callable[[ClassificationRecord], bool] | None = None,
+    ) -> list[dict]:
+        """Produce a reviewer-facing queue of UNKNOWN-outcome records.
+
+        Returns a list of plain dicts (JSON-serializable, no
+        framework types) that a human-review UI, a Redis/SQS queue,
+        or a batch-CSV export can consume directly. Each dict
+        carries ``input_hash`` so :meth:`apply_reviews` can
+        correlate reviewer annotations back to the originating row.
+
+        ``limit`` caps the returned list size; ``since`` filters by
+        record timestamp (POSIX seconds); ``filter`` is a
+        predicate the caller applies on top of the UNKNOWN + since
+        filters.
+        """
+        out: list[dict] = []
+        for r in self._storage.load_records(self.name):
+            if r.outcome != Verdict.UNKNOWN.value:
+                continue
+            if since is not None and r.timestamp < since:
+                continue
+            if filter is not None and not filter(r):
+                continue
+            out.append(
+                {
+                    "input_hash": _input_hash(r.input),
+                    "input": r.input,
+                    "classified_label": r.label,
+                    "classified_source": r.source,
+                    "classified_confidence": r.confidence,
+                    "timestamp": r.timestamp,
+                    "rule_output": r.rule_output,
+                    "model_output": r.model_output,
+                    "ml_output": r.ml_output,
+                }
+            )
+            if limit is not None and len(out) >= limit:
+                break
+        return out
+
+    def apply_reviews(
+        self,
+        reviews: Iterable[dict],
+        /,
+    ) -> BulkVerdictSummary:
+        """Ingest reviewer-annotated records back into the outcome log.
+
+        Each review dict must carry ``input_hash`` (from
+        :meth:`export_for_review`), ``outcome`` (a :class:`Verdict`
+        value), and either ``input`` or enough context for the
+        caller's own records. Optional: ``label`` override
+        (defaults to the classified label), ``source``
+        (defaults to ``"human-reviewer"``), ``confidence``.
+
+        Reviews for input_hashes that don't match any UNKNOWN row
+        in the log are skipped — they count toward
+        ``summary.failed``. Matched reviews append a new
+        verdict-bearing record to the log (additive, not
+        update-in-place); the original UNKNOWN row stays put for
+        the audit trail.
+        """
+        by_hash: dict[str, ClassificationRecord] = {}
+        for r in self._storage.load_records(self.name):
+            if r.outcome == Verdict.UNKNOWN.value:
+                by_hash[_input_hash(r.input)] = r
+
+        batch: list[BulkVerdict] = []
+        unmatched = 0
+        for review in reviews:
+            h = review.get("input_hash")
+            if h is None or h not in by_hash:
+                unmatched += 1
+                continue
+            original = by_hash[h]
+            batch.append(
+                BulkVerdict(
+                    input=original.input,
+                    label=review.get("label", original.label),
+                    outcome=review["outcome"],
+                    source=review.get("source", "human-reviewer"),
+                    confidence=float(review.get("confidence", 1.0)),
+                )
+            )
+        summary = self.bulk_record_verdicts(batch)
+        summary.failed += unmatched
+        summary.total += unmatched
+        return summary
 
     def reset_circuit_breaker(self, *, operator: str | None = None) -> None:
         """Clear a tripped circuit breaker and allow ML decisions again.
