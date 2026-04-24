@@ -56,6 +56,12 @@ class Verdict(str, Enum):
     UNKNOWN = "unknown"
 
 
+# Module-level frozenset of permitted outcome strings. Built once at
+# import time so ``record_verdict``'s validation doesn't rebuild a set
+# per call (v1-readiness §2 finding #23).
+_VERDICT_VALUES: frozenset[str] = frozenset(o.value for o in Verdict)
+
+
 # ---------------------------------------------------------------------------
 # Labels + action dispatch
 # ---------------------------------------------------------------------------
@@ -546,6 +552,32 @@ class LearnedSwitch:
             MODEL_PRIMARY phases.
     """
 
+    # ``__slots__`` declares every instance attribute. Attempts to
+    # monkey-patch new attributes (``switch.rule = ...``, a different
+    # storage, a custom flag) raise AttributeError at the set site
+    # instead of silently creating a dead attribute. v1-readiness §2
+    # finding #9: the rule in particular is security-load-bearing
+    # (audit chain, safety-critical enforcement) — hot-swapping it
+    # at runtime must not be a silent accident. Subclasses that need
+    # their own attributes must declare their own ``__slots__``.
+    __slots__ = (
+        "name",
+        "_rule",
+        "author",
+        "config",
+        "_storage",
+        "_model",
+        "_ml_head",
+        "_telemetry",
+        "_lock",
+        "_circuit_tripped",
+        "_records_since_advance_check",
+        "_labels_raw",
+        "_label_index",
+        "_persist",
+        "__weakref__",
+    )
+
     def __init__(
         self,
         *,
@@ -709,8 +741,11 @@ class LearnedSwitch:
         # said yes or no).
         self._records_since_advance_check: int = 0
         # Canonical labels list (Label objects). Assignment via the setter
-        # normalizes strings / dicts.
+        # normalizes strings / dicts and rebuilds the name index.
         self._labels_raw: list[Label] = _normalize_labels(labels)
+        self._label_index: dict[str, Label] = {
+            lbl.name: lbl for lbl in self._labels_raw
+        }
         # Rehydrate persisted breaker state (paper §7.1 promise must
         # survive a process restart when durable storage is configured).
         self._persist: bool = bool(persist)
@@ -727,17 +762,18 @@ class LearnedSwitch:
     @labels.setter
     def labels(self, value: LabelsArg | None) -> None:
         self._labels_raw = _normalize_labels(value)
+        self._label_index = {lbl.name: lbl for lbl in self._labels_raw}
 
     def _label_names(self) -> list[str]:
         return [label.name for label in self._labels_raw]
 
     def _find_label(self, name: Any) -> Label | None:
+        # Dict lookup is O(1) vs a linear list scan; meaningful when
+        # a switch has many labels (CLINC150 has 151). v1-readiness
+        # §2 finding #23.
         if not isinstance(name, str):
             return None
-        for label in self._labels_raw:
-            if label.name == name:
-                return label
-        return None
+        return self._label_index.get(name)
 
     # --- Public API --------------------------------------------------------
 
@@ -1154,9 +1190,9 @@ class LearnedSwitch:
         observations are attached. Use the result-aware path when
         per-call paired data is load-bearing.
         """
-        if outcome not in {o.value for o in Verdict}:
+        if outcome not in _VERDICT_VALUES:
             raise ValueError(
-                f"outcome must be one of {[o.value for o in Verdict]}; got {outcome!r}"
+                f"outcome must be one of {sorted(_VERDICT_VALUES)}; got {outcome!r}"
             )
         # Pull shadow observations from the paired result when
         # available; otherwise fall back to a minimal record with
