@@ -276,6 +276,181 @@ class LlamafileAdapter(OpenAIAdapter):
 
 
 # ---------------------------------------------------------------------------
+# Async adapter siblings
+# ---------------------------------------------------------------------------
+#
+# Every sync adapter ships an ``...AsyncAdapter`` peer that uses the
+# provider's native async client (``AsyncOpenAI``, ``AsyncAnthropic``,
+# ``httpx.AsyncClient``). The ``classify(...)`` method is replaced by
+# ``aclassify(...)`` — a coroutine. Pass these to async-aware call
+# sites (``LearnedSwitch.abulk_record_verdicts_from_source`` when the
+# source is also async; :class:`LLMJudgeAsyncSource` for an async
+# LLM judge; direct usage from FastAPI / LangGraph / LlamaIndex).
+
+
+class OpenAIAsyncAdapter(_BaseAdapter):
+    """Async peer of :class:`OpenAIAdapter`, using ``openai.AsyncOpenAI``."""
+
+    def __init__(
+        self,
+        *,
+        model: str,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        temperature: float = 0.0,
+        timeout: float = 30.0,
+    ) -> None:
+        try:
+            from openai import AsyncOpenAI  # type: ignore[import-untyped]
+        except ImportError as e:
+            raise ImportError(
+                "OpenAIAsyncAdapter requires the openai SDK. "
+                "Install with `pip install dendra[openai]` or `pip install openai`."
+            ) from e
+        if timeout <= 0:
+            raise ValueError("timeout must be positive")
+        self._client = AsyncOpenAI(
+            api_key=api_key, base_url=base_url, timeout=timeout,
+        )
+        self._model = model
+        self._temperature = temperature
+        self._timeout = timeout
+
+    async def aclassify(
+        self, input: Any, labels: Iterable[str]
+    ) -> ModelPrediction:
+        labels = list(labels)
+        prompt = self._render_prompt(input, labels)
+        resp = await self._client.chat.completions.create(
+            model=self._model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=self._temperature,
+            logprobs=True,
+            top_logprobs=1,
+        )
+        choice = resp.choices[0]
+        raw = (choice.message.content or "").strip()
+        label, matched = self._normalize_label(raw, labels)
+        confidence = _logprob_to_confidence(choice) if matched else 0.0
+        return ModelPrediction(label=label, confidence=confidence)
+
+
+class AnthropicAsyncAdapter(_BaseAdapter):
+    """Async peer of :class:`AnthropicAdapter`, using ``anthropic.AsyncAnthropic``."""
+
+    def __init__(
+        self,
+        *,
+        model: str,
+        api_key: str | None = None,
+        max_tokens: int = 32,
+        timeout: float = 30.0,
+    ) -> None:
+        try:
+            from anthropic import AsyncAnthropic  # type: ignore[import-untyped]
+        except ImportError as e:
+            raise ImportError(
+                "AnthropicAsyncAdapter requires the anthropic SDK. "
+                "Install with `pip install dendra[anthropic]` or `pip install anthropic`."
+            ) from e
+        if timeout <= 0:
+            raise ValueError("timeout must be positive")
+        self._client = AsyncAnthropic(api_key=api_key, timeout=timeout)
+        self._model = model
+        self._max_tokens = max_tokens
+        self._timeout = timeout
+
+    async def aclassify(
+        self, input: Any, labels: Iterable[str]
+    ) -> ModelPrediction:
+        labels = list(labels)
+        prompt = self._render_prompt(input, labels)
+        resp = await self._client.messages.create(
+            model=self._model,
+            max_tokens=self._max_tokens,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = "".join(getattr(block, "text", "") for block in resp.content).strip()
+        exact_hit = text in labels
+        label, matched = self._normalize_label(text, labels)
+        if not matched:
+            confidence = 0.0
+        else:
+            confidence = 0.9 if exact_hit else 0.5
+        return ModelPrediction(label=label, confidence=confidence)
+
+
+class OllamaAsyncAdapter(_BaseAdapter):
+    """Async peer of :class:`OllamaAdapter`, using ``httpx.AsyncClient``."""
+
+    def __init__(
+        self,
+        *,
+        model: str,
+        host: str = "http://localhost:11434",
+        timeout: float = 30.0,
+    ) -> None:
+        try:
+            import httpx  # type: ignore[import-untyped]
+        except ImportError as e:
+            raise ImportError(
+                "OllamaAsyncAdapter requires httpx. "
+                "Install with `pip install dendra[ollama]` or `pip install httpx`."
+            ) from e
+        if timeout <= 0:
+            raise ValueError("timeout must be positive")
+        self._httpx = httpx
+        self._model = model
+        self._host = host.rstrip("/")
+        self._timeout = timeout
+
+    async def aclassify(
+        self, input: Any, labels: Iterable[str]
+    ) -> ModelPrediction:
+        labels = list(labels)
+        prompt = self._render_prompt(input, labels)
+        async with self._httpx.AsyncClient(timeout=self._timeout) as client:
+            r = await client.post(
+                f"{self._host}/api/generate",
+                json={"model": self._model, "prompt": prompt, "stream": False},
+            )
+        r.raise_for_status()
+        text = (r.json().get("response") or "").strip()
+        exact_hit = text in labels
+        label, matched = self._normalize_label(text, labels)
+        if not matched:
+            confidence = 0.0
+        else:
+            confidence = 0.85 if exact_hit else 0.5
+        return ModelPrediction(label=label, confidence=confidence)
+
+
+class LlamafileAsyncAdapter(OpenAIAsyncAdapter):
+    """Llamafile's OpenAI-compatible endpoint, async variant.
+
+    Same shape as :class:`LlamafileAdapter` — inherits the local
+    defaults and wires the async OpenAI client underneath.
+    """
+
+    def __init__(
+        self,
+        *,
+        model: str = "LLaMA_CPP",
+        base_url: str = "http://localhost:8080/v1",
+        api_key: str = "sk-no-key-required",
+        temperature: float = 0.0,
+        timeout: float = 30.0,
+    ) -> None:
+        super().__init__(
+            model=model,
+            api_key=api_key,
+            base_url=base_url,
+            temperature=temperature,
+            timeout=timeout,
+        )
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -300,9 +475,13 @@ def _logprob_to_confidence(choice: Any) -> float:
 
 __all__ = [
     "AnthropicAdapter",
+    "AnthropicAsyncAdapter",
+    "LlamafileAdapter",
+    "LlamafileAsyncAdapter",
     "ModelClassifier",
     "ModelPrediction",
-    "LlamafileAdapter",
     "OllamaAdapter",
+    "OllamaAsyncAdapter",
     "OpenAIAdapter",
+    "OpenAIAsyncAdapter",
 ]

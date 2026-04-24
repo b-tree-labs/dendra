@@ -63,6 +63,11 @@ class VerdictSource(Protocol):
     stamping. Two :class:`VerdictSource` instances with the same
     ``source_name`` must be interchangeable in their judge
     semantics.
+
+    Sources that expose an ``ajudge(input, label)`` coroutine
+    can be passed to :meth:`LearnedSwitch.abulk_record_verdicts_from_source`
+    for native-async pipelines. When ``ajudge`` is absent, the
+    async bulk path wraps :meth:`judge` via ``asyncio.to_thread``.
     """
 
     source_name: str
@@ -114,7 +119,20 @@ class CallableVerdictSource:
 _JUDGE_LABELS = ["correct", "incorrect", "unknown"]
 
 
-def _identify_llm(llm: ModelClassifier) -> tuple[str, str]:
+def _is_model_like(obj: Any) -> bool:
+    """Accept sync (:class:`ModelClassifier`) *or* async adapters.
+
+    Async adapters expose ``aclassify`` instead of ``classify``;
+    both shapes satisfy "something that maps (input, labels) to a
+    ModelPrediction." LLMJudgeSource / LLMCommitteeSource accept
+    either and dispatch to whichever is present.
+    """
+    return callable(getattr(obj, "classify", None)) or callable(
+        getattr(obj, "aclassify", None)
+    )
+
+
+def _identify_llm(llm: Any) -> tuple[str, str]:
     """Extract a ``(class_name, model_string)`` pair for identity checks."""
     cls = type(llm).__name__
     model = str(
@@ -145,6 +163,12 @@ class LLMJudgeSource:
     correct classification for ``input``. Returns one of
     :class:`Verdict` based on the judge's response.
 
+    Also exposes an async peer :meth:`ajudge` when ``judge_model``
+    carries an ``aclassify`` coroutine (i.e., one of the
+    ``...AsyncAdapter`` siblings from :mod:`dendra.models`). The
+    async path skips the ``asyncio.to_thread`` hop — native async
+    all the way through.
+
     Bias guardrail
     --------------
     Using the same LLM as both classifier and judge is a
@@ -170,10 +194,11 @@ class LLMJudgeSource:
         guard_against_same_llm: bool = True,
         prompt_template: str | None = None,
     ) -> None:
-        if not isinstance(judge_model, ModelClassifier):
+        if not _is_model_like(judge_model):
             raise TypeError(
-                "judge_model must satisfy the ModelClassifier protocol "
-                "(classify(input, labels) -> ModelPrediction)"
+                "judge_model must expose classify(input, labels) -> "
+                "ModelPrediction (sync) or aclassify(input, labels) "
+                "-> ModelPrediction (async)."
             )
         if guard_against_same_llm and require_distinct_from is not None:
             if _same_llm(judge_model, require_distinct_from):
@@ -197,7 +222,17 @@ class LLMJudgeSource:
     def judge(self, input: Any, label: Any, /) -> Verdict:
         prompt = self._prompt_template.format(input=input, label=label)
         try:
-            pred = self._judge.classify(prompt, _JUDGE_LABELS)
+            classify = getattr(self._judge, "classify", None)
+            if classify is not None:
+                pred = classify(prompt, _JUDGE_LABELS)
+            else:
+                # Async-only judge called from sync context — run the
+                # coroutine on a fresh event loop. Slower than the
+                # async path but keeps the sync API usable.
+                import asyncio
+                pred = asyncio.run(
+                    self._judge.aclassify(prompt, _JUDGE_LABELS),
+                )
         except (KeyboardInterrupt, SystemExit):
             raise
         except BaseException:
@@ -206,12 +241,37 @@ class LLMJudgeSource:
             # the downstream gate math correctly ignores unverdicted
             # rows.
             return Verdict.UNKNOWN
-        text = str(pred.label).strip().lower()
-        if text == "correct":
-            return Verdict.CORRECT
-        if text == "incorrect":
-            return Verdict.INCORRECT
-        return Verdict.UNKNOWN
+        return _parse_judge_label(pred.label)
+
+    async def ajudge(self, input: Any, label: Any, /) -> Verdict:
+        """Async peer of :meth:`judge`.
+
+        Uses ``judge_model.aclassify`` when available (true-async
+        path; no thread hop). Falls back to wrapping :meth:`judge`
+        via ``asyncio.to_thread`` when the judge is a sync adapter.
+        """
+        import asyncio
+
+        aclassify = getattr(self._judge, "aclassify", None)
+        if aclassify is None:
+            return await asyncio.to_thread(self.judge, input, label)
+        prompt = self._prompt_template.format(input=input, label=label)
+        try:
+            pred = await aclassify(prompt, _JUDGE_LABELS)
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except BaseException:
+            return Verdict.UNKNOWN
+        return _parse_judge_label(pred.label)
+
+
+def _parse_judge_label(text: Any) -> Verdict:
+    t = str(text).strip().lower()
+    if t == "correct":
+        return Verdict.CORRECT
+    if t == "incorrect":
+        return Verdict.INCORRECT
+    return Verdict.UNKNOWN
 
 
 _DEFAULT_JUDGE_PROMPT = (
@@ -276,9 +336,9 @@ class LLMCommitteeSource:
                 f"mode must be one of {_COMMITTEE_MODES}; got {mode!r}"
             )
         for j in judge_list:
-            if not isinstance(j, ModelClassifier):
+            if not _is_model_like(j):
                 raise TypeError(
-                    "every judge must satisfy the ModelClassifier protocol"
+                    "every committee judge must expose classify() or aclassify()"
                 )
         if guard_against_same_llm and require_distinct_from is not None:
             for j in judge_list:
@@ -305,24 +365,57 @@ class LLMCommitteeSource:
         return list(self._judges)
 
     def judge(self, input: Any, label: Any, /) -> Verdict:
-        verdicts: list[Verdict] = []
         prompt = self._template.format(input=input, label=label)
+        verdicts: list[Verdict] = []
         for j in self._judges:
             try:
-                pred = j.classify(prompt, _JUDGE_LABELS)
+                classify = getattr(j, "classify", None)
+                if classify is not None:
+                    pred = classify(prompt, _JUDGE_LABELS)
+                else:
+                    import asyncio
+                    pred = asyncio.run(j.aclassify(prompt, _JUDGE_LABELS))
             except (KeyboardInterrupt, SystemExit):
                 raise
             except BaseException:
                 verdicts.append(Verdict.UNKNOWN)
                 continue
-            text = str(pred.label).strip().lower()
-            if text == "correct":
-                verdicts.append(Verdict.CORRECT)
-            elif text == "incorrect":
-                verdicts.append(Verdict.INCORRECT)
-            else:
-                verdicts.append(Verdict.UNKNOWN)
+            verdicts.append(_parse_judge_label(pred.label))
+        return self._aggregate(verdicts)
 
+    async def ajudge(self, input: Any, label: Any, /) -> Verdict:
+        """Async peer of :meth:`judge`.
+
+        Fires every judge in parallel via ``asyncio.gather`` —
+        committee latency is ``max(latencies)``, not
+        ``sum(latencies)``. Judges that expose ``aclassify`` use
+        the native-async path; sync judges fall back to
+        ``asyncio.to_thread`` so a mixed-sync-and-async committee
+        works.
+        """
+        import asyncio
+
+        prompt = self._template.format(input=input, label=label)
+
+        async def _one(j: Any) -> Verdict:
+            try:
+                aclassify = getattr(j, "aclassify", None)
+                if aclassify is not None:
+                    pred = await aclassify(prompt, _JUDGE_LABELS)
+                else:
+                    pred = await asyncio.to_thread(
+                        j.classify, prompt, _JUDGE_LABELS,
+                    )
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except BaseException:
+                return Verdict.UNKNOWN
+            return _parse_judge_label(pred.label)
+
+        verdicts = await asyncio.gather(*(_one(j) for j in self._judges))
+        return self._aggregate(list(verdicts))
+
+    def _aggregate(self, verdicts: list[Verdict]) -> Verdict:
         if self._mode == "unanimous":
             first = verdicts[0]
             if first is Verdict.UNKNOWN:

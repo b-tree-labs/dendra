@@ -50,11 +50,15 @@ from dendra.gates import (
 from dendra.ml import MLHead, MLPrediction, SklearnTextHead
 from dendra.models import (
     AnthropicAdapter,
+    AnthropicAsyncAdapter,
     LlamafileAdapter,
+    LlamafileAsyncAdapter,
     ModelClassifier,
     ModelPrediction,
     OllamaAdapter,
+    OllamaAsyncAdapter,
     OpenAIAdapter,
+    OpenAIAsyncAdapter,
 )
 from dendra.storage import (
     BoundedInMemoryStorage,
@@ -86,6 +90,7 @@ from dendra.verdicts import (
 __all__ = [
     "AccuracyMarginGate",
     "AnthropicAdapter",
+    "AnthropicAsyncAdapter",
     "BoundedInMemoryStorage",
     "BulkVerdict",
     "BulkVerdictSummary",
@@ -100,6 +105,7 @@ __all__ = [
     "LearnedSwitch",
     "ListEmitter",
     "LlamafileAdapter",
+    "LlamafileAsyncAdapter",
     "MLHead",
     "MLPrediction",
     "ManualGate",
@@ -109,7 +115,9 @@ __all__ = [
     "ModelPrediction",
     "NullEmitter",
     "OllamaAdapter",
+    "OllamaAsyncAdapter",
     "OpenAIAdapter",
+    "OpenAIAsyncAdapter",
     "Phase",
     "ResilientStorage",
     "SklearnTextHead",

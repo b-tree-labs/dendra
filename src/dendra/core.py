@@ -1769,6 +1769,132 @@ class LearnedSwitch:
         if raw == "1":
             self._circuit_tripped = True
 
+    # --- Async API -----------------------------------------------------------
+    #
+    # Every sync method has an ``a``-prefixed async peer. The default
+    # implementation wraps the sync call via ``asyncio.to_thread`` so
+    # async callers (FastAPI, LangGraph, LlamaIndex, Starlette,
+    # anything that runs on an event loop) can ``await`` classification
+    # without surrendering a worker slot. No behavior change relative
+    # to the sync API — same locks, same storage, same telemetry.
+    #
+    # Subclasses with a native-async storage backend (aiofiles,
+    # aiosqlite) override ``aclassify`` / ``arecord_verdict`` to skip
+    # the to_thread hop. The base implementation remains correct and
+    # shippable for every storage we ship today.
+    #
+    # See docs/async.md for the interop contract (sync + async on the
+    # same switch is supported; state is shared; locks protect both
+    # entry points).
+
+    async def aclassify(self, input: Any) -> ClassificationResult:
+        """Async peer of :meth:`classify`. Default: wraps sync in a thread."""
+        import asyncio
+
+        return await asyncio.to_thread(self.classify, input)
+
+    async def adispatch(self, input: Any) -> ClassificationResult:
+        """Async peer of :meth:`dispatch`. Default: wraps sync in a thread.
+
+        Note: the dispatched action itself is still sync. If the
+        action is expensive and you're on an event loop, consider
+        making the action itself a coroutine-launcher (schedule on
+        the loop from inside) rather than blocking the thread.
+        """
+        import asyncio
+
+        return await asyncio.to_thread(self.dispatch, input)
+
+    async def arecord_verdict(
+        self,
+        *,
+        input: Any,
+        label: Any,
+        outcome: str,
+        source: str = "rule",
+        confidence: float = 1.0,
+    ) -> None:
+        """Async peer of :meth:`record_verdict`."""
+        import asyncio
+
+        await asyncio.to_thread(
+            self.record_verdict,
+            input=input,
+            label=label,
+            outcome=outcome,
+            source=source,
+            confidence=confidence,
+        )
+
+    async def abulk_record_verdicts(
+        self, verdicts: Iterable[BulkVerdict], /
+    ) -> BulkVerdictSummary:
+        """Async peer of :meth:`bulk_record_verdicts`."""
+        import asyncio
+
+        # Materialize the iterable in the caller's thread; the sync
+        # path expects something it can iterate deterministically,
+        # and forcing it into the worker thread complicates that for
+        # any iterable whose __iter__ touches caller-local state.
+        batch = list(verdicts)
+        return await asyncio.to_thread(self.bulk_record_verdicts, batch)
+
+    async def abulk_record_verdicts_from_source(
+        self, inputs: Iterable[Any], source: Any, /
+    ) -> BulkVerdictSummary:
+        """Async peer of :meth:`bulk_record_verdicts_from_source`.
+
+        When the source exposes an ``ajudge(input, label)``
+        coroutine, uses the async path (no per-judge thread hop);
+        otherwise falls back to wrapping the sync pipeline in a
+        thread. Subclasses of :class:`dendra.verdicts.VerdictSource`
+        that want true-async behavior add ``ajudge``.
+        """
+        import asyncio
+
+        ajudge = getattr(source, "ajudge", None)
+        if ajudge is None:
+            inputs = list(inputs)
+            return await asyncio.to_thread(
+                self.bulk_record_verdicts_from_source, inputs, source,
+            )
+
+        summary = BulkVerdictSummary()
+        prior_auto_advance = self.config.auto_advance
+        self.config.auto_advance = False
+        try:
+            for input in inputs:
+                summary.total += 1
+                try:
+                    result = await self.aclassify(input)
+                    verdict = await ajudge(input, result.label)
+                    await self.arecord_verdict(
+                        input=input,
+                        label=result.label,
+                        outcome=verdict.value,
+                        source=source.source_name,
+                        confidence=result.confidence,
+                    )
+                    summary.recorded += 1
+                except (KeyboardInterrupt, SystemExit):
+                    raise
+                except BaseException:
+                    summary.failed += 1
+        finally:
+            self.config.auto_advance = prior_auto_advance
+        if prior_auto_advance and summary.recorded:
+            with self._lock:
+                self._records_since_advance_check = 0
+            try:
+                summary.auto_advance_decision = await asyncio.to_thread(
+                    self.advance, _auto=True,
+                )
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except BaseException:
+                pass
+        return summary
+
     # --- Diagnostics -------------------------------------------------------
 
     @property
