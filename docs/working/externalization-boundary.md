@@ -37,7 +37,7 @@ is a vulnerability, not a feature.
 | **Safety-critical construction check** | Must happen at Python `__post_init__` / LearnedSwitch `__init__` — unbypassable, visible in stack traces. A remote-config flag could be intercepted or delayed. |
 | **Circuit breaker trip decision** | Local state; sub-millisecond response; distributed consensus introduces a new failure mode and adds latency to the safety-floor path. |
 | **Phase-advancement state at runtime** | The switch must know its own phase instantly — can't make this a remote call per classification. |
-| **Outcome log write path** | Local-first; async replication if desired. Never block a decision on remote log-write success. |
+| **Verdict log write path** | Local-first; async replication if desired. Never block a decision on remote log-write success. |
 | **`safety_critical=True` enforcement** | Same reason as safety-critical construction check — must be unbypassable architecture. |
 | **`phase_limit` enforcement at `advance()` time** | Must be local; a remote override of the ceiling undermines the operator's safety guarantee. |
 

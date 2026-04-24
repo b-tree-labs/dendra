@@ -1,0 +1,25 @@
+# Pylint config for VS Code / PyCharm editor diagnostics.
+#
+# We don't run pylint in CI (ruff covers hard lints). This file exists
+# so the editor's bundled pylint doesn't bury real signal under rules
+# that don't fit Dendra's example-driven repo shape. Disables below are
+# limited to the genuinely unfixable — widen only with a one-line
+# rationale.
+
+[MESSAGES CONTROL]
+disable =
+    # ----- Numbered example filenames --------------------------------------
+    # `01_hello_world.py` etc. are numbered for teaching order. They run
+    # as scripts, never imported, so snake_case module-name rules don't
+    # apply.
+    invalid-name,
+
+    # ----- Intentional cross-example repetition ----------------------------
+    # Examples share the same triage-rule scaffolding on purpose so each
+    # is self-contained. Cross-file similarity is a feature here.
+    duplicate-code,
+
+    # ----- Single-method protocol stubs ------------------------------------
+    # Classes implementing a duck-typed Protocol (ModelClassifier has one
+    # method) don't need to grow public methods to satisfy style rules.
+    too-few-public-methods

@@ -28,11 +28,17 @@ class MLPrediction:
 
 @runtime_checkable
 class MLHead(Protocol):
-    """Pluggable ML classifier backend."""
+    """Pluggable ML classifier backend.
 
-    def fit(self, records: Iterable[Any]) -> None: ...
+    Protocol methods take their primary-input arg positional-only
+    (marked with ``/``) so implementations are free to name it
+    anything (``ticket``, ``x``, ``request``, …) without tripping
+    Protocol name-matching in strict type-checkers.
+    """
 
-    def predict(self, input: Any, labels: Iterable[str]) -> MLPrediction: ...
+    def fit(self, records: Iterable[Any], /) -> None: ...
+
+    def predict(self, input: Any, labels: Iterable[str], /) -> MLPrediction: ...
 
     def model_version(self) -> str: ...
 
@@ -79,7 +85,7 @@ class SklearnTextHead:
             if getattr(r, "outcome", None) != "correct":
                 continue
             X.append(serialize_input_for_features(r.input))
-            y.append(r.output)
+            y.append(r.label)
         if len({*y}) < 2:
             return
         pipe = self._Pipeline(

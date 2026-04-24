@@ -51,7 +51,7 @@ class BenchmarkRun:
         return None
 
     def transition_depth(self, *, alpha: float = 0.01, prefer_paired: bool = True) -> int | None:
-        """Outcome count at which ML beats rule with ``p < alpha``.
+        """Verdict count at which ML beats rule with ``p < alpha``.
 
         When per-example ``rule_correct``/``ml_correct`` arrays are
         present and ``prefer_paired=True``, uses McNemar's paired

@@ -45,12 +45,12 @@ start fresh on the Rust + WASM work.
 
 What moves to Rust (the `dendra-core` crate, compiled to WASM):
 
-- `Phase` enum + phase-transition logic (RULE → LLM_SHADOW → LLM_PRIMARY → ML_SHADOW → ML_WITH_FALLBACK → ML_PRIMARY)
+- `Phase` enum + phase-transition logic (RULE → MODEL_SHADOW → MODEL_PRIMARY → ML_SHADOW → ML_WITH_FALLBACK → ML_PRIMARY)
 - `SwitchConfig` struct + validation
-- `SwitchResult` and `SwitchStatus` types
-- Decision routing: `(phase, config, rule_out, llm_out, ml_out) → SwitchResult`
+- `ClassificationResult` and `SwitchStatus` types
+- Decision routing: `(phase, config, rule_out, llm_out, ml_out) → ClassificationResult`
 - Statistical tests: McNemar's exact (small-N binomial), McNemar normal-approx (large-N), paired-proportion helpers, confidence intervals
-- Outcome record format + canonical on-disk / on-wire bytes
+- Verdict record format + canonical on-disk / on-wire bytes
 - Circuit breaker state machine (in-memory, per-switch)
 - Gate protocol (McNemar, AccuracyMargin, MinVolume) — all paired-proportion / threshold math
 
@@ -81,7 +81,7 @@ packages/
 │   │   ├── lib.rs           # public API surface
 │   │   ├── phase.rs         # Phase enum + transitions
 │   │   ├── config.rs        # SwitchConfig
-│   │   ├── result.rs        # SwitchResult, SwitchStatus
+│   │   ├── result.rs        # ClassificationResult, SwitchStatus
 │   │   ├── routing.rs       # Decision routing logic
 │   │   ├── gates/
 │   │   │   ├── mod.rs       # Gate trait
@@ -90,7 +90,7 @@ packages/
 │   │   │   ├── margin.rs
 │   │   │   └── composite.rs
 │   │   ├── breaker.rs       # Circuit breaker state machine
-│   │   ├── outcome.rs       # OutcomeRecord + serialization
+│   │   ├── outcome.rs       # ClassificationRecord + serialization
 │   │   └── stats.rs         # shared statistics utilities
 │   ├── tests/
 │   │   ├── property/        # proptest-based
@@ -149,14 +149,14 @@ The repo becomes a monorepo at that point. No Bazel for now — per-language too
 ### Phase 1 — Skeleton + core types (week 1)
 
 - Create `packages/dendra-core` Cargo crate.
-- Port `Phase` enum + `SwitchConfig` + `SwitchResult` + `SwitchStatus` to Rust.
+- Port `Phase` enum + `SwitchConfig` + `ClassificationResult` + `SwitchStatus` to Rust.
 - Write the conformance corpus format (YAML schema, loader, runner harness).
 - Cargo build passes, type definitions match the Python source 1:1.
 - Commit: `feat(core): skeleton Rust crate + shared conformance corpus`
 
 ### Phase 2 — Decision routing + breaker (week 2)
 
-- Port `routing.rs`: given phase + rule/llm/ml outputs, emit `SwitchResult`.
+- Port `routing.rs`: given phase + rule/llm/ml outputs, emit `ClassificationResult`.
 - Port `breaker.rs`: circuit breaker state machine (trip, probe, reset).
 - Write property-based tests for routing invariants (rule-floor respected, phase monotonicity).
 - Write proptest for breaker state-machine invariants (consistency under all transition sequences).
@@ -218,14 +218,14 @@ Five layers, all required before the Rust refactor merges:
 1. **Conformance corpus** — YAML cases at `packages/conformance/`. Canonical inputs → expected outputs at the *primitive behavioral* level. Every port must pass identical assertions.
 
 2. **Property-based tests** via `proptest` in Rust:
-   - *Rule floor invariant:* for any random inputs at any phase, `SwitchResult.source` is `"rule"` whenever LLM/ML outputs are unavailable.
+   - *Rule floor invariant:* for any random inputs at any phase, `ClassificationResult.source` is `"rule"` whenever LLM/ML outputs are unavailable.
    - *Phase monotonicity:* `advance()` never decreases phase; sequence of advances produces non-decreasing phase values.
    - *Safety-critical cap:* `SwitchConfig(safety_critical=True)` with `starting_phase=ML_PRIMARY` always raises at construction.
    - *Gate-bound validity:* McNemar gate with α=0.01 permits advance only when computed p-value < 0.01.
    - *Breaker consistency:* state machine reaches reachable states only; no invalid (tripped && advancing) combos.
 
 3. **Fuzz tests** via `cargo-fuzz`:
-   - Random OutcomeRecord bytes → parser must never panic, must reject invalid bytes cleanly.
+   - Random ClassificationRecord bytes → parser must never panic, must reject invalid bytes cleanly.
    - Random `SwitchConfig` construction → must either validate cleanly or reject with a specific error.
    - Random Gate input sequences → must return a valid `GateDecision`.
 

@@ -87,7 +87,7 @@ list.
   on four benchmarks" (passive) or "I measured this" (too
   personal). Reserve "I" for author blog posts only.
 - **Third person** for the product in reference docs. "`ml_switch`
-  returns a `SwitchResult`," not "We return a `SwitchResult`."
+  returns a `ClassificationResult`," not "We return a `ClassificationResult`."
 
 ## On the primitive framing
 

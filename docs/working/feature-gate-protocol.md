@@ -18,7 +18,7 @@ warrants a different criterion.
 class Gate(Protocol):
     def permits_advance(
         self,
-        outcomes: list[OutcomeRecord],
+        outcomes: list[ClassificationRecord],
         from_phase: Phase,
         to_phase: Phase,
     ) -> GateDecision: ...

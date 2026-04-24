@@ -22,7 +22,7 @@ import pytest
 
 from dendra import (
     LearnedSwitch,
-    LLMPrediction,
+    ModelPrediction,
     Phase,
     SwitchConfig,
 )
@@ -41,12 +41,12 @@ class AgreesWithRuleLLM:
 
     def classify(self, input, labels):
         label = _rule(input)
-        return LLMPrediction(label=label, confidence=0.95)
+        return ModelPrediction(label=label, confidence=0.95)
 
 
 class TestTransitionCurve:
     def test_runs_checkpoints(self):
-        s = LearnedSwitch(name="t", rule=_rule, author="alice")
+        s = LearnedSwitch(name="t", rule=_rule, author="alice", auto_record=False)
         examples = [BenchmarkExample(input={"title": f"crash {i}"}, label="bug") for i in range(10)]
         checkpoints = run_transition_curve(s, examples, checkpoint_every=5)
         assert len(checkpoints) == 2
@@ -61,8 +61,8 @@ class TestTransitionCurve:
             name="t",
             rule=_rule,
             author="alice",
-            llm=AgreesWithRuleLLM(),
-            config=SwitchConfig(phase=Phase.LLM_SHADOW),
+            model=AgreesWithRuleLLM(),
+            config=SwitchConfig(auto_record=False, phase=Phase.MODEL_SHADOW),
         )
         examples = [
             BenchmarkExample(input={"title": "crash"}, label="bug"),
@@ -74,7 +74,7 @@ class TestTransitionCurve:
         assert last.ml_accuracy is None  # no ML head at Phase 1
 
     def test_tail_checkpoint_appended(self):
-        s = LearnedSwitch(name="t", rule=_rule, author="alice")
+        s = LearnedSwitch(name="t", rule=_rule, author="alice", auto_record=False)
         examples = [BenchmarkExample(input={"title": "crash"}, label="bug") for _ in range(7)]
         # 5-step checkpoint gives one at t=5; tail fires at t=7.
         checkpoints = run_transition_curve(s, examples, checkpoint_every=5)

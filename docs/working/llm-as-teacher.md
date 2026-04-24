@@ -10,7 +10,7 @@ positioning for customers with zero historical outcomes.
 
 ## The pattern in one paragraph
 
-Deploy Dendra at **Phase 2 (LLM_PRIMARY)**. The LLM makes every
+Deploy Dendra at **Phase 2 (MODEL_PRIMARY)**. The LLM makes every
 high-confidence decision. Each classification writes an outcome
 record tagged `source="llm"` with the LLM's label and confidence.
 After accumulating N such outcomes, **train a local ML head on
@@ -59,7 +59,7 @@ The LLM did the labeling. You never manually labeled anything.
 Dendra's existing architecture already supports this pattern
 without any new features:
 
-1. **Deploy at Phase 2 (LLM_PRIMARY)** with a rule as safety
+1. **Deploy at Phase 2 (MODEL_PRIMARY)** with a rule as safety
    floor:
 
 ```python
@@ -71,7 +71,7 @@ from dendra.llm import OpenAIAdapter
     author="@triage:support",
     llm=OpenAIAdapter(model="gpt-4o-mini"),
     config=SwitchConfig(
-        phase=Phase.LLM_PRIMARY,
+        phase=Phase.MODEL_PRIMARY,
         confidence_threshold=0.85,
     ),
 )
@@ -221,11 +221,11 @@ future work. The LLM-as-teacher pattern described here is the
 *same idea* operationalized as a shipping product feature rather
 than a research direction:
 
-- **Paper §9.3 regime:** LLM observes (Phase 1 LLM_SHADOW),
+- **Paper §9.3 regime:** LLM observes (Phase 1 MODEL_SHADOW),
   labels are recorded alongside rule output, ML trains on LLM
   labels, transition depth is measured.
 - **Production LLM-as-teacher regime:** LLM decides (Phase 2
-  LLM_PRIMARY), labels are recorded as the decision, ML trains
+  MODEL_PRIMARY), labels are recorded as the decision, ML trains
   on those decisions, Phase 4 promotion when evidence justifies.
 
 Both are within scope of the filed patent's independent claims.

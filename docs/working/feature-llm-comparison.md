@@ -8,7 +8,7 @@
 Dendra already logs the data needed to tell you which LLM wins
 for your specific classification problem. Make this a first-class
 feature: accept `llm=` as a list, run all configured LLMs in
-parallel at `Phase.LLM_SHADOW`, emit a scorecard via `dendra
+parallel at `Phase.MODEL_SHADOW`, emit a scorecard via `dendra
 compare`.
 
 ## User-facing API
@@ -23,16 +23,16 @@ switch = LearnedSwitch(
         OpenAIAdapter("gpt-5-mini"),
         OllamaAdapter("llama-3.3-8b", base_url="http://localhost:11434"),
     ],
-    config=SwitchConfig(starting_phase=Phase.LLM_SHADOW),
+    config=SwitchConfig(starting_phase=Phase.MODEL_SHADOW),
 )
 ```
 
-At `LLM_SHADOW`, every classification runs all N LLMs in parallel
+At `MODEL_SHADOW`, every classification runs all N LLMs in parallel
 (asyncio.gather internally). All predictions, confidences,
 latencies, and estimated costs are recorded per-call in the
-outcome record's `llm_outputs: dict[str, LLMPrediction]` field.
+outcome record's `llm_outputs: dict[str, ModelPrediction]` field.
 
-At `LLM_PRIMARY`, one LLM is explicitly designated as the
+At `MODEL_PRIMARY`, one LLM is explicitly designated as the
 decider; the others continue to shadow until cost or latency
 concerns retire them.
 
@@ -108,9 +108,9 @@ about choosing LLMs rigorously.
 
 ## Tasks to ship (after Rust + WASM refactor)
 
-1. Extend `LearnedSwitch` to accept `llm: LLMClassifier | list[LLMClassifier]`.
+1. Extend `LearnedSwitch` to accept `llm: ModelClassifier | list[ModelClassifier]`.
 2. Parallel dispatch in classify() when list is present.
-3. Extend `OutcomeRecord` with `llm_outputs: dict[str, LLMPrediction]` (keyed by adapter name).
+3. Extend `ClassificationRecord` with `llm_outputs: dict[str, ModelPrediction]` (keyed by adapter name).
 4. Extend `dendra bench` to record per-LLM metrics when multi-LLM is used.
 5. New `dendra compare` CLI.
 6. Example `examples/08_llm_comparison.py`.

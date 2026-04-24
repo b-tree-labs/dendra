@@ -74,7 +74,7 @@ def cmd_bench(args: argparse.Namespace) -> int:
         checkpoint_every=args.checkpoint_every,
         min_train_for_ml=args.min_train_for_ml,
         max_train=args.max_train,
-        llm=llm,
+        model=llm,
         llm_labels=ds.labels,
         llm_test_sample_size=args.llm_test_sample,
     )
@@ -97,8 +97,8 @@ def cmd_bench(args: argparse.Namespace) -> int:
 
 
 def _build_llm(args: argparse.Namespace):
-    """Factory — map CLI args to an LLMClassifier instance."""
-    from dendra.llm import (
+    """Factory — map CLI args to an ModelClassifier instance."""
+    from dendra.models import (
         AnthropicAdapter,
         LlamafileAdapter,
         OllamaAdapter,
@@ -358,8 +358,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         default="RULE",
         choices=[
             "RULE",
-            "LLM_SHADOW",
-            "LLM_PRIMARY",
+            "MODEL_SHADOW",
+            "MODEL_PRIMARY",
             "ML_SHADOW",
             "ML_WITH_FALLBACK",
             "ML_PRIMARY",

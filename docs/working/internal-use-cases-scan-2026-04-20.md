@@ -36,7 +36,7 @@ Conversation turns (user messages) into multi-label intent categories: `q_and_a`
 - Fun (if "joke", "lol", "haha", emoji)
 - Exploratory (default fallback)
 
-**Outcome observability:**
+**Verdict observability:**
 ✓ **Excellent.** Classroom extension overlays learning-objective keyword matching. Sessions flow through quiz scoring, student engagement analysis, and teacher dashboards. Instructors manually tag sessions with ground-truth pedagogical categories (engagement level, learning outcome met/not-met). Signals: final quiz score, teacher feedback, session replay corrections.
 
 **Expected cardinality & regime:**
@@ -65,7 +65,7 @@ Memory fragments (atomic units of knowledge) into MIRIX cognitive types based on
 - `EPISODIC` (has "event_time", "timestamp")
 - `SEMANTIC` (fallback; has "fact"/"concept"/"definition" or catch-all "text"/"content")
 
-**Outcome observability:**
+**Verdict observability:**
 ✓ **Strong.** Every fragment write goes through `CompositionService` (load-bearing invariant). Per-type stores handle indexing, retrieval, policy. Retrieval quality / user corrections / policy compliance audits all signal whether classification was right. Effectiveness metrics for procedural type (task completion rate).
 
 **Expected cardinality & regime:**
@@ -89,7 +89,7 @@ LLM queries before dispatch: is this conversation about export-controlled / rest
 - `PUBLIC` — can use cloud LLM (Anthropic, OpenAI)
 - `EXPORT_CONTROLLED` — must use private-network LLM (on-prem, VPN-protected)
 
-**Outcome observability:**
+**Verdict observability:**
 ✓ **Excellent.** Every query logged to `AuditLog.write_classification()`. Routing decision captured with matched terms, classifier chain (session/keyword/Ollama/fallback), confidence. Downstream: if query routed to wrong tier, either user reports or queries fail (access denied at provider level). Ground truth comes from post-hoc audit review or user correction.
 
 **Expected cardinality & regime:**
@@ -121,7 +121,7 @@ Synthesized signals (feedback, decisions, blockers, status updates) to intereste
 
 Implicitly classifies each signal as "matches endpoint E1", "matches endpoint E2", etc. (multi-label output).
 
-**Outcome observability:**
+**Verdict observability:**
 ✓ **Strong.** Router persists `TransitRecord` (signal_id, endpoint_id, queued_at, delivered_at, status) to `transit_log.json`. Endpoint delivery methods vary (file, webhook, internal). For webhooks: HTTP response code signals success/failure. For file/Slack: human sees if signal was relevant. Ground truth: user ignores signal (false positive match) or misses signal (false negative).
 
 **Expected cardinality & regime:**
@@ -148,7 +148,7 @@ At retrieval time, filters chunks (RAG context) based on principal's attestation
 Chunk-level: chunks have `classification` tag + `required_attribute` + `allowed_values`.
 Principal-level: signed `attestation` with `attributes` dict.
 
-**Outcome observability:**
+**Verdict observability:**
 ✓ **Excellent.** Denied accesses logged to JSONL audit log with reason. Downstream: if principal complains "I can't access chunk X", audit log shows why. Ground truth: request for exemption (user says "I should have access") → audit review → policy update. Access patterns: frequent denials on attribute X → policy is too restrictive.
 
 **Expected cardinality & regime:**
@@ -177,7 +177,7 @@ LLM-powered semantic matching: is signal X relevant to PRD Y?
 - `validate` — confirms assumptions
 - `none` — not relevant
 
-**Outcome observability:**
+**Verdict observability:**
 ✓ Strong. Suggestions persisted to `prd_suggestions.json`. User accepts/rejects via `accept_suggestion()` → binary feedback. Over time, can measure which suggestions were accepted (high true positive rate) vs. rejected (false positives).
 
 **Dendra-fit score:** 3.5/5
@@ -197,7 +197,7 @@ Document text for export-control markings before RAG ingest.
 - `review` — flag for human review
 - `reject` — don't ingest
 
-**Outcome observability:**
+**Verdict observability:**
 ✓ Good. Screened documents routed to corpus. If document later causes compliance issue (EC content found in public corpus), audit trail shows screening decision. Ground truth: compliance audits, data loss prevention alerts.
 
 **Dendra-fit score:** 2.5/5
@@ -213,7 +213,7 @@ Text against learning-objective keywords: does student turn touch topic X?
 
 **Label set:** Variable (depends on course learning objectives), typically 10–50 topics.
 
-**Outcome observability:**
+**Verdict observability:**
 ✓ Strong. Quiz questions, learning analytics, teacher dashboards all depend on accurate LO classification. Teacher can audit and correct.
 
 **Dendra-fit score:** 3/5
@@ -229,7 +229,7 @@ Given a query, which corpora to search? Routed by `RAGPolicy` (rule-based policy
 
 **Label set:** Corpus selection (variable). Current implementation is deterministic policy (enum).
 
-**Outcome observability:**
+**Verdict observability:**
 Moderate. Ground truth comes from user satisfaction (did I get good answers?) and retrieval metrics (NDCG, precision@5). Indirect signal.
 
 **Dendra-fit score:** 2.5/5
@@ -239,7 +239,7 @@ Lower fit. Rule is already a decision tree (which corpora in which order?). LLM 
 
 ## Summary Table
 
-| Rank | Use Case | File | Labels | Rule Type | Outcome Signal | Dendra-Fit | Why |
+| Rank | Use Case | File | Labels | Rule Type | Verdict Signal | Dendra-Fit | Why |
 |------|----------|------|--------|-----------|---------|-----------|-----|
 | 1 | Turn Intent | axiom/agents/turn_classifier.py | 6 | Keyword heuristic | Quiz score, teacher feedback | **5/5** | Shallow rule, immediate outcome, high volume, 80% baseline coverage |
 | 2 | Cognitive Type | axiom/memory/auto_classifier.py | 6 | Shape precedence | Type-specific retrieval quality | **4.5/5** | Multi-key heuristic, high volume, edge cases break rule |
@@ -259,7 +259,7 @@ Lower fit. Rule is already a decision tree (which corpora in which order?). LLM 
 
 1. **Rule-first baselines are everywhere.** Axiom extensively uses keyword heuristics + optional LLM layers. The infrastructure assumes rules are the starting point.
 
-2. **Outcome signals exist at multiple granularities:**
+2. **Verdict signals exist at multiple granularities:**
    - Immediate (quiz score, audit log, access denied) → high-quality feedback for retraining
    - Delayed (compliance audit, user complaint) → lower-quality signal, needs aggregation
    - Indirect (retrieval metrics, engagement) → correlational, not causal

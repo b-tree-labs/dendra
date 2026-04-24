@@ -60,7 +60,7 @@ flowchart TD
 ## FIG. 2 — Six-phase state machine
 
 **Description:** An ordered sequence of six states {RULE,
-LLM_SHADOW, LLM_PRIMARY, ML_SHADOW, ML_WITH_FALLBACK, ML_PRIMARY}.
+MODEL_SHADOW, MODEL_PRIMARY, ML_SHADOW, ML_WITH_FALLBACK, ML_PRIMARY}.
 Each forward transition is gated by a statistical test (§5.5). A
 regression (backward) transition is permitted at operator
 discretion. Safety-critical switches cannot enter ML_PRIMARY.
@@ -69,9 +69,9 @@ discretion. Safety-critical switches cannot enter ML_PRIMARY.
 stateDiagram-v2
     direction TB
     [*] --> RULE
-    RULE --> LLM_SHADOW: gate passes
-    LLM_SHADOW --> LLM_PRIMARY: gate passes
-    LLM_PRIMARY --> ML_SHADOW: gate passes
+    RULE --> MODEL_SHADOW: gate passes
+    MODEL_SHADOW --> MODEL_PRIMARY: gate passes
+    MODEL_PRIMARY --> ML_SHADOW: gate passes
     ML_SHADOW --> ML_WITH_FALLBACK: gate passes
     ML_WITH_FALLBACK --> ML_PRIMARY: gate passes AND NOT safety_critical
     ML_WITH_FALLBACK --> ML_WITH_FALLBACK: safety_critical cap
@@ -103,12 +103,12 @@ flowchart TB
       R1[rule] --> R2[→ return rule_out]:::box
     end
 
-    subgraph ls [LLM_SHADOW phase]
+    subgraph ls [MODEL_SHADOW phase]
       direction LR
       LS1[rule decides<br/>LLM shadows] --> LS2[→ return rule_out]:::box
     end
 
-    subgraph lp [LLM_PRIMARY phase]
+    subgraph lp [MODEL_PRIMARY phase]
       direction LR
       LP1[LLM] --> LP2{conf<br/>≥ threshold?}:::box
       LP2 -->|yes| LP3[→ return LLM_out]:::box
@@ -135,8 +135,8 @@ flowchart TB
     end
 
     PH -->|RULE| rp
-    PH -->|LLM_SHADOW| ls
-    PH -->|LLM_PRIMARY| lp
+    PH -->|MODEL_SHADOW| ls
+    PH -->|MODEL_PRIMARY| lp
     PH -->|ML_SHADOW| ms
     PH -->|ML_WITH_FALLBACK| mf
     PH -->|ML_PRIMARY| mp

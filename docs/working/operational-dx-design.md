@@ -14,7 +14,7 @@ noted as `[✓ shipped]`.
 A user shouldn't have to think about Dendra after adoption. Three
 concrete promises the code backs:
 
-1. **Self-managing storage.** Outcome logs never grow unbounded.
+1. **Self-managing storage.** Verdict logs never grow unbounded.
    Rotation, retention, compaction all run inline with no cron, no
    operator.
 2. **Self-measuring value.** Dendra reads its own logs and produces

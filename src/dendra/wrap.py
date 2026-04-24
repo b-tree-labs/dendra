@@ -26,7 +26,7 @@ from dataclasses import dataclass
 
 @dataclass
 class WrapResult:
-    """Outcome of a wrap operation."""
+    """Verdict of a wrap operation."""
 
     original_source: str
     modified_source: str

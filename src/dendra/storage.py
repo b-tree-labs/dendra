@@ -3,18 +3,41 @@
 
 """Storage backends for outcome records.
 
-Two backends ship with v0.2.0:
+Four backends ship with v0.2.x:
 
-- :class:`InMemoryStorage` — process-local, volatile. Zero dependencies.
-  Useful for tests and embedded deployments where outcome persistence
-  is owned by the host.
-- :class:`FileStorage` — JSONL append-log at
-  ``<base>/<switch_name>/outcomes.jsonl``. Durable across process
-  restarts. Zero dependencies. Self-managing: rotates at a configurable
-  size cap, prunes rotated segments past a configurable retention count,
-  and never grows unbounded.
+- :class:`InMemoryStorage` — unbounded process-local log. Zero
+  dependencies. Intended for tests and tightly-controlled workloads;
+  grows without limit.
+- :class:`BoundedInMemoryStorage` — the default for a bare
+  :class:`LearnedSwitch`. Process-local, FIFO-bounded at
+  ``max_records`` per switch so a long-running process with a
+  misconfigured ``record_verdict`` loop can't OOM the host.
+- :class:`FileStorage` — JSONL append-log with optional POSIX
+  ``flock`` serialization and optional ``fsync`` durability.
+  Durable across process restart. Safe for **single-host** multi-
+  process and multi-thread use when locking is enabled (default).
+  Not safe over NFS / network filesystems — see the class
+  docstring for the full concurrency / durability contract.
+- :class:`SqliteStorage` — SQLite WAL-mode backend. ACID guarantees,
+  1 writer + N readers within a host, zero external deps (stdlib
+  ``sqlite3``). Recommended for any production deployment where
+  multiple processes append to the same log.
 
-SQLite and Postgres backends share the :class:`Storage` protocol.
+Customize your own backend by implementing the :class:`Storage`
+protocol (duck-typed) or subclassing :class:`StorageBase`
+(abstract base, enforces the contract). The helpers
+:func:`serialize_record` and :func:`deserialize_record` encode
+the canonical JSON-line format so custom backends don't re-invent
+it.
+
+Each backend below documents its own concurrency, durability,
+and retention contract inline. Subclass :class:`StorageBase` (or
+conform to the duck-typed :class:`Storage` protocol) to ship a
+custom backend — use :func:`serialize_record` /
+:func:`deserialize_record` as the canonical JSON-line encoder.
+
+See ``docs/storage-backends.md`` for the full backend matrix,
+decision tree, and custom-backend recipe.
 """
 
 from __future__ import annotations
@@ -22,20 +45,145 @@ from __future__ import annotations
 import contextlib
 import json
 import os
+import sqlite3
+import sys
+import time
+import warnings
+from abc import ABC, abstractmethod
+from collections import deque
+from collections.abc import Callable
 from dataclasses import asdict
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
-from dendra.core import OutcomeRecord
+from dendra.core import ClassificationRecord
+
+# POSIX file locking — only available on POSIX systems. On Windows
+# we fall back to a no-op lock and emit a one-time warning so users
+# aren't silently exposed to rotation races.
+try:
+    import fcntl  # type: ignore[import-not-found,unused-ignore]
+
+    _HAS_FLOCK = True
+except ImportError:  # pragma: no cover — Windows path
+    fcntl = None  # type: ignore[assignment]
+    _HAS_FLOCK = False
+
+_WINDOWS_LOCK_WARNING_ISSUED = False
+
+
+# ---------------------------------------------------------------------------
+# Public contract
+# ---------------------------------------------------------------------------
 
 
 @runtime_checkable
 class Storage(Protocol):
-    """Contract every outcome-log backend implements."""
+    """Duck-typed contract every outcome-log backend implements.
 
-    def append_outcome(self, switch_name: str, record: OutcomeRecord) -> None: ...
+    Two methods, no state requirements. Any object providing these
+    methods satisfies :class:`Storage`; instances do not need to
+    inherit from anything. :class:`StorageBase` is a convenience
+    ABC for users who prefer abstract-method enforcement.
 
-    def load_outcomes(self, switch_name: str) -> list[OutcomeRecord]: ...
+    Invariants a well-behaved backend should preserve:
+
+    1. ``load_records`` returns records in *append order* (oldest
+       first, newest last). Phase-transition math depends on this.
+    2. ``append_record`` should not propagate exceptions into the
+       caller's classify-loop for transient I/O failures unless
+       durability has been explicitly requested — prefer to log and
+       drop, or buffer. (Dendra's built-in backends propagate;
+       tolerant custom backends are fine.)
+    3. ``load_records`` should be cheap enough to call from a
+       dashboard render path (p99 < 100 ms for 10 000 records is a
+       reasonable target).
+    """
+
+    def append_record(self, switch_name: str, record: ClassificationRecord) -> None: ...
+
+    def load_records(self, switch_name: str) -> list[ClassificationRecord]: ...
+
+
+class StorageBase(ABC):
+    """Abstract base class for custom storage backends.
+
+    Alternative to the :class:`Storage` protocol for users who
+    prefer abstract-method enforcement. Subclasses must implement
+    :meth:`append_record` and :meth:`load_records`. All of
+    Dendra's built-in backends are compatible with both this ABC
+    and the protocol.
+
+    Recipe::
+
+        from dendra.storage import StorageBase, serialize_record, deserialize_record
+
+        class S3Storage(StorageBase):
+            def __init__(self, bucket, prefix):
+                self._bucket = bucket
+                self._prefix = prefix
+
+            def append_record(self, switch_name, record):
+                line = serialize_record(record) + "\\n"
+                s3.append_object(
+                    Bucket=self._bucket,
+                    Key=f"{self._prefix}/{switch_name}.jsonl",
+                    Body=line.encode(),
+                )
+
+            def load_records(self, switch_name):
+                raw = s3.get_object(
+                    Bucket=self._bucket,
+                    Key=f"{self._prefix}/{switch_name}.jsonl",
+                )["Body"].read().decode()
+                return [
+                    deserialize_record(line)
+                    for line in raw.splitlines()
+                    if line.strip()
+                ]
+    """
+
+    @abstractmethod
+    def append_record(self, switch_name: str, record: ClassificationRecord) -> None:
+        """Append one record to the named switch's log."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def load_records(self, switch_name: str) -> list[ClassificationRecord]:
+        """Return every record for the named switch in append order."""
+        raise NotImplementedError
+
+
+# ---------------------------------------------------------------------------
+# Public serialization helpers
+# ---------------------------------------------------------------------------
+
+
+def serialize_record(record: ClassificationRecord) -> str:
+    """Encode a :class:`ClassificationRecord` as a single JSON line.
+
+    No trailing newline — the caller appends ``"\\n"`` (or the
+    platform line separator) if writing to a JSONL file. Non-
+    serializable values fall back to ``str(v)`` via ``default=str``.
+
+    Stable across Dendra versions within the same major release;
+    breaking-change deprecation windows are called out in
+    ``CHANGELOG.md``.
+    """
+    return json.dumps(asdict(record), default=str)
+
+
+def deserialize_record(line: str) -> ClassificationRecord:
+    """Parse a single JSON line produced by :func:`serialize_record`.
+
+    Raises :class:`json.JSONDecodeError` on malformed input and
+    :class:`TypeError` when the JSON object doesn't match the
+    :class:`ClassificationRecord` shape. Custom backends that want
+    the skip-malformed-lines behavior used by :class:`FileStorage`
+    should wrap this in ``try / except (JSONDecodeError, TypeError)``.
+    """
+    data = json.loads(line)
+    return ClassificationRecord(**data)
 
 
 # ---------------------------------------------------------------------------
@@ -43,21 +191,126 @@ class Storage(Protocol):
 # ---------------------------------------------------------------------------
 
 
-class InMemoryStorage:
-    """Process-local append log. Fast, volatile, zero-dep.
+class InMemoryStorage(StorageBase):
+    """Unbounded process-local append log. Fast, volatile, zero-dep.
 
-    Useful for tests, embedded deployments where the host owns
-    persistence, and for non-durable scratch workflows.
+    Useful for tests and embedded deployments where the host owns
+    persistence. **Not** the default: a runaway ``record_verdict``
+    loop on this backend can OOM the host. Prefer
+    :class:`BoundedInMemoryStorage` for production use without
+    persistence.
+
+    Thread safety: **not thread-safe**. Wrap externally if shared
+    between threads.
     """
 
     def __init__(self) -> None:
-        self._log: dict[str, list[OutcomeRecord]] = {}
+        self._log: dict[str, list[ClassificationRecord]] = {}
 
-    def append_outcome(self, switch_name: str, record: OutcomeRecord) -> None:
+    def append_record(self, switch_name: str, record: ClassificationRecord) -> None:
         self._log.setdefault(switch_name, []).append(record)
 
-    def load_outcomes(self, switch_name: str) -> list[OutcomeRecord]:
+    def load_records(self, switch_name: str) -> list[ClassificationRecord]:
         return list(self._log.get(switch_name, []))
+
+
+# ---------------------------------------------------------------------------
+# BoundedInMemoryStorage — the default backend
+# ---------------------------------------------------------------------------
+
+
+_DEFAULT_BOUNDED_MAX_RECORDS = 10_000
+
+
+class BoundedInMemoryStorage(StorageBase):
+    """Process-local append log with FIFO eviction.
+
+    Keeps the most recent ``max_records`` per switch. When a new
+    record would push the log past the cap, the oldest record is
+    evicted. This is the default backend for a bare
+    :class:`LearnedSwitch`: it bounds memory by construction and
+    requires zero configuration.
+
+    Trade-off: oldest outcomes age out silently. For full retention,
+    pass a :class:`FileStorage` (or use ``persist=True``); for
+    multi-process durability, pass a :class:`SqliteStorage`.
+
+    Thread safety: **not thread-safe**. Wrap externally.
+    """
+
+    def __init__(self, max_records: int = _DEFAULT_BOUNDED_MAX_RECORDS) -> None:
+        if max_records <= 0:
+            raise ValueError("max_records must be positive")
+        self._max_records = max_records
+        self._log: dict[str, deque[ClassificationRecord]] = {}
+
+    def append_record(self, switch_name: str, record: ClassificationRecord) -> None:
+        buf = self._log.get(switch_name)
+        if buf is None:
+            buf = deque(maxlen=self._max_records)
+            self._log[switch_name] = buf
+        buf.append(record)
+
+    def load_records(self, switch_name: str) -> list[ClassificationRecord]:
+        buf = self._log.get(switch_name)
+        return list(buf) if buf is not None else []
+
+    @property
+    def max_records(self) -> int:
+        return self._max_records
+
+
+# ---------------------------------------------------------------------------
+# File locking — POSIX only; no-op + one-shot warning on Windows
+# ---------------------------------------------------------------------------
+
+
+class _FileLock:
+    """Context manager wrapping POSIX ``flock`` on a sentinel file.
+
+    Exclusive mode (default) serializes writers within a single
+    host. Shared mode permits many concurrent readers but blocks
+    any writer. Lock state is released on ``__exit__``.
+
+    On Windows (no ``fcntl``) this degrades to a no-op; the first
+    instantiation emits a :class:`UserWarning` so callers are
+    aware that rotation races are not prevented on that platform.
+    Users needing cross-platform concurrency safety should use
+    :class:`SqliteStorage` instead.
+    """
+
+    def __init__(self, path: Path, *, shared: bool = False) -> None:
+        self._path = path
+        self._shared = shared
+        self._fd: int | None = None
+
+    def __enter__(self) -> _FileLock:
+        if not _HAS_FLOCK:
+            global _WINDOWS_LOCK_WARNING_ISSUED
+            if not _WINDOWS_LOCK_WARNING_ISSUED:
+                warnings.warn(
+                    "FileStorage locking disabled on this platform (no fcntl). "
+                    "Multi-process concurrent writers may race on rotation. "
+                    "For cross-platform concurrent-safe durability, use "
+                    "SqliteStorage instead.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                _WINDOWS_LOCK_WARNING_ISSUED = True
+            return self
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        self._fd = os.open(str(self._path), os.O_RDWR | os.O_CREAT, 0o644)
+        op = fcntl.LOCK_SH if self._shared else fcntl.LOCK_EX  # type: ignore[union-attr]
+        fcntl.flock(self._fd, op)  # type: ignore[union-attr]
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        if self._fd is not None:
+            with contextlib.suppress(OSError):
+                fcntl.flock(self._fd, fcntl.LOCK_UN)  # type: ignore[union-attr]
+            with contextlib.suppress(OSError):
+                os.close(self._fd)
+            self._fd = None
 
 
 # ---------------------------------------------------------------------------
@@ -73,12 +326,13 @@ _DEFAULT_MAX_BYTES_PER_SEGMENT = 64 * 1024 * 1024
 _DEFAULT_MAX_ROTATED_SEGMENTS = 8
 
 
-class FileStorage:
+class FileStorage(StorageBase):
     """JSONL append-log on disk with self-managing rotation.
 
     Layout::
 
         <base_path>/<switch_name>/
+            .lock                  # advisory lock file (POSIX flock)
             outcomes.jsonl         # active segment (appended to)
             outcomes.jsonl.1       # most-recent rotated segment
             outcomes.jsonl.2
@@ -90,7 +344,7 @@ class FileStorage:
     ``max_rotated_segments`` are deleted — old outcomes age out
     **automatically**, no cron required.
 
-    ``load_outcomes`` returns every segment in chronological order.
+    ``load_records`` returns every segment in chronological order.
     Malformed lines are silently skipped ("some data beats no data").
 
     The defaults (64 MB / 8 segments = ~512 MB cap per switch) are
@@ -98,6 +352,45 @@ class FileStorage:
     operator touch on any reasonable disk. Shrink them for embedded
     deployments; grow them for data-science workflows that need full
     history.
+
+    Concurrency contract
+    --------------------
+    With ``lock=True`` (the default) on POSIX: safe for
+    **single-host multi-process + multi-thread** writers and
+    readers. Writers take an exclusive ``flock`` on ``.lock`` for
+    the entire append + maybe-rotate sequence; readers take a
+    shared ``flock`` for the duration of the segment walk.
+
+    With ``lock=False`` or on Windows (no ``fcntl``): **not**
+    concurrent-safe. Rotation may race. Use this mode only when
+    you know there is a single writer. A one-time
+    :class:`UserWarning` is emitted on the first Windows
+    instantiation so this fact isn't silently swallowed.
+
+    Not safe over network filesystems (NFS, SMB): POSIX ``flock``
+    is unreliable there. For network-mounted deployments, use
+    :class:`SqliteStorage` (local disk) or a dedicated DB
+    backend.
+
+    Durability contract
+    -------------------
+    With ``fsync=False`` (the default): writes hit the kernel
+    buffer and are durable across process crashes, but a **host**
+    crash (power loss, kernel panic) can lose the tail of the log.
+
+    With ``fsync=True``: every write flushes to physical storage
+    before returning. Costs ~0.5–5 ms per append depending on
+    hardware. Use this for safety-critical switches where missing
+    outcomes around a host crash is unacceptable.
+
+    Customization
+    -------------
+    Subclass :class:`FileStorage` and override ``_serialize_line``
+    / ``_parse_line`` for custom serialization (e.g., encryption,
+    compression, schema evolution). Override ``_rotate`` for
+    custom retention policies. Use
+    :func:`serialize_record` / :func:`deserialize_record` as
+    building blocks.
     """
 
     def __init__(
@@ -106,6 +399,8 @@ class FileStorage:
         *,
         max_bytes_per_segment: int = _DEFAULT_MAX_BYTES_PER_SEGMENT,
         max_rotated_segments: int = _DEFAULT_MAX_ROTATED_SEGMENTS,
+        lock: bool = True,
+        fsync: bool = False,
     ) -> None:
         if max_bytes_per_segment <= 0:
             raise ValueError("max_bytes_per_segment must be positive")
@@ -115,6 +410,8 @@ class FileStorage:
         self._base.mkdir(parents=True, exist_ok=True)
         self._max_bytes = max_bytes_per_segment
         self._max_rotated = max_rotated_segments
+        self._lock_enabled = lock
+        self._fsync = fsync
 
     # ------------------------------------------------------------------
     # Paths
@@ -129,34 +426,87 @@ class FileStorage:
     def _rotated_path(self, switch_name: str, idx: int) -> Path:
         return self._switch_dir(switch_name) / f"outcomes.jsonl.{idx}"
 
+    def _lock_path(self, switch_name: str) -> Path:
+        return self._switch_dir(switch_name) / ".lock"
+
+    # ------------------------------------------------------------------
+    # Locking helpers
+    # ------------------------------------------------------------------
+
+    def _exclusive_lock(self, switch_name: str) -> contextlib.AbstractContextManager[object]:
+        if not self._lock_enabled:
+            return contextlib.nullcontext()
+        return _FileLock(self._lock_path(switch_name), shared=False)
+
+    def _shared_lock(self, switch_name: str) -> contextlib.AbstractContextManager[object]:
+        if not self._lock_enabled:
+            return contextlib.nullcontext()
+        return _FileLock(self._lock_path(switch_name), shared=True)
+
+    # ------------------------------------------------------------------
+    # Serialization hooks (override for custom encoding)
+    # ------------------------------------------------------------------
+
+    def _serialize_line(self, record: ClassificationRecord) -> bytes:
+        """Encode one record into the bytes written to disk (no newline).
+
+        Override to encrypt, compress, or change format. Must
+        round-trip with :meth:`_parse_line`.
+        """
+        return serialize_record(record).encode("utf-8")
+
+    def _parse_line(self, raw: bytes) -> ClassificationRecord | None:
+        """Decode one line of bytes into a record, or ``None`` on error.
+
+        Returning ``None`` signals "malformed, skip" and is the
+        mechanism by which partial-line reads on a concurrently-
+        appended file degrade gracefully.
+        """
+        try:
+            return deserialize_record(raw.decode("utf-8"))
+        except (json.JSONDecodeError, TypeError, UnicodeDecodeError):
+            return None
+
     # ------------------------------------------------------------------
     # Append path
     # ------------------------------------------------------------------
 
-    def append_outcome(self, switch_name: str, record: OutcomeRecord) -> None:
+    def append_record(self, switch_name: str, record: ClassificationRecord) -> None:
+        self._switch_dir(switch_name).mkdir(parents=True, exist_ok=True)
+        payload = self._serialize_line(record) + os.linesep.encode("utf-8")
         path = self._active_path(switch_name)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        line = json.dumps(asdict(record), default=str) + os.linesep
 
-        # Rotate BEFORE writing if the new line would put us over the cap.
-        # This keeps the size bound strict — segments never exceed cap.
-        if path.exists():
+        with self._exclusive_lock(switch_name):
+            # Rotate BEFORE writing if the new line would put us over cap.
+            # Under the exclusive lock the check-then-rotate is atomic.
+            if path.exists():
+                try:
+                    current = path.stat().st_size
+                except OSError:
+                    current = 0
+                if current + len(payload) > self._max_bytes:
+                    self._rotate(switch_name)
+
+            # Binary append + explicit fsync gives predictable durability.
+            fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644)
             try:
-                current = path.stat().st_size
-            except OSError:
-                current = 0
-            if current + len(line) > self._max_bytes:
-                self._rotate(switch_name)
-
-        with open(path, "a", encoding="utf-8") as f:
-            f.write(line)
+                os.write(fd, payload)
+                if self._fsync:
+                    os.fsync(fd)
+            finally:
+                os.close(fd)
 
     # ------------------------------------------------------------------
-    # Rotation
+    # Rotation (call only while holding the exclusive lock)
     # ------------------------------------------------------------------
 
     def _rotate(self, switch_name: str) -> None:
-        """Shift segments up and drop anything beyond the retention cap."""
+        """Shift segments up and drop anything beyond the retention cap.
+
+        Only safe to call with the exclusive lock held (or in
+        single-writer mode). Public callers should use
+        :meth:`compact`, which takes the lock itself.
+        """
         # Drop segments beyond retention first (from oldest to newest so
         # we never clobber one we'd still be renaming into).
         for idx in range(self._max_rotated + 1, 1000):
@@ -189,29 +539,29 @@ class FileStorage:
     # Read path
     # ------------------------------------------------------------------
 
-    def load_outcomes(self, switch_name: str) -> list[OutcomeRecord]:
-        records: list[OutcomeRecord] = []
-        # Walk rotated segments oldest→newest, then the active segment.
-        for idx in range(self._max_rotated, 0, -1):
-            records.extend(self._read_segment(self._rotated_path(switch_name, idx)))
-        records.extend(self._read_segment(self._active_path(switch_name)))
+    def load_records(self, switch_name: str) -> list[ClassificationRecord]:
+        records: list[ClassificationRecord] = []
+        if not self._switch_dir(switch_name).exists():
+            return records
+        with self._shared_lock(switch_name):
+            # Walk rotated segments oldest→newest, then the active segment.
+            for idx in range(self._max_rotated, 0, -1):
+                records.extend(self._read_segment(self._rotated_path(switch_name, idx)))
+            records.extend(self._read_segment(self._active_path(switch_name)))
         return records
 
-    @staticmethod
-    def _read_segment(path: Path) -> list[OutcomeRecord]:
+    def _read_segment(self, path: Path) -> list[ClassificationRecord]:
         if not path.exists():
             return []
-        out: list[OutcomeRecord] = []
-        with open(path, encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
+        out: list[ClassificationRecord] = []
+        with open(path, "rb") as f:
+            for raw_line in f:
+                stripped = raw_line.rstrip(b"\r\n")
+                if not stripped:
                     continue
-                try:
-                    data = json.loads(line)
-                    out.append(OutcomeRecord(**data))
-                except (json.JSONDecodeError, TypeError):
-                    continue
+                rec = self._parse_line(stripped)
+                if rec is not None:
+                    out.append(rec)
         return out
 
     # ------------------------------------------------------------------
@@ -231,7 +581,7 @@ class FileStorage:
         if not d.exists():
             return 0
         for p in d.iterdir():
-            if p.is_file():
+            if p.is_file() and not p.name.startswith("."):
                 try:
                     total += p.stat().st_size
                 except OSError:
@@ -239,5 +589,423 @@ class FileStorage:
         return total
 
     def compact(self, switch_name: str) -> None:
-        """Force a rotation pass now, useful before archiving."""
-        self._rotate(switch_name)
+        """Force a rotation pass now, useful before archiving.
+
+        Takes the exclusive lock before rotating, so it's safe to
+        call concurrently with other writers.
+        """
+        with self._exclusive_lock(switch_name):
+            self._rotate(switch_name)
+
+
+# ---------------------------------------------------------------------------
+# SqliteStorage — recommended for concurrent production workloads
+# ---------------------------------------------------------------------------
+
+
+class SqliteStorage(StorageBase):
+    """Durable outcome log on SQLite (WAL journal mode).
+
+    The recommended backend for any production deployment where
+    multiple processes append to the same log on a single host.
+    Zero external dependencies: uses stdlib ``sqlite3``.
+
+    Concurrency contract
+    --------------------
+    SQLite WAL mode provides **1 writer + N concurrent readers**
+    on the same database file. Multiple writer processes are
+    serialized by SQLite's ``BEGIN IMMEDIATE`` — safe, not
+    parallel. This is typically fine for outcome logging (throughput
+    is bounded by classifier throughput, not the log).
+
+    A fresh connection is opened per call; no shared-connection
+    thread-safety concerns. ``PRAGMA journal_mode=WAL`` is set on
+    schema init and persists in the database file thereafter.
+
+    Durability contract
+    -------------------
+    Controlled by the ``sync`` kwarg (maps to
+    ``PRAGMA synchronous``):
+
+    - ``"OFF"`` — fastest, but a host crash can corrupt the log.
+    - ``"NORMAL"`` (default) — crash-safe across process death;
+      a host crash may lose the final transaction but never
+      corrupt.
+    - ``"FULL"`` — crash-safe across host crash; ~2x write cost.
+
+    Platform notes
+    --------------
+    SQLite WAL does NOT work over network filesystems (NFS, SMB,
+    etc.). Use local disk only. For distributed writers, move to
+    PostgresStorage (v0.3 roadmap) or a dedicated queue.
+
+    Schema (for operators / custom tooling)
+    ---------------------------------------
+    One table, ``outcomes``::
+
+        CREATE TABLE outcomes (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            switch_name  TEXT NOT NULL,
+            timestamp    REAL NOT NULL,
+            data         TEXT NOT NULL   -- serialized JSON record
+        );
+        CREATE INDEX idx_switch ON outcomes(switch_name, id);
+
+    The JSON payload in ``data`` uses the same format produced by
+    :func:`serialize_record`, so custom readers don't need to
+    understand the SQLite schema — they can copy the payloads as
+    JSONL.
+    """
+
+    def __init__(
+        self,
+        db_path: str | Path,
+        *,
+        sync: str = "NORMAL",
+        timeout: float = 30.0,
+    ) -> None:
+        valid_sync = {"OFF", "NORMAL", "FULL", "EXTRA"}
+        if sync not in valid_sync:
+            raise ValueError(f"sync must be one of {valid_sync}; got {sync!r}")
+        if timeout <= 0:
+            raise ValueError("timeout must be positive")
+        self._db_path = Path(db_path)
+        self._db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._sync = sync
+        self._timeout = timeout
+        self._init_schema()
+
+    @contextlib.contextmanager
+    def _connect(self):  # type: ignore[no-untyped-def]
+        """Open a fresh connection, configure it, close on exit.
+
+        sqlite3's own context-manager semantics only commit/rollback
+        the transaction — they DO NOT close the connection. We wrap
+        to guarantee closure, since we open one connection per call
+        for thread safety.
+        """
+        conn = sqlite3.connect(
+            str(self._db_path),
+            timeout=self._timeout,
+            isolation_level=None,  # autocommit; we manage txns explicitly
+        )
+        try:
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute(f"PRAGMA synchronous={self._sync}")
+            conn.execute("PRAGMA busy_timeout=30000")
+            yield conn
+        finally:
+            conn.close()
+
+    def _init_schema(self) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS outcomes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    switch_name TEXT NOT NULL,
+                    timestamp REAL NOT NULL,
+                    data TEXT NOT NULL
+                )
+                """
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_outcomes_switch "
+                "ON outcomes(switch_name, id)"
+            )
+
+    def append_record(self, switch_name: str, record: ClassificationRecord) -> None:
+        data = serialize_record(record)
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                conn.execute(
+                    "INSERT INTO outcomes (switch_name, timestamp, data) "
+                    "VALUES (?, ?, ?)",
+                    (switch_name, float(record.timestamp), data),
+                )
+                conn.execute("COMMIT")
+            except Exception:
+                conn.execute("ROLLBACK")
+                raise
+
+    def load_records(self, switch_name: str) -> list[ClassificationRecord]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT data FROM outcomes WHERE switch_name = ? ORDER BY id",
+                (switch_name,),
+            ).fetchall()
+        out: list[ClassificationRecord] = []
+        for (payload,) in rows:
+            try:
+                out.append(deserialize_record(payload))
+            except (json.JSONDecodeError, TypeError):
+                # Graceful degradation matches FileStorage's contract.
+                continue
+        return out
+
+    def switch_names(self) -> list[str]:
+        """Return every switch that has at least one recorded outcome."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT DISTINCT switch_name FROM outcomes ORDER BY switch_name"
+            ).fetchall()
+        return [r[0] for r in rows]
+
+    def count(self, switch_name: str) -> int:
+        """Count outcomes for a switch without materializing them."""
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) FROM outcomes WHERE switch_name = ?",
+                (switch_name,),
+            ).fetchone()
+        return int(row[0]) if row else 0
+
+    @property
+    def db_path(self) -> Path:
+        return self._db_path
+
+
+# ---------------------------------------------------------------------------
+# ResilientStorage — auto-fallback wrapper for "never lose a classification"
+# ---------------------------------------------------------------------------
+
+
+_DEFAULT_FALLBACK_MAX_RECORDS = 100_000
+_DEFAULT_RECOVERY_PROBE_EVERY = 100
+
+
+class ResilientStorage(StorageBase):
+    """Wrap a durable backend with an in-memory fallback.
+
+    On primary append failure, spills to a bounded in-memory
+    buffer and emits a one-time :class:`UserWarning`. Subsequent
+    writes go straight to the fallback until a recovery probe
+    succeeds. On recovery, the fallback is drained back into the
+    primary (in append order); thereafter normal operation
+    resumes.
+
+    ``load_records`` always returns primary records followed by
+    fallback records, so readers get a consistent view regardless
+    of degraded state.
+
+    Intended for classification-hot-path durability: a failing
+    disk or a transient permission error on the outcome log must
+    NOT take down classification. The trade-off is that an
+    operator who doesn't watch the degraded signal could lose
+    fallback records to process death — this wrapper buys
+    liveness, not durability, during the degraded window.
+
+    Signalling (for operators and compliance audits):
+    - ``degraded`` property — currently in fallback mode?
+    - ``degraded_since`` — monotonic timestamp when we entered
+      degraded mode (``None`` when healthy).
+    - ``degraded_writes`` — count of records that landed in
+      fallback (running total across episodes).
+    - ``on_degrade`` / ``on_recover`` callbacks — hooks for
+      pushing to alerting / telemetry channels.
+
+    Customization: subclass and override :meth:`_enter_degraded`
+    / :meth:`_try_recover` to integrate with your own breaker,
+    signal-sink, or escalation logic.
+    """
+
+    def __init__(
+        self,
+        primary: Storage,
+        *,
+        fallback: Storage | None = None,
+        fallback_max_records: int = _DEFAULT_FALLBACK_MAX_RECORDS,
+        recovery_probe_every: int = _DEFAULT_RECOVERY_PROBE_EVERY,
+        on_degrade: Callable[[Exception], None] | None = None,
+        on_recover: Callable[[int], None] | None = None,
+    ) -> None:
+        if recovery_probe_every <= 0:
+            raise ValueError("recovery_probe_every must be positive")
+        self._primary = primary
+        self._fallback = fallback if fallback is not None else BoundedInMemoryStorage(
+            max_records=fallback_max_records
+        )
+        self._recovery_probe_every = recovery_probe_every
+        self._on_degrade = on_degrade
+        self._on_recover = on_recover
+
+        self._degraded: bool = False
+        self._degraded_since: float | None = None
+        self._degraded_writes: int = 0
+        self._writes_since_probe: int = 0
+        self._tracked_switches: set[str] = set()
+
+    # --- Status ------------------------------------------------------------
+
+    @property
+    def degraded(self) -> bool:
+        """``True`` iff primary is currently unavailable."""
+        return self._degraded
+
+    @property
+    def degraded_since(self) -> float | None:
+        """Monotonic timestamp of the degradation entry, or ``None``."""
+        return self._degraded_since
+
+    @property
+    def degraded_writes(self) -> int:
+        """Total writes that landed in fallback (running counter)."""
+        return self._degraded_writes
+
+    @property
+    def primary(self) -> Storage:
+        return self._primary
+
+    @property
+    def fallback(self) -> Storage:
+        return self._fallback
+
+    # --- Storage protocol --------------------------------------------------
+
+    def append_record(self, switch_name: str, record: ClassificationRecord) -> None:
+        self._tracked_switches.add(switch_name)
+
+        if not self._degraded:
+            try:
+                self._primary.append_record(switch_name, record)
+                return
+            except Exception as e:
+                self._enter_degraded(e)
+                # fall through — append to fallback below
+
+        self._fallback.append_record(switch_name, record)
+        self._degraded_writes += 1
+        self._writes_since_probe += 1
+        if self._writes_since_probe >= self._recovery_probe_every:
+            self._writes_since_probe = 0
+            self._try_recover()
+
+    def load_records(self, switch_name: str) -> list[ClassificationRecord]:
+        primary_recs: list[ClassificationRecord] = []
+        try:
+            primary_recs = list(self._primary.load_records(switch_name))
+        except Exception:
+            # Primary unreachable even for reads — return whatever we have
+            # in the fallback buffer rather than raising.
+            pass
+        fallback_recs = list(self._fallback.load_records(switch_name))
+        return primary_recs + fallback_recs
+
+    # --- Degraded-mode machinery ------------------------------------------
+
+    def _enter_degraded(self, reason: Exception) -> None:
+        if self._degraded:
+            return
+        self._degraded = True
+        self._degraded_since = time.monotonic()
+        self._writes_since_probe = 0
+        warnings.warn(
+            f"ResilientStorage: primary backend failed "
+            f"({type(reason).__name__}: {reason}); falling back to the "
+            "in-memory buffer. Records will drain back automatically "
+            "when the primary recovers. Watch the `degraded` property "
+            "and your `on_degrade` hook for operator action.",
+            UserWarning,
+            stacklevel=3,
+        )
+        if self._on_degrade is not None:
+            try:
+                self._on_degrade(reason)
+            except Exception:
+                pass
+
+    def _try_recover(self) -> None:
+        """Attempt to drain the fallback buffer into the primary.
+
+        On full success: mark healthy and fire ``on_recover``. On
+        partial success or failure: stay degraded; records remain
+        in fallback for the next probe.
+        """
+        drained = 0
+        try:
+            for switch_name in sorted(self._tracked_switches):
+                fallback_recs = self._fallback.load_records(switch_name)
+                if not fallback_recs:
+                    continue
+                # Replay in append order. Any exception aborts the drain
+                # — we leave the un-drained records in fallback.
+                for rec in fallback_recs:
+                    self._primary.append_record(switch_name, rec)
+                    drained += 1
+                # All records for this switch made it over — clear the
+                # fallback entries for this switch to avoid re-replay.
+                self._clear_fallback_for(switch_name)
+        except Exception:
+            return  # Still degraded; try again next probe.
+
+        # Fully drained.
+        self._degraded = False
+        self._degraded_since = None
+        self._writes_since_probe = 0
+        warnings.warn(
+            f"ResilientStorage: primary recovered; drained {drained} "
+            "record(s) from fallback.",
+            UserWarning,
+            stacklevel=3,
+        )
+        if self._on_recover is not None:
+            try:
+                self._on_recover(drained)
+            except Exception:
+                pass
+
+    def _clear_fallback_for(self, switch_name: str) -> None:
+        """Reset fallback storage for one switch after a successful drain.
+
+        Default implementation assumes the fallback exposes a private
+        ``_log`` dict keyed by switch name — matches both
+        :class:`InMemoryStorage` and :class:`BoundedInMemoryStorage`.
+        Override for custom fallbacks.
+        """
+        log = getattr(self._fallback, "_log", None)
+        if isinstance(log, dict) and switch_name in log:
+            del log[switch_name]
+
+    def drain(self) -> int:
+        """Explicit operator-triggered drain attempt.
+
+        Returns the number of records successfully drained.
+        Useful in tests or in on-demand maintenance tasks.
+        """
+        before = self._degraded_writes
+        if self._degraded:
+            self._try_recover()
+        # Approximate "drained" as the count of records that moved;
+        # we don't precisely track per-drain counts here.
+        return before - (before - self._degraded_writes)
+
+
+# Platform-capability export for consumers that want to branch
+# behavior (tests, example code, opt-in hardening).
+__all__ = [
+    "BoundedInMemoryStorage",
+    "FileStorage",
+    "InMemoryStorage",
+    "ResilientStorage",
+    "SqliteStorage",
+    "Storage",
+    "StorageBase",
+    "deserialize_record",
+    "serialize_record",
+]
+
+
+# Allow consumers to test for platform lock support without
+# importing the private _HAS_FLOCK name.
+def flock_supported() -> bool:
+    """``True`` if POSIX ``flock`` is available on this platform."""
+    return _HAS_FLOCK
+
+
+# Exposed for test-only monkeypatching. Not part of the stable API.
+_TEST_HOOKS = {
+    "has_flock": _HAS_FLOCK,
+    "sqlite_version": sqlite3.sqlite_version,
+    "python_platform": sys.platform,
+}

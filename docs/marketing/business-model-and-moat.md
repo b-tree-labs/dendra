@@ -72,7 +72,7 @@ Adds the runtime layer. Users wrap their candidate sites with a
 - Call volume + latency distribution.
 - Input shape/length (for ML-head sizing estimates).
 - Output distribution (to detect label drift, stale branches).
-- Outcome signal if a caller provides one (optional).
+- Verdict signal if a caller provides one (optional).
 
 After 24–72h of production traffic, the analyzer produces:
 

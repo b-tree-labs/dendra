@@ -236,17 +236,17 @@ ordered preferred-embodiment phases are:
 
 - **RULE**: the rule tier alone produces the classification; no
   learned tier is invoked.
-- **LLM_SHADOW**: the rule tier produces the classification;
+- **MODEL_SHADOW**: the rule tier produces the classification;
   the LLM tier is invoked observationally. Observational
   invocations are architecturally isolated from the decision
   path (§3.7) — their failures (exceptions, timeouts, invalid
   outputs, etc.) do not propagate to the caller.
-- **LLM_PRIMARY**: the LLM tier produces the classification
+- **MODEL_PRIMARY**: the LLM tier produces the classification
   when a decision-acceptance predicate is satisfied (in the
   preferred embodiment, a confidence threshold; alternatives
   in §13, §14); otherwise the rule tier's output serves as a
   fallback. Detected LLM failure triggers rule-fallback.
-- **ML_SHADOW**: primary decision follows LLM_PRIMARY semantics
+- **ML_SHADOW**: primary decision follows MODEL_PRIMARY semantics
   (or RULE if no LLM is configured); the machine-learned tier
   is invoked observationally.
 - **ML_WITH_FALLBACK**: the machine-learned tier produces the
@@ -287,7 +287,7 @@ controls. This bounded-regression-probability property is a
 distinguishing technical improvement of the invention relative
 to the prior art described in §2.3.
 
-### 3.4 Outcome record store
+### 3.4 Verdict record store
 
 [0019] The outcome record store is a durable record of
 classification events. Each record captures at minimum: an
@@ -489,12 +489,12 @@ previously-classified input.
 ### 5.2 Phase state machine
 
 [0036] Referring to FIG. 2, the phase selector is a state machine
-over the six-element set {RULE, LLM_SHADOW, LLM_PRIMARY,
+over the six-element set {RULE, MODEL_SHADOW, MODEL_PRIMARY,
 ML_SHADOW, ML_WITH_FALLBACK, ML_PRIMARY}. Permitted transitions
 are forward-only in typical operation (each phase advances to
 the next when the statistical gate is satisfied) but the system
 also permits operator-initiated regression to any earlier phase
-(e.g., reverting from ML_WITH_FALLBACK to LLM_PRIMARY upon
+(e.g., reverting from ML_WITH_FALLBACK to MODEL_PRIMARY upon
 observing unexpected ML behavior).
 
 [0037] In one embodiment, the phase is stored as a field on the
@@ -512,17 +512,17 @@ phases, the rule function 120 is invoked first and its output
 retained as `rule_output`. Subsequent actions depend on phase:
 
 **RULE** (phase 0): Return the rule output directly. No further
-classifiers are invoked. Outcome log records the rule output
+classifiers are invoked. Verdict log records the rule output
 with source "rule" and confidence 1.0.
 
-**LLM_SHADOW** (phase 1): Invoke the LLM classifier 130 for
+**MODEL_SHADOW** (phase 1): Invoke the LLM classifier 130 for
 observation. On LLM success, record the LLM output and
 confidence on the switch's internal "last shadow" state for
 pickup at the next `record_outcome` call. On LLM exception,
 swallow the exception and continue. Return the rule output with
 source "rule" and confidence 1.0.
 
-**LLM_PRIMARY** (phase 2): Invoke the LLM classifier 130. On
+**MODEL_PRIMARY** (phase 2): Invoke the LLM classifier 130. On
 LLM exception, return the rule output with source "rule_fallback"
 and confidence 1.0. On LLM success, compare the LLM confidence
 against the threshold; if below threshold, return the rule output
@@ -530,7 +530,7 @@ with source "rule_fallback" and confidence 1.0; if at or above
 threshold, return the LLM output with source "llm" and the LLM's
 confidence.
 
-**ML_SHADOW** (phase 3): The primary decision follows LLM_PRIMARY
+**ML_SHADOW** (phase 3): The primary decision follows MODEL_PRIMARY
 semantics if an LLM is configured, otherwise RULE semantics. In
 parallel, invoke the ML head 140 for observation. On ML exception,
 swallow. Record the ML output and confidence on the switch's
@@ -550,7 +550,7 @@ return the ML output with source "ml" and ML confidence,
 regardless of confidence threshold (the breaker, not the
 threshold, provides the safety floor).
 
-### 5.4 Outcome record schema and storage
+### 5.4 Verdict record schema and storage
 
 [0039] Each outcome record comprises at least the following
 fields: a timestamp (floating-point seconds since Unix epoch);
@@ -700,7 +700,7 @@ is sufficient for the load-bearing property.
 
 ### 5.8 Shadow-phase isolation implementation
 
-[0056] The LLM_SHADOW and ML_SHADOW paths are implemented with
+[0056] The MODEL_SHADOW and ML_SHADOW paths are implemented with
 the following invariant: the decision-maker's output is
 determined before the shadow classifier is invoked. When the
 shadow classifier is invoked, its call is wrapped in a
@@ -712,8 +712,8 @@ the switch's return value.
 ### 5.9 LLM classifier protocol
 
 [0057] The LLM classifier is specified by a protocol: any object
-with a method `classify(input, labels) -> LLMPrediction`, where
-LLMPrediction is a value object carrying a `label` (string) and
+with a method `classify(input, labels) -> ModelPrediction`, where
+ModelPrediction is a value object carrying a `label` (string) and
 a `confidence` (float in [0, 1]).
 
 [0058] In the preferred embodiment, the invention ships thin
@@ -732,7 +732,7 @@ classifiers, open-weight models served locally, remote inference
 services, or caching layers atop any of the above.
 
 [0059a] **Model family is not limited to large language models.**
-The terms "LLM classifier," "LLM_SHADOW," and "LLM_PRIMARY" are
+The terms "LLM classifier," "MODEL_SHADOW," and "MODEL_PRIMARY" are
 used throughout this specification as illustrative shorthand for
 an intermediate probabilistic tier that provides richer
 generalization than the rule tier without yet occupying the
@@ -1098,7 +1098,7 @@ security-incident prevention:
   classifiers (export-control, role-based, data-sensitivity)
   cannot graduate to pure-ML decision-making due to the
   construction-time cap.
-- **Silent ML regression detection.** Outcome log comparison
+- **Silent ML regression detection.** Verdict log comparison
   between ML output and rule output reveals silent regression;
   the statistical transition gate prevents re-graduation until
   the regression is resolved.
@@ -1170,7 +1170,7 @@ and circuit-breaker logic.
 patterns drawn from publicly-known categories (direct override,
 nested smuggling, role reversal, encoding tricks, authority
 spoof, Unicode homoglyph attacks, DAN-style, tool-poisoning,
-etc.); 100% rule-floor holds under LLM_SHADOW phase even when
+etc.); 100% rule-floor holds under MODEL_SHADOW phase even when
 the shadow LLM was configured to return the attacker-desired
 label with 99% confidence.
 
@@ -1298,8 +1298,8 @@ criterion of (d) is a paired-proportion hypothesis test at a
 configurable one-sided significance level.
 
 **CC-3.** The method of CC-1 wherein the plurality of ordered
-phases comprises six ordered phases (RULE, LLM_SHADOW,
-LLM_PRIMARY, ML_SHADOW, ML_WITH_FALLBACK, ML_PRIMARY) with the
+phases comprises six ordered phases (RULE, MODEL_SHADOW,
+MODEL_PRIMARY, ML_SHADOW, ML_WITH_FALLBACK, ML_PRIMARY) with the
 routing semantics described in §3.2.
 
 **CC-4.** The method of CC-1 wherein the outcome record captures
@@ -1406,8 +1406,8 @@ ensemble of a plurality of base learners.
 [0111a] The phase-name shorthand "LLM_*" and "ML_*" is not
 limited to the specific model families those names connote in
 the preferred embodiment. Alternative embodiments substitute,
-for the intermediate probabilistic tier (phases LLM_SHADOW and
-LLM_PRIMARY), any of the model classes enumerated in §5.9 [0059a]
+for the intermediate probabilistic tier (phases MODEL_SHADOW and
+MODEL_PRIMARY), any of the model classes enumerated in §5.9 [0059a]
 — including but not limited to small language models,
 encoder-only masked-language models, encoder-decoder models,
 state-space models, mixture-of-experts models, diffusion models
@@ -2186,7 +2186,7 @@ confidence determines breaker behavior. The ensemble is treated
 as a single logical ML head for §3 and §5 purposes.
 
 [0182] **Interpolated decision at a phase.** In another, the
-classification at LLM_PRIMARY or ML_PRIMARY phases is a weighted
+classification at MODEL_PRIMARY or ML_PRIMARY phases is a weighted
 combination of the tier's output and the rule's output, with the
 weight determined by confidence or by a calibrated interpolation
 function. Such interpolations are within scope.
@@ -2285,7 +2285,7 @@ elements are:
   learned component).
 - A **selector** among the tiers (any form — enumeration, config,
   policy, LLM prompt, function composition).
-- **Outcome logging** (any durable record of classifications and
+- **Verdict logging** (any durable record of classifications and
   observed results).
 - A **gated transition mechanism** between selector states (any
   evidence-based criterion — statistical, accuracy-threshold,
@@ -2335,7 +2335,7 @@ The unit may be an object, a closure, a service, a row in a
 database, a workflow instance, a document in a configuration
 store, or any equivalent state-carrying construct.
 
-[0199] **"Outcome log"** means any durable record of tuples
+[0199] **"Verdict log"** means any durable record of tuples
 comprising at minimum (input-identifier, decision-tier-output,
 ground-truth-outcome-label) for a plurality of classification
 events. Durability may be local disk, networked storage, a
@@ -2398,8 +2398,8 @@ needed for enablement under 35 USC 112.
 ## 12. ABSTRACT
 
 A graduated-autonomy classification system comprises a switch
-instance operating in one of six ordered phases (RULE, LLM_SHADOW,
-LLM_PRIMARY, ML_SHADOW, ML_WITH_FALLBACK, ML_PRIMARY), routing
+instance operating in one of six ordered phases (RULE, MODEL_SHADOW,
+MODEL_PRIMARY, ML_SHADOW, ML_WITH_FALLBACK, ML_PRIMARY), routing
 each classification request to a rule function, an LLM, or an
 ML head per phase-specific semantics, recording each outcome
 to an append-only log with automatic size-bounded rotation, and

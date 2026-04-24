@@ -74,7 +74,7 @@ formalized.** We formalized it.
 Six-phase graduated-autonomy primitive:
 
 ```
-RULE → LLM_SHADOW → LLM_PRIMARY → ML_SHADOW → ML_WITH_FALLBACK → ML_PRIMARY
+RULE → MODEL_SHADOW → MODEL_PRIMARY → ML_SHADOW → ML_WITH_FALLBACK → ML_PRIMARY
 ```
 
 Each transition is gated by a statistical test against an
@@ -109,7 +109,7 @@ def triage(ticket):
 ```
 
 - Zero behavior change on day one (Phase 0 = rule).
-- Outcome log captures every classification.
+- Verdict log captures every classification.
 - Graduate to higher phases when statistical evidence justifies.
 - **Dendra switch overhead: 0.62 µs.** Lower than a Python
   attribute lookup. *No production team will feel it.*

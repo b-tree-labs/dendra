@@ -213,7 +213,7 @@ noticing.
 
 **Why Dendra.** The safety-critical version of this with
 `safety_critical=True` would refuse to construct in the final
-phase, but at Phase.LLM_SHADOW it would log every (query_kind,
+phase, but at Phase.MODEL_SHADOW it would log every (query_kind,
 selected_instructions, llm_output_quality_signal) tuple — giving
 PostHog a clean outcome record to graduate *which* query kinds
 get ML-selected instructions and *which* should stay rule-based
@@ -279,7 +279,7 @@ function returns `None` and downstream code falls back to
 exception-based probing — slower and harder to diagnose.
 
 **Why Dendra.** Every new ML-framework release is a potential
-gap in this function. A Phase.LLM_SHADOW wrap would record the
+gap in this function. A Phase.MODEL_SHADOW wrap would record the
 `repr` prefix alongside the rule's decision; the LLM (or, later,
 a small ML head trained on accumulated outcomes) could learn to
 recognize "<class 'jax." as `jax`, `"<class 'tensorflow."` as
@@ -412,7 +412,7 @@ The analyzer's job is to find the sites. After that, the typical
 path for a team that decides to try Dendra:
 
 1. **Wrap the highest-fit site with `@ml_switch` at Phase.RULE.**
-   Zero behavior change. Outcome log starts accumulating.
+   Zero behavior change. Verdict log starts accumulating.
    ```bash
    dendra init path/to/file.py:target_function --author "@you:team"
    ```

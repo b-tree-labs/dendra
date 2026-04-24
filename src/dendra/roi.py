@@ -109,14 +109,14 @@ def compute_switch_roi(
 ) -> SwitchROI:
     """Compute ROI for one switch from its outcome log."""
     a = assumptions or ROIAssumptions()
-    outcomes = storage.load_outcomes(switch_name)
+    outcomes = storage.load_records(switch_name)
     total = len(outcomes)
     correct = sum(1 for r in outcomes if r.outcome == "correct")
     incorrect = sum(1 for r in outcomes if r.outcome == "incorrect")
     acc = correct / total if total else 0.0
 
     graduated = any(
-        getattr(r, "source", "rule") in {"llm", "ml", "rule_fallback"} for r in outcomes
+        getattr(r, "source", "rule") in {"model", "ml", "rule_fallback"} for r in outcomes
     )
 
     # Direct engineering savings: (baseline - dendra) weeks × cost.
@@ -153,10 +153,10 @@ def compute_switch_roi(
     )
 
     # Token-cost savings: every outcome that Dendra routed through
-    # rule/ML is an LLM call the counter-factual design would have paid
-    # for. We count outcomes whose source is NOT "llm" (i.e., handled
-    # without calling the LLM) and multiply by per-call token cost.
-    llm_calls_avoided = sum(1 for r in outcomes if getattr(r, "source", "rule") != "llm")
+    # rule/ML is a model call the counter-factual design would have paid
+    # for. We count outcomes whose source is NOT "model" (i.e., handled
+    # without calling the model) and multiply by per-call token cost.
+    llm_calls_avoided = sum(1 for r in outcomes if getattr(r, "source", "rule") != "model")
     # Scale by the "what fraction would have gone to LLM in the counter-
     # factual" knob. Default 1.0 = "team would have shipped LLM-only".
     counterfactual_llm_calls = llm_calls_avoided * a.pct_outcomes_that_would_use_llm_without_dendra

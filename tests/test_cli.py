@@ -21,7 +21,7 @@ import time
 
 import pytest
 
-from dendra import FileStorage, OutcomeRecord
+from dendra import ClassificationRecord, FileStorage
 from dendra.cli import main
 
 
@@ -194,12 +194,12 @@ class TestCliRoi:
     def _seed_storage(self, tmp_path):
         s = FileStorage(tmp_path)
         for i in range(20):
-            s.append_outcome(
+            s.append_record(
                 "triage",
-                OutcomeRecord(
+                ClassificationRecord(
                     timestamp=time.time(),
                     input=f"in {i}",
-                    output="bug",
+                    label="bug",
                     outcome="correct" if i % 3 else "incorrect",
                     source="rule",
                     confidence=1.0,

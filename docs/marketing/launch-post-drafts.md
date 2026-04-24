@@ -141,7 +141,7 @@ paper + benchmarks qualify).
 > *principled* criterion for *when* to advance.
 >
 > **Contribution.** We define a six-phase lifecycle (RULE →
-> LLM_SHADOW → LLM_PRIMARY → ML_SHADOW → ML_WITH_FALLBACK →
+> MODEL_SHADOW → MODEL_PRIMARY → ML_SHADOW → ML_WITH_FALLBACK →
 > ML_PRIMARY) and prove that, when each phase transition is gated
 > by a paired-proportion statistical test at significance level α,
 > the probability of producing worse-than-rule behavior at any

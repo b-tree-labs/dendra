@@ -7,7 +7,7 @@ Every :class:`~dendra.core.LearnedSwitch` can be configured with a
 :class:`TelemetryEmitter`. The switch emits two event kinds:
 
 - ``classify``  — one per :meth:`~dendra.core.LearnedSwitch.classify`
-- ``outcome``   — one per :meth:`~dendra.core.LearnedSwitch.record_outcome`
+- ``outcome``   — one per :meth:`~dendra.core.LearnedSwitch.record_verdict`
 
 An emitter is just a callable ``emit(event_name, payload_dict)``. The
 library never blocks on telemetry and swallows exceptions so a broken

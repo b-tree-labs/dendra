@@ -11,7 +11,7 @@ rule on ML failure, and shadow-path isolation that keeps observational
 classifiers from affecting user-visible output.
 
 Core public API: :class:`LearnedSwitch`, :func:`ml_switch` decorator,
-:class:`Phase`, :class:`SwitchConfig`, :class:`OutcomeRecord`,
+:class:`Phase`, :class:`SwitchConfig`, :class:`ClassificationRecord`,
 :class:`FileStorage`, and the LLM/ML protocol interfaces.
 
 Tooling (analyzer, ROI reporter, AST-based `wrap_function`, viz,
@@ -25,25 +25,47 @@ See README.md and https://dendra.dev.
 __version__ = "0.2.0"
 
 from dendra.core import (
+    ClassificationRecord,
+    ClassificationResult,
+    Label,
     LearnedSwitch,
-    Outcome,
-    OutcomeRecord,
     Phase,
     SwitchConfig,
-    SwitchResult,
     SwitchStatus,
+    Verdict,
 )
 from dendra.decorator import ml_switch
-from dendra.llm import (
+from dendra.gates import (
+    AccuracyMarginGate,
+    CompositeGate,
+    Gate,
+    GateDecision,
+    ManualGate,
+    McNemarGate,
+    MinVolumeGate,
+    next_phase,
+)
+from dendra.ml import MLHead, MLPrediction, SklearnTextHead
+from dendra.models import (
     AnthropicAdapter,
     LlamafileAdapter,
-    LLMClassifier,
-    LLMPrediction,
+    ModelClassifier,
+    ModelPrediction,
     OllamaAdapter,
     OpenAIAdapter,
 )
-from dendra.ml import MLHead, MLPrediction, SklearnTextHead
-from dendra.storage import FileStorage, InMemoryStorage, Storage
+from dendra.storage import (
+    BoundedInMemoryStorage,
+    FileStorage,
+    InMemoryStorage,
+    ResilientStorage,
+    SqliteStorage,
+    Storage,
+    StorageBase,
+    deserialize_record,
+    flock_supported,
+    serialize_record,
+)
 from dendra.telemetry import (
     ListEmitter,
     NullEmitter,
@@ -52,29 +74,45 @@ from dendra.telemetry import (
 )
 
 __all__ = [
+    "AccuracyMarginGate",
     "AnthropicAdapter",
+    "BoundedInMemoryStorage",
+    "CompositeGate",
+    "ClassificationRecord",
+    "ClassificationResult",
     "FileStorage",
+    "Gate",
+    "GateDecision",
     "InMemoryStorage",
+    "Label",
     "LearnedSwitch",
     "ListEmitter",
-    "LLMClassifier",
-    "LLMPrediction",
     "LlamafileAdapter",
     "MLHead",
     "MLPrediction",
+    "ManualGate",
+    "McNemarGate",
+    "MinVolumeGate",
+    "ModelClassifier",
+    "ModelPrediction",
     "NullEmitter",
     "OllamaAdapter",
     "OpenAIAdapter",
-    "Outcome",
-    "OutcomeRecord",
     "Phase",
+    "ResilientStorage",
     "SklearnTextHead",
+    "SqliteStorage",
     "StdoutEmitter",
     "Storage",
+    "StorageBase",
     "SwitchConfig",
-    "SwitchResult",
     "SwitchStatus",
     "TelemetryEmitter",
+    "Verdict",
     "__version__",
+    "deserialize_record",
+    "flock_supported",
     "ml_switch",
+    "next_phase",
+    "serialize_record",
 ]

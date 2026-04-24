@@ -33,9 +33,9 @@ than "Python library that we'll someday port."
 
 All language ports (beyond Mojo's Python-compat shim) share a
 single Rust implementation of the pure-logic + pure-math bits:
-`Phase` enum, `SwitchConfig`, `SwitchResult`, decision routing,
+`Phase` enum, `SwitchConfig`, `ClassificationResult`, decision routing,
 statistical tests (McNemar exact + normal-approx + margin),
-circuit breaker state machine, Gate protocol, OutcomeRecord
+circuit breaker state machine, Gate protocol, ClassificationRecord
 serialization.
 
 Each host port is a thin language-native layer that:

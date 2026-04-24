@@ -3,9 +3,9 @@
 
 """LLM classifier protocol and optional provider adapters.
 
-Phase 1 (LLM_SHADOW) and Phase 2 (LLM_PRIMARY) need an LLM to produce a
+Phase 1 (MODEL_SHADOW) and Phase 2 (MODEL_PRIMARY) need an LLM to produce a
 classification. Dendra never hard-depends on a specific provider — users
-supply any object that satisfies the :class:`LLMClassifier` protocol, or
+supply any object that satisfies the :class:`ModelClassifier` protocol, or
 they pull in one of the optional adapters below (all behind lazy
 imports so ``pip install dendra`` stays dep-free).
 """
@@ -22,7 +22,7 @@ from typing import Any, Protocol, runtime_checkable
 
 
 @dataclass(frozen=True)
-class LLMPrediction:
+class ModelPrediction:
     """What an LLM classifier returns for one input."""
 
     label: str
@@ -30,8 +30,8 @@ class LLMPrediction:
 
 
 @runtime_checkable
-class LLMClassifier(Protocol):
-    """Any object with a ``classify(input, labels) -> LLMPrediction``.
+class ModelClassifier(Protocol):
+    """Any object with a ``classify(input, labels) -> ModelPrediction``.
 
     ``input`` is the raw object passed to the switch (not stringified
     by Dendra — the adapter owns serialization).
@@ -39,9 +39,13 @@ class LLMClassifier(Protocol):
     ``labels`` is the exhaustive label list declared on the switch.
     Adapters may use it to constrain the output, scaffold a prompt, or
     ignore it for zero-shot behavior.
+
+    Both args are positional-only so implementations are free to
+    name them anything (``ticket``, ``x``, ``request``, …) without
+    tripping Protocol name-matching in strict type-checkers.
     """
 
-    def classify(self, input: Any, labels: Iterable[str]) -> LLMPrediction: ...
+    def classify(self, input: Any, labels: Iterable[str], /) -> ModelPrediction: ...
 
 
 # ---------------------------------------------------------------------------
@@ -122,7 +126,7 @@ class OpenAIAdapter(_BaseAdapter):
         self._model = model
         self._temperature = temperature
 
-    def classify(self, input: Any, labels: Iterable[str]) -> LLMPrediction:
+    def classify(self, input: Any, labels: Iterable[str]) -> ModelPrediction:
         labels = list(labels)
         prompt = self._render_prompt(input, labels)
         resp = self._client.chat.completions.create(
@@ -136,7 +140,7 @@ class OpenAIAdapter(_BaseAdapter):
         raw = (choice.message.content or "").strip()
         label = self._normalize_label(raw, labels)
         confidence = _logprob_to_confidence(choice)
-        return LLMPrediction(label=label, confidence=confidence)
+        return ModelPrediction(label=label, confidence=confidence)
 
 
 class AnthropicAdapter(_BaseAdapter):
@@ -160,7 +164,7 @@ class AnthropicAdapter(_BaseAdapter):
         self._model = model
         self._max_tokens = max_tokens
 
-    def classify(self, input: Any, labels: Iterable[str]) -> LLMPrediction:
+    def classify(self, input: Any, labels: Iterable[str]) -> ModelPrediction:
         labels = list(labels)
         prompt = self._render_prompt(input, labels)
         resp = self._client.messages.create(
@@ -175,7 +179,7 @@ class AnthropicAdapter(_BaseAdapter):
         exact_hit = text in labels
         label = self._normalize_label(text, labels)
         confidence = 0.9 if exact_hit else 0.5
-        return LLMPrediction(label=label, confidence=confidence)
+        return ModelPrediction(label=label, confidence=confidence)
 
 
 class OllamaAdapter(_BaseAdapter):
@@ -198,7 +202,7 @@ class OllamaAdapter(_BaseAdapter):
         self._model = model
         self._host = host.rstrip("/")
 
-    def classify(self, input: Any, labels: Iterable[str]) -> LLMPrediction:
+    def classify(self, input: Any, labels: Iterable[str]) -> ModelPrediction:
         labels = list(labels)
         prompt = self._render_prompt(input, labels)
         r = self._httpx.post(
@@ -211,7 +215,7 @@ class OllamaAdapter(_BaseAdapter):
         exact_hit = text in labels
         label = self._normalize_label(text, labels)
         confidence = 0.85 if exact_hit else 0.5
-        return LLMPrediction(label=label, confidence=confidence)
+        return ModelPrediction(label=label, confidence=confidence)
 
 
 class LlamafileAdapter(OpenAIAdapter):
@@ -263,8 +267,8 @@ def _logprob_to_confidence(choice: Any) -> float:
 
 __all__ = [
     "AnthropicAdapter",
-    "LLMClassifier",
-    "LLMPrediction",
+    "ModelClassifier",
+    "ModelPrediction",
     "LlamafileAdapter",
     "OllamaAdapter",
     "OpenAIAdapter",

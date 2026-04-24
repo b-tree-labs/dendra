@@ -83,7 +83,7 @@ computational technique.
 A **classification system** comprising:
 
 1. A **pluggable decision pipeline** with a fixed set of six
-   operational phases (RULE → LLM_SHADOW → LLM_PRIMARY → ML_SHADOW →
+   operational phases (RULE → MODEL_SHADOW → MODEL_PRIMARY → ML_SHADOW →
    ML_WITH_FALLBACK → ML_PRIMARY), each phase defining a specific
    routing behavior between a rule, an LLM classifier, and an ML
    head, where exactly one serves as decision-maker at a time and
@@ -182,7 +182,7 @@ cap + circuit-breaker recovery) is not found.
        reverted state until an explicit reset operation.
 
 2. The method of claim 1, wherein said phases comprise RULE,
-   LLM_SHADOW, LLM_PRIMARY, ML_SHADOW, ML_WITH_FALLBACK, and
+   MODEL_SHADOW, MODEL_PRIMARY, ML_SHADOW, ML_WITH_FALLBACK, and
    ML_PRIMARY.
 
 3. The method of claim 1, wherein said paired-proportion test

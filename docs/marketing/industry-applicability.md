@@ -97,11 +97,11 @@ finding + observed industry patterns.
 
 2. **Chatbot / voice-agent intent routing.** Literally what
    ATIS/Banking77/CLINC150/HWU64 were built to benchmark. Medium-to-
-   high cardinality (20–200 intents). Outcome from user re-phrasings,
+   high cardinality (20–200 intents). Verdict from user re-phrasings,
    hand-offs to humans, conversation-length proxies.
 
 3. **Content moderation.** Toxic / safe / borderline / spam /
-   misinformation / off-topic. Low-to-medium cardinality. Outcome
+   misinformation / off-topic. Low-to-medium cardinality. Verdict
    from user reports, appeals, moderator overrides. Safety-critical →
    Dendra's Phase 4 `safety_critical=True` cap is the natural fit.
 
@@ -112,14 +112,14 @@ finding + observed industry patterns.
    model is the exact primitive this industry wants.
 
 5. **Fraud / anomaly triage.** Known-pattern / novel-suspicious /
-   probable-benign / requires-review. Low cardinality. Outcome from
+   probable-benign / requires-review. Low cardinality. Verdict from
    investigator dispositions, chargebacks, confirmed fraud.
    Safety-critical and regulatorily observed → Phase 4 cap matters.
 
 6. **Security alert triage.** SIEM events → false-positive / true-
    positive / needs-enrichment / escalate. SOC teams do this manually
    today; every large SOC has 10+ custom rule-trees begging to
-   graduate. Outcome from analyst dispositions.
+   graduate. Verdict from analyst dispositions.
 
 7. **LLM output moderation / PII filtering.** Every LLM-facing
    product needs to classify generated output before delivery:
@@ -137,11 +137,11 @@ finding + observed industry patterns.
 
 7. **E-commerce product categorization.** Taxonomy assignment
    at ingest (home/garden vs home/kitchen). High cardinality.
-   Outcome from user-reported miscategorization + click-through-rate
+   Verdict from user-reported miscategorization + click-through-rate
    patterns on category pages.
 
 8. **Legal document classification.** Jurisdiction, document type,
-   urgency tier. Medium-high cardinality. Outcome from lawyer
+   urgency tier. Medium-high cardinality. Verdict from lawyer
    overrides, case disposition alignment.
 
 9. **Log analysis / incident triage.** Prod-log line → severity and
@@ -392,7 +392,7 @@ decisions that need human review decreases monotonically. At Phase 4
 | Phase | Human-review rate (typical) |
 |---|---:|
 | 0 (RULE) | whatever the rule misclassifies |
-| 2 (LLM_PRIMARY) | ~5–15% (low-confidence fallback) |
+| 2 (MODEL_PRIMARY) | ~5–15% (low-confidence fallback) |
 | 4 (ML_WITH_FALLBACK) | ~1–5% |
 | 5 (ML_PRIMARY + breaker) | <1% |
 
@@ -452,7 +452,7 @@ per call; uniformity is free.
   floor, and the circuit breaker handles drift. Graduation isn't
   the point here; the uniform pattern is.
 - **Off-the-shelf LLM ≥90% zero-shot.** Start at Phase 2
-  (LLM_PRIMARY with rule fallback). You still gain audit log,
+  (MODEL_PRIMARY with rule fallback). You still gain audit log,
   circuit breaker, and the *option* to graduate to ML (cheaper +
   faster) once outcome volume justifies it.
 - **No outcome signal today.** Start at Phase 0 with an empty
@@ -735,7 +735,7 @@ InjecAgent (Zhan et al. 2024) catalog 600+ real attacks.
   tool descriptions caused agent to route commands to unintended
   tools.
 
-**Dendra mitigation:** In Phase 0–1 (RULE and LLM_SHADOW), the
+**Dendra mitigation:** In Phase 0–1 (RULE and MODEL_SHADOW), the
 rule is code and the LLM only observes. A prompt injection cannot
 change what the rule returns because the rule isn't a prompt. The
 decision path is determined by compiled Python; the LLM is a
@@ -790,7 +790,7 @@ Demonstrated: `tests/test_security.py::TestCircuitBreakerBoundsMLFailure`.
 **Incident class:** A "shadow" ML observation accidentally leaks
 into the user-visible code path via exception handler or race.
 
-**Dendra mitigation:** Shadow-phase code (LLM_SHADOW, ML_SHADOW)
+**Dendra mitigation:** Shadow-phase code (MODEL_SHADOW, ML_SHADOW)
 is structurally separated from decision code. Exceptions in the
 shadow path are swallowed *after* the decision has been made. The
 user-visible result is determined before the shadow runs.
@@ -896,7 +896,7 @@ def classify_llm_output(response: str) -> str:
 ```
 
 Start at Phase 0 (regex + blocklist). Graduate to Phase 1
-(LLM_SHADOW) using OpenAI Moderation / Perspective / a dedicated
+(MODEL_SHADOW) using OpenAI Moderation / Perspective / a dedicated
 small-model moderator. Phase 4 (ML_WITH_FALLBACK) trains on your
 own incident-labeled outputs. `safety_critical=True` caps at
 Phase 4 — the regex floor always remains the contract.

@@ -34,7 +34,7 @@ Reserved capacity (DynamoDB provisioned, Lambda layered) drops
 this to **~$0.80/1M** at Pro-tier volume and above — we switch
 customers there automatically.
 
-### 1.2 Outcome-log storage (ongoing)
+### 1.2 Verdict-log storage (ongoing)
 
 - Per outcome record: ~250 bytes JSONL.
 - 1M records = 250 MB.

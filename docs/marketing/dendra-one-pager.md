@@ -33,8 +33,8 @@ def triage(ticket):
 ```
 
 - **Phase 0 — RULE**: your function runs exactly as written.
-- **Phase 1 — LLM_SHADOW**: an LLM predicts alongside; rule still decides.
-- **Phase 2 — LLM_PRIMARY**: LLM decides when confident; rule is the floor.
+- **Phase 1 — MODEL_SHADOW**: an LLM predicts alongside; rule still decides.
+- **Phase 2 — MODEL_PRIMARY**: LLM decides when confident; rule is the floor.
 - **Phase 3 — ML_SHADOW**: trained ML head runs behind the primary.
 - **Phase 4 — ML_WITH_FALLBACK**: ML decides when confident; rule floor.
 - **Phase 5 — ML_PRIMARY**: ML decides; circuit breaker → rule on failure.

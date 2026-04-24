@@ -34,7 +34,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from typing import Any
 
-from dendra.core import LearnedSwitch, Outcome
+from dendra.core import LearnedSwitch, Verdict
 
 
 def train_ml_from_llm_outcomes(
@@ -47,7 +47,7 @@ def train_ml_from_llm_outcomes(
     """Bootstrap an ML head from LLM-labeled outcomes.
 
     **The LLM-as-teacher pattern.** When a switch has been running at
-    ``Phase.LLM_PRIMARY`` (or any phase where ``source="llm"`` outcomes
+    ``Phase.MODEL_PRIMARY`` (or any phase where ``source="model"`` outcomes
     accumulate), the LLM has been acting as a production labeler. This
     helper filters the outcome log down to LLM-labeled records whose
     downstream signal matched (outcome="correct" by default), then
@@ -69,15 +69,22 @@ def train_ml_from_llm_outcomes(
         )
         if used >= 500:
             my_switch._ml_head = head
-            my_switch.config.phase = Phase.ML_WITH_FALLBACK
+            my_switch.config.starting_phase = Phase.ML_WITH_FALLBACK
 
-    See ``docs/working/llm-as-teacher.md`` for the full pattern write-up.
+    The LLM-as-teacher pattern: start at MODEL_PRIMARY with no
+    labeled data, let the LLM decide + label production traffic,
+    then train a local ML head on the accumulated LLM labels and
+    graduate to ML_WITH_FALLBACK. This retires the LLM from the
+    hot path once the cheaper ML head is trained.
+
+    See ``examples/07_llm_as_teacher.py`` for a runnable
+    demonstration.
     """
-    all_outcomes = switch.storage.load_outcomes(switch.name)
+    all_outcomes = switch.storage.load_records(switch.name)
     usable = [
         r
         for r in all_outcomes
-        if getattr(r, "source", None) == "llm"
+        if getattr(r, "source", None) == "model"
         and getattr(r, "outcome", None) in outcome_label_filter
     ]
     if len(usable) < min_llm_outcomes:
@@ -123,10 +130,10 @@ def run_transition_curve(
     total = 0
     for ex in examples:
         result = switch.classify(ex.input)
-        outcome = Outcome.CORRECT.value if result.output == ex.label else Outcome.INCORRECT.value
-        switch.record_outcome(
+        outcome = Verdict.CORRECT.value if result.label == ex.label else Verdict.INCORRECT.value
+        switch.record_verdict(
             input=ex.input,
-            output=result.output,
+            label=result.label,
             outcome=outcome,
             source=result.source,
             confidence=result.confidence,
@@ -135,7 +142,7 @@ def run_transition_curve(
 
         if total % checkpoint_every == 0:
             if fit_each_checkpoint and switch._ml_head is not None:
-                switch._ml_head.fit(switch.storage.load_outcomes(switch.name))
+                switch._ml_head.fit(switch.storage.load_records(switch.name))
             checkpoints.append(_snapshot(switch, total))
 
     # Tail snapshot if we have outcomes beyond the last checkpoint.
@@ -146,8 +153,8 @@ def run_transition_curve(
 
 
 def _snapshot(switch: LearnedSwitch, total: int) -> Checkpoint:
-    outcomes = switch.storage.load_outcomes(switch.name)
-    correct = sum(1 for r in outcomes if r.outcome == Outcome.CORRECT.value)
+    outcomes = switch.storage.load_records(switch.name)
+    correct = sum(1 for r in outcomes if r.outcome == Verdict.CORRECT.value)
     decision_acc = correct / len(outcomes) if outcomes else 0.0
 
     rule_rows = [r for r in outcomes if r.rule_output is not None]
@@ -162,8 +169,8 @@ def _snapshot(switch: LearnedSwitch, total: int) -> Checkpoint:
     #     rule_output matches the actual ground truth label
     # and we recover ground truth from whichever source was correct.
     rule_correct = _source_accuracy(rule_rows, "rule_output")
-    llm_rows = [r for r in outcomes if r.llm_output is not None]
-    llm_acc = _source_accuracy(llm_rows, "llm_output") if llm_rows else None
+    llm_rows = [r for r in outcomes if r.model_output is not None]
+    llm_acc = _source_accuracy(llm_rows, "model_output") if llm_rows else None
     ml_rows = [r for r in outcomes if r.ml_output is not None]
     ml_acc = _source_accuracy(ml_rows, "ml_output") if ml_rows else None
 
@@ -183,10 +190,10 @@ def _source_accuracy(rows: list[Any], field_name: str) -> float:
     the actual ``output`` is the label. If outcome=="incorrect", we don't
     know the correct label from this row alone — those rows drop out.
     """
-    usable = [r for r in rows if r.outcome == Outcome.CORRECT.value]
+    usable = [r for r in rows if r.outcome == Verdict.CORRECT.value]
     if not usable:
         return 0.0
-    matches = sum(1 for r in usable if getattr(r, field_name) == r.output)
+    matches = sum(1 for r in usable if getattr(r, field_name) == r.label)
     return matches / len(usable)
 
 
@@ -231,7 +238,7 @@ def run_benchmark_experiment(
     checkpoint_every: int = 250,
     min_train_for_ml: int = 100,
     max_train: int | None = None,
-    llm: LLMClassifierT | None = None,
+    model: LLMClassifierT | None = None,
     llm_labels: list[str] | None = None,
     llm_test_sample_size: int | None = None,
     record_per_example: bool = True,
@@ -248,7 +255,7 @@ def run_benchmark_experiment(
     ``ml_head`` must satisfy :class:`dendra.ml.MLHead`. The runner
     doesn't assume any particular backend — swap in a fake for tests.
     """
-    from dendra.core import LearnedSwitch, Outcome, Phase, SwitchConfig
+    from dendra.core import LearnedSwitch, Phase, SwitchConfig, Verdict
 
     train_list = list(train)
     test_list = list(test)
@@ -264,7 +271,7 @@ def run_benchmark_experiment(
     # isn't updated between outcomes. Matches the paper §9.3 shadow regime.
     llm_acc: float | None = None
     llm_sample: int | None = None
-    if llm is not None:
+    if model is not None:
         eval_rows = test_list
         if llm_test_sample_size is not None:
             eval_rows = eval_rows[:llm_test_sample_size]
@@ -275,7 +282,7 @@ def run_benchmark_experiment(
         correct = 0
         for text, lbl in eval_rows:
             try:
-                pred = llm.classify(text, labels_for_llm)
+                pred = model.classify(text, labels_for_llm)
             except Exception:
                 continue
             if pred.label == lbl:
@@ -286,12 +293,14 @@ def run_benchmark_experiment(
         return rule(text)
 
     # A single switch carries the outcome log; ML head retrains from it.
+    # auto_record=False: benchmark records verdicts explicitly per example;
+    # UNKNOWN auto-rows would double-count in transition-curve math.
     switch = LearnedSwitch(
         name="bench",
         rule=_rule_fn,
         author="bench",
         ml_head=ml_head,
-        config=SwitchConfig(phase=Phase.RULE),
+        config=SwitchConfig(phase=Phase.RULE, auto_record=False),
     )
 
     checkpoints: list[BenchmarkCheckpoint] = []
@@ -302,10 +311,10 @@ def run_benchmark_experiment(
         # head trains on real labels regardless of what the rule said.
         # See §6.1 "direct human label" assumption in the paper.
         switch.classify(text)
-        switch.record_outcome(
+        switch.record_verdict(
             input=text,
-            output=label,
-            outcome=Outcome.CORRECT.value,
+            label=label,
+            outcome=Verdict.CORRECT.value,
             source="oracle",
             confidence=1.0,
         )
@@ -365,7 +374,7 @@ def _eval_checkpoint(
     ml_acc = 0.0
     ml_hits: list[bool] | None = None
     if training_outcomes >= min_train_for_ml:
-        ml_head.fit(switch.storage.load_outcomes(switch.name))
+        ml_head.fit(switch.storage.load_records(switch.name))
         ml_trained = True
         labels = sorted({lbl for _, lbl in test_list})
         ml_hits = []

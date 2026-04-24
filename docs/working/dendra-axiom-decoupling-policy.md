@@ -62,7 +62,7 @@ artifact (which is allowed — it's a scan report, not production code).
   `try: import dendra except ImportError: ...` and fall back to
   a no-op path.
 - Caller-visible APIs in axiom never accept or return Dendra types
-  (`LearnedSwitch`, `Outcome`, `Phase`, etc.). Dendra types stay
+  (`LearnedSwitch`, `Verdict`, `Phase`, etc.). Dendra types stay
   internal to axiom.
 - Axiom's public test suite must pass in BOTH modes: `pip install
   axiom` and `pip install axiom[learning]`.
@@ -117,7 +117,7 @@ from typing import Any, Callable, Optional
 
 try:
     from dendra import (
-        FileStorage, LearnedSwitch, Outcome, Phase, SwitchConfig,
+        FileStorage, LearnedSwitch, Verdict, Phase, SwitchConfig,
     )
     _AVAILABLE = True
 except ImportError:
@@ -229,7 +229,7 @@ How this works given §2's decoupling rules:
   institutional bootstrap script.
 - Dendra license granted via the existing commercial-licensing
   mechanism (Axiom Labs handles the paperwork).
-- Outcome logs can, at the customer's option, be federated across
+- Verdict logs can, at the customer's option, be federated across
   institutional nodes — this is a Dendra feature consumed by the
   bundle, not a new coupling.
 
