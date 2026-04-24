@@ -108,13 +108,88 @@ class SwitchStatus:
     circuit_breaker_tripped: bool = False
 
 
+# Phase ordering for <= / >= comparisons. RULE = 0, ML_PRIMARY = 5.
+_PHASE_ORDER: dict[Phase, int] = {
+    Phase.RULE: 0,
+    Phase.LLM_SHADOW: 1,
+    Phase.LLM_PRIMARY: 2,
+    Phase.ML_SHADOW: 3,
+    Phase.ML_WITH_FALLBACK: 4,
+    Phase.ML_PRIMARY: 5,
+}
+
+
 @dataclass
 class SwitchConfig:
-    """Runtime configuration for a switch."""
+    """Runtime configuration for a switch.
+
+    Two phase-related axes are tracked separately:
+
+    - ``starting_phase`` — the phase the switch begins in. Default
+      :data:`Phase.RULE` (safety-first). Set to a higher phase for
+      LLM-as-teacher bootstrap (``LLM_PRIMARY``), porting an
+      existing LLM classifier, or hybrid steady-state designs.
+    - ``phase_limit`` — the ceiling. ``advance()`` refuses to cross
+      it. Default :data:`Phase.ML_PRIMARY` (no cap — full autonomy
+      permitted when evidence earns it). Set lower to constrain
+      how far the switch is allowed to graduate.
+
+    ``safety_critical=True`` is a convenience flag that implies
+    ``phase_limit = ML_WITH_FALLBACK`` and refuses construction in
+    ``ML_PRIMARY``. It's kept for backward-compat and readability;
+    new code can use ``phase_limit=Phase.ML_WITH_FALLBACK`` directly
+    for the same effect (or any other ceiling).
+
+    The legacy ``phase=...`` keyword is accepted as an alias for
+    ``starting_phase=...`` and emits a ``DeprecationWarning``. It
+    will be removed in a future major release.
+    """
 
     confidence_threshold: float = 0.85
+    starting_phase: Phase = Phase.RULE
+    phase_limit: Phase = Phase.ML_PRIMARY
     safety_critical: bool = False
-    phase: Phase = Phase.RULE
+    # Deprecated alias for starting_phase. None means "not supplied"
+    # and the dataclass falls back to starting_phase's default.
+    phase: Phase | None = None
+
+    def __post_init__(self) -> None:
+        if self.phase is not None:
+            import warnings
+
+            warnings.warn(
+                "SwitchConfig(phase=...) is deprecated; use "
+                "starting_phase=... instead. The phase parameter will "
+                "be removed in a future major release.",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+            # Alias wins over the default starting_phase; explicit
+            # starting_phase (non-default) takes precedence if both set.
+            if self.starting_phase is Phase.RULE:
+                self.starting_phase = self.phase
+
+        # safety_critical refuses ML_PRIMARY as either starting_phase
+        # or as a permitted ceiling — gives the paper-§7.1 guarantee
+        # its own explicit error message rather than the generic
+        # starting_phase/phase_limit mismatch.
+        if self.safety_critical and self.starting_phase is Phase.ML_PRIMARY:
+            raise ValueError(
+                "safety_critical switches cannot start in ML_PRIMARY; "
+                "cap at ML_WITH_FALLBACK (paper §7.1)."
+            )
+
+        # safety_critical caps the ceiling at ML_WITH_FALLBACK.
+        if self.safety_critical and _PHASE_ORDER[self.phase_limit] > _PHASE_ORDER[Phase.ML_WITH_FALLBACK]:
+            self.phase_limit = Phase.ML_WITH_FALLBACK
+
+        # starting_phase cannot exceed phase_limit.
+        if _PHASE_ORDER[self.starting_phase] > _PHASE_ORDER[self.phase_limit]:
+            raise ValueError(
+                f"starting_phase={self.starting_phase.name} exceeds "
+                f"phase_limit={self.phase_limit.name}. The switch cannot "
+                f"start above its own ceiling."
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -162,7 +237,10 @@ class LearnedSwitch:
             raise ValueError("author is required")
 
         resolved_config = config or SwitchConfig()
-        if resolved_config.safety_critical and resolved_config.phase is Phase.ML_PRIMARY:
+        # safety_critical refuses ML_PRIMARY even as a ceiling; this
+        # is stricter than SwitchConfig's post_init (which only caps
+        # the ceiling). Keeps the paper §7.1 architectural guarantee.
+        if resolved_config.safety_critical and resolved_config.starting_phase is Phase.ML_PRIMARY:
             raise ValueError(
                 "safety_critical switches cannot start in ML_PRIMARY; "
                 "cap at ML_WITH_FALLBACK (paper §7.1)."
@@ -477,8 +555,17 @@ class LearnedSwitch:
             pass
 
     def phase(self) -> Phase:
-        """Current lifecycle phase (from :class:`SwitchConfig`)."""
-        return self.config.phase
+        """Current lifecycle phase.
+
+        Reads ``config.starting_phase``. Phase advancement (via
+        ``advance()``, when shipped) will mutate this state; for
+        now the starting phase is the current phase.
+        """
+        return self.config.starting_phase
+
+    def phase_limit(self) -> Phase:
+        """Ceiling on this switch's phase. ``advance()`` refuses to exceed."""
+        return self.config.phase_limit
 
     def status(self) -> SwitchStatus:
         """Return a :class:`SwitchStatus` snapshot."""
