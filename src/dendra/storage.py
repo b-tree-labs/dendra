@@ -407,6 +407,7 @@ class FileStorage(StorageBase):
         batching: bool = False,
         batch_size: int = 64,
         flush_interval_ms: int = 50,
+        redact: Callable[[ClassificationRecord], ClassificationRecord] | None = None,
     ) -> None:
         if max_bytes_per_segment <= 0:
             raise ValueError("max_bytes_per_segment must be positive")
@@ -422,6 +423,14 @@ class FileStorage(StorageBase):
         self._max_rotated = max_rotated_segments
         self._lock_enabled = lock
         self._fsync = fsync
+        # Optional pre-write transform. Receives each record before it
+        # hits the disk; returns a sanitized record. Load-bearing for
+        # HIPAA / PII / export-controlled workloads where raw inputs
+        # must never persist. Applied once per record, even when
+        # batching — keeps the durable bytes aligned with the
+        # redactor's view regardless of mode. See
+        # docs/storage-backends.md § "Redaction hook."
+        self._redact = redact
         # fd-cache for sync path: keep append fds open across calls so
         # ``append_record`` doesn't open/close per invocation. Keyed by
         # resolved switch directory (not the raw switch_name) to stay
@@ -551,6 +560,11 @@ class FileStorage(StorageBase):
     def append_record(self, switch_name: str, record: ClassificationRecord) -> None:
         # Validate the switch name before any I/O (path-traversal guard).
         self._switch_dir(switch_name)
+        # Apply the user-supplied redactor BEFORE the record reaches
+        # either the queue or the disk. This keeps raw PII out of
+        # the in-memory batch as well as the durable bytes.
+        if self._redact is not None:
+            record = self._redact(record)
         if self._batching:
             if self._closed:
                 raise RuntimeError(
@@ -905,6 +919,7 @@ class SqliteStorage(StorageBase):
         *,
         sync: str = "NORMAL",
         timeout: float = 30.0,
+        redact: Callable[[ClassificationRecord], ClassificationRecord] | None = None,
     ) -> None:
         valid_sync = {"OFF", "NORMAL", "FULL", "EXTRA"}
         if sync not in valid_sync:
@@ -915,6 +930,7 @@ class SqliteStorage(StorageBase):
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         self._sync = sync
         self._timeout = timeout
+        self._redact = redact
         self._init_schema()
 
     @contextlib.contextmanager
@@ -957,6 +973,8 @@ class SqliteStorage(StorageBase):
             )
 
     def append_record(self, switch_name: str, record: ClassificationRecord) -> None:
+        if self._redact is not None:
+            record = self._redact(record)
         data = serialize_record(record)
         with self._connect() as conn:
             conn.execute("BEGIN IMMEDIATE")

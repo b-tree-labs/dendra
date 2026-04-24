@@ -367,6 +367,26 @@ class SwitchConfig:
 RuleFunc = Callable[[Any], Any]
 
 
+def _clamp_conf(v: float | None) -> float | None:
+    """Clamp a confidence value to ``[0, 1]``; return None for None / NaN.
+
+    Defensive: adapters can legitimately return any float (0.99999,
+    1.0001, -0.0). Keeping every downstream gate-math and
+    confidence-threshold comparison tolerant of ill-typed values is
+    more churn than clamping at the one entry point. v1-readiness.md
+    §2 finding #24.
+    """
+    if v is None:
+        return None
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return None
+    if f != f:  # NaN
+        return None
+    return max(0.0, min(1.0, f))
+
+
 class _VerdictHolder:
     """Yielded by :meth:`LearnedSwitch.verdict_for` — stores the in-flight
     classification and exposes methods that record the verdict.
@@ -751,7 +771,9 @@ class LearnedSwitch:
                     "confidence": result.confidence,
                 },
             )
-        except Exception:
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except BaseException:
             pass
         return result
 
@@ -790,7 +812,9 @@ class LearnedSwitch:
                     "action_raised": result.action_raised,
                 },
             )
-        except Exception:
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except BaseException:
             pass
         return result
 
@@ -820,7 +844,9 @@ class LearnedSwitch:
         )
         try:
             self._storage.append_record(self.name, record)
-        except Exception:
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except BaseException:
             # Storage failure must not break classification.
             pass
 
@@ -869,7 +895,9 @@ class LearnedSwitch:
         action_raised: str | None = None
         try:
             action_result = label.on(input)
-        except Exception as e:
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except BaseException as e:
             action_raised = f"{type(e).__name__}: {e}"
         elapsed_ms = (time.perf_counter() - start) * 1000.0
 
@@ -922,14 +950,14 @@ class LearnedSwitch:
             r = ClassificationResult(
                 label=label,
                 source=source,
-                confidence=confidence,
+                confidence=_clamp_conf(confidence) or 0.0,
                 phase=phase,
             )
             r._rule_output = rule_output
             r._model_output = model_output
-            r._model_confidence = model_confidence
+            r._model_confidence = _clamp_conf(model_confidence)
             r._ml_output = ml_output
-            r._ml_confidence = ml_confidence
+            r._ml_confidence = _clamp_conf(ml_confidence)
             return r
 
         if phase is Phase.RULE:
@@ -949,7 +977,9 @@ class LearnedSwitch:
                 pred = self._model.classify(input, self._label_names())
                 model_output = pred.label
                 model_confidence = float(pred.confidence)
-            except Exception:
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except BaseException:
                 pass
             return _result(
                 rule_output, "rule", 1.0,
@@ -964,7 +994,9 @@ class LearnedSwitch:
                 )
             try:
                 pred = self._model.classify(input, self._label_names())
-            except Exception:
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except BaseException:
                 return _result(rule_output, "rule_fallback", 1.0)
             if float(pred.confidence) < self.config.confidence_threshold:
                 return _result(
@@ -992,7 +1024,9 @@ class LearnedSwitch:
                 ml_pred = self._ml_head.predict(input, self._label_names())
                 ml_output = ml_pred.label
                 ml_confidence = float(ml_pred.confidence)
-            except Exception:
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except BaseException:
                 pass
             primary._ml_output = ml_output
             primary._ml_confidence = ml_confidence
@@ -1005,7 +1039,9 @@ class LearnedSwitch:
                 )
             try:
                 ml_pred = self._ml_head.predict(input, self._label_names())
-            except Exception:
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except BaseException:
                 return _result(rule_output, "rule_fallback", 1.0)
             if float(ml_pred.confidence) < self.config.confidence_threshold:
                 return _result(
@@ -1033,7 +1069,9 @@ class LearnedSwitch:
                     return _result(rule_output, "rule_fallback", 1.0)
                 try:
                     ml_pred = self._ml_head.predict(input, self._label_names())
-                except Exception:
+                except (KeyboardInterrupt, SystemExit):
+                    raise
+                except BaseException:
                     self._circuit_tripped = True
                     self._save_breaker_state()
                     return _result(rule_output, "rule_fallback", 1.0)
@@ -1073,7 +1111,9 @@ class LearnedSwitch:
             return _r(rule_output, "rule", 1.0)
         try:
             pred = self._model.classify(input, self._label_names())
-        except Exception:
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except BaseException:
             return _r(rule_output, "rule_fallback", 1.0)
         if float(pred.confidence) < self.config.confidence_threshold:
             return _r(
@@ -1166,7 +1206,9 @@ class LearnedSwitch:
             # record_verdict.
             try:
                 self.config.on_verdict(record)
-            except Exception:
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except BaseException:
                 pass
         try:
             self._telemetry.emit(
@@ -1180,7 +1222,9 @@ class LearnedSwitch:
                     "ml_output": ml_output,
                 },
             )
-        except Exception:
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except BaseException:
             pass
 
         # Auto-advance: every ``auto_advance_interval`` recorded
@@ -1199,7 +1243,9 @@ class LearnedSwitch:
             if should_advance:
                 try:
                     self.advance(_auto=True)
-                except Exception:
+                except (KeyboardInterrupt, SystemExit):
+                    raise
+                except BaseException:
                     pass
 
     def phase(self) -> Phase:
@@ -1299,7 +1345,9 @@ class LearnedSwitch:
                         "auto": _auto,
                     },
                 )
-            except Exception:
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except BaseException:
                 pass
 
         return decision

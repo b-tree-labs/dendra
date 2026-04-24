@@ -67,17 +67,27 @@ class _BaseAdapter:
         )
 
     @staticmethod
-    def _normalize_label(text: str, labels: Iterable[str]) -> str:
+    def _normalize_label(
+        text: str, labels: Iterable[str]
+    ) -> tuple[str, bool]:
         """Best-effort match of a model output to one of ``labels``.
+
+        Returns ``(label, matched)``. ``matched=True`` when the
+        provider's text mapped to a label via exact match or one of
+        the substring heuristics; ``matched=False`` when nothing
+        matched and we fell back to ``labels[0]``. Adapters use
+        ``matched`` to clamp confidence on no-match so the switch's
+        ``confidence_threshold`` drops the prediction rather than
+        silently routing every unparseable LLM response to the first
+        label (v1-readiness.md §2 finding #12).
 
         Strategy: pull the first non-empty line, lowercase + strip
         punctuation, then (1) exact match, (2) whole-string-in-label
-        match, (3) longest substring match. Returns the first label as
-        a fallback — the caller should flag that via confidence.
+        match, (3) longest substring match.
         """
         label_list = list(labels)
         if not label_list:
-            return text.strip()
+            return text.strip(), False
 
         first_line = ""
         for line in text.splitlines():
@@ -88,15 +98,15 @@ class _BaseAdapter:
         cleaned = first_line.strip(".?!\"'`:- ").lower()
         lower_labels = [lbl.lower() for lbl in label_list]
         if cleaned in lower_labels:
-            return label_list[lower_labels.index(cleaned)]
+            return label_list[lower_labels.index(cleaned)], True
         # Labels whose text matches the cleaned string in either direction.
         containing_cleaned = [lbl for lbl in label_list if cleaned and cleaned in lbl.lower()]
         if containing_cleaned:
-            return min(containing_cleaned, key=len)
+            return min(containing_cleaned, key=len), True
         hits = [lbl for lbl in label_list if lbl.lower() in cleaned]
         if hits:
-            return max(hits, key=len)
-        return label_list[0]
+            return max(hits, key=len), True
+        return label_list[0], False
 
 
 class OpenAIAdapter(_BaseAdapter):
@@ -114,6 +124,7 @@ class OpenAIAdapter(_BaseAdapter):
         api_key: str | None = None,
         base_url: str | None = None,
         temperature: float = 0.0,
+        timeout: float = 30.0,
     ) -> None:
         try:
             from openai import OpenAI  # type: ignore[import-untyped]
@@ -122,9 +133,12 @@ class OpenAIAdapter(_BaseAdapter):
                 "OpenAIAdapter requires the openai SDK. "
                 "Install with `pip install dendra[openai]` or `pip install openai`."
             ) from e
-        self._client = OpenAI(api_key=api_key, base_url=base_url)
+        if timeout <= 0:
+            raise ValueError("timeout must be positive")
+        self._client = OpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
         self._model = model
         self._temperature = temperature
+        self._timeout = timeout
 
     def classify(self, input: Any, labels: Iterable[str]) -> ModelPrediction:
         labels = list(labels)
@@ -138,8 +152,11 @@ class OpenAIAdapter(_BaseAdapter):
         )
         choice = resp.choices[0]
         raw = (choice.message.content or "").strip()
-        label = self._normalize_label(raw, labels)
-        confidence = _logprob_to_confidence(choice)
+        label, matched = self._normalize_label(raw, labels)
+        # Unmatched output → confidence=0.0 so the switch drops it
+        # via confidence_threshold. Don't silently route every
+        # unparseable response to labels[0].
+        confidence = _logprob_to_confidence(choice) if matched else 0.0
         return ModelPrediction(label=label, confidence=confidence)
 
 
@@ -152,6 +169,7 @@ class AnthropicAdapter(_BaseAdapter):
         model: str,
         api_key: str | None = None,
         max_tokens: int = 32,
+        timeout: float = 30.0,
     ) -> None:
         try:
             from anthropic import Anthropic  # type: ignore[import-untyped]
@@ -160,9 +178,12 @@ class AnthropicAdapter(_BaseAdapter):
                 "AnthropicAdapter requires the anthropic SDK. "
                 "Install with `pip install dendra[anthropic]` or `pip install anthropic`."
             ) from e
-        self._client = Anthropic(api_key=api_key)
+        if timeout <= 0:
+            raise ValueError("timeout must be positive")
+        self._client = Anthropic(api_key=api_key, timeout=timeout)
         self._model = model
         self._max_tokens = max_tokens
+        self._timeout = timeout
 
     def classify(self, input: Any, labels: Iterable[str]) -> ModelPrediction:
         labels = list(labels)
@@ -177,8 +198,11 @@ class AnthropicAdapter(_BaseAdapter):
         # 1.0 if the returned text exactly matches one of the allowed labels,
         # else a lower bound reflecting the uncertainty.
         exact_hit = text in labels
-        label = self._normalize_label(text, labels)
-        confidence = 0.9 if exact_hit else 0.5
+        label, matched = self._normalize_label(text, labels)
+        if not matched:
+            confidence = 0.0
+        else:
+            confidence = 0.9 if exact_hit else 0.5
         return ModelPrediction(label=label, confidence=confidence)
 
 
@@ -190,6 +214,7 @@ class OllamaAdapter(_BaseAdapter):
         *,
         model: str,
         host: str = "http://localhost:11434",
+        timeout: float = 30.0,
     ) -> None:
         try:
             import httpx  # type: ignore[import-untyped]
@@ -198,9 +223,12 @@ class OllamaAdapter(_BaseAdapter):
                 "OllamaAdapter requires httpx. "
                 "Install with `pip install dendra[ollama]` or `pip install httpx`."
             ) from e
+        if timeout <= 0:
+            raise ValueError("timeout must be positive")
         self._httpx = httpx
         self._model = model
         self._host = host.rstrip("/")
+        self._timeout = timeout
 
     def classify(self, input: Any, labels: Iterable[str]) -> ModelPrediction:
         labels = list(labels)
@@ -208,13 +236,16 @@ class OllamaAdapter(_BaseAdapter):
         r = self._httpx.post(
             f"{self._host}/api/generate",
             json={"model": self._model, "prompt": prompt, "stream": False},
-            timeout=60.0,
+            timeout=self._timeout,
         )
         r.raise_for_status()
         text = (r.json().get("response") or "").strip()
         exact_hit = text in labels
-        label = self._normalize_label(text, labels)
-        confidence = 0.85 if exact_hit else 0.5
+        label, matched = self._normalize_label(text, labels)
+        if not matched:
+            confidence = 0.0
+        else:
+            confidence = 0.85 if exact_hit else 0.5
         return ModelPrediction(label=label, confidence=confidence)
 
 
@@ -233,12 +264,14 @@ class LlamafileAdapter(OpenAIAdapter):
         base_url: str = "http://localhost:8080/v1",
         api_key: str = "sk-no-key-required",
         temperature: float = 0.0,
+        timeout: float = 30.0,
     ) -> None:
         super().__init__(
             model=model,
             api_key=api_key,
             base_url=base_url,
             temperature=temperature,
+            timeout=timeout,
         )
 
 
