@@ -79,3 +79,89 @@ class TestTransitionCurve:
         # 5-step checkpoint gives one at t=5; tail fires at t=7.
         checkpoints = run_transition_curve(s, examples, checkpoint_every=5)
         assert [c.outcomes for c in checkpoints] == [5, 7]
+
+
+class TestBenchmarkExperimentStorage:
+    """Regression: the benchmark harness must not silently drop training
+    examples to its own storage cap. v1 CLINC150 divergence root cause —
+    default ``BoundedInMemoryStorage(10_000)`` FIFO-evicted at outcome
+    10,500 on a label-blocked stream, erasing ~50 label classes from the
+    ML head's fit-view."""
+
+    def test_run_benchmark_experiment_uses_unbounded_storage(self):
+        """Every training outcome must be addressable at evaluation time.
+
+        Pathological setup: 12 000 training rows (above the default
+        10 000 bounded cap), each a distinct (text, label) pair with
+        label-blocked ordering — exactly the shape that bit the
+        original CLINC150 run. Run the benchmark past the cap and
+        assert the final outcome log holds every example.
+        """
+        from dendra.ml import MLHead
+        from dendra.research import run_benchmark_experiment
+
+        # Minimal ML head — no-op, just satisfies the protocol.
+        class _NoopHead(MLHead):
+            def fit(self, records):
+                pass
+
+            def predict(self, input, labels):
+                return ModelPrediction(label="x", confidence=0.1)
+
+            def model_version(self):
+                return "noop"
+
+        def _rule_fn(text: str) -> str:
+            return "x"
+
+        # 12 000 rows, 10 distinct labels feeding in 1 200-sized blocks.
+        train = [
+            (f"ex-{i}", f"label-{i // 1200}")
+            for i in range(12_000)
+        ]
+        test = [("ex-t", "label-0")]
+
+        run_benchmark_experiment(
+            train=train,
+            test=test,
+            rule=_rule_fn,
+            ml_head=_NoopHead(),
+            checkpoint_every=2_000,
+        )
+
+        # Verify: the switch the runner built internally must have
+        # retained every training outcome. We can't grab it directly,
+        # but we can assert the runner's *contract* by calling it and
+        # checking the behaviour — with unbounded storage the ML head
+        # would have been offered all 12 000 records at the final
+        # checkpoint. Under the old bug it would have seen only
+        # 10 000. The simpler assertion: a capture-all ML head counts
+        # records and surfaces the count via model_version.
+        class _CountingHead(MLHead):
+            def __init__(self):
+                self.max_seen = 0
+
+            def fit(self, records):
+                records = list(records)
+                self.max_seen = max(self.max_seen, len(records))
+
+            def predict(self, input, labels):
+                return ModelPrediction(label="x", confidence=0.1)
+
+            def model_version(self):
+                return f"count-{self.max_seen}"
+
+        counting = _CountingHead()
+        run_benchmark_experiment(
+            train=train,
+            test=test,
+            rule=_rule_fn,
+            ml_head=counting,
+            checkpoint_every=2_000,
+        )
+        assert counting.max_seen == 12_000, (
+            f"benchmark harness must expose every training outcome to "
+            f"the ML head; got max_seen={counting.max_seen} of 12 000. "
+            "Check that run_benchmark_experiment uses unbounded "
+            "InMemoryStorage, not the default BoundedInMemoryStorage."
+        )

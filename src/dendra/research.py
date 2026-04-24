@@ -291,11 +291,26 @@ def run_benchmark_experiment(
     # A single switch carries the outcome log; ML head retrains from it.
     # auto_record=False: benchmark records verdicts explicitly per example;
     # UNKNOWN auto-rows would double-count in transition-curve math.
+    #
+    # Unbounded storage: the benchmark harness OWNS the full training
+    # set and bounds its own lifetime. The default
+    # ``BoundedInMemoryStorage(10_000)`` is correct for production
+    # switches (prevents unbounded memory growth) but FIFO-evicts at
+    # cap — catastrophic when the benchmark stream is label-blocked
+    # (e.g. CLINC150 feeds 10 labels per 1,000-example window; at
+    # outcome 10,500 the first 500 records are evicted, meaning ~5
+    # entire label classes drop out of the ML head's training view).
+    # Using the explicit unbounded ``InMemoryStorage`` keeps the full
+    # stream addressable. See
+    # docs/papers/2026-when-should-a-rule-learn/results/findings.md
+    # "CLINC150 divergence" for the investigation log.
+    from dendra.storage import InMemoryStorage
     switch = LearnedSwitch(
         name="bench",
         rule=_rule_fn,
         author="bench",
         ml_head=ml_head,
+        storage=InMemoryStorage(),
         config=SwitchConfig(phase=Phase.RULE, auto_record=False),
     )
 

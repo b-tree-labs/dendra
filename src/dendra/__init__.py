@@ -72,6 +72,12 @@ from dendra.telemetry import (
     StdoutEmitter,
     TelemetryEmitter,
 )
+from dendra.verdicts import (
+    CallableVerdictSource,
+    LLMCommitteeSource,
+    LLMJudgeSource,
+    VerdictSource,
+)
 
 __all__ = [
     "AccuracyMarginGate",
@@ -107,8 +113,12 @@ __all__ = [
     "StorageBase",
     "SwitchConfig",
     "SwitchStatus",
+    "CallableVerdictSource",
+    "LLMCommitteeSource",
+    "LLMJudgeSource",
     "TelemetryEmitter",
     "Verdict",
+    "VerdictSource",
     "__version__",
     "deserialize_record",
     "flock_supported",
