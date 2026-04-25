@@ -357,6 +357,23 @@ class SwitchConfig:
     # for mirroring verdicts to an external audit store, triggering
     # metrics, sending webhooks.
     on_verdict: Callable[[Any], None] | None = None
+    # Optional verdict source that runs automatically on every
+    # ``classify`` / ``dispatch`` call. When set, the switch
+    # classifies, then routes the (input, label) pair through the
+    # verifier's ``judge`` to obtain a verdict, then writes a
+    # verdict-bearing record (replacing the auto-record UNKNOWN
+    # row). Eliminates the manual ``mark_correct()`` / reviewer-
+    # queue setup that's typically the biggest adoption barrier.
+    # Pair with :func:`dendra.default_verifier` for the
+    # auto-detection factory.
+    verifier: Any = None
+    # Fraction of classifications routed through the verifier.
+    # ``1.0`` (default) verifies every call. Use a lower value
+    # (e.g., ``0.1`` for 10%) when the verifier is expensive
+    # (cloud LLM, large committee) and full coverage isn't
+    # required for the gate's statistical power. Sampling is
+    # uniform random per-call.
+    verifier_sample_rate: float = 1.0
     # Deprecated alias for starting_phase. None means "not supplied"
     # and the dataclass falls back to starting_phase's default.
     phase: Phase | None = None
@@ -385,6 +402,13 @@ class SwitchConfig:
             raise ValueError(
                 "safety_critical switches cannot start in ML_PRIMARY; "
                 "cap at ML_WITH_FALLBACK (paper §7.1)."
+            )
+
+        # Validate verifier_sample_rate.
+        if not 0.0 <= self.verifier_sample_rate <= 1.0:
+            raise ValueError(
+                f"verifier_sample_rate must be in [0, 1]; "
+                f"got {self.verifier_sample_rate}"
             )
 
         # safety_critical caps the ceiling at ML_WITH_FALLBACK.
@@ -659,6 +683,8 @@ class LearnedSwitch:
         auto_advance: bool | None = None,
         auto_advance_interval: int | None = None,
         on_verdict: Callable[[Any], None] | None = None,
+        verifier: Any = None,
+        verifier_sample_rate: float | None = None,
         config: SwitchConfig | None = None,
         storage: Storage | None = None,
         persist: bool = False,
@@ -696,6 +722,8 @@ class LearnedSwitch:
             "auto_advance": auto_advance,
             "auto_advance_interval": auto_advance_interval,
             "on_verdict": on_verdict,
+            "verifier": verifier,
+            "verifier_sample_rate": verifier_sample_rate,
         }
         supplied_hoisted = {k: v for k, v in hoisted_config_kwargs.items() if v is not None}
         if config is not None and supplied_hoisted:
@@ -814,6 +842,27 @@ class LearnedSwitch:
         if self._persist:
             self._load_breaker_state()
 
+        # Self-judgment guardrail when both ``model=`` and a
+        # ``verifier=`` LLM judge are configured against the same
+        # underlying LLM. Same rationale as
+        # :class:`LLMJudgeSource.__init__` (G-Eval / MT-Bench /
+        # Arena literature). Skipped when either side is absent or
+        # the verifier doesn't expose its judge model.
+        if self._model is not None and resolved_config.verifier is not None:
+            judge_model = getattr(resolved_config.verifier, "_judge", None)
+            if judge_model is not None:
+                from dendra.verdicts import _same_llm
+                if _same_llm(self._model, judge_model):
+                    raise ValueError(
+                        "refusing to construct LearnedSwitch: model= and "
+                        "verifier= resolve to the same LLM. Using the "
+                        "same model as classifier and judge biases "
+                        "verdicts toward the classifier's own errors. "
+                        "Pass distinct models, or wrap the verifier as "
+                        "LLMJudgeSource(..., guard_against_same_llm=False) "
+                        "if you explicitly accept the bias risk."
+                    )
+
     # --- Labels ------------------------------------------------------------
 
     @property
@@ -857,7 +906,15 @@ class LearnedSwitch:
         result = self._classify_impl(input)
         result._switch = self
         result._input = input
-        if self.config.auto_record:
+        # Hot-path optimization: when no verifier is configured we
+        # skip the method-call overhead entirely. The verifier path
+        # is opt-in; users without one should not pay for it.
+        verified = (
+            self._maybe_run_verifier(input, result)
+            if self.config.verifier is not None
+            else False
+        )
+        if not verified and self.config.auto_record:
             self._auto_log(input, result)
         try:
             self._telemetry.emit(
@@ -867,6 +924,7 @@ class LearnedSwitch:
                     "phase": result.phase.value,
                     "source": result.source,
                     "confidence": result.confidence,
+                    "verified": verified,
                 },
             )
         except (KeyboardInterrupt, SystemExit):
@@ -897,7 +955,12 @@ class LearnedSwitch:
         result = self._maybe_dispatch(input, result)
         result._switch = self
         result._input = input
-        if self.config.auto_record:
+        verified = (
+            self._maybe_run_verifier(input, result)
+            if self.config.verifier is not None
+            else False
+        )
+        if not verified and self.config.auto_record:
             self._auto_log(input, result)
         try:
             self._telemetry.emit(
@@ -908,6 +971,7 @@ class LearnedSwitch:
                     "source": result.source,
                     "confidence": result.confidence,
                     "action_raised": result.action_raised,
+                    "verified": verified,
                 },
             )
         except (KeyboardInterrupt, SystemExit):
@@ -915,6 +979,50 @@ class LearnedSwitch:
         except BaseException:
             pass
         return result
+
+    def _maybe_run_verifier(
+        self, input: Any, result: ClassificationResult
+    ) -> bool:
+        """Route the (input, label) pair through ``config.verifier``.
+
+        Returns ``True`` when the verifier produced a verdict-bearing
+        record (which supersedes the auto-record UNKNOWN log entry).
+        Returns ``False`` when no verifier is configured, sampling
+        skipped this call, or the verifier raised — in those cases
+        the caller falls back to the existing ``auto_record``
+        behavior.
+        """
+        verifier = self.config.verifier
+        if verifier is None:
+            return False
+        if self.config.verifier_sample_rate < 1.0:
+            import random
+            if random.random() >= self.config.verifier_sample_rate:
+                return False
+        try:
+            verdict = verifier.judge(input, result.label)
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except BaseException:
+            # Verifier failure is absorbed — caller falls back to
+            # auto_record's UNKNOWN row so we never silently drop
+            # the observation.
+            return False
+        try:
+            source_name = getattr(verifier, "source_name", "verifier")
+            self.record_verdict(
+                input=input,
+                label=result.label,
+                outcome=verdict.value,
+                source=source_name,
+                confidence=result.confidence,
+                _result_ctx=result,
+            )
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except BaseException:
+            return False
+        return True
 
     def _auto_log(self, input: Any, result: ClassificationResult) -> None:
         """Append an UNKNOWN-outcome record from the just-completed call.
@@ -1788,10 +1896,102 @@ class LearnedSwitch:
     # entry points).
 
     async def aclassify(self, input: Any) -> ClassificationResult:
-        """Async peer of :meth:`classify`. Default: wraps sync in a thread."""
+        """Async peer of :meth:`classify`.
+
+        Runs the CPU-bound classify body in a worker thread. When
+        ``config.verifier`` is set, the verdict-judgment runs on
+        the event loop natively via the verifier's ``ajudge`` if
+        available — so a cloud-LLM verifier doesn't pin a thread
+        for its full network latency. Falls back to a thread hop
+        for sync-only verifiers.
+        """
         import asyncio
 
-        return await asyncio.to_thread(self.classify, input)
+        verifier = self.config.verifier
+        if verifier is None:
+            return await asyncio.to_thread(self.classify, input)
+
+        # Run classify body in a worker (CPU-bound). The thread
+        # call MUST NOT run the verifier — we want to do that on
+        # the event loop natively.
+        result = await asyncio.to_thread(self._classify_no_verifier, input)
+        verified = await self._amaybe_run_verifier(input, result)
+        if not verified and self.config.auto_record:
+            await asyncio.to_thread(self._auto_log, input, result)
+        try:
+            self._telemetry.emit(
+                "classify",
+                {
+                    "switch": self.name,
+                    "phase": result.phase.value,
+                    "source": result.source,
+                    "confidence": result.confidence,
+                    "verified": verified,
+                },
+            )
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except BaseException:
+            pass
+        return result
+
+    def _classify_no_verifier(self, input: Any) -> ClassificationResult:
+        """Sync classify body without the verifier hop.
+
+        Used by :meth:`aclassify` so the verifier (often async-
+        native via ``ajudge``) runs on the event loop instead of
+        blocking the to_thread worker.
+        """
+        result = self._classify_impl(input)
+        result._switch = self
+        result._input = input
+        return result
+
+    async def _amaybe_run_verifier(
+        self, input: Any, result: ClassificationResult
+    ) -> bool:
+        """Async peer of :meth:`_maybe_run_verifier`.
+
+        Uses ``verifier.ajudge`` when available; falls back to
+        ``asyncio.to_thread(verifier.judge)`` for sync-only
+        verifiers.
+        """
+        import asyncio
+
+        verifier = self.config.verifier
+        if verifier is None:
+            return False
+        if self.config.verifier_sample_rate < 1.0:
+            import random
+            if random.random() >= self.config.verifier_sample_rate:
+                return False
+        try:
+            ajudge = getattr(verifier, "ajudge", None)
+            if ajudge is not None:
+                verdict = await ajudge(input, result.label)
+            else:
+                verdict = await asyncio.to_thread(
+                    verifier.judge, input, result.label,
+                )
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except BaseException:
+            return False
+        try:
+            source_name = getattr(verifier, "source_name", "verifier")
+            await self.arecord_verdict(
+                input=input,
+                label=result.label,
+                outcome=verdict.value,
+                source=source_name,
+                confidence=result.confidence,
+                _result_ctx=result,
+            )
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except BaseException:
+            return False
+        return True
 
     async def adispatch(self, input: Any) -> ClassificationResult:
         """Async peer of :meth:`dispatch`. Default: wraps sync in a thread.
@@ -1813,17 +2013,22 @@ class LearnedSwitch:
         outcome: str,
         source: str = "rule",
         confidence: float = 1.0,
+        _result_ctx: ClassificationResult | None = None,
     ) -> None:
         """Async peer of :meth:`record_verdict`."""
         import asyncio
+        import functools
 
         await asyncio.to_thread(
-            self.record_verdict,
-            input=input,
-            label=label,
-            outcome=outcome,
-            source=source,
-            confidence=confidence,
+            functools.partial(
+                self.record_verdict,
+                input=input,
+                label=label,
+                outcome=outcome,
+                source=source,
+                confidence=confidence,
+                _result_ctx=_result_ctx,
+            ),
         )
 
     async def abulk_record_verdicts(

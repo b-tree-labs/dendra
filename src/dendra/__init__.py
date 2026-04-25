@@ -87,8 +87,10 @@ from dendra.verdicts import (
     HumanReviewerSource,
     LLMCommitteeSource,
     LLMJudgeSource,
+    NoVerifierAvailableError,
     VerdictSource,
     WebhookVerdictSource,
+    default_verifier,
 )
 
 __all__ = [
@@ -140,8 +142,10 @@ __all__ = [
     "TelemetryEmitter",
     "Verdict",
     "VerdictSource",
+    "NoVerifierAvailableError",
     "WebhookVerdictSource",
     "__version__",
+    "default_verifier",
     "deserialize_record",
     "flock_supported",
     "ml_switch",

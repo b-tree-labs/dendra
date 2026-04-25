@@ -9,7 +9,95 @@ the title and the opening hook differ.
 
 ---
 
-## Draft A — paper-flavored headline
+## Draft C — autonomous-verifier headline (RECOMMENDED)
+
+### Title
+
+> **Show HN: Dendra — `pip install`, drop a rule + a verifier, watch your classifier get smarter (paper + library)**
+
+### Body
+
+Hi HN,
+
+Dendra is a Python library and an accompanying paper for
+graduated-autonomy classification. The 5-line pitch:
+
+```python
+from dendra import ml_switch, default_verifier
+
+@ml_switch(
+    labels=["bug", "feature_request", "question"],
+    verifier=default_verifier(),  # auto-detects Ollama → OpenAI → Anthropic
+)
+def triage(ticket: dict) -> str:
+    title = (ticket.get("title") or "").lower()
+    if "crash" in title:
+        return "bug"
+    if title.endswith("?"):
+        return "question"
+    return "feature_request"
+```
+
+That's the whole setup. Every classification gets routed through
+the verifier automatically — no reviewer queues, no labeled-data
+prerequisite, no `mark_correct()` calls scattered through your
+code. Verdicts feed an outcome log; a paired-McNemar gate
+decides when a learned classifier (LLM, then ML head) has
+earned the front seat. The original rule stays as the safety
+floor — forever, behind a circuit breaker that auto-reverts on
+ML failure.
+
+The accompanying paper measures across four NLU benchmarks
+(ATIS, HWU64, Banking77, CLINC150) — every benchmark crosses
+paired-McNemar statistical significance at the FIRST checkpoint
+of 250 outcomes. Two days of moderate production traffic, not
+six months.
+
+Three things I think are interesting:
+
+1. **The autonomous-verification default removes the biggest
+   adoption barrier.** Most graduated-classifier libraries
+   assume you'll wire a reviewer queue. We give you a verifier
+   in one line. `default_verifier()` probes for a local Ollama
+   first (zero cost, no API key); falls back to OpenAI /
+   Anthropic if a key is in env.
+
+2. **It composes with autoresearch loops.** The library ships
+   a `CandidateHarness` that lets an external loop (LLM agent,
+   A/B harness) propose candidate classifiers, shadow them
+   against production, and get paired-McNemar verdicts on
+   whether each candidate beats the live decision. *Autoresearch
+   tells you what to try; Dendra tells you when it worked.*
+
+3. **The deployment story is real.** `persist=True` ships a
+   batched FileStorage at ~33 µs classify p50. Redaction hook
+   at the storage boundary for HIPAA / PII workloads. Native
+   async API. Self-judgment-bias guardrail at construction
+   when the same LLM would be both classifier and verifier.
+
+Apache 2.0 SDK + BSL 1.1 analyzer (production self-hosted use
+permitted; competing-hosted-service prohibited). Repo:
+`axiom-labs-os/dendra`. Paper: [arXiv link]. Landing page (with
+docs, examples, hosted-beta waitlist): `https://dendra.dev`.
+
+Feedback I'd love:
+
+- Whether the autonomous-verifier framing matches what you've
+  duct-taped around your own classifier deployments
+- The paired-McNemar transition-depth claim (is `p < 0.01` at
+  250 outcomes credible to you against the prior unpaired-z
+  literature?)
+- Real production scenarios where you'd want graduated autonomy
+  and the existing primitives (FrugalGPT, RouteLLM, Vowpal
+  Wabbit, AutoML) don't fit
+
+Happy to answer questions.
+
+— Ben Booth (B-Tree Ventures, Austin)
+
+---
+
+## Draft A — paper-flavored headline (alternate)
 
 ### Title
 
@@ -186,15 +274,17 @@ Happy to answer questions.
 
 ## My recommendation
 
-**B for HN.** The autoresearch zeitgeist is *current*, the
-slam-dunk integration is novel, and the audience that votes
-on HN is closer to "agentic systems builder" than "MLOps
-practitioner" right now. A would have been the right call in
-2023. B is the right call in May 2026.
+**Draft C for HN.** The autonomous-verifier framing is the
+cleanest single-sentence pitch we have, removes the most-
+likely adoption barrier, and lands the autoresearch hook +
+paper headline + production-readiness story in one body.
 
-Use A as the **paper title** (which is what cs.LG readers see)
-and B as the **HN title** (which is what HN readers see).
-Different audiences; different best-frame.
+Use **A as the paper title** (cs.LG readers want the
+methodological framing) and **C as the HN title** (HN readers
+want "show me the code that does the thing").
+
+B (autoresearch-only) is the fallback if Cowork or peer
+feedback says C is too on-the-nose.
 
 ---
 

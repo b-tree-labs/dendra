@@ -603,11 +603,125 @@ class WebhookVerdictSource:
             return Verdict.UNKNOWN
 
 
+# ---------------------------------------------------------------------------
+# default_verifier() — auto-detected ship-with-everything default
+# ---------------------------------------------------------------------------
+
+
+class NoVerifierAvailableError(RuntimeError):
+    """Raised by :func:`default_verifier` when no LLM backend can be
+    auto-configured. The exception message lists the recovery options."""
+
+
+def default_verifier(
+    prefer: str = "local",
+    *,
+    ollama_model: str = "llama3.2:1b",
+    openai_model: str = "gpt-4o-mini",
+    anthropic_model: str = "claude-haiku-4-5",
+    ollama_host: str = "http://localhost:11434",
+) -> LLMJudgeSource:
+    """Return a sensibly-configured :class:`LLMJudgeSource`.
+
+    **Local-only by default. No surprise cloud dependency at
+    runtime.** ``pip install dendra`` ships standalone — the
+    default verifier expects a local Ollama instance and raises
+    :class:`NoVerifierAvailableError` with setup instructions
+    when one isn't reachable. Cloud verifiers are opt-in via
+    ``prefer="openai"`` / ``prefer="anthropic"`` (and a
+    corresponding API key in the environment).
+
+    The shipped default is ``llama3.2:1b`` (~1.3 GB) — smallest
+    credible local SLM, fast enough for inline verification on a
+    laptop, no API key, privacy-preserving by construction. Pull
+    it with ``ollama pull llama3.2:1b``.
+
+    Modes:
+
+    - ``prefer="local"`` (default) — Ollama only. Raises if
+      Ollama isn't reachable on ``ollama_host``.
+    - ``prefer="openai"`` — requires ``OPENAI_API_KEY`` in env.
+    - ``prefer="anthropic"`` — requires ``ANTHROPIC_API_KEY`` in env.
+    - ``prefer="auto"`` — local first, then cloud fallbacks
+      (opt-in for users who explicitly want hybrid behavior).
+
+    Returns the verifier with no self-judgment guardrail wired —
+    pass it directly to ``LearnedSwitch(verifier=...)`` and the
+    switch construction will refuse if your ``model=`` resolves
+    to the same LLM (the cross-check happens at switch
+    construction; see core.py).
+    """
+    import os
+
+    options: list[str] = []
+
+    if prefer in ("local", "auto"):
+        try:
+            import httpx  # type: ignore[import-untyped]
+            try:
+                r = httpx.get(f"{ollama_host}/api/tags", timeout=1.0)
+                if r.status_code == 200:
+                    from dendra.models import OllamaAdapter
+                    return LLMJudgeSource(
+                        OllamaAdapter(model=ollama_model, host=ollama_host)
+                    )
+            except (httpx.ConnectError, httpx.TimeoutException):
+                options.append(
+                    f"install Ollama (https://ollama.com), start the daemon, "
+                    f"and run `ollama pull {ollama_model}` "
+                    f"(no API key, zero cost, privacy-preserving)"
+                )
+        except ImportError:
+            options.append(
+                "install httpx (`pip install httpx`) to enable Ollama detection"
+            )
+
+        if prefer == "local":
+            # Local-only mode — don't fall through to cloud.
+            raise NoVerifierAvailableError(
+                f"No local LLM verifier reachable. "
+                f"Recovery options: {'; '.join(options)}. "
+                f"For an opt-in cloud fallback, pass "
+                f"prefer='auto' / 'openai' / 'anthropic'."
+            )
+
+    if prefer in ("auto", "openai"):
+        if os.getenv("OPENAI_API_KEY"):
+            try:
+                from dendra.models import OpenAIAdapter
+                return LLMJudgeSource(OpenAIAdapter(model=openai_model))
+            except ImportError:
+                options.append(
+                    "install the OpenAI extra (`pip install dendra[openai]`)"
+                )
+        else:
+            options.append("set OPENAI_API_KEY in your environment")
+
+    if prefer in ("auto", "anthropic"):
+        if os.getenv("ANTHROPIC_API_KEY"):
+            try:
+                from dendra.models import AnthropicAdapter
+                return LLMJudgeSource(AnthropicAdapter(model=anthropic_model))
+            except ImportError:
+                options.append(
+                    "install the Anthropic extra (`pip install dendra[anthropic]`)"
+                )
+        else:
+            options.append("set ANTHROPIC_API_KEY in your environment")
+
+    raise NoVerifierAvailableError(
+        f"No LLM verifier could be auto-configured (prefer={prefer!r}). "
+        f"Recovery options: {'; '.join(options) or 'pass verifier= explicitly'}."
+    )
+
+
 __all__ = [
     "CallableVerdictSource",
     "HumanReviewerSource",
     "LLMCommitteeSource",
     "LLMJudgeSource",
+    "NoVerifierAvailableError",
     "VerdictSource",
     "WebhookVerdictSource",
+    "default_verifier",
 ]
