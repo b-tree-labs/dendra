@@ -23,13 +23,13 @@ Hi. I'm Ben Booth. I built a thing called Dendra and I want to spend fifteen min
 
 *[One-second pause.]*
 
-Let me start with a scenario you've probably lived. You have a classifier in production. Maybe it's routing tickets, maybe it's gating PII, maybe it's deciding which retrieval strategy to use. It started as a rule — somebody, probably you, sat down with a pad of paper and wrote: "if the title contains the word *crash*, this is a bug; if it ends with a question mark, it's a question; otherwise call it a feature request." That rule got shipped six months ago. It's still in production. And every quarter for those six months, somebody has filed a ticket that says some version of *we should really replace this with ML*.
+Let me start with a scenario I'll bet a lot of you have lived. You have a classifier in production. Maybe it's routing tickets, maybe it's gating PII, maybe it's deciding which retrieval strategy to use. It started as a rule — somebody, probably you, sat down with a pad of paper and wrote: "if the title contains the word *crash*, this is a bug; if it ends with a question mark, it's a question; otherwise call it a feature request." That rule got shipped six months ago. It's still in production. And somewhere in the team's backlog, there's a ticket that says some version of *we should really replace this with ML*.
 
 *[Beat.]*
 
-**Nobody ever does.**
+**The ticket doesn't move.**
 
-And the reason nobody ever does is not that the team is lazy. It's that the team is correct. Replacing a working rule with a learned classifier is one of the highest-risk migrations you can do in a production system. The rule is legible. You can read it. You can argue about it in a code review. The learned classifier is a black box that might be better on average and quietly worse on a long tail of cases that you'll discover at 3 in the morning when an incident report lands.
+And the reason it doesn't move is not that the team is lazy. It's that the team is correct. Replacing a working rule with a learned classifier is one of the highest-risk migrations you can do in a production system. The rule is legible. You can read it. You can argue about it in a code review. The learned classifier is a black box that might be better on average and quietly worse on a long tail of cases that you'll discover at 3 in the morning when an incident report lands.
 
 Karpathy's been talking lately about the autoresearch loop — LLMs proposing experiments, reading results, iterating. That pattern is great at *generating* candidate classifiers. What it doesn't give you is the answer to the question every team actually has: **when is the candidate good enough to put in front of users?** When can I delete the rule? Or — more honestly — when can I stop running the rule on the hot path?
 
