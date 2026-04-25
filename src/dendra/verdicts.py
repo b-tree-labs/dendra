@@ -616,7 +616,7 @@ class NoVerifierAvailableError(RuntimeError):
 def default_verifier(
     prefer: str = "local",
     *,
-    ollama_model: str = "llama3.2:1b",
+    ollama_model: str = "llama3.2:3b",
     openai_model: str = "gpt-4o-mini",
     anthropic_model: str = "claude-haiku-4-5",
     ollama_host: str = "http://localhost:11434",
@@ -631,10 +631,21 @@ def default_verifier(
     ``prefer="openai"`` / ``prefer="anthropic"`` (and a
     corresponding API key in the environment).
 
-    The shipped default is ``llama3.2:1b`` (~1.3 GB) — smallest
-    credible local SLM, fast enough for inline verification on a
-    laptop, no API key, privacy-preserving by construction. Pull
-    it with ``ollama pull llama3.2:1b``.
+    The shipped default is ``llama3.2:3b`` (~2.0 GB) — picked
+    after benchmarking four candidate SLMs (see
+    ``docs/working/benchmarks/slm-verifier-results.md``). 97%
+    format-compliance on the verdict task; smaller models drift
+    into prose too often to be reliable. Pull it with
+    ``ollama pull llama3.2:3b``.
+
+    Verdict accuracy on the shipped default is bounded — local
+    SLMs at this size hit ~50% accuracy on judged rows. The
+    paired-McNemar gate handles noisy verdicts correctly (the
+    α-bound holds), but the gate takes more outcomes to clear
+    significance. Rule of thumb: a local SLM verifier graduates
+    a switch in 5-10× the data a cloud verifier needs. For
+    faster graduation, swap in a cloud verifier
+    (``prefer="openai"`` / ``prefer="anthropic"``).
 
     Modes:
 

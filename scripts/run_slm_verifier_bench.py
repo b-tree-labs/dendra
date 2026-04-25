@@ -144,8 +144,9 @@ def _bench_model(model_name: str, ollama_host: str = "http://localhost:11434") -
 def main() -> None:
     candidates = [
         "qwen2.5:0.5b",      # Tiniest — sanity check
-        "llama3.2:1b",       # Current candidate default
-        "gemma2:2b",         # Larger, often-stronger-on-judgment
+        "llama3.2:1b",       # Current candidate default (1.3 GB)
+        "gemma2:2b",         # Larger, often-stronger-on-judgment (1.6 GB)
+        "llama3.2:3b",       # Bigger Llama if 1b is too noisy (2.0 GB)
     ]
 
     results = []
