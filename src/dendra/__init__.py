@@ -78,6 +78,10 @@ from dendra.telemetry import (
     StdoutEmitter,
     TelemetryEmitter,
 )
+from dendra.autoresearch import (
+    CandidateHarness,
+    CandidateReport,
+)
 from dendra.verdicts import (
     CallableVerdictSource,
     HumanReviewerSource,
@@ -94,6 +98,8 @@ __all__ = [
     "BoundedInMemoryStorage",
     "BulkVerdict",
     "BulkVerdictSummary",
+    "CandidateHarness",
+    "CandidateReport",
     "CompositeGate",
     "ClassificationRecord",
     "ClassificationResult",
