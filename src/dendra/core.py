@@ -830,6 +830,30 @@ class LearnedSwitch:
         if self._persist:
             self._load_breaker_state()
 
+        # Refuse HumanReviewerSource on the inline classify hot path.
+        # HumanReviewerSource.judge() blocks up to ``timeout`` seconds
+        # (default 30s) waiting for a human, which would stall every
+        # sample-rated classify() call. The class is meant for cold-start
+        # bulk ingestion or periodic drain workflows, not the inline
+        # verifier= slot. Refuse explicitly with a pointer to the safe
+        # patterns so users don't discover this in production.
+        if (
+            resolved_config.verifier is not None
+            and type(resolved_config.verifier).__name__ == "HumanReviewerSource"
+        ):
+            raise ValueError(
+                "refusing to construct LearnedSwitch with "
+                "verifier=HumanReviewerSource(...): the inline classify "
+                "hot path would block up to "
+                f"{getattr(resolved_config.verifier, '_timeout', 30.0)}s "
+                "per call waiting for a human reviewer. Use one of:\n"
+                "  • bulk_record_verdicts_from_source(inputs, "
+                "HumanReviewerSource(...)) for cold-start labeling, or\n"
+                "  • export_for_review() / apply_reviews() for periodic "
+                "drain workflows.\n"
+                "See docs/verdict-sources.md for the supported patterns."
+            )
+
         # Self-judgment guardrail when both ``model=`` and a
         # ``verifier=`` model judge are configured against the same
         # underlying language model. Same rationale as
