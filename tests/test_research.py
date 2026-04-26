@@ -36,7 +36,7 @@ def _rule(ticket: dict) -> str:
 
 
 @dataclass
-class AgreesWithRuleLLM:
+class AgreesWithRuleLM:
     """LLM that mirrors the rule — drives 100% agreement for tests."""
 
     def classify(self, input, labels):
@@ -56,12 +56,12 @@ class TestTransitionCurve:
         assert checkpoints[-1].rule_accuracy == pytest.approx(1.0)
         assert checkpoints[-1].decision_accuracy == pytest.approx(1.0)
 
-    def test_captures_llm_shadow_accuracy(self):
+    def test_captures_model_shadow_accuracy(self):
         s = LearnedSwitch(
             name="t",
             rule=_rule,
             author="alice",
-            model=AgreesWithRuleLLM(),
+            model=AgreesWithRuleLM(),
             config=SwitchConfig(auto_record=False, phase=Phase.MODEL_SHADOW),
         )
         examples = [
@@ -70,7 +70,7 @@ class TestTransitionCurve:
         ] * 5
         checkpoints = run_transition_curve(s, examples, checkpoint_every=5)
         last = checkpoints[-1]
-        assert last.llm_accuracy == pytest.approx(1.0)
+        assert last.lm_accuracy == pytest.approx(1.0)
         assert last.ml_accuracy is None  # no ML head at Phase 1
 
     def test_tail_checkpoint_appended(self):

@@ -139,7 +139,7 @@ class TestPatternP5:
 
 
 class TestPatternP6:
-    def test_llm_prompted_classifier_matches(self, tmp_path):
+    def test_model_prompted_classifier_matches(self, tmp_path):
         _write(
             tmp_path / "llm_classify.py",
             "def classify(text):\n"

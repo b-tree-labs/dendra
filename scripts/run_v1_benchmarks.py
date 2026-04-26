@@ -6,7 +6,7 @@
 Measures real latency numbers across the hot-path × phase × auto_record ×
 storage backend matrix, plus record_verdict, advance, gate eval, dispatch,
 and payload-size scaling. Produces a JSONL raw-data file + a markdown
-report for docs/working/v1-audit-benchmarks.md.
+report for docs/benchmarks/v1-audit-benchmarks.md.
 
 Run:
     python scripts/run_v1_benchmarks.py
@@ -133,14 +133,14 @@ def _dendra_version() -> str:
 # ---------------------------------------------------------------------------
 
 
-class _StubLLM:
+class _StubLM:
     """Deterministic LLM stub; returns high-confidence label."""
 
     def classify(self, input: Any, labels: Any) -> ModelPrediction:
         return ModelPrediction(label="flight", confidence=0.95)
 
 
-class _StubLLMLowConf:
+class _StubLMLowConf:
     """LLM stub that always yields low confidence → rule_fallback path."""
 
     def classify(self, input: Any, labels: Any) -> ModelPrediction:
@@ -322,7 +322,7 @@ INPUT = "i want to fly from boston to denver"
 def bench_classify_phase_matrix(n_iter: int) -> list[CellStats]:
     """Phase × auto_record matrix for classify()."""
     cells: list[CellStats] = []
-    llm = _StubLLM()
+    llm = _StubLM()
     ml = _StubMLHead()
     configs = [
         ("RULE", Phase.RULE, None, None),
@@ -506,7 +506,7 @@ def bench_advance_log_sizes(n_iter: int) -> list[CellStats]:
             ),
             # Use InMemoryStorage (unbounded) so 100k records fit.
             storage=InMemoryStorage(),
-            model=_StubLLM(),
+            model=_StubLM(),
         )
         # Seed the storage directly so we skip record_verdict overhead.
         for r in _seed_records(log_size):
@@ -709,12 +709,12 @@ def main() -> int:
         type=Path,
         default=None,
         help="Path for raw JSONL output. Default: "
-        "docs/working/benchmarks/v1-baseline-YYYY-MM-DD.jsonl",
+        "docs/benchmarks/v1-baseline-YYYY-MM-DD.jsonl",
     )
     parser.add_argument(
         "--md",
         type=Path,
-        default=Path("docs/working/v1-audit-benchmarks.md"),
+        default=Path("docs/benchmarks/v1-audit-benchmarks.md"),
     )
     parser.add_argument(
         "--skip-groups",
@@ -726,7 +726,7 @@ def main() -> int:
 
     date_str = time.strftime("%Y-%m-%d", time.localtime())
     jsonl_path = args.jsonl or Path(
-        f"docs/working/benchmarks/v1-baseline-{date_str}.jsonl"
+        f"docs/benchmarks/v1-baseline-{date_str}.jsonl"
     )
     jsonl_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -1285,7 +1285,7 @@ def _next_step_lines(cells: list[CellStats]) -> list[str]:
         "the remediation is higher priority.",
         "6. **Re-run this suite on release hardware** before v1 and "
         "diff the JSONL against "
-        "`docs/working/benchmarks/v1-baseline-YYYY-MM-DD.jsonl` — "
+        "`docs/benchmarks/v1-baseline-YYYY-MM-DD.jsonl` — "
         "the raw data is stored one-row-per-cell so `jq` and pandas "
         "diffs are trivial.",
     ]

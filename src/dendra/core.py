@@ -9,7 +9,7 @@ lifecycle follows the paper outline (§3.1):
     RULE → MODEL_SHADOW → MODEL_PRIMARY → ML_SHADOW → ML_WITH_FALLBACK → ML_PRIMARY
 
 In RULE the rule is the decision-maker. In MODEL_SHADOW the rule still
-decides; an LLM runs alongside, its prediction captured on every
+decides; a language model runs alongside, its prediction captured on every
 outcome for later analysis. Phases 2+ add their own routing rules.
 """
 
@@ -241,7 +241,7 @@ class SwitchStatus:
     outcomes_correct: int
     outcomes_incorrect: int
     model_version: str | None = None
-    # Phase 1 observability — fraction of outcomes where the LLM agreed
+    # Phase 1 observability — fraction of outcomes where the language model agreed
     # with the rule. ``None`` when no shadow observations are recorded.
     shadow_agreement_rate: float | None = None
     # Phase 3 observability — fraction where ML shadow matched the primary.
@@ -308,7 +308,7 @@ class SwitchConfig:
     - ``starting_phase`` — the phase the switch begins in. Default
       :data:`Phase.RULE` (safety-first). Set to a higher phase for
       LLM-as-teacher bootstrap (``MODEL_PRIMARY``), porting an
-      existing LLM classifier, or hybrid steady-state designs.
+      existing language model classifier, or hybrid steady-state designs.
     - ``phase_limit`` — the ceiling. ``advance()`` refuses to cross
       it. Default :data:`Phase.ML_PRIMARY` (no cap — full autonomy
       permitted when evidence earns it). Set lower to constrain
@@ -362,15 +362,13 @@ class SwitchConfig:
     # classifies, then routes the (input, label) pair through the
     # verifier's ``judge`` to obtain a verdict, then writes a
     # verdict-bearing record (replacing the auto-record UNKNOWN
-    # row). Eliminates the manual ``mark_correct()`` / reviewer-
-    # queue setup that's typically the biggest adoption barrier.
-    # Pair with :func:`dendra.default_verifier` for the
+    # row). Pair with :func:`dendra.default_verifier` for the
     # auto-detection factory.
     verifier: Any = None
     # Fraction of classifications routed through the verifier.
     # ``1.0`` (default) verifies every call. Use a lower value
     # (e.g., ``0.1`` for 10%) when the verifier is expensive
-    # (cloud LLM, large committee) and full coverage isn't
+    # (cloud language model, large committee) and full coverage isn't
     # required for the gate's statistical power. Sampling is
     # uniform random per-call.
     verifier_sample_rate: float = 1.0
@@ -843,23 +841,23 @@ class LearnedSwitch:
             self._load_breaker_state()
 
         # Self-judgment guardrail when both ``model=`` and a
-        # ``verifier=`` LLM judge are configured against the same
-        # underlying LLM. Same rationale as
-        # :class:`LLMJudgeSource.__init__` (G-Eval / MT-Bench /
+        # ``verifier=`` model judge are configured against the same
+        # underlying language model. Same rationale as
+        # :class:`JudgeSource.__init__` (G-Eval / MT-Bench /
         # Arena literature). Skipped when either side is absent or
         # the verifier doesn't expose its judge model.
         if self._model is not None and resolved_config.verifier is not None:
             judge_model = getattr(resolved_config.verifier, "_judge", None)
             if judge_model is not None:
-                from dendra.verdicts import _same_llm
-                if _same_llm(self._model, judge_model):
+                from dendra.verdicts import _same_model
+                if _same_model(self._model, judge_model):
                     raise ValueError(
                         "refusing to construct LearnedSwitch: model= and "
-                        "verifier= resolve to the same LLM. Using the "
+                        "verifier= resolve to the same language model. Using the "
                         "same model as classifier and judge biases "
                         "verdicts toward the classifier's own errors. "
                         "Pass distinct models, or wrap the verifier as "
-                        "LLMJudgeSource(..., guard_against_same_llm=False) "
+                        "JudgeSource(..., guard_against_same_llm=False) "
                         "if you explicitly accept the bias risk."
                     )
 
@@ -1175,7 +1173,7 @@ class LearnedSwitch:
                     f"switch {self.name!r} is in phase {phase.value} but no "
                     "model classifier was provided"
                 )
-            # Shadow: run the LLM for observation but never let failure
+            # Shadow: run the language model for observation but never let failure
             # propagate — the rule is the user-visible decision.
             model_output: Any = None
             model_confidence: float | None = None
@@ -1222,7 +1220,7 @@ class LearnedSwitch:
                     f"switch {self.name!r} is in phase {phase.value} but no ml_head was provided"
                 )
             # Primary decision path at Phase 3 mirrors MODEL_PRIMARY when an
-            # LLM is configured, else falls to rule. ML runs only in shadow.
+            # language model is configured, else falls to rule. ML runs only in shadow.
             primary = self._phase_primary_decision(input, rule_output, phase)
             ml_output: Any = None
             ml_confidence: float | None = None
@@ -1295,7 +1293,7 @@ class LearnedSwitch:
     ) -> ClassificationResult:
         """Primary decision for phases where an ML head runs in shadow.
 
-        Routes through the LLM when configured (MODEL_PRIMARY semantics),
+        Routes through the language model when configured (MODEL_PRIMARY semantics),
         otherwise falls back to the rule. Never touches the ML head —
         that's the shadow layer's job.
         """
@@ -1901,7 +1899,7 @@ class LearnedSwitch:
         Runs the CPU-bound classify body in a worker thread. When
         ``config.verifier`` is set, the verdict-judgment runs on
         the event loop natively via the verifier's ``ajudge`` if
-        available — so a cloud-LLM verifier doesn't pin a thread
+        available — so a cloud-language model verifier doesn't pin a thread
         for its full network latency. Falls back to a thread hop
         for sync-only verifiers.
         """

@@ -12,7 +12,7 @@ classifiers from affecting user-visible output.
 
 Core public API: :class:`LearnedSwitch`, :func:`ml_switch` decorator,
 :class:`Phase`, :class:`SwitchConfig`, :class:`ClassificationRecord`,
-:class:`FileStorage`, and the LLM/ML protocol interfaces.
+:class:`FileStorage`, and the language model/ML protocol interfaces.
 
 Tooling (analyzer, ROI reporter, AST-based `wrap_function`, viz,
 research runners) ships in submodules — import directly:
@@ -81,12 +81,14 @@ from dendra.telemetry import (
 from dendra.autoresearch import (
     CandidateHarness,
     CandidateReport,
+    Tournament,
+    TournamentReport,
 )
 from dendra.verdicts import (
     CallableVerdictSource,
     HumanReviewerSource,
-    LLMCommitteeSource,
-    LLMJudgeSource,
+    JudgeCommittee,
+    JudgeSource,
     NoVerifierAvailableError,
     VerdictSource,
     WebhookVerdictSource,
@@ -137,9 +139,11 @@ __all__ = [
     "SwitchStatus",
     "CallableVerdictSource",
     "HumanReviewerSource",
-    "LLMCommitteeSource",
-    "LLMJudgeSource",
+    "JudgeCommittee",
+    "JudgeSource",
     "TelemetryEmitter",
+    "Tournament",
+    "TournamentReport",
     "Verdict",
     "VerdictSource",
     "NoVerifierAvailableError",

@@ -277,3 +277,40 @@ class TestCliErrorPaths:
     def test_unknown_subcommand_rejected(self, capsys):
         with pytest.raises(SystemExit):
             main(["not-a-real-subcommand"])
+
+
+# ---------------------------------------------------------------------------
+# quickstart subcommand
+# ---------------------------------------------------------------------------
+
+
+class TestQuickstart:
+    def test_list_prints_examples(self, capsys):
+        rc = main(["quickstart", "--list"])
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "tournament" in out
+        assert "hello" in out
+        assert "21_tournament.py" in out
+
+    def test_unknown_example_rejected(self, capsys):
+        rc = main(["quickstart", "not-a-real-example"])
+        assert rc == 2
+        err = capsys.readouterr().err
+        assert "unknown example" in err
+
+    def test_no_run_copies_file_without_executing(self, tmp_path, capsys):
+        rc = main([
+            "quickstart",
+            "hello",
+            "--target",
+            str(tmp_path),
+            "--no-run",
+        ])
+        assert rc == 0
+        # The example landed in target_dir
+        copied = tmp_path / "01_hello_world.py"
+        assert copied.exists()
+        out = capsys.readouterr().out
+        assert "copied" in out
+        assert "run with: python" in out

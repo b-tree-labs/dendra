@@ -37,11 +37,11 @@ class BenchmarkRun:
     def ml_accs(self) -> list[float]:
         return [c["ml_test_accuracy"] for c in self.checkpoints]
 
-    def llm_accs(self) -> list[float | None]:
-        return [c.get("llm_test_accuracy") for c in self.checkpoints]
+    def model_accs(self) -> list[float | None]:
+        return [c.get("model_test_accuracy") for c in self.checkpoints]
 
-    def has_llm(self) -> bool:
-        return any(c.get("llm_test_accuracy") is not None for c in self.checkpoints)
+    def has_model(self) -> bool:
+        return any(c.get("model_test_accuracy") is not None for c in self.checkpoints)
 
     def crossover_outcomes(self) -> int | None:
         """Training-outcome count where ML first exceeds the rule."""
@@ -205,12 +205,12 @@ def plot_transition_curves(
         xs = run.outcomes()
         ax.plot(xs, run.rule_accs(), label="Rule", linestyle="--", color="#c04040")
         ax.plot(xs, run.ml_accs(), label="ML", color="#2a7fb8", linewidth=2)
-        if run.has_llm():
-            llm_vals = [v if v is not None else float("nan") for v in run.llm_accs()]
+        if run.has_model():
+            model_vals = [v if v is not None else float("nan") for v in run.model_accs()]
             ax.plot(
                 xs,
-                llm_vals,
-                label="LLM (shadow)",
+                model_vals,
+                label="language model (shadow)",
                 color="#5b9e4a",
                 linestyle="-.",
                 linewidth=1.6,

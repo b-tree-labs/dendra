@@ -126,7 +126,7 @@ def ml_switch(
             forms: ``list[str]`` (plain labels), ``list[Label]``
             (labels with optional actions), or ``dict[str, Callable]``
             (shorthand for per-label actions). Optional at Phase 0;
-            required at Phase 1+ for LLM/ML routing.
+            required at Phase 1+ for language model/ML routing.
         author: Optional provenance string (team handle, service
             account, compliance ID). When omitted, auto-derived
             from the decorated function's module plus its name as

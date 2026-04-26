@@ -13,12 +13,12 @@ Dendra ships with three built-in sources:
   ``(input, label) -> Verdict`` callable. The escape hatch for
   bespoke truth oracles (downstream signals, business rules,
   reviewer decisions already on hand).
-- :class:`LLMJudgeSource` — single-LLM judge. Prompts the model
+- :class:`JudgeSource` — single-model judge. Prompts the model
   to assess whether a label is correct for an input. Guards
   against the self-judgment bias pattern called out in G-Eval,
   MT-Bench, and Arena evaluation literature: running the SAME
-  LLM as classifier and as judge is a known failure mode.
-- :class:`LLMCommitteeSource` — multi-LLM committee. Combines
+  language model as classifier and as judge is a known failure mode.
+- :class:`JudgeCommittee` — multi-model committee. Combines
   per-model verdicts via majority vote, unanimous agreement, or
   confidence-weighted aggregation.
 
@@ -28,7 +28,7 @@ is :func:`runtime_checkable` so ``isinstance(obj, VerdictSource)``
 works without inheritance.
 
 Every verdict is stamped with a ``source`` string
-(``"llm-judge:<model>"`` / ``"llm-committee:<ids>"`` /
+(``"judge:<model>"`` / ``"committee:<ids>"`` /
 ``"callable:<name>"``) so audit-chain filters can separate
 self-reported machine verdicts from human-reviewed truth.
 
@@ -83,7 +83,7 @@ class VerdictSource(Protocol):
 class CallableVerdictSource:
     """Wrap any ``(input, label) -> Verdict`` callable as a VerdictSource.
 
-    Use when the truth signal isn't an LLM — a downstream service's
+    Use when the truth signal isn't a language model — a downstream service's
     return code, a database lookup, a business-rule function,
     a reviewer's notebook output pre-computed as a dict lookup.
     """
@@ -112,7 +112,7 @@ class CallableVerdictSource:
 
 
 # ---------------------------------------------------------------------------
-# LLMJudgeSource — single-LLM judge with bias guardrails
+# JudgeSource — single-model judge with bias guardrails
 # ---------------------------------------------------------------------------
 
 
@@ -124,7 +124,7 @@ def _is_model_like(obj: Any) -> bool:
 
     Async adapters expose ``aclassify`` instead of ``classify``;
     both shapes satisfy "something that maps (input, labels) to a
-    ModelPrediction." LLMJudgeSource / LLMCommitteeSource accept
+    ModelPrediction." JudgeSource / JudgeCommittee accept
     either and dispatch to whichever is present.
     """
     return callable(getattr(obj, "classify", None)) or callable(
@@ -132,7 +132,7 @@ def _is_model_like(obj: Any) -> bool:
     )
 
 
-def _identify_llm(llm: Any) -> tuple[str, str]:
+def _identify_model(llm: Any) -> tuple[str, str]:
     """Extract a ``(class_name, model_string)`` pair for identity checks."""
     cls = type(llm).__name__
     model = str(
@@ -143,7 +143,7 @@ def _identify_llm(llm: Any) -> tuple[str, str]:
     return cls, model
 
 
-def _same_llm(a: ModelClassifier, b: ModelClassifier) -> bool:
+def _same_model(a: ModelClassifier, b: ModelClassifier) -> bool:
     """Best-effort identity check.
 
     True when ``a`` and ``b`` are literally the same object, or when
@@ -153,11 +153,11 @@ def _same_llm(a: ModelClassifier, b: ModelClassifier) -> bool:
     """
     if a is b:
         return True
-    return _identify_llm(a) == _identify_llm(b)
+    return _identify_model(a) == _identify_model(b)
 
 
-class LLMJudgeSource:
-    """Single-LLM judge.
+class JudgeSource:
+    """Single-model judge.
 
     Prompts ``judge_model`` to evaluate whether ``label`` is the
     correct classification for ``input``. Returns one of
@@ -171,7 +171,7 @@ class LLMJudgeSource:
 
     Bias guardrail
     --------------
-    Using the same LLM as both classifier and judge is a
+    Using the same language model as both classifier and judge is a
     well-documented anti-pattern — the same model tends to agree
     with its own outputs even when wrong. When
     ``guard_against_same_llm=True`` (the default), constructing
@@ -183,7 +183,7 @@ class LLMJudgeSource:
 
     References: G-Eval (NAACL 2023), MT-Bench (NeurIPS 2023),
     Chatbot Arena (ICML 2024) — all report meaningful bias when
-    the same LLM judges its own outputs.
+    the same model judges its own outputs.
     """
 
     def __init__(
@@ -201,12 +201,12 @@ class LLMJudgeSource:
                 "-> ModelPrediction (async)."
             )
         if guard_against_same_llm and require_distinct_from is not None:
-            if _same_llm(judge_model, require_distinct_from):
-                cls, model = _identify_llm(judge_model)
+            if _same_model(judge_model, require_distinct_from):
+                cls, model = _identify_model(judge_model)
                 raise ValueError(
-                    f"refusing to construct LLMJudgeSource: judge_model and "
-                    f"require_distinct_from resolve to the same LLM "
-                    f"({cls} / model={model!r}). Using the same LLM as "
+                    f"refusing to construct JudgeSource: judge_model and "
+                    f"require_distinct_from resolve to the same language model "
+                    f"({cls} / model={model!r}). Using the same language model as "
                     f"classifier and judge biases verdicts toward the "
                     f"classifier's own errors — see G-Eval / MT-Bench / "
                     f"Arena literature. Pass a distinct model, or set "
@@ -214,9 +214,9 @@ class LLMJudgeSource:
                     f"accept the bias risk."
                 )
         self._judge = judge_model
-        cls, model = _identify_llm(judge_model)
+        cls, model = _identify_model(judge_model)
         tag = model or cls
-        self.source_name = f"llm-judge:{tag}"
+        self.source_name = f"judge:{tag}"
         self._prompt_template = prompt_template or _DEFAULT_JUDGE_PROMPT
 
     def judge(self, input: Any, label: Any, /) -> Verdict:
@@ -286,15 +286,15 @@ _DEFAULT_JUDGE_PROMPT = (
 
 
 # ---------------------------------------------------------------------------
-# LLMCommitteeSource — multi-judge aggregation
+# JudgeCommittee — multi-judge aggregation
 # ---------------------------------------------------------------------------
 
 
 _COMMITTEE_MODES = ("majority", "unanimous", "confidence_weighted")
 
 
-class LLMCommitteeSource:
-    """Aggregate verdicts across multiple LLM judges.
+class JudgeCommittee:
+    """Aggregate verdicts across multiple model judges.
 
     Modes
     -----
@@ -311,7 +311,7 @@ class LLMCommitteeSource:
     --------------
     Every pair of judges is checked against the
     ``require_distinct_from`` classifier (if supplied) using the
-    same identity heuristic as :class:`LLMJudgeSource`. A
+    same identity heuristic as :class:`JudgeSource`. A
     committee of clones of the production classifier is a
     degenerate case that the guardrail refuses at construction.
     """
@@ -328,7 +328,7 @@ class LLMCommitteeSource:
         judge_list = list(judges)
         if len(judge_list) < 2:
             raise ValueError(
-                "LLMCommitteeSource requires at least 2 judges; "
+                "JudgeCommittee requires at least 2 judges; "
                 f"got {len(judge_list)}"
             )
         if mode not in _COMMITTEE_MODES:
@@ -342,19 +342,19 @@ class LLMCommitteeSource:
                 )
         if guard_against_same_llm and require_distinct_from is not None:
             for j in judge_list:
-                if _same_llm(j, require_distinct_from):
-                    cls, model = _identify_llm(j)
+                if _same_model(j, require_distinct_from):
+                    cls, model = _identify_model(j)
                     raise ValueError(
-                        f"refusing to construct LLMCommitteeSource: at "
-                        f"least one judge resolves to the same LLM as "
+                        f"refusing to construct JudgeCommittee: at "
+                        f"least one judge resolves to the same language model as "
                         f"require_distinct_from ({cls} / model={model!r}). "
-                        f"See LLMJudgeSource for the bias-risk rationale."
+                        f"See JudgeSource for the bias-risk rationale."
                     )
         self._judges = judge_list
         self._mode = mode
         self._template = prompt_template or _DEFAULT_JUDGE_PROMPT
-        ids = [_identify_llm(j)[1] or _identify_llm(j)[0] for j in judge_list]
-        self.source_name = f"llm-committee:{'|'.join(ids)}({mode})"
+        ids = [_identify_model(j)[1] or _identify_model(j)[0] for j in judge_list]
+        self.source_name = f"committee:{'|'.join(ids)}({mode})"
 
     @property
     def mode(self) -> str:
@@ -609,7 +609,7 @@ class WebhookVerdictSource:
 
 
 class NoVerifierAvailableError(RuntimeError):
-    """Raised by :func:`default_verifier` when no LLM backend can be
+    """Raised by :func:`default_verifier` when no language model backend can be
     auto-configured. The exception message lists the recovery options."""
 
 
@@ -620,8 +620,8 @@ def default_verifier(
     openai_model: str = "gpt-4o-mini",
     anthropic_model: str = "claude-haiku-4-5",
     ollama_host: str = "http://localhost:11434",
-) -> LLMJudgeSource:
-    """Return a sensibly-configured :class:`LLMJudgeSource`.
+) -> JudgeSource:
+    """Return a sensibly-configured :class:`JudgeSource`.
 
     **Local-only by default. No surprise cloud dependency at
     runtime.** ``pip install dendra`` ships standalone — the
@@ -633,7 +633,7 @@ def default_verifier(
 
     The shipped default is ``llama3.2:3b`` (~2.0 GB) — picked
     after benchmarking four candidate SLMs (see
-    ``docs/working/benchmarks/slm-verifier-results.md``). 97%
+    ``docs/benchmarks/slm-verifier-results.md``). 97%
     format-compliance on the verdict task; smaller models drift
     into prose too often to be reliable. Pull it with
     ``ollama pull llama3.2:3b``.
@@ -651,20 +651,52 @@ def default_verifier(
 
     - ``prefer="local"`` (default) — Ollama only. Raises if
       Ollama isn't reachable on ``ollama_host``.
+    - ``prefer="bundled"`` — lazy-downloaded GGUF served via
+      ``llama-cpp-python``. Requires ``pip install dendra[bundled]``.
+      First call pulls ~4.7 GB to
+      ``~/.cache/llama.cpp/models/``. See
+      :mod:`dendra.bundled`.
     - ``prefer="openai"`` — requires ``OPENAI_API_KEY`` in env.
     - ``prefer="anthropic"`` — requires ``ANTHROPIC_API_KEY`` in env.
-    - ``prefer="auto"`` — local first, then cloud fallbacks
-      (opt-in for users who explicitly want hybrid behavior).
+    - ``prefer="auto"`` — bundled, then local Ollama, then cloud
+      fallbacks (opt-in for users who want best-available).
 
     Returns the verifier with no self-judgment guardrail wired —
     pass it directly to ``LearnedSwitch(verifier=...)`` and the
     switch construction will refuse if your ``model=`` resolves
-    to the same LLM (the cross-check happens at switch
+    to the same language model (the cross-check happens at switch
     construction; see core.py).
     """
     import os
 
     options: list[str] = []
+
+    if prefer in ("bundled", "auto"):
+        try:
+            from dendra.bundled import (
+                BundledModelUnavailableError,
+                default_verifier_bundled,
+            )
+            try:
+                return default_verifier_bundled()
+            except BundledModelUnavailableError as e:
+                options.append(f"bundled-model fetch failed: {e}")
+            except ImportError:
+                options.append(
+                    "install the bundled extra (`pip install dendra[bundled]`)"
+                )
+        except ImportError:
+            options.append(
+                "dendra.bundled is unavailable on this Python version"
+            )
+
+        if prefer == "bundled":
+            raise NoVerifierAvailableError(
+                f"Bundled verifier unavailable. "
+                f"Recovery options: {'; '.join(options)}. "
+                f"For Ollama instead, pass prefer='local'; for cloud, "
+                f"prefer='openai' / 'anthropic'."
+            )
 
     if prefer in ("local", "auto"):
         try:
@@ -673,7 +705,7 @@ def default_verifier(
                 r = httpx.get(f"{ollama_host}/api/tags", timeout=1.0)
                 if r.status_code == 200:
                     from dendra.models import OllamaAdapter
-                    return LLMJudgeSource(
+                    return JudgeSource(
                         OllamaAdapter(model=ollama_model, host=ollama_host)
                     )
             except (httpx.ConnectError, httpx.TimeoutException):
@@ -690,7 +722,7 @@ def default_verifier(
         if prefer == "local":
             # Local-only mode — don't fall through to cloud.
             raise NoVerifierAvailableError(
-                f"No local LLM verifier reachable. "
+                f"No local SLM verifier reachable. "
                 f"Recovery options: {'; '.join(options)}. "
                 f"For an opt-in cloud fallback, pass "
                 f"prefer='auto' / 'openai' / 'anthropic'."
@@ -700,7 +732,7 @@ def default_verifier(
         if os.getenv("OPENAI_API_KEY"):
             try:
                 from dendra.models import OpenAIAdapter
-                return LLMJudgeSource(OpenAIAdapter(model=openai_model))
+                return JudgeSource(OpenAIAdapter(model=openai_model))
             except ImportError:
                 options.append(
                     "install the OpenAI extra (`pip install dendra[openai]`)"
@@ -712,7 +744,7 @@ def default_verifier(
         if os.getenv("ANTHROPIC_API_KEY"):
             try:
                 from dendra.models import AnthropicAdapter
-                return LLMJudgeSource(AnthropicAdapter(model=anthropic_model))
+                return JudgeSource(AnthropicAdapter(model=anthropic_model))
             except ImportError:
                 options.append(
                     "install the Anthropic extra (`pip install dendra[anthropic]`)"
@@ -721,7 +753,7 @@ def default_verifier(
             options.append("set ANTHROPIC_API_KEY in your environment")
 
     raise NoVerifierAvailableError(
-        f"No LLM verifier could be auto-configured (prefer={prefer!r}). "
+        f"No language model verifier could be auto-configured (prefer={prefer!r}). "
         f"Recovery options: {'; '.join(options) or 'pass verifier= explicitly'}."
     )
 
@@ -729,8 +761,8 @@ def default_verifier(
 __all__ = [
     "CallableVerdictSource",
     "HumanReviewerSource",
-    "LLMCommitteeSource",
-    "LLMJudgeSource",
+    "JudgeCommittee",
+    "JudgeSource",
     "NoVerifierAvailableError",
     "VerdictSource",
     "WebhookVerdictSource",

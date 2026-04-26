@@ -88,7 +88,7 @@ class TestSwitchROI:
         )
         assert cheap.direct_eng_savings_low_usd < default.direct_eng_savings_low_usd
 
-    def test_token_savings_count_non_llm_outcomes(self, tmp_path):
+    def test_token_savings_count_non_model_outcomes(self, tmp_path):
         s = FileStorage(tmp_path)
         # 100 rule outcomes, 20 ml outcomes, 30 llm outcomes.
         for _ in range(100):
@@ -99,7 +99,7 @@ class TestSwitchROI:
             s.append_record("hot_path", _outcome(source="model"))
         roi = compute_switch_roi(switch_name="hot_path", storage=s)
         # 100 rule + 20 ml = 120 LLM calls avoided.
-        assert roi.llm_calls_avoided == 120
+        assert roi.model_calls_avoided == 120
         # Positive range, low <= high.
         assert roi.token_savings_low_usd > 0
         assert roi.token_savings_high_usd >= roi.token_savings_low_usd
@@ -117,12 +117,12 @@ class TestSwitchROI:
         # Halving the counter-factual halves the token savings.
         assert abs(halved.token_savings_low_usd - default.token_savings_low_usd / 2) < 1.0
 
-    def test_all_llm_traffic_means_zero_token_savings(self, tmp_path):
+    def test_all_model_traffic_means_zero_token_savings(self, tmp_path):
         s = FileStorage(tmp_path)
         for _ in range(100):
             s.append_record("a", _outcome(source="model"))
         roi = compute_switch_roi(switch_name="a", storage=s)
-        assert roi.llm_calls_avoided == 0
+        assert roi.model_calls_avoided == 0
         assert roi.token_savings_low_usd == 0.0
 
     def test_accuracy_computed_from_outcomes(self, tmp_path):

@@ -1,9 +1,9 @@
 # Copyright (c) 2026 B-Tree Ventures, LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""LLM classifier protocol and optional provider adapters.
+"""language model classifier protocol and optional provider adapters.
 
-Phase 1 (MODEL_SHADOW) and Phase 2 (MODEL_PRIMARY) need an LLM to produce a
+Phase 1 (MODEL_SHADOW) and Phase 2 (MODEL_PRIMARY) need a language model to produce a
 classification. Dendra never hard-depends on a specific provider — users
 supply any object that satisfies the :class:`ModelClassifier` protocol, or
 they pull in one of the optional adapters below (all behind lazy
@@ -23,7 +23,7 @@ from typing import Any, Protocol, runtime_checkable
 
 @dataclass(frozen=True)
 class ModelPrediction:
-    """What an LLM classifier returns for one input."""
+    """What a language model classifier returns for one input."""
 
     label: str
     confidence: float
@@ -78,7 +78,7 @@ class _BaseAdapter:
         matched and we fell back to ``labels[0]``. Adapters use
         ``matched`` to clamp confidence on no-match so the switch's
         ``confidence_threshold`` drops the prediction rather than
-        silently routing every unparseable LLM response to the first
+        silently routing every unparseable model response to the first
         label (v1-readiness.md §2 finding #12).
 
         Strategy: pull the first non-empty line, lowercase + strip
@@ -207,7 +207,7 @@ class AnthropicAdapter(_BaseAdapter):
 
 
 class OllamaAdapter(_BaseAdapter):
-    """Ollama local-LLM adapter (http://localhost:11434 by default)."""
+    """Ollama local-language-model adapter (http://localhost:11434 by default)."""
 
     def __init__(
         self,
@@ -285,7 +285,7 @@ class LlamafileAdapter(OpenAIAdapter):
 # ``aclassify(...)`` — a coroutine. Pass these to async-aware call
 # sites (``LearnedSwitch.abulk_record_verdicts_from_source`` when the
 # source is also async; :class:`LLMJudgeAsyncSource` for an async
-# LLM judge; direct usage from FastAPI / LangGraph / LlamaIndex).
+# model judge; direct usage from FastAPI / LangGraph / LlamaIndex).
 
 
 class OpenAIAsyncAdapter(_BaseAdapter):
