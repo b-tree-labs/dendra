@@ -112,9 +112,7 @@ def _normalize_labels(labels: LabelsArg | None) -> list[Label]:
         elif isinstance(item, str):
             out.append(Label(name=item))
         else:
-            raise TypeError(
-                f"labels entries must be str or Label; got {type(item).__name__}"
-            )
+            raise TypeError(f"labels entries must be str or Label; got {type(item).__name__}")
     return out
 
 
@@ -405,8 +403,7 @@ class SwitchConfig:
         # Validate verifier_sample_rate.
         if not 0.0 <= self.verifier_sample_rate <= 1.0:
             raise ValueError(
-                f"verifier_sample_rate must be in [0, 1]; "
-                f"got {self.verifier_sample_rate}"
+                f"verifier_sample_rate must be in [0, 1]; got {self.verifier_sample_rate}"
             )
 
         # safety_critical caps the ceiling at ML_WITH_FALLBACK.
@@ -774,9 +771,7 @@ class LearnedSwitch:
                 # the shortcut.
                 from dendra.storage import FileStorage, ResilientStorage
 
-                storage = ResilientStorage(
-                    FileStorage("runtime/dendra", batching=True)
-                )
+                storage = ResilientStorage(FileStorage("runtime/dendra", batching=True))
             else:
                 from dendra.storage import BoundedInMemoryStorage
 
@@ -792,10 +787,7 @@ class LearnedSwitch:
         with _SWITCH_REGISTRY_LOCK:
             existing = _SWITCH_REGISTRY.get(registry_key)
             if existing is not None and existing is not self:
-                hint = (
-                    f"A LearnedSwitch named {name!r} is already using this "
-                    f"storage backend."
-                )
+                hint = f"A LearnedSwitch named {name!r} is already using this storage backend."
                 if name_was_autoderived:
                     hint += (
                         " The name was auto-derived from rule.__name__; "
@@ -831,9 +823,7 @@ class LearnedSwitch:
         # Canonical labels list (Label objects). Assignment via the setter
         # normalizes strings / dicts and rebuilds the name index.
         self._labels_raw: list[Label] = _normalize_labels(labels)
-        self._label_index: dict[str, Label] = {
-            lbl.name: lbl for lbl in self._labels_raw
-        }
+        self._label_index: dict[str, Label] = {lbl.name: lbl for lbl in self._labels_raw}
         # Rehydrate persisted breaker state (paper §7.1 promise must
         # survive a process restart when durable storage is configured).
         self._persist: bool = bool(persist)
@@ -850,6 +840,7 @@ class LearnedSwitch:
             judge_model = getattr(resolved_config.verifier, "_judge", None)
             if judge_model is not None:
                 from dendra.verdicts import _same_model
+
                 if _same_model(self._model, judge_model):
                     raise ValueError(
                         "refusing to construct LearnedSwitch: model= and "
@@ -908,9 +899,7 @@ class LearnedSwitch:
         # skip the method-call overhead entirely. The verifier path
         # is opt-in; users without one should not pay for it.
         verified = (
-            self._maybe_run_verifier(input, result)
-            if self.config.verifier is not None
-            else False
+            self._maybe_run_verifier(input, result) if self.config.verifier is not None else False
         )
         if not verified and self.config.auto_record:
             self._auto_log(input, result)
@@ -954,9 +943,7 @@ class LearnedSwitch:
         result._switch = self
         result._input = input
         verified = (
-            self._maybe_run_verifier(input, result)
-            if self.config.verifier is not None
-            else False
+            self._maybe_run_verifier(input, result) if self.config.verifier is not None else False
         )
         if not verified and self.config.auto_record:
             self._auto_log(input, result)
@@ -978,9 +965,7 @@ class LearnedSwitch:
             pass
         return result
 
-    def _maybe_run_verifier(
-        self, input: Any, result: ClassificationResult
-    ) -> bool:
+    def _maybe_run_verifier(self, input: Any, result: ClassificationResult) -> bool:
         """Route the (input, label) pair through ``config.verifier``.
 
         Returns ``True`` when the verifier produced a verdict-bearing
@@ -995,6 +980,7 @@ class LearnedSwitch:
             return False
         if self.config.verifier_sample_rate < 1.0:
             import random
+
             if random.random() >= self.config.verifier_sample_rate:
                 return False
         try:
@@ -1186,8 +1172,11 @@ class LearnedSwitch:
             except BaseException:
                 pass
             return _result(
-                rule_output, "rule", 1.0,
-                model_output=model_output, model_confidence=model_confidence,
+                rule_output,
+                "rule",
+                1.0,
+                model_output=model_output,
+                model_confidence=model_confidence,
             )
 
         if phase is Phase.MODEL_PRIMARY:
@@ -1204,12 +1193,16 @@ class LearnedSwitch:
                 return _result(rule_output, "rule_fallback", 1.0)
             if float(pred.confidence) < self.config.confidence_threshold:
                 return _result(
-                    rule_output, "rule_fallback", 1.0,
+                    rule_output,
+                    "rule_fallback",
+                    1.0,
                     model_output=pred.label,
                     model_confidence=float(pred.confidence),
                 )
             return _result(
-                pred.label, "model", float(pred.confidence),
+                pred.label,
+                "model",
+                float(pred.confidence),
                 model_output=pred.label,
                 model_confidence=float(pred.confidence),
             )
@@ -1249,12 +1242,16 @@ class LearnedSwitch:
                 return _result(rule_output, "rule_fallback", 1.0)
             if float(ml_pred.confidence) < self.config.confidence_threshold:
                 return _result(
-                    rule_output, "rule_fallback", 1.0,
+                    rule_output,
+                    "rule_fallback",
+                    1.0,
                     ml_output=ml_pred.label,
                     ml_confidence=float(ml_pred.confidence),
                 )
             return _result(
-                ml_pred.label, "ml", float(ml_pred.confidence),
+                ml_pred.label,
+                "ml",
+                float(ml_pred.confidence),
                 ml_output=ml_pred.label,
                 ml_confidence=float(ml_pred.confidence),
             )
@@ -1280,7 +1277,9 @@ class LearnedSwitch:
                     self._save_breaker_state()
                     return _result(rule_output, "rule_fallback", 1.0)
                 return _result(
-                    ml_pred.label, "ml", float(ml_pred.confidence),
+                    ml_pred.label,
+                    "ml",
+                    float(ml_pred.confidence),
                     ml_output=ml_pred.label,
                     ml_confidence=float(ml_pred.confidence),
                 )
@@ -1297,14 +1296,20 @@ class LearnedSwitch:
         otherwise falls back to the rule. Never touches the ML head —
         that's the shadow layer's job.
         """
+
         def _r(
-            label: Any, source: str, confidence: float,
+            label: Any,
+            source: str,
+            confidence: float,
             *,
             model_output: Any = None,
             model_confidence: float | None = None,
         ) -> ClassificationResult:
             r = ClassificationResult(
-                label=label, source=source, confidence=confidence, phase=phase,
+                label=label,
+                source=source,
+                confidence=confidence,
+                phase=phase,
             )
             r._rule_output = rule_output
             r._model_output = model_output
@@ -1321,12 +1326,16 @@ class LearnedSwitch:
             return _r(rule_output, "rule_fallback", 1.0)
         if float(pred.confidence) < self.config.confidence_threshold:
             return _r(
-                rule_output, "rule_fallback", 1.0,
+                rule_output,
+                "rule_fallback",
+                1.0,
                 model_output=pred.label,
                 model_confidence=float(pred.confidence),
             )
         return _r(
-            pred.label, "model", float(pred.confidence),
+            pred.label,
+            "model",
+            float(pred.confidence),
             model_output=pred.label,
             model_confidence=float(pred.confidence),
         )
@@ -1359,9 +1368,7 @@ class LearnedSwitch:
         per-call paired data is load-bearing.
         """
         if outcome not in _VERDICT_VALUES:
-            raise ValueError(
-                f"outcome must be one of {sorted(_VERDICT_VALUES)}; got {outcome!r}"
-            )
+            raise ValueError(f"outcome must be one of {sorted(_VERDICT_VALUES)}; got {outcome!r}")
         # Pull shadow observations from the paired result when
         # available; otherwise fall back to a minimal record with
         # just the user-supplied fields. No instance-level stash —
@@ -1511,10 +1518,7 @@ class LearnedSwitch:
                         f"{self.config.phase_limit.name}"
                     ),
                 )
-            if (
-                self.config.safety_critical
-                and target is Phase.ML_PRIMARY
-            ):
+            if self.config.safety_critical and target is Phase.ML_PRIMARY:
                 # safety_critical refuses ML_PRIMARY on the hot path per
                 # paper §7.1, regardless of gate evidence. Belt + suspenders
                 # on top of phase_limit — if anyone ever widens that cap,
@@ -1522,8 +1526,7 @@ class LearnedSwitch:
                 return GateDecision(
                     advance=False,
                     rationale=(
-                        "safety_critical=True refuses advancement to "
-                        "ML_PRIMARY (paper §7.1)"
+                        "safety_critical=True refuses advancement to ML_PRIMARY (paper §7.1)"
                     ),
                 )
 
@@ -1945,9 +1948,7 @@ class LearnedSwitch:
         result._input = input
         return result
 
-    async def _amaybe_run_verifier(
-        self, input: Any, result: ClassificationResult
-    ) -> bool:
+    async def _amaybe_run_verifier(self, input: Any, result: ClassificationResult) -> bool:
         """Async peer of :meth:`_maybe_run_verifier`.
 
         Uses ``verifier.ajudge`` when available; falls back to
@@ -1961,6 +1962,7 @@ class LearnedSwitch:
             return False
         if self.config.verifier_sample_rate < 1.0:
             import random
+
             if random.random() >= self.config.verifier_sample_rate:
                 return False
         try:
@@ -1969,7 +1971,9 @@ class LearnedSwitch:
                 verdict = await ajudge(input, result.label)
             else:
                 verdict = await asyncio.to_thread(
-                    verifier.judge, input, result.label,
+                    verifier.judge,
+                    input,
+                    result.label,
                 )
         except (KeyboardInterrupt, SystemExit):
             raise
@@ -2029,9 +2033,7 @@ class LearnedSwitch:
             ),
         )
 
-    async def abulk_record_verdicts(
-        self, verdicts: Iterable[BulkVerdict], /
-    ) -> BulkVerdictSummary:
+    async def abulk_record_verdicts(self, verdicts: Iterable[BulkVerdict], /) -> BulkVerdictSummary:
         """Async peer of :meth:`bulk_record_verdicts`."""
         import asyncio
 
@@ -2059,7 +2061,9 @@ class LearnedSwitch:
         if ajudge is None:
             inputs = list(inputs)
             return await asyncio.to_thread(
-                self.bulk_record_verdicts_from_source, inputs, source,
+                self.bulk_record_verdicts_from_source,
+                inputs,
+                source,
             )
 
         summary = BulkVerdictSummary()
@@ -2090,7 +2094,8 @@ class LearnedSwitch:
                 self._records_since_advance_check = 0
             try:
                 summary.auto_advance_decision = await asyncio.to_thread(
-                    self.advance, _auto=True,
+                    self.advance,
+                    _auto=True,
                 )
             except (KeyboardInterrupt, SystemExit):
                 raise

@@ -39,12 +39,11 @@ of when-to-use-which, and ``examples/11_llm_judge.py`` /
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Sequence
 from typing import Any, Protocol, runtime_checkable
 
 from dendra.core import Verdict
 from dendra.models import ModelClassifier
-
 
 # ---------------------------------------------------------------------------
 # Protocol
@@ -127,19 +126,13 @@ def _is_model_like(obj: Any) -> bool:
     ModelPrediction." JudgeSource / JudgeCommittee accept
     either and dispatch to whichever is present.
     """
-    return callable(getattr(obj, "classify", None)) or callable(
-        getattr(obj, "aclassify", None)
-    )
+    return callable(getattr(obj, "classify", None)) or callable(getattr(obj, "aclassify", None))
 
 
 def _identify_model(llm: Any) -> tuple[str, str]:
     """Extract a ``(class_name, model_string)`` pair for identity checks."""
     cls = type(llm).__name__
-    model = str(
-        getattr(llm, "_model", None)
-        or getattr(llm, "model", None)
-        or ""
-    )
+    model = str(getattr(llm, "_model", None) or getattr(llm, "model", None) or "")
     return cls, model
 
 
@@ -200,19 +193,22 @@ class JudgeSource:
                 "ModelPrediction (sync) or aclassify(input, labels) "
                 "-> ModelPrediction (async)."
             )
-        if guard_against_same_llm and require_distinct_from is not None:
-            if _same_model(judge_model, require_distinct_from):
-                cls, model = _identify_model(judge_model)
-                raise ValueError(
-                    f"refusing to construct JudgeSource: judge_model and "
-                    f"require_distinct_from resolve to the same language model "
-                    f"({cls} / model={model!r}). Using the same language model as "
-                    f"classifier and judge biases verdicts toward the "
-                    f"classifier's own errors — see G-Eval / MT-Bench / "
-                    f"Arena literature. Pass a distinct model, or set "
-                    f"guard_against_same_llm=False if you explicitly "
-                    f"accept the bias risk."
-                )
+        if (
+            guard_against_same_llm
+            and require_distinct_from is not None
+            and _same_model(judge_model, require_distinct_from)
+        ):
+            cls, model = _identify_model(judge_model)
+            raise ValueError(
+                f"refusing to construct JudgeSource: judge_model and "
+                f"require_distinct_from resolve to the same language model "
+                f"({cls} / model={model!r}). Using the same language model as "
+                f"classifier and judge biases verdicts toward the "
+                f"classifier's own errors — see G-Eval / MT-Bench / "
+                f"Arena literature. Pass a distinct model, or set "
+                f"guard_against_same_llm=False if you explicitly "
+                f"accept the bias risk."
+            )
         self._judge = judge_model
         cls, model = _identify_model(judge_model)
         tag = model or cls
@@ -230,6 +226,7 @@ class JudgeSource:
                 # coroutine on a fresh event loop. Slower than the
                 # async path but keeps the sync API usable.
                 import asyncio
+
                 pred = asyncio.run(
                     self._judge.aclassify(prompt, _JUDGE_LABELS),
                 )
@@ -327,19 +324,12 @@ class JudgeCommittee:
     ) -> None:
         judge_list = list(judges)
         if len(judge_list) < 2:
-            raise ValueError(
-                "JudgeCommittee requires at least 2 judges; "
-                f"got {len(judge_list)}"
-            )
+            raise ValueError(f"JudgeCommittee requires at least 2 judges; got {len(judge_list)}")
         if mode not in _COMMITTEE_MODES:
-            raise ValueError(
-                f"mode must be one of {_COMMITTEE_MODES}; got {mode!r}"
-            )
+            raise ValueError(f"mode must be one of {_COMMITTEE_MODES}; got {mode!r}")
         for j in judge_list:
             if not _is_model_like(j):
-                raise TypeError(
-                    "every committee judge must expose classify() or aclassify()"
-                )
+                raise TypeError("every committee judge must expose classify() or aclassify()")
         if guard_against_same_llm and require_distinct_from is not None:
             for j in judge_list:
                 if _same_model(j, require_distinct_from):
@@ -374,6 +364,7 @@ class JudgeCommittee:
                     pred = classify(prompt, _JUDGE_LABELS)
                 else:
                     import asyncio
+
                     pred = asyncio.run(j.aclassify(prompt, _JUDGE_LABELS))
             except (KeyboardInterrupt, SystemExit):
                 raise
@@ -404,7 +395,9 @@ class JudgeCommittee:
                     pred = await aclassify(prompt, _JUDGE_LABELS)
                 else:
                     pred = await asyncio.to_thread(
-                        j.classify, prompt, _JUDGE_LABELS,
+                        j.classify,
+                        prompt,
+                        _JUDGE_LABELS,
                     )
             except (KeyboardInterrupt, SystemExit):
                 raise
@@ -442,7 +435,7 @@ class JudgeCommittee:
 # ---------------------------------------------------------------------------
 
 
-import queue as _queue_mod
+import queue as _queue_mod  # noqa: E402 — kept module-local; HumanReviewerSource is the only consumer
 
 
 class HumanReviewerSource:
@@ -679,18 +672,15 @@ def default_verifier(
                 BundledModelUnavailableError,
                 default_verifier_bundled,
             )
+
             try:
                 return default_verifier_bundled()
             except BundledModelUnavailableError as e:
                 options.append(f"bundled-model fetch failed: {e}")
             except ImportError:
-                options.append(
-                    "install the bundled extra (`pip install dendra[bundled]`)"
-                )
+                options.append("install the bundled extra (`pip install dendra[bundled]`)")
         except ImportError:
-            options.append(
-                "dendra.bundled is unavailable on this Python version"
-            )
+            options.append("dendra.bundled is unavailable on this Python version")
 
         if prefer == "bundled":
             raise NoVerifierAvailableError(
@@ -703,13 +693,13 @@ def default_verifier(
     if prefer in ("local", "auto"):
         try:
             import httpx  # type: ignore[import-untyped]
+
             try:
                 r = httpx.get(f"{ollama_host}/api/tags", timeout=1.0)
                 if r.status_code == 200:
                     from dendra.models import OllamaAdapter
-                    return JudgeSource(
-                        OllamaAdapter(model=ollama_model, host=ollama_host)
-                    )
+
+                    return JudgeSource(OllamaAdapter(model=ollama_model, host=ollama_host))
             except (httpx.ConnectError, httpx.TimeoutException):
                 options.append(
                     f"install Ollama (https://ollama.com), start the daemon, "
@@ -717,9 +707,7 @@ def default_verifier(
                     f"(no API key, zero cost, privacy-preserving)"
                 )
         except ImportError:
-            options.append(
-                "install httpx (`pip install httpx`) to enable Ollama detection"
-            )
+            options.append("install httpx (`pip install httpx`) to enable Ollama detection")
 
         if prefer == "local":
             # Local-only mode — don't fall through to cloud.
@@ -734,11 +722,10 @@ def default_verifier(
         if os.getenv("OPENAI_API_KEY"):
             try:
                 from dendra.models import OpenAIAdapter
+
                 return JudgeSource(OpenAIAdapter(model=openai_model))
             except ImportError:
-                options.append(
-                    "install the OpenAI extra (`pip install dendra[openai]`)"
-                )
+                options.append("install the OpenAI extra (`pip install dendra[openai]`)")
         else:
             options.append("set OPENAI_API_KEY in your environment")
 
@@ -746,11 +733,10 @@ def default_verifier(
         if os.getenv("ANTHROPIC_API_KEY"):
             try:
                 from dendra.models import AnthropicAdapter
+
                 return JudgeSource(AnthropicAdapter(model=anthropic_model))
             except ImportError:
-                options.append(
-                    "install the Anthropic extra (`pip install dendra[anthropic]`)"
-                )
+                options.append("install the Anthropic extra (`pip install dendra[anthropic]`)")
         else:
             options.append("set ANTHROPIC_API_KEY in your environment")
 

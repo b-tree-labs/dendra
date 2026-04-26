@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import platform
 import shutil
 import statistics
@@ -30,9 +29,10 @@ import subprocess
 import sys
 import tempfile
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from dendra import (
     LearnedSwitch,
@@ -40,7 +40,7 @@ from dendra import (
     Phase,
     SwitchConfig,
 )
-from dendra.core import ClassificationRecord, Verdict
+from dendra.core import ClassificationRecord
 from dendra.gates import (
     AccuracyMarginGate,
     CompositeGate,
@@ -54,7 +54,6 @@ from dendra.storage import (
     InMemoryStorage,
     SqliteStorage,
 )
-
 
 # ---------------------------------------------------------------------------
 # Environment capture
@@ -402,9 +401,7 @@ def bench_record_verdict_storage(n_iter: int, scratch: Path) -> list[CellStats]:
         cells.append(
             bench(
                 name=f"record_verdict.{backend_name}",
-                fn=lambda sw=sw: sw.record_verdict(
-                    input=INPUT, label="flight", outcome="unknown"
-                ),
+                fn=lambda sw=sw: sw.record_verdict(input=INPUT, label="flight", outcome="unknown"),
                 params={
                     "storage": backend_name,
                     "auto_advance": False,
@@ -439,9 +436,7 @@ def bench_record_verdict_autoadvance(n_iter: int) -> list[CellStats]:
         cells.append(
             bench(
                 name=f"record_verdict.auto_advance.interval={interval}",
-                fn=lambda sw=sw: sw.record_verdict(
-                    input=INPUT, label="flight", outcome="correct"
-                ),
+                fn=lambda sw=sw: sw.record_verdict(input=INPUT, label="flight", outcome="correct"),
                 params={
                     "auto_advance": True,
                     "auto_advance_interval": interval,
@@ -708,8 +703,7 @@ def main() -> int:
         "--jsonl",
         type=Path,
         default=None,
-        help="Path for raw JSONL output. Default: "
-        "docs/benchmarks/v1-baseline-YYYY-MM-DD.jsonl",
+        help="Path for raw JSONL output. Default: docs/benchmarks/v1-baseline-YYYY-MM-DD.jsonl",
     )
     parser.add_argument(
         "--md",
@@ -720,14 +714,12 @@ def main() -> int:
         "--skip-groups",
         type=str,
         default="",
-        help="Comma-separated groups to skip (phase,storage,verdict,autoadv,advance,gate,dispatch,entry,payload)",
+        help="Comma-separated groups to skip (phase,storage,verdict,autoadv,advance,gate,dispatch,entry,payload)",  # noqa: E501
     )
     args = parser.parse_args()
 
     date_str = time.strftime("%Y-%m-%d", time.localtime())
-    jsonl_path = args.jsonl or Path(
-        f"docs/benchmarks/v1-baseline-{date_str}.jsonl"
-    )
+    jsonl_path = args.jsonl or Path(f"docs/benchmarks/v1-baseline-{date_str}.jsonl")
     jsonl_path.parent.mkdir(parents=True, exist_ok=True)
 
     env = collect_env()
@@ -790,9 +782,9 @@ def main() -> int:
     print("\n=== Headline numbers ===")
     for c in all_cells:
         print(
-            f"  {c.name:<60} p50={c.p50_ns/1000:>9.3f}µs  "
-            f"p95={c.p95_ns/1000:>9.3f}µs  "
-            f"p99={c.p99_ns/1000:>9.3f}µs  "
+            f"  {c.name:<60} p50={c.p50_ns / 1000:>9.3f}µs  "
+            f"p95={c.p95_ns / 1000:>9.3f}µs  "
+            f"p99={c.p99_ns / 1000:>9.3f}µs  "
             f"ops/s={c.ops_per_sec:>12,.0f}"
         )
 
@@ -810,14 +802,14 @@ def _fmt_us(ns: int | float) -> str:
         return f"{us:.2f} µs"
     if us < 1000:
         return f"{us:.1f} µs"
-    return f"{us/1000:.2f} ms"
+    return f"{us / 1000:.2f} ms"
 
 
 def _fmt_ops(ops: float) -> str:
     if ops >= 1_000_000:
-        return f"{ops/1_000_000:.1f}M"
+        return f"{ops / 1_000_000:.1f}M"
     if ops >= 1_000:
-        return f"{ops/1_000:.0f}k"
+        return f"{ops / 1_000:.0f}k"
     return f"{ops:.0f}"
 
 
@@ -873,12 +865,8 @@ def render_markdown(env: dict[str, Any], cells: list[CellStats]) -> str:
     lines.append("")
 
     # Derived: auto_record tax.
-    rule_false = next(
-        (c for c in cells if c.name == "classify.RULE.auto_record=False"), None
-    )
-    rule_true = next(
-        (c for c in cells if c.name == "classify.RULE.auto_record=True"), None
-    )
+    rule_false = next((c for c in cells if c.name == "classify.RULE.auto_record=False"), None)
+    rule_true = next((c for c in cells if c.name == "classify.RULE.auto_record=True"), None)
     if rule_false and rule_true:
         tax_ns = rule_true.p50_ns - rule_false.p50_ns
         tax_x = rule_true.p50_ns / max(rule_false.p50_ns, 1)
@@ -971,9 +959,7 @@ def render_markdown(env: dict[str, Any], cells: list[CellStats]) -> str:
         lines.append("")
         # Linearity check.
         sizes_times = [
-            (c.params["log_size"], c.p50_ns)
-            for c in adv_cells
-            if c.params["log_size"] > 0
+            (c.params["log_size"], c.p50_ns) for c in adv_cells if c.params["log_size"] > 0
         ]
         if len(sizes_times) >= 2:
             (s1, t1), *_, (sN, tN) = sizes_times
@@ -1023,9 +1009,7 @@ def render_markdown(env: dict[str, Any], cells: list[CellStats]) -> str:
             (c for c in disp_cells if c.params["kind"] == "classify-with-actions"),
             None,
         )
-        dispatch_row = next(
-            (c for c in disp_cells if c.params["kind"] == "dispatch"), None
-        )
+        dispatch_row = next((c for c in disp_cells if c.params["kind"] == "dispatch"), None)
         if classify_row and dispatch_row:
             tax = dispatch_row.p50_ns - classify_row.p50_ns
             lines.append(
@@ -1120,12 +1104,8 @@ def _build_readme_comparison(cells: list[CellStats]) -> list[str]:
         "not re-measured (not on switch path) | stale; still an order-of-magnitude claim |"
     )
 
-    rule_false = next(
-        (c for c in cells if c.name == "classify.RULE.auto_record=False"), None
-    )
-    rule_true = next(
-        (c for c in cells if c.name == "classify.RULE.auto_record=True"), None
-    )
+    rule_false = next((c for c in cells if c.name == "classify.RULE.auto_record=False"), None)
+    rule_true = next((c for c in cells if c.name == "classify.RULE.auto_record=True"), None)
     if rule_false:
         rows.append(
             f"| Phase-0 classify: `0.62 µs p50` (5× rule) | 1.08 µs (prev audit) | "
@@ -1138,7 +1118,7 @@ def _build_readme_comparison(cells: list[CellStats]) -> list[str]:
             f"| Phase-0 classify *(default config)* | n/a | "
             f"**{_fmt_us(rule_true.p50_ns)}** (auto_record=True) | "
             f"New regression: default classify now writes an UNKNOWN "
-            f"record, ~{rule_true.p50_ns/max(rule_false.p50_ns,1):.1f}× cost. |"
+            f"record, ~{rule_true.p50_ns / max(rule_false.p50_ns, 1):.1f}× cost. |"
         )
     rows.append(
         "| TF-IDF ML head: `105 µs p50` | not measured | **not re-measured** "
@@ -1146,7 +1126,7 @@ def _build_readme_comparison(cells: list[CellStats]) -> list[str]:
     )
     rows.append(
         "| Ollama LLM: `~250 ms p50` | hardcoded constant | **not re-measured** "
-        "(stub LLM used here) | Same unverified claim; run a live Ollama test on release hardware. |"
+        "(stub LLM used here) | Same unverified claim; run a live Ollama test on release hardware. |"  # noqa: E501
     )
     return rows
 
@@ -1240,7 +1220,7 @@ def _regression_notes(cells: list[CellStats]) -> list[str]:
             f"3. **Default `auto_record=True` + `persist=True` (FileStorage) "
             f"is the worst-case cell:** "
             f"{_fmt_us(bm.p50_ns)} → {_fmt_us(fs.p50_ns)} p50 "
-            f"({fs.p50_ns/max(bm.p50_ns,1):.0f}×). "
+            f"({fs.p50_ns / max(bm.p50_ns, 1):.0f}×). "
             f"Every `classify()` becomes a fsync-free file append. "
             f"Either document the pairing as a pro-mode trade-off or "
             f"flip `auto_record` default off for `persist=True` paths."
@@ -1253,7 +1233,7 @@ def _regression_notes(cells: list[CellStats]) -> list[str]:
             f"4. **CompositeGate walks the log once per sub-gate.** "
             f"McNemarGate alone: {_fmt_us(gate.p50_ns)}. "
             f"CompositeGate.all_of([Mc, Acc]): {_fmt_us(comp.p50_ns)} "
-            f"({comp.p50_ns/max(gate.p50_ns,1):.1f}× McNemar alone). "
+            f"({comp.p50_ns / max(gate.p50_ns, 1):.1f}× McNemar alone). "
             f"Future optimization: share the paired-correctness "
             f"extraction pass across sub-gates."
         )

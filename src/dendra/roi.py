@@ -159,7 +159,9 @@ def compute_switch_roi(
     model_calls_avoided = sum(1 for r in outcomes if getattr(r, "source", "rule") != "model")
     # Scale by the "what fraction would have gone to language model in the counter-
     # factual" knob. Default 1.0 = "team would have shipped model-only".
-    counterfactual_llm_calls = model_calls_avoided * a.pct_outcomes_that_would_use_llm_without_dendra
+    counterfactual_llm_calls = (
+        model_calls_avoided * a.pct_outcomes_that_would_use_llm_without_dendra
+    )
     cost_per_call_low = (
         a.llm_input_tokens_per_call * a.llm_input_usd_per_1m_tokens_low / 1e6
         + a.llm_output_tokens_per_call * a.llm_output_usd_per_1m_tokens_low / 1e6

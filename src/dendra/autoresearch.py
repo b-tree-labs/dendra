@@ -43,7 +43,6 @@ from typing import Any
 
 from dendra.core import LearnedSwitch
 
-
 # Default significance threshold for ``recommend_promote``. Matches
 # the conventional 5% level used in the paper. Override per-call
 # via ``CandidateHarness(alpha=...)``.
@@ -117,10 +116,7 @@ def _mcnemar_p_value(b: int, c: int) -> float:
     if discordant == 0:
         return 1.0
     k = min(b, c)
-    p_one = sum(
-        math.comb(discordant, i) * (0.5 ** discordant)
-        for i in range(k + 1)
-    )
+    p_one = sum(math.comb(discordant, i) * (0.5**discordant) for i in range(k + 1))
     return min(1.0, 2 * p_one)
 
 
@@ -371,9 +367,7 @@ class TournamentReport:
     candidates: list[str]
     accuracies: dict[str, float]
     paired_observations: int
-    pairwise_reports: dict[tuple[str, str], CandidateReport] = field(
-        default_factory=dict
-    )
+    pairwise_reports: dict[tuple[str, str], CandidateReport] = field(default_factory=dict)
     # Why winner is None, if applicable. One of:
     #   "" (winner is set)
     #   "no_candidate_swept" (no candidate beat every other at p<alpha)
@@ -391,14 +385,10 @@ class TournamentReport:
             lines.append(f"All candidates agreed on every input → winner: {self.winner}")
             return "\n".join(lines)
         lines.append(f"{'Candidate':24s}  {'Accuracy':>10s}  {'Verdict':>10s}")
-        names_sorted = sorted(
-            self.candidates, key=lambda n: -self.accuracies[n]
-        )
+        names_sorted = sorted(self.candidates, key=lambda n: -self.accuracies[n])
         for name in names_sorted:
             verdict = "WINNER" if name == self.winner else ""
-            lines.append(
-                f"{name:24s}  {self.accuracies[name]:>9.1%}  {verdict:>10s}"
-            )
+            lines.append(f"{name:24s}  {self.accuracies[name]:>9.1%}  {verdict:>10s}")
         if self.winner is None:
             lines.append(f"\nNo winner ({self.reason}).")
         return "\n".join(lines)
@@ -496,9 +486,7 @@ class Tournament:
         alpha: float = _DEFAULT_ALPHA,
     ) -> None:
         if len(candidates) < 2:
-            raise ValueError(
-                f"Tournament needs >= 2 candidates; got {len(candidates)}"
-            )
+            raise ValueError(f"Tournament needs >= 2 candidates; got {len(candidates)}")
         if not 0.0 < alpha < 1.0:
             raise ValueError(f"alpha must be in (0, 1); got {alpha}")
         if not callable(truth_oracle):
@@ -514,9 +502,7 @@ class Tournament:
         # Per-candidate observations. All candidates see all inputs in
         # the same order, so observations[a][i] and observations[b][i]
         # are aligned on input i — required for paired McNemar.
-        self._observations: dict[str, list[bool]] = {
-            name: [] for name in candidates
-        }
+        self._observations: dict[str, list[bool]] = {name: [] for name in candidates}
         self._n_observed = 0
         self._predictions: list[dict[str, Any]] = []  # for unanimity check
 
@@ -543,9 +529,7 @@ class Tournament:
             except BaseException:
                 pred = None
             per_input_preds[name] = pred
-            self._observations[name].append(
-                pred is not None and pred == true_label
-            )
+            self._observations[name].append(pred is not None and pred == true_label)
         self._predictions.append(per_input_preds)
         self._n_observed += 1
 
@@ -561,16 +545,12 @@ class Tournament:
         """Compute the tournament outcome over accumulated observations."""
         n = self._n_observed
         names = list(self._candidates)
-        accuracies = {
-            name: (sum(self._observations[name]) / n if n else 0.0)
-            for name in names
-        }
+        accuracies = {name: (sum(self._observations[name]) / n if n else 0.0) for name in names}
 
         # Unanimity check — every candidate produced the same
         # prediction on every input.
         unanimous = bool(self._predictions) and all(
-            len(set(per_input.values())) == 1
-            for per_input in self._predictions
+            len(set(per_input.values())) == 1 for per_input in self._predictions
         )
         if unanimous:
             return TournamentReport(
@@ -592,14 +572,8 @@ class Tournament:
                     continue
                 obs_chal = self._observations[challenger]
                 obs_base = self._observations[baseline]
-                b = sum(
-                    1 for i in range(n)
-                    if obs_chal[i] and not obs_base[i]
-                )
-                c = sum(
-                    1 for i in range(n)
-                    if obs_base[i] and not obs_chal[i]
-                )
+                b = sum(1 for i in range(n) if obs_chal[i] and not obs_base[i])
+                c = sum(1 for i in range(n) if obs_base[i] and not obs_chal[i])
                 p = _mcnemar_p_value(b, c)
                 chal_correct = sum(obs_chal)
                 base_correct = sum(obs_base)
@@ -626,9 +600,7 @@ class Tournament:
         reason = "no_candidate_swept"
         for name in names:
             beats_all = all(
-                pairwise[(name, other)].recommend_promote
-                for other in names
-                if other != name
+                pairwise[(name, other)].recommend_promote for other in names if other != name
             )
             if beats_all:
                 winner = name

@@ -101,9 +101,7 @@ class Gate(Protocol):
 # ---------------------------------------------------------------------------
 
 
-def _source_correct_for(
-    record: ClassificationRecord, source_field: str
-) -> bool | None:
+def _source_correct_for(record: ClassificationRecord, source_field: str) -> bool | None:
     """Was the source's prediction the correct one for this record?
 
     Only deterministic when ``outcome == "correct"``:
@@ -224,17 +222,13 @@ class McNemarGate:
         target_phase: Phase,
         /,
     ) -> GateDecision:
-        current_correct, target_correct = _paired_correctness(
-            records, current_phase, target_phase
-        )
+        current_correct, target_correct = _paired_correctness(records, current_phase, target_phase)
         n = len(current_correct)
 
         if n < self._min_paired:
             return GateDecision(
                 advance=False,
-                rationale=(
-                    f"insufficient paired samples: {n} < {self._min_paired} required"
-                ),
+                rationale=(f"insufficient paired samples: {n} < {self._min_paired} required"),
                 paired_sample_size=n,
             )
 
@@ -347,16 +341,12 @@ class AccuracyMarginGate:
         target_phase: Phase,
         /,
     ) -> GateDecision:
-        current_correct, target_correct = _paired_correctness(
-            records, current_phase, target_phase
-        )
+        current_correct, target_correct = _paired_correctness(records, current_phase, target_phase)
         n = len(current_correct)
         if n < self._min_paired:
             return GateDecision(
                 advance=False,
-                rationale=(
-                    f"insufficient paired samples: {n} < {self._min_paired} required"
-                ),
+                rationale=(f"insufficient paired samples: {n} < {self._min_paired} required"),
                 paired_sample_size=n,
             )
         current_acc = sum(current_correct) / n
@@ -377,8 +367,7 @@ class AccuracyMarginGate:
         return GateDecision(
             advance=False,
             rationale=(
-                f"accuracy delta {delta:+.1%} within margin {self._margin:.1%} "
-                f"on {n} samples"
+                f"accuracy delta {delta:+.1%} within margin {self._margin:.1%} on {n} samples"
             ),
             paired_sample_size=n,
             current_accuracy=current_acc,
@@ -496,8 +485,7 @@ class CompositeGate:
         else:  # any
             advance = any(d.advance for d in sub_decisions)
         rationale_parts = [
-            f"[{i} {'✓' if d.advance else '✗'}] {d.rationale}"
-            for i, d in enumerate(sub_decisions)
+            f"[{i} {'✓' if d.advance else '✗'}] {d.rationale}" for i, d in enumerate(sub_decisions)
         ]
         rationale = f"CompositeGate.{self._mode}_of: " + " | ".join(rationale_parts)
         # Merge the most informative stats — prefer the first sub-decision

@@ -24,6 +24,12 @@ See README.md and https://dendra.dev.
 
 __version__ = "0.2.0"
 
+from dendra.autoresearch import (
+    CandidateHarness,
+    CandidateReport,
+    Tournament,
+    TournamentReport,
+)
 from dendra.core import (
     BulkVerdict,
     BulkVerdictSummary,
@@ -77,12 +83,6 @@ from dendra.telemetry import (
     NullEmitter,
     StdoutEmitter,
     TelemetryEmitter,
-)
-from dendra.autoresearch import (
-    CandidateHarness,
-    CandidateReport,
-    Tournament,
-    TournamentReport,
 )
 from dendra.verdicts import (
     CallableVerdictSource,

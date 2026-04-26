@@ -305,6 +305,7 @@ def run_benchmark_experiment(
     # docs/papers/2026-when-should-a-rule-learn/results/findings.md
     # "CLINC150 divergence" for the investigation log.
     from dendra.storage import InMemoryStorage
+
     switch = LearnedSwitch(
         name="bench",
         rule=_rule_fn,

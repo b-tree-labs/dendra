@@ -300,13 +300,15 @@ class TestQuickstart:
         assert "unknown example" in err
 
     def test_no_run_copies_file_without_executing(self, tmp_path, capsys):
-        rc = main([
-            "quickstart",
-            "hello",
-            "--target",
-            str(tmp_path),
-            "--no-run",
-        ])
+        rc = main(
+            [
+                "quickstart",
+                "hello",
+                "--target",
+                str(tmp_path),
+                "--no-run",
+            ]
+        )
         assert rc == 0
         # The example landed in target_dir
         copied = tmp_path / "01_hello_world.py"

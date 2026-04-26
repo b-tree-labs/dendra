@@ -260,7 +260,6 @@ def cmd_quickstart(args: argparse.Namespace) -> int:
     """
     import shutil
     import subprocess
-    from importlib import resources
     from pathlib import Path
 
     if args.list:
@@ -272,8 +271,7 @@ def cmd_quickstart(args: argparse.Namespace) -> int:
 
     if args.example not in _QUICKSTART_EXAMPLES:
         print(
-            f"unknown example {args.example!r}; "
-            f"choose from {sorted(_QUICKSTART_EXAMPLES)}",
+            f"unknown example {args.example!r}; choose from {sorted(_QUICKSTART_EXAMPLES)}",
             file=sys.stderr,
         )
         return 2
@@ -305,17 +303,14 @@ def cmd_quickstart(args: argparse.Namespace) -> int:
     else:
         import urllib.error
         import urllib.request
+
         # Wheel install — fetch from the public repo.
-        url_base = (
-            "https://raw.githubusercontent.com/axiom-labs-os/dendra/main/examples"
-        )
+        url_base = "https://raw.githubusercontent.com/axiom-labs-os/dendra/main/examples"
         url = f"{url_base}/{filename}"
         try:
             urllib.request.urlretrieve(url, target_file)
             try:
-                urllib.request.urlretrieve(
-                    f"{url_base}/_stubs.py", target_dir / "_stubs.py"
-                )
+                urllib.request.urlretrieve(f"{url_base}/_stubs.py", target_dir / "_stubs.py")
             except urllib.error.URLError:
                 # _stubs.py is optional for some examples; skip silently
                 pass
@@ -394,7 +389,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=None,
         help="Enable language model shadow evaluation with the named provider.",
     )
-    p_bench.add_argument("--lm-id", default=None, help="Model ID passed to the language-model provider.")
+    p_bench.add_argument(
+        "--lm-id", default=None, help="Model ID passed to the language-model provider."
+    )
     p_bench.add_argument(
         "--lm-test-sample",
         type=int,

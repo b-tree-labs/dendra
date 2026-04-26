@@ -67,9 +67,7 @@ class _BaseAdapter:
         )
 
     @staticmethod
-    def _normalize_label(
-        text: str, labels: Iterable[str]
-    ) -> tuple[str, bool]:
+    def _normalize_label(text: str, labels: Iterable[str]) -> tuple[str, bool]:
         """Best-effort match of a model output to one of ``labels``.
 
         Returns ``(label, matched)``. ``matched=True`` when the
@@ -199,10 +197,7 @@ class AnthropicAdapter(_BaseAdapter):
         # else a lower bound reflecting the uncertainty.
         exact_hit = text in labels
         label, matched = self._normalize_label(text, labels)
-        if not matched:
-            confidence = 0.0
-        else:
-            confidence = 0.9 if exact_hit else 0.5
+        confidence = 0.0 if not matched else (0.9 if exact_hit else 0.5)
         return ModelPrediction(label=label, confidence=confidence)
 
 
@@ -242,10 +237,7 @@ class OllamaAdapter(_BaseAdapter):
         text = (r.json().get("response") or "").strip()
         exact_hit = text in labels
         label, matched = self._normalize_label(text, labels)
-        if not matched:
-            confidence = 0.0
-        else:
-            confidence = 0.85 if exact_hit else 0.5
+        confidence = 0.0 if not matched else (0.85 if exact_hit else 0.5)
         return ModelPrediction(label=label, confidence=confidence)
 
 
@@ -310,15 +302,15 @@ class OpenAIAsyncAdapter(_BaseAdapter):
         if timeout <= 0:
             raise ValueError("timeout must be positive")
         self._client = AsyncOpenAI(
-            api_key=api_key, base_url=base_url, timeout=timeout,
+            api_key=api_key,
+            base_url=base_url,
+            timeout=timeout,
         )
         self._model = model
         self._temperature = temperature
         self._timeout = timeout
 
-    async def aclassify(
-        self, input: Any, labels: Iterable[str]
-    ) -> ModelPrediction:
+    async def aclassify(self, input: Any, labels: Iterable[str]) -> ModelPrediction:
         labels = list(labels)
         prompt = self._render_prompt(input, labels)
         resp = await self._client.chat.completions.create(
@@ -360,9 +352,7 @@ class AnthropicAsyncAdapter(_BaseAdapter):
         self._max_tokens = max_tokens
         self._timeout = timeout
 
-    async def aclassify(
-        self, input: Any, labels: Iterable[str]
-    ) -> ModelPrediction:
+    async def aclassify(self, input: Any, labels: Iterable[str]) -> ModelPrediction:
         labels = list(labels)
         prompt = self._render_prompt(input, labels)
         resp = await self._client.messages.create(
@@ -373,10 +363,7 @@ class AnthropicAsyncAdapter(_BaseAdapter):
         text = "".join(getattr(block, "text", "") for block in resp.content).strip()
         exact_hit = text in labels
         label, matched = self._normalize_label(text, labels)
-        if not matched:
-            confidence = 0.0
-        else:
-            confidence = 0.9 if exact_hit else 0.5
+        confidence = 0.0 if not matched else (0.9 if exact_hit else 0.5)
         return ModelPrediction(label=label, confidence=confidence)
 
 
@@ -404,9 +391,7 @@ class OllamaAsyncAdapter(_BaseAdapter):
         self._host = host.rstrip("/")
         self._timeout = timeout
 
-    async def aclassify(
-        self, input: Any, labels: Iterable[str]
-    ) -> ModelPrediction:
+    async def aclassify(self, input: Any, labels: Iterable[str]) -> ModelPrediction:
         labels = list(labels)
         prompt = self._render_prompt(input, labels)
         async with self._httpx.AsyncClient(timeout=self._timeout) as client:
@@ -418,10 +403,7 @@ class OllamaAsyncAdapter(_BaseAdapter):
         text = (r.json().get("response") or "").strip()
         exact_hit = text in labels
         label, matched = self._normalize_label(text, labels)
-        if not matched:
-            confidence = 0.0
-        else:
-            confidence = 0.85 if exact_hit else 0.5
+        confidence = 0.0 if not matched else (0.85 if exact_hit else 0.5)
         return ModelPrediction(label=label, confidence=confidence)
 
 

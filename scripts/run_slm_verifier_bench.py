@@ -32,7 +32,6 @@ from dendra import (
     Verdict,
 )
 
-
 # Test corpus — 102 pairs, 50/50 correct/incorrect, balanced across labels.
 # Each pair is (input, classifier_label, ground_truth_correct).
 # Expanded from n=30 to n=102 in 2026-04 to reduce variance below 5pp on
@@ -182,6 +181,7 @@ def _bench_model(
                 "error": "OPENAI_API_KEY not set; cloud row skipped",
             }
         from dendra import OpenAIAdapter
+
         adapter = OpenAIAdapter(model=model_name)
     elif backend == "anthropic":
         if not os.environ.get("ANTHROPIC_API_KEY"):
@@ -191,6 +191,7 @@ def _bench_model(
                 "error": "ANTHROPIC_API_KEY not set; cloud row skipped",
             }
         from dendra import AnthropicAdapter
+
         adapter = AnthropicAdapter(model=model_name)
     else:
         raise ValueError(f"unknown backend: {backend!r}")
@@ -246,8 +247,8 @@ def _bench_model(
     # We expose all of them so reviewers can argue with the
     # ranking on data, not on choice of formula.
     score_mult = format_rate * accuracy_on_judged
-    score_format_weighted = (format_rate ** 2) * accuracy_on_judged
-    score_accuracy_weighted = format_rate * (accuracy_on_judged ** 2)
+    score_format_weighted = (format_rate**2) * accuracy_on_judged
+    score_accuracy_weighted = format_rate * (accuracy_on_judged**2)
     # "Above chance" — penalises near-50% accuracy (pure noise) hard.
     # Maps 50% acc → 0 contribution, 100% acc → full format_rate.
     above_chance = max(0.0, 2 * accuracy_on_judged - 1)
@@ -273,10 +274,10 @@ def _bench_model(
         "p50_ms": p50,
         "p99_ms": p99,
         "composite_score": score,
-        "score_multiplicative":   score_mult,
-        "score_format_weighted":  score_format_weighted,
-        "score_accuracy_weighted":score_accuracy_weighted,
-        "score_above_chance":     score_above_chance,
+        "score_multiplicative": score_mult,
+        "score_format_weighted": score_format_weighted,
+        "score_accuracy_weighted": score_accuracy_weighted,
+        "score_above_chance": score_above_chance,
     }
 
 
@@ -286,10 +287,10 @@ def main() -> None:
     # serves over the same OpenAI-compatible llamafile API).
     candidates = [
         # --- prior shipped-default candidates --------------------------------
-        ("qwen2.5:0.5b",     "ollama"),     # ~400 MB — floor sanity check
-        ("llama3.2:1b",      "ollama"),     # 1.3 GB
-        ("gemma2:2b",        "ollama"),     # 1.6 GB
-        ("llama3.2:3b",      "ollama"),     # 2.0 GB — current shipped default
+        ("qwen2.5:0.5b", "ollama"),  # ~400 MB — floor sanity check
+        ("llama3.2:1b", "ollama"),  # 1.3 GB
+        ("gemma2:2b", "ollama"),  # 1.6 GB
+        ("llama3.2:3b", "ollama"),  # 2.0 GB — current shipped default
         # On this machine, port 8080 is raw llamafile (Axiom's HTTP wrapper
         # at port 8766 is not running). When deployed with the full Axiom
         # stack, port 8080 hits llamafile-direct and port 8766 hits the
@@ -297,20 +298,20 @@ def main() -> None:
         # 8080. For "Path C user experience," bench port 8766.
         ("bonsai-1.7b.gguf", "llamafile"),  # ~1.7 GB — Axiom's bundled default (raw)
         # --- new contenders (Apr 2026) ---------------------------------------
-        ("qwen2.5:1.5b",     "ollama"),     # ~1.0 GB
-        ("qwen2.5:3b",       "ollama"),     # ~2.0 GB — direct llama3.2:3b rival
-        ("qwen2.5:7b",       "ollama"),     # ~4.7 GB — capacity reference
-        ("deepseek-r1:1.5b", "ollama"),     # ~1.0 GB — DeepSeek-R1 distill
-        ("deepseek-r1:7b",   "ollama"),     # ~4.7 GB — DeepSeek-R1 distill
-        ("phi3.5:3.8b",      "ollama"),     # ~2.2 GB — Microsoft Phi-3.5
+        ("qwen2.5:1.5b", "ollama"),  # ~1.0 GB
+        ("qwen2.5:3b", "ollama"),  # ~2.0 GB — direct llama3.2:3b rival
+        ("qwen2.5:7b", "ollama"),  # ~4.7 GB — capacity reference
+        ("deepseek-r1:1.5b", "ollama"),  # ~1.0 GB — DeepSeek-R1 distill
+        ("deepseek-r1:7b", "ollama"),  # ~4.7 GB — DeepSeek-R1 distill
+        ("phi3.5:3.8b", "ollama"),  # ~2.2 GB — Microsoft Phi-3.5
         # --- cloud reference rows --------------------------------------------
         # Skipped automatically when the corresponding API key isn't set;
         # otherwise serve as upper-bound references for "what would a
         # frontier verifier give us?"
-        ("gpt-4o-mini",        "openai"),
-        ("gpt-4o",             "openai"),
-        ("claude-haiku-4-5",   "anthropic"),
-        ("claude-sonnet-4-6",  "anthropic"),
+        ("gpt-4o-mini", "openai"),
+        ("gpt-4o", "openai"),
+        ("claude-haiku-4-5", "anthropic"),
+        ("claude-sonnet-4-6", "anthropic"),
     ]
 
     results = []
@@ -329,7 +330,7 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     json_path = out_dir / "slm-verifier-bench.json"
     json_path.write_text(json.dumps(results, indent=2))
-    print(f"\n=== summary ===")
+    print("\n=== summary ===")
     print(f"wrote {json_path}")
 
     # Per-formula winners. Four candidate scoring formulas; print the
@@ -343,12 +344,12 @@ def main() -> None:
         return
 
     formulas = [
-        ("multiplicative",    "score_multiplicative"),
-        ("format-weighted",   "score_format_weighted"),
+        ("multiplicative", "score_multiplicative"),
+        ("format-weighted", "score_format_weighted"),
         ("accuracy-weighted", "score_accuracy_weighted"),
-        ("above-chance",      "score_above_chance"),  # the picker we ship on
+        ("above-chance", "score_above_chance"),  # the picker we ship on
     ]
-    print(f"\nper-formula winners:")
+    print("\nper-formula winners:")
     winners_by_formula = {}
     for label, key in formulas:
         ranked = sorted(valid, key=lambda r: -r.get(key, 0.0))

@@ -63,7 +63,6 @@ from typing import Any, Literal
 
 from dendra.verdicts import JudgeSource
 
-
 # ---------------------------------------------------------------------------
 # Model registry
 # ---------------------------------------------------------------------------
@@ -99,8 +98,8 @@ def cache_dir() -> Path:
 _REGISTRY: dict[str, dict[str, Any]] = {
     "judge": {
         "filename": "qwen2.5-7b-instruct-q4_k_m.gguf",
-        "size_bytes": 0,               # set when CDN goes live
-        "sha256": None,                # filled when CDN goes live
+        "size_bytes": 0,  # set when CDN goes live
+        "sha256": None,  # filled when CDN goes live
         "ollama_fallback": "qwen2.5:7b",
         "description": "Qwen2.5-7B-Instruct (Q4_K_M) — judge default",
     },
@@ -151,9 +150,7 @@ def is_cached(role: Role) -> bool:
     expected = _REGISTRY[role]["size_bytes"]
     # If we don't have a published size yet (placeholder), accept
     # any non-empty file so users can drop in their own GGUF.
-    return p.stat().st_size > 0 and (
-        expected == 0 or p.stat().st_size == expected
-    )
+    return p.stat().st_size > 0 and (expected == 0 or p.stat().st_size == expected)
 
 
 def ensure_model(role: Role, *, progress: bool = True) -> Path:
@@ -170,9 +167,7 @@ def ensure_model(role: Role, *, progress: bool = True) -> Path:
         return cache_path(role)
 
     if os.environ.get("DENDRA_BUNDLED_OFFLINE", "").strip() == "1":
-        raise BundledModelUnavailableError(
-            _offline_message(role)
-        )
+        raise BundledModelUnavailableError(_offline_message(role))
 
     info = _REGISTRY[role]
     target = cache_path(role)
@@ -201,9 +196,7 @@ def ensure_model(role: Role, *, progress: bool = True) -> Path:
                 target.unlink()
             except OSError:
                 pass
-        raise BundledModelUnavailableError(
-            _download_failed_message(role, url, str(e))
-        ) from e
+        raise BundledModelUnavailableError(_download_failed_message(role, url, str(e))) from e
 
     return target
 
@@ -228,7 +221,7 @@ def _llama_cpp_classifier(model_path: Path):
             "`pip install dendra[bundled]` (or `pip install "
             "llama-cpp-python` directly). "
             "Alternative: skip bundled models and use Ollama via "
-            "`default_verifier(prefer=\"local\")` instead."
+            '`default_verifier(prefer="local")` instead.'
         ) from e
 
     from dendra.models import ModelPrediction
@@ -248,10 +241,7 @@ def _llama_cpp_classifier(model_path: Path):
             # for ``model=`` use as a classifier rather than judge.
             prompt = f"Input: {input}\nLabel: "
             out = llama(prompt, max_tokens=16, temperature=0.0)
-            text = (
-                out["choices"][0]["text"].strip()
-                if out and out.get("choices") else ""
-            )
+            text = out["choices"][0]["text"].strip() if out and out.get("choices") else ""
             label = text.split()[0] if text else ""
             return ModelPrediction(label=label, confidence=0.5)
 
@@ -321,7 +311,7 @@ def _offline_message(role: Role) -> str:
         f"{cache_path(role)}.\n"
         f"  3. Skip the bundled path: install Ollama, run "
         f"`ollama pull {info['ollama_fallback']}`, and use "
-        f"default_verifier(prefer=\"local\") instead."
+        f'default_verifier(prefer="local") instead.'
     )
 
 
@@ -335,9 +325,9 @@ def _download_failed_message(role: Role, url: str, err: str) -> str:
         f"a reachable URL hosting {info['filename']}.\n"
         f"  3. Use Ollama instead: `ollama pull "
         f"{info['ollama_fallback']}` + "
-        f"`default_verifier(prefer=\"local\")`.\n"
+        f'`default_verifier(prefer="local")`.\n'
         f"  4. Use a cloud verifier: set OPENAI_API_KEY or "
-        f"ANTHROPIC_API_KEY and pass prefer=\"openai\" / \"anthropic\"."
+        f'ANTHROPIC_API_KEY and pass prefer="openai" / "anthropic".'
     )
 
 

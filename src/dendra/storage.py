@@ -469,6 +469,7 @@ class FileStorage(StorageBase):
                 inst = ref()
                 if inst is not None:
                     inst.close()
+
             atexit.register(_atexit_drain)
 
     # ------------------------------------------------------------------
@@ -487,22 +488,17 @@ class FileStorage(StorageBase):
         if not switch_name:
             raise ValueError("switch_name cannot be empty")
         if switch_name.startswith(("/", "\\")):
-            raise ValueError(
-                f"switch_name must be relative; got absolute path {switch_name!r}"
-            )
+            raise ValueError(f"switch_name must be relative; got absolute path {switch_name!r}")
         parts = Path(switch_name).parts
         if any(p == ".." for p in parts):
-            raise ValueError(
-                f"switch_name must not contain '..'; got {switch_name!r}"
-            )
+            raise ValueError(f"switch_name must not contain '..'; got {switch_name!r}")
         candidate = (self._base / switch_name).resolve()
         base_resolved = self._base.resolve()
         try:
             candidate.relative_to(base_resolved)
         except ValueError as e:
             raise ValueError(
-                f"switch_name {switch_name!r} resolves outside base_path "
-                f"{self._base}"
+                f"switch_name {switch_name!r} resolves outside base_path {self._base}"
             ) from e
         return candidate
 
@@ -567,9 +563,7 @@ class FileStorage(StorageBase):
             record = self._redact(record)
         if self._batching:
             if self._closed:
-                raise RuntimeError(
-                    "FileStorage.append_record called after close()"
-                )
+                raise RuntimeError("FileStorage.append_record called after close()")
             should_flush = False
             with self._queue_lock:
                 buf = self._queue.setdefault(switch_name, [])
@@ -586,9 +580,7 @@ class FileStorage(StorageBase):
     # Sync write path — fd-cached for perf
     # ------------------------------------------------------------------
 
-    def _append_sync(
-        self, switch_name: str, records: list[ClassificationRecord]
-    ) -> None:
+    def _append_sync(self, switch_name: str, records: list[ClassificationRecord]) -> None:
         """Write one or more records to the active segment synchronously.
 
         Shared between the non-batching append path and the
@@ -644,9 +636,7 @@ class FileStorage(StorageBase):
             if fd is not None:
                 return fd
             path = self._active_path(switch_name)
-            fd = os.open(
-                str(path), os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644
-            )
+            fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644)
             self._fd_cache[key] = fd
             return fd
 
@@ -968,8 +958,7 @@ class SqliteStorage(StorageBase):
                 """
             )
             conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_outcomes_switch "
-                "ON outcomes(switch_name, id)"
+                "CREATE INDEX IF NOT EXISTS idx_outcomes_switch ON outcomes(switch_name, id)"
             )
 
     def append_record(self, switch_name: str, record: ClassificationRecord) -> None:
@@ -980,8 +969,7 @@ class SqliteStorage(StorageBase):
             conn.execute("BEGIN IMMEDIATE")
             try:
                 conn.execute(
-                    "INSERT INTO outcomes (switch_name, timestamp, data) "
-                    "VALUES (?, ?, ?)",
+                    "INSERT INTO outcomes (switch_name, timestamp, data) VALUES (?, ?, ?)",
                     (switch_name, float(record.timestamp), data),
                 )
                 conn.execute("COMMIT")
@@ -1083,8 +1071,10 @@ class ResilientStorage(StorageBase):
         if recovery_probe_every <= 0:
             raise ValueError("recovery_probe_every must be positive")
         self._primary = primary
-        self._fallback = fallback if fallback is not None else BoundedInMemoryStorage(
-            max_records=fallback_max_records
+        self._fallback = (
+            fallback
+            if fallback is not None
+            else BoundedInMemoryStorage(max_records=fallback_max_records)
         )
         self._recovery_probe_every = recovery_probe_every
         self._on_degrade = on_degrade
@@ -1239,8 +1229,7 @@ class ResilientStorage(StorageBase):
         self._degraded_since = None
         self._writes_since_probe = 0
         warnings.warn(
-            f"ResilientStorage: primary recovered; drained {drained} "
-            "record(s) from fallback.",
+            f"ResilientStorage: primary recovered; drained {drained} record(s) from fallback.",
             UserWarning,
             stacklevel=3,
         )

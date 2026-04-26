@@ -115,10 +115,7 @@ class TestBenchmarkExperimentStorage:
             return "x"
 
         # 12 000 rows, 10 distinct labels feeding in 1 200-sized blocks.
-        train = [
-            (f"ex-{i}", f"label-{i // 1200}")
-            for i in range(12_000)
-        ]
+        train = [(f"ex-{i}", f"label-{i // 1200}") for i in range(12_000)]
         test = [("ex-t", "label-0")]
 
         run_benchmark_experiment(
