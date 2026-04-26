@@ -7,30 +7,84 @@ Parameters
 Licensor:             B-Tree Ventures, LLC (a Texas limited liability
                       company doing business as Axiom Labs).
 
-Licensed Work:        Dendra Version 0.2.0 or later. The Licensed
-                      Work is (c) 2026 B-Tree Ventures, LLC.
+Licensed Work:        The portions of the Dendra source repository
+                      whose per-file header carries the SPDX
+                      identifier "LicenseRef-BSL-1.1". Files whose
+                      header carries "Apache-2.0" are licensed under
+                      the Apache License, Version 2.0 and are not
+                      subject to this License. Dendra Version 0.2.0
+                      or later. The Licensed Work is (c) 2026 B-Tree
+                      Ventures, LLC.
 
 Additional Use Grant: You may make production use of the Licensed
-                      Work for any purpose, provided that Your use
-                      does not include offering the Licensed Work,
-                      or a product substantially derived from it, to
-                      third parties on a hosted or embedded basis in
-                      order to compete with B-Tree Ventures'
-                      commercial or hosted offerings of the Licensed
-                      Work.
+                      Work, including running it on your own
+                      infrastructure for the benefit of Your
+                      Organization, provided you do not use the
+                      Licensed Work to offer a Hosted Dendra Service.
 
-                      "Hosted basis" means making the Licensed Work
-                      available to third parties as a network
-                      service. "Embedded basis" means including the
-                      source code or executable code of the Licensed
-                      Work in a product offered to third parties.
-                      Internal use within Your organization,
-                      including use by Your affiliates under common
-                      control, is not a competing offering.
+                      "Your Organization" means you, your employees,
+                      your contractors, your wholly-owned affiliates,
+                      and any joint venture, consortium, or
+                      government cooperative in which you are a
+                      participant — provided in each case the use is
+                      internal to that group and not offered as a
+                      service to parties outside it.
 
-                      For interpretive guidance on using Dendra
-                      under the Business Source License, please
-                      contact licensing@b-treeventures.com.
+                      A "Hosted Dendra Service" is any commercial or
+                      non-commercial offering that allows parties
+                      outside Your Organization to access the
+                      functionality of the Licensed Work over a
+                      network, where the substantial value of the
+                      offering derives PRIMARILY from one or more of
+                      the following capabilities of the Licensed
+                      Work:
+                      (a) gate evaluation and statistical-test
+                          orchestration,
+                      (b) phase transition decisioning across the
+                          six-phase classifier lifecycle defined by
+                          the Licensed Work,
+                      (c) audit-chain capture, retention, or export,
+                      (d) the graduated-autonomy classification
+                          primitive provided by the `@ml_switch`
+                          decorator and its server-side counterpart.
+
+                      For clarity, the following uses ARE PERMITTED:
+
+                      - Internal use within Your Organization.
+                      - Self-hosting for academic research, including
+                        publishing research outputs (papers, code,
+                        datasets, derivatives) under any license.
+                      - Embedding the Licensed Work as a
+                        non-foreground component of a product or
+                        service that You offer to parties outside
+                        Your Organization, where the value You offer
+                        those parties is NOT primarily the
+                        capabilities listed in (a)–(d) above. (For
+                        example: a security product that uses Dendra
+                        internally to gate its detection-rule changes
+                        is permitted; the value sold to your security
+                        customers is the security product, not
+                        Dendra.)
+                      - Modifying the Licensed Work for Your
+                        Organization's internal use, provided
+                        modifications are not offered as a Hosted
+                        Dendra Service.
+
+                      The following uses ARE NOT PERMITTED prior to
+                      the Change Date:
+
+                      - Offering a managed Dendra deployment, hosted
+                        dashboard, or eval-as-a-service to parties
+                        outside Your Organization for a fee or in
+                        exchange for other value.
+                      - Offering any product or service in which the
+                        capabilities listed in (a)–(d) above are the
+                        primary value to the recipient, regardless of
+                        branding or trade dress.
+
+                      For interpretive guidance on using Dendra under
+                      the Business Source License, please contact
+                      licensing@b-treeventures.com.
 
 Change Date:          2030-05-01
 
