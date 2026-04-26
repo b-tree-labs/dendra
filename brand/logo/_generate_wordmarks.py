@@ -1,0 +1,289 @@
+# Copyright (c) 2026 B-Tree Ventures, LLC
+# SPDX-License-Identifier: Apache-2.0
+"""Regenerate all Dendra wordmark SVGs from a single source of truth.
+
+For each (sub_brand) in the family — None (parent), analyze, cloud,
+insight, research — emit:
+
+- ``dendra-{name}-wordmark.svg`` — horizontal, light ground
+- ``dendra-{name}-wordmark-dark.svg`` — horizontal, dark ground
+- ``dendra-{name}-wordmark-transparent.svg`` — horizontal, no background
+- ``dendra-{name}-wordmark-stacked.svg`` — stacked, light ground
+- ``dendra-{name}-wordmark-stacked-dark.svg`` — stacked, dark ground
+- ``dendra-{name}-wordmark-stacked-transparent.svg`` — stacked, no bg
+
+(For the parent, ``{name}`` collapses to bare ``wordmark``.)
+
+Canvas sizes are computed per-sub-brand so left and right margins
+are symmetric (50 px) — fixes the visually-off centering that 1400-
+fixed canvas produced.
+
+Run: ``python brand/logo/_generate_wordmarks.py``
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+HERE = Path(__file__).parent
+
+# --- Typography constants (Space Grotesk) ---------------------------------
+
+# Approximate advance-width-per-uppercase-letter as a fraction of
+# font size. Conservative — slightly over-estimates so canvas leaves
+# breathing room rather than clipping. Verified against rendered
+# output.
+_ADVANCE_RATIO = 0.70
+
+# --- Color tokens ---------------------------------------------------------
+
+LIGHT_BG = "#f8f6f1"
+DARK_BG = "#1a1a1f"
+INK_LIGHT = "#1a1a1f"  # ink on light bg
+INK_DARK = "#f8f6f1"   # ink on dark bg
+SUB_INK_LIGHT = "#6a6a72"  # sub-brand ink on light bg (subordinate gray)
+SUB_INK_DARK = "#a8a8b0"   # sub-brand ink on dark bg (subordinate)
+ACCENT = "#BF5700"     # bell-rope orange (mark accent, both themes)
+
+
+# --- Sub-brand registry ----------------------------------------------------
+
+SUB_BRANDS: dict[str, str | None] = {
+    "wordmark":          None,         # parent: just DENDRA
+    "analyze-wordmark":  "ANALYZE",
+    "cloud-wordmark":    "CLOUD",
+    "insight-wordmark":  "INSIGHT",
+    "research-wordmark": "RESEARCH",
+}
+
+
+def _word_width(text: str, font_size: int, letter_spacing: float) -> float:
+    """Estimate rendered width of ``text`` in SVG user units."""
+    if not text:
+        return 0.0
+    n = len(text)
+    return n * (_ADVANCE_RATIO * font_size) + (n - 1) * letter_spacing
+
+
+# --- Mark (logo glyph) -----------------------------------------------------
+
+def _mark_group(translate_x: int, translate_y: int, scale: float, ink: str) -> str:
+    """Return the <g>...</g> block for the Dendra mark at given position/scale."""
+    return f"""  <g transform="translate({translate_x}, {translate_y}) scale({scale})">
+    <line x1="72" y1="400" x2="222" y2="400"
+          stroke="{ink}" stroke-width="34" stroke-linecap="square"/>
+    <line x1="290" y1="400" x2="440" y2="400"
+          stroke="{ink}" stroke-width="34" stroke-linecap="square"/>
+    <polyline points="172,400 172,200 340,200 340,400"
+              fill="none"
+              stroke="{ink}" stroke-width="34"
+              stroke-linecap="square" stroke-linejoin="miter"/>
+    <line x1="256" y1="448" x2="256" y2="96"
+          stroke="{ACCENT}" stroke-width="34" stroke-linecap="square"/>
+    <circle cx="256" cy="200" r="28"
+            fill="none" stroke="{ink}" stroke-width="12"/>
+  </g>
+"""
+
+
+# --- Horizontal layout -----------------------------------------------------
+
+def horizontal_svg(sub_text: str | None, theme: str) -> tuple[str, int, int]:
+    """Build a horizontal-layout SVG. Returns (svg_string, width, height).
+
+    Layout:
+        50px L margin | mark 200×200 | 50px gap | DENDRA | 50px gap | SUB | 50px R margin
+
+    Mark scale 0.391 → 200×200. Mark vertical center at y=150.
+    Text baseline at y=185 (visually centered for cap-height in 300px canvas).
+    """
+    if theme == "transparent":
+        bg = None
+        ink = INK_LIGHT
+        sub_ink = SUB_INK_LIGHT
+    elif theme == "dark":
+        bg = DARK_BG
+        ink = INK_DARK
+        sub_ink = SUB_INK_DARK
+    else:
+        bg = LIGHT_BG
+        ink = INK_LIGHT
+        sub_ink = SUB_INK_LIGHT
+
+    # DENDRA typography
+    dendra_size = 108
+    dendra_ls = 19.4
+    dendra_x = 300
+    dendra_w = _word_width("DENDRA", dendra_size, dendra_ls)
+    dendra_right = dendra_x + dendra_w
+
+    # Sub-brand typography (same font family, lighter weight, smaller)
+    sub_size = 88
+    sub_ls = 13.2
+    sub_x = int(dendra_right + 50)  # 50px gap after DENDRA's right edge
+    sub_x = max(sub_x, 900)          # never crowd at smaller min-gap
+
+    if sub_text:
+        sub_w = _word_width(sub_text, sub_size, sub_ls)
+        content_right = sub_x + sub_w
+    else:
+        content_right = dendra_right
+
+    canvas_w = int(content_right + 50)
+    canvas_h = 300
+
+    parts = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        f'<!-- Dendra wordmark — {"horizontal " + theme}. '
+        f'Generated by brand/logo/_generate_wordmarks.py. -->',
+        f'<svg viewBox="0 0 {canvas_w} {canvas_h}" xmlns="http://www.w3.org/2000/svg">',
+    ]
+    if bg is not None:
+        parts.append(f'  <rect width="{canvas_w}" height="{canvas_h}" fill="{bg}"/>')
+    parts.append(_mark_group(50, 50, 0.391, ink).rstrip())
+    parts.append(
+        f'  <text x="{dendra_x}" y="185"\n'
+        f'        font-family="\'Space Grotesk\', \'Neue Haas Grotesk Display\', \'Helvetica Neue\', system-ui, sans-serif"\n'
+        f'        font-weight="500" font-size="{dendra_size}" letter-spacing="{dendra_ls}"\n'
+        f'        fill="{ink}">DENDRA</text>'
+    )
+    if sub_text:
+        parts.append(
+            f'  <text x="{sub_x}" y="185"\n'
+            f'        font-family="\'Space Grotesk\', \'Neue Haas Grotesk Display\', \'Helvetica Neue\', system-ui, sans-serif"\n'
+            f'        font-weight="400" font-size="{sub_size}" letter-spacing="{sub_ls}"\n'
+            f'        fill="{sub_ink}">{sub_text}</text>'
+        )
+    parts.append('</svg>')
+    return "\n".join(parts) + "\n", canvas_w, canvas_h
+
+
+# --- Stacked layout --------------------------------------------------------
+
+def stacked_svg(sub_text: str | None, theme: str) -> tuple[str, int, int]:
+    """Build a stacked-layout SVG. Returns (svg_string, width, height).
+
+    Layout:
+        ┌──────────────────────────────┐
+        │            mark              │  ← centered horizontally
+        │                              │
+        │           DENDRA             │  ← centered, font-size 88
+        │           SUB-BRAND          │  ← centered, font-size 64 (when present)
+        └──────────────────────────────┘
+
+    Canvas = max(content_width, mark_width) + 100 left/right padding.
+    """
+    if theme == "transparent":
+        bg = None
+        ink = INK_LIGHT
+        sub_ink = SUB_INK_LIGHT
+    elif theme == "dark":
+        bg = DARK_BG
+        ink = INK_DARK
+        sub_ink = SUB_INK_DARK
+    else:
+        bg = LIGHT_BG
+        ink = INK_LIGHT
+        sub_ink = SUB_INK_LIGHT
+
+    # Stacked DENDRA: same as parent stacked layout (font 88, ls 15.8)
+    dendra_size = 88
+    dendra_ls = 15.8
+    dendra_w = _word_width("DENDRA", dendra_size, dendra_ls)
+
+    # Stacked sub-brand: smaller still
+    sub_size = 64
+    sub_ls = 9.6
+    sub_w = _word_width(sub_text, sub_size, sub_ls) if sub_text else 0.0
+
+    # Content width = wider of the two text lines or the mark
+    mark_scale = 0.625
+    mark_size = 512 * mark_scale  # = 320
+    content_w = max(dendra_w, sub_w, mark_size)
+    canvas_w = int(content_w + 200)  # 100px L + 100px R padding
+    center_x = canvas_w // 2
+
+    # Vertical layout
+    mark_top = 60
+    mark_bottom = int(mark_top + mark_size)  # ≈ 380
+    dendra_baseline = mark_bottom + 110       # ≈ 490
+    sub_baseline = dendra_baseline + 90 if sub_text else dendra_baseline
+    canvas_h = sub_baseline + 80 if sub_text else dendra_baseline + 60
+
+    # Mark x: center horizontally. The mark group has its own internal
+    # geometry; translate so the rendered mark is centered.
+    mark_left = int(center_x - mark_size / 2)
+
+    parts = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        f'<!-- Dendra wordmark — {"stacked " + theme}. '
+        f'Generated by brand/logo/_generate_wordmarks.py. -->',
+        f'<svg viewBox="0 0 {canvas_w} {canvas_h}" xmlns="http://www.w3.org/2000/svg">',
+    ]
+    if bg is not None:
+        parts.append(f'  <rect width="{canvas_w}" height="{canvas_h}" fill="{bg}"/>')
+    parts.append(_mark_group(mark_left, mark_top, mark_scale, ink).rstrip())
+    parts.append(
+        f'  <text x="{center_x}" y="{dendra_baseline}"\n'
+        f'        font-family="\'Space Grotesk\', \'Neue Haas Grotesk Display\', \'Helvetica Neue\', system-ui, sans-serif"\n'
+        f'        font-weight="500" font-size="{dendra_size}" letter-spacing="{dendra_ls}"\n'
+        f'        text-anchor="middle"\n'
+        f'        fill="{ink}">DENDRA</text>'
+    )
+    if sub_text:
+        parts.append(
+            f'  <text x="{center_x}" y="{sub_baseline}"\n'
+            f'        font-family="\'Space Grotesk\', \'Neue Haas Grotesk Display\', \'Helvetica Neue\', system-ui, sans-serif"\n'
+            f'        font-weight="400" font-size="{sub_size}" letter-spacing="{sub_ls}"\n'
+            f'        text-anchor="middle"\n'
+            f'        fill="{sub_ink}">{sub_text}</text>'
+        )
+    parts.append('</svg>')
+    return "\n".join(parts) + "\n", canvas_w, canvas_h
+
+
+# --- Driver ---------------------------------------------------------------
+
+def main() -> None:
+    written: list[str] = []
+
+    for stem, sub_text in SUB_BRANDS.items():
+        # The parent uses bare "wordmark"; sub-brands use "{x}-wordmark".
+        # Horizontal variants
+        for theme, suffix in [
+            ("light", ""),
+            ("dark", "-dark"),
+            ("transparent", "-transparent"),
+        ]:
+            svg, w, h = horizontal_svg(sub_text, theme)
+            # parent = "dendra-wordmark*.svg"; subs = "dendra-cloud-wordmark*.svg"
+            if stem == "wordmark":
+                fname = f"dendra-wordmark-horizontal{suffix}.svg"
+            else:
+                fname = f"dendra-{stem}{suffix}.svg"
+            path = HERE / fname
+            path.write_text(svg)
+            written.append(f"  {fname:50s}  {w}x{h}")
+
+        # Stacked variants
+        for theme, suffix in [
+            ("light", ""),
+            ("dark", "-dark"),
+            ("transparent", "-transparent"),
+        ]:
+            svg, w, h = stacked_svg(sub_text, theme)
+            if stem == "wordmark":
+                fname = f"dendra-wordmark-stacked{suffix}.svg"
+            else:
+                fname = f"dendra-{stem}-stacked{suffix}.svg"
+            path = HERE / fname
+            path.write_text(svg)
+            written.append(f"  {fname:50s}  {w}x{h}")
+
+    print(f"Wrote {len(written)} SVGs:")
+    for line in written:
+        print(line)
+
+
+if __name__ == "__main__":
+    main()

@@ -200,8 +200,8 @@ Canonical messages for specific launch-day channels. Fill in
 > gate that bounds the probability of worse-than-rule behavior
 > at any transition.
 
-Full drafts: `docs/marketing/launch-post-drafts.md`. This doc
-keeps only the canonical one-liners each channel needs.
+This doc keeps only the canonical one-liners each channel
+needs; full per-channel drafts live in internal launch notes.
 
 ---
 

@@ -159,9 +159,9 @@ name the thing that went wrong and what the caller should do.
   glossary-first doc.
 - The **README is the landing page for the repo** and should read
   like a primitive's docs, not like a marketing site.
-- **Three audiences, three docs folders** (future state):
-  `docs/` for end users, `docs/papers/` for research, `docs/working/`
-  for internal strategy. Keep them separate.
+- **Three audiences, three places** (future state):
+  `docs/` for end users, `docs/papers/` for research, internal
+  scratch on disk only (gitignored). Keep them separate.
 
 ## Customer support
 
