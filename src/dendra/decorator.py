@@ -16,7 +16,7 @@ keeping the decorated name callable exactly like the original function.
     label = triage({"title": "app crashes"})   # → "bug"
 
     # Plus LearnedSwitch affordances:
-    triage.record_outcome(input={...}, output="bug", outcome="correct")
+    triage.record_verdict(input={...}, label="bug", outcome="correct")
     triage.status()
     triage.switch   # the underlying LearnedSwitch instance
 """
@@ -27,7 +27,13 @@ import functools
 from collections.abc import Callable
 from typing import Any
 
-from dendra.core import LearnedSwitch, SwitchConfig
+from dendra.core import (
+    ClassificationResult,
+    LabelsArg,
+    LearnedSwitch,
+    Phase,
+    SwitchConfig,
+)
 
 
 class _MLSwitchWrapper:
@@ -53,18 +59,26 @@ class _MLSwitchWrapper:
     def name(self) -> str:
         return self.switch.name
 
-    def record_outcome(
+    def classify(self, input: Any) -> ClassificationResult:
+        """Pure classification — no side effects. See :meth:`LearnedSwitch.classify`."""
+        return self.switch.classify(input)
+
+    def dispatch(self, input: Any) -> ClassificationResult:
+        """Classify + fire the matched label's action. See :meth:`LearnedSwitch.dispatch`."""
+        return self.switch.dispatch(input)
+
+    def record_verdict(
         self,
         *,
         input: Any,
-        output: Any,
+        label: Any,
         outcome: str,
         source: str = "rule",
         confidence: float = 1.0,
     ) -> None:
-        self.switch.record_outcome(
+        self.switch.record_verdict(
             input=input,
-            output=output,
+            label=label,
             outcome=outcome,
             source=source,
             confidence=confidence,
@@ -79,30 +93,55 @@ class _MLSwitchWrapper:
 
 def ml_switch(
     *,
-    labels: list[str] | None = None,
-    author: str,
+    labels: LabelsArg | None = None,
+    author: str | None = None,
     name: str | None = None,
+    # Hoisted SwitchConfig fields — the common case. Either use these,
+    # or pass an explicit ``config=SwitchConfig(...)``, but not both.
+    starting_phase: Phase | None = None,
+    phase_limit: Phase | None = None,
+    safety_critical: bool | None = None,
+    confidence_threshold: float | None = None,
+    gate: Any | None = None,
+    auto_record: bool | None = None,
+    auto_advance: bool | None = None,
+    auto_advance_interval: int | None = None,
+    on_verdict: Callable[[Any], None] | None = None,
+    verifier: Any = None,
+    verifier_sample_rate: float | None = None,
     config: SwitchConfig | None = None,
     storage: Any | None = None,
-    llm: Any | None = None,
+    persist: bool = False,
+    model: Any | None = None,
     ml_head: Any | None = None,
     telemetry: Any | None = None,
 ) -> Callable[[Callable[..., Any]], _MLSwitchWrapper]:
     """Wrap a classification rule function as a :class:`LearnedSwitch`.
 
     Args:
-        labels: Exhaustive list of valid output labels. Optional at
-            Phase 0; required at Phase 1+ for LLM/ML routing.
-        author: Principal associated with the switch (opaque string).
+        labels: The switch's label-based conditional expressions —
+            each label names a possible classifier output; pairing a
+            label with an ``on=`` action turns the label into a
+            dispatch clause that Dendra evaluates on match. Accepted
+            forms: ``list[str]`` (plain labels), ``list[Label]``
+            (labels with optional actions), or ``dict[str, Callable]``
+            (shorthand for per-label actions). Optional at Phase 0;
+            required at Phase 1+ for language model/ML routing.
+        author: Optional provenance string (team handle, service
+            account, compliance ID). When omitted, auto-derived
+            from the decorated function's module plus its name as
+            ``"@<module>:<function>"`` — stable per deployment,
+            unique per-switch-per-module. Pass explicitly to use
+            a custom scheme.
         name: Stable switch identifier. Defaults to the wrapped
             function's ``__name__``.
         config: Optional :class:`SwitchConfig`.
         storage: Optional :class:`Storage` backend.
-        llm: Optional :class:`LLMClassifier` used in LLM_SHADOW /
-            LLM_PRIMARY phases.
+        model: Optional :class:`ModelClassifier` used in MODEL_SHADOW /
+            MODEL_PRIMARY phases.
 
     Returns a wrapper callable that forwards to the decorated function
-    and exposes the LearnedSwitch affordances (``record_outcome``,
+    and exposes the LearnedSwitch affordances (``record_verdict``,
     ``status``, ``phase``, ``switch``).
     """
 
@@ -112,13 +151,25 @@ def ml_switch(
             name=switch_name,
             rule=fn,
             author=author,
+            labels=labels,
+            starting_phase=starting_phase,
+            phase_limit=phase_limit,
+            safety_critical=safety_critical,
+            confidence_threshold=confidence_threshold,
+            gate=gate,
+            auto_record=auto_record,
+            auto_advance=auto_advance,
+            auto_advance_interval=auto_advance_interval,
+            on_verdict=on_verdict,
+            verifier=verifier,
+            verifier_sample_rate=verifier_sample_rate,
             config=config,
             storage=storage,
-            llm=llm,
+            persist=persist,
+            model=model,
             ml_head=ml_head,
             telemetry=telemetry,
         )
-        switch.labels = list(labels or [])
         return _MLSwitchWrapper(fn, switch)
 
     return decorate

@@ -29,17 +29,48 @@ EXPORTS: dict[str, list[int | None]] = {
     "dendra-mark-dark": [1024],
     "dendra-mark-mono-light": [1024],
     "dendra-mark-mono-dark": [1024],
-    "dendra-wordmark-horizontal": [None],  # 1200×300 native
+    # Parent + sub-brand wordmarks. The canvas dimensions are
+    # auto-computed by `_generate_wordmarks.py` to give symmetric
+    # 50px L/R margins per word, so widths vary per sub-brand.
+    # Each ships in three variants (light / -dark / -transparent)
+    # × two layouts (horizontal / stacked).
+    "dendra-wordmark-horizontal": [None],
     "dendra-wordmark-horizontal-dark": [None],
-    "dendra-wordmark-stacked": [None],  # 600×720 native
+    "dendra-wordmark-horizontal-transparent": [None],
+    "dendra-wordmark-stacked": [None],
     "dendra-wordmark-stacked-dark": [None],
-    "dendra-social-card": [None],  # 1200×630 native
-    "dendra-social-card-dark": [None],
-    # Sub-brand lockups
-    "dendra-cloud-wordmark": [None],  # 1400×300 native
+    "dendra-wordmark-stacked-transparent": [None],
+    # Sub-brand lockups — analyze
     "dendra-analyze-wordmark": [None],
+    "dendra-analyze-wordmark-dark": [None],
+    "dendra-analyze-wordmark-transparent": [None],
+    "dendra-analyze-wordmark-stacked": [None],
+    "dendra-analyze-wordmark-stacked-dark": [None],
+    "dendra-analyze-wordmark-stacked-transparent": [None],
+    # Sub-brand lockups — cloud
+    "dendra-cloud-wordmark": [None],
+    "dendra-cloud-wordmark-dark": [None],
+    "dendra-cloud-wordmark-transparent": [None],
+    "dendra-cloud-wordmark-stacked": [None],
+    "dendra-cloud-wordmark-stacked-dark": [None],
+    "dendra-cloud-wordmark-stacked-transparent": [None],
+    # Sub-brand lockups — insight
     "dendra-insight-wordmark": [None],
-    "dendra-research-wordmark": [None],  # 1500×300 native
+    "dendra-insight-wordmark-dark": [None],
+    "dendra-insight-wordmark-transparent": [None],
+    "dendra-insight-wordmark-stacked": [None],
+    "dendra-insight-wordmark-stacked-dark": [None],
+    "dendra-insight-wordmark-stacked-transparent": [None],
+    # Sub-brand lockups — research
+    "dendra-research-wordmark": [None],
+    "dendra-research-wordmark-dark": [None],
+    "dendra-research-wordmark-transparent": [None],
+    "dendra-research-wordmark-stacked": [None],
+    "dendra-research-wordmark-stacked-dark": [None],
+    "dendra-research-wordmark-stacked-transparent": [None],
+    # Social card
+    "dendra-social-card": [None],
+    "dendra-social-card-dark": [None],
     # Applied assets — social banners + share previews
     "dendra-github-social-preview": [None],  # 1280×640 native
     "dendra-twitter-banner": [None],  # 1500×500 native

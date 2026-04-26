@@ -19,10 +19,10 @@ computes a grounded ROI estimate per switch. Every dollar figure
 decomposes back to a ratio × a per-unit assumption, so adopters can
 reproduce or adjust the calculation.
 
-The assumptions are the ranges from ``docs/marketing/industry-
-applicability.md`` (§4, §6.3). They're documented inline as attributes
-of :class:`ROIAssumptions` so an AI coding assistant can reason about
-them when suggesting tuning.
+The assumption ranges are documented inline as attributes of
+:class:`ROIAssumptions` so an AI coding assistant can reason about
+them when suggesting tuning. Adjust them to match your workload's
+real economics rather than relying on the shipped defaults.
 """
 
 from __future__ import annotations
@@ -57,7 +57,7 @@ class ROIAssumptions:
     regression_cost_low_usd: float = 50_000.0
     regression_cost_high_usd: float = 300_000.0
 
-    # --- Token-cost dimension (2026 LLM-era) --------------------------------
+    # --- Token-cost dimension (2026 language model-era) --------------------------------
     # Typical per-classification token shape: prompt (system + labels + input)
     # + completion (just the label). Real measurements from our tests:
     # ~50-100 input, ~3-8 output for a short-input classifier.
@@ -69,9 +69,9 @@ class ROIAssumptions:
     llm_input_usd_per_1m_tokens_high: float = 3.00  # Claude Sonnet 4.6
     llm_output_usd_per_1m_tokens_low: float = 0.60
     llm_output_usd_per_1m_tokens_high: float = 15.00
-    # Counter-factual: if the team had shipped LLM-only instead of
+    # Counter-factual: if the team had shipped model-only instead of
     # Dendra-graduated, what fraction of outcomes would have gone to the
-    # LLM? Default: 100% (Dendra's rule/ML paths save all of them).
+    # language model? Default: 100% (Dendra's rule/ML paths save all of them).
     pct_outcomes_that_would_use_llm_without_dendra: float = 1.0
 
 
@@ -93,8 +93,8 @@ class SwitchROI:
     ttm_value_high_usd: float
     regression_avoidance_low_usd: float
     regression_avoidance_high_usd: float
-    # Token savings — LLM calls Dendra routed away from.
-    llm_calls_avoided: int
+    # Token savings — model calls Dendra routed away from.
+    model_calls_avoided: int
     token_savings_low_usd: float
     token_savings_high_usd: float
     total_savings_low_usd: float
@@ -109,14 +109,14 @@ def compute_switch_roi(
 ) -> SwitchROI:
     """Compute ROI for one switch from its outcome log."""
     a = assumptions or ROIAssumptions()
-    outcomes = storage.load_outcomes(switch_name)
+    outcomes = storage.load_records(switch_name)
     total = len(outcomes)
     correct = sum(1 for r in outcomes if r.outcome == "correct")
     incorrect = sum(1 for r in outcomes if r.outcome == "incorrect")
     acc = correct / total if total else 0.0
 
     graduated = any(
-        getattr(r, "source", "rule") in {"llm", "ml", "rule_fallback"} for r in outcomes
+        getattr(r, "source", "rule") in {"model", "ml", "rule_fallback"} for r in outcomes
     )
 
     # Direct engineering savings: (baseline - dendra) weeks × cost.
@@ -153,13 +153,15 @@ def compute_switch_roi(
     )
 
     # Token-cost savings: every outcome that Dendra routed through
-    # rule/ML is an LLM call the counter-factual design would have paid
-    # for. We count outcomes whose source is NOT "llm" (i.e., handled
-    # without calling the LLM) and multiply by per-call token cost.
-    llm_calls_avoided = sum(1 for r in outcomes if getattr(r, "source", "rule") != "llm")
-    # Scale by the "what fraction would have gone to LLM in the counter-
-    # factual" knob. Default 1.0 = "team would have shipped LLM-only".
-    counterfactual_llm_calls = llm_calls_avoided * a.pct_outcomes_that_would_use_llm_without_dendra
+    # rule/ML is a model call the counter-factual design would have paid
+    # for. We count outcomes whose source is NOT "model" (i.e., handled
+    # without calling the model) and multiply by per-call token cost.
+    model_calls_avoided = sum(1 for r in outcomes if getattr(r, "source", "rule") != "model")
+    # Scale by the "what fraction would have gone to language model in the counter-
+    # factual" knob. Default 1.0 = "team would have shipped model-only".
+    counterfactual_llm_calls = (
+        model_calls_avoided * a.pct_outcomes_that_would_use_llm_without_dendra
+    )
     cost_per_call_low = (
         a.llm_input_tokens_per_call * a.llm_input_usd_per_1m_tokens_low / 1e6
         + a.llm_output_tokens_per_call * a.llm_output_usd_per_1m_tokens_low / 1e6
@@ -188,7 +190,7 @@ def compute_switch_roi(
         ttm_value_high_usd=ttm_high,
         regression_avoidance_low_usd=reg_low,
         regression_avoidance_high_usd=reg_high,
-        llm_calls_avoided=llm_calls_avoided,
+        model_calls_avoided=model_calls_avoided,
         token_savings_low_usd=tok_low,
         token_savings_high_usd=tok_high,
         total_savings_low_usd=eng_low + ttm_low + reg_low + tok_low,
@@ -219,7 +221,7 @@ def format_portfolio_report(
     total_outcomes = sum(r.outcomes_total for r in rois)
     total_bytes = sum(r.bytes_on_disk for r in rois)
 
-    total_llm_avoided = sum(r.llm_calls_avoided for r in rois)
+    total_llm_avoided = sum(r.model_calls_avoided for r in rois)
     total_tok_low = sum(r.token_savings_low_usd for r in rois)
     total_tok_high = sum(r.token_savings_high_usd for r in rois)
 
@@ -228,7 +230,7 @@ def format_portfolio_report(
         "=" * 60,
         f"Switches tracked:     {len(rois)}",
         f"Total outcomes:       {total_outcomes:,}",
-        f"LLM calls avoided:    {total_llm_avoided:,}",
+        f"model calls avoided:    {total_llm_avoided:,}",
         f"Disk usage:           {total_bytes / 1024:,.1f} KB",
         "",
         f"{'switch':<26} {'outcomes':>9} {'acc':>6} {'eng+ttm+reg (USD)':>20} {'tokens (USD)':>18}",
@@ -269,7 +271,7 @@ def format_portfolio_report(
         f"  counter_factual_llm_pct={a.pct_outcomes_that_would_use_llm_without_dendra:.0%}",
         "",
         "Every dollar figure = ratio × per-unit assumption. "
-        "See docs/marketing/industry-applicability.md §4-§8 for derivation.",
+        "Tune ROIAssumptions to your workload before relying on totals.",
     ]
     return "\n".join(lines)
 

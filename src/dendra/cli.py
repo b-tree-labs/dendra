@@ -65,7 +65,7 @@ def cmd_bench(args: argparse.Namespace) -> int:
     ).as_callable()
     head = SklearnTextHead(min_outcomes=args.min_train_for_ml)
 
-    llm = _build_llm(args) if args.llm else None
+    model = _build_lm(args) if args.lm_kind else None
     checkpoints = run_benchmark_experiment(
         train=ds.train,
         test=ds.test,
@@ -74,9 +74,9 @@ def cmd_bench(args: argparse.Namespace) -> int:
         checkpoint_every=args.checkpoint_every,
         min_train_for_ml=args.min_train_for_ml,
         max_train=args.max_train,
-        llm=llm,
-        llm_labels=ds.labels,
-        llm_test_sample_size=args.llm_test_sample,
+        model=model,
+        lm_labels=ds.labels,
+        lm_test_sample_size=args.lm_test_sample,
     )
 
     summary = {
@@ -96,24 +96,24 @@ def cmd_bench(args: argparse.Namespace) -> int:
     return 0
 
 
-def _build_llm(args: argparse.Namespace):
-    """Factory — map CLI args to an LLMClassifier instance."""
-    from dendra.llm import (
+def _build_lm(args: argparse.Namespace):
+    """Factory — map CLI args to an ModelClassifier instance."""
+    from dendra.models import (
         AnthropicAdapter,
         LlamafileAdapter,
         OllamaAdapter,
         OpenAIAdapter,
     )
 
-    kind = args.llm
+    kind = args.lm_kind
     if kind == "ollama":
-        return OllamaAdapter(model=args.llm_model or "llama3.2:1b")
+        return OllamaAdapter(model=args.lm_id or "qwen2.5:7b")
     if kind == "llamafile":
-        return LlamafileAdapter(model=args.llm_model or "LLaMA_CPP")
+        return LlamafileAdapter(model=args.lm_id or "LLaMA_CPP")
     if kind == "openai":
-        return OpenAIAdapter(model=args.llm_model or "gpt-4o-mini")
+        return OpenAIAdapter(model=args.lm_id or "gpt-4o-mini")
     if kind == "anthropic":
-        return AnthropicAdapter(model=args.llm_model or "claude-haiku-4-5")
+        return AnthropicAdapter(model=args.lm_id or "claude-haiku-4-5")
     raise ValueError(f"unknown llm backend {kind!r}")
 
 
@@ -242,6 +242,102 @@ def cmd_roi(args: argparse.Namespace) -> int:
     return 0
 
 
+_QUICKSTART_EXAMPLES = {
+    "hello": ("01_hello_world.py", "smallest example — rule + dispatch"),
+    "tournament": ("21_tournament.py", "pick among N candidates with statistical confidence"),
+    "autoresearch": ("19_autoresearch_loop.py", "Karpathy-style propose / evaluate / reflect loop"),
+    "verifier": ("20_verifier_default.py", "autonomous-verification default"),
+    "exception": ("17_exception_handling.py", "Dendra as a try/except-tree replacement"),
+}
+
+
+def cmd_quickstart(args: argparse.Namespace) -> int:
+    """Copy an example into the cwd (or path) and run it.
+
+    The fastest path from `pip install dendra` to "I see it work."
+    No git clone, no `cd examples/` — `dendra quickstart` and you're
+    looking at output.
+    """
+    import shutil
+    import subprocess
+    from pathlib import Path
+
+    if args.list:
+        print("Available quickstart examples:")
+        for key, (filename, desc) in _QUICKSTART_EXAMPLES.items():
+            print(f"  {key:14s} — {desc}")
+            print(f"  {'':14s}    ({filename})")
+        return 0
+
+    if args.example not in _QUICKSTART_EXAMPLES:
+        print(
+            f"unknown example {args.example!r}; choose from {sorted(_QUICKSTART_EXAMPLES)}",
+            file=sys.stderr,
+        )
+        return 2
+
+    filename, desc = _QUICKSTART_EXAMPLES[args.example]
+
+    # Locate the example. Two cases:
+    #  1. Editable install / source checkout — examples/ sits next to src/
+    #  2. Wheel install — examples aren't packaged; fetch from GitHub raw.
+    #
+    # We try the local path first; if it isn't there, fall back to a
+    # tagged release on GitHub. Failure is honest — the user gets a
+    # clear "neither path worked" message with both URLs.
+    here = Path(__file__).resolve()
+    repo_root = here.parent.parent.parent
+    local_example = repo_root / "examples" / filename
+
+    target_dir = Path(args.target).resolve()
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target_file = target_dir / filename
+
+    if local_example.exists():
+        shutil.copy2(local_example, target_file)
+        # Demo stubs file ships alongside several examples.
+        local_stubs = repo_root / "examples" / "_stubs.py"
+        if local_stubs.exists():
+            shutil.copy2(local_stubs, target_dir / "_stubs.py")
+        source = f"local source ({local_example})"
+    else:
+        import urllib.error
+        import urllib.request
+
+        # Wheel install — fetch from the public repo.
+        url_base = "https://raw.githubusercontent.com/axiom-labs-os/dendra/main/examples"
+        url = f"{url_base}/{filename}"
+        try:
+            urllib.request.urlretrieve(url, target_file)
+            try:
+                urllib.request.urlretrieve(f"{url_base}/_stubs.py", target_dir / "_stubs.py")
+            except urllib.error.URLError:
+                # _stubs.py is optional for some examples; skip silently
+                pass
+            source = url
+        except urllib.error.URLError as e:
+            print(
+                f"Could not fetch example from {url}: {e}\n"
+                f"Recovery: clone the repo "
+                f"(git clone https://github.com/axiom-labs-os/dendra) "
+                f"and run `python examples/{filename}` directly.",
+                file=sys.stderr,
+            )
+            return 1
+
+    print(f"copied {filename} from {source}")
+    print(f"  → {target_file}")
+    if args.no_run:
+        print(f"\nrun with: python {target_file}")
+        return 0
+    print(f"\nrunning python {target_file} ...\n" + "-" * 60, flush=True)
+    rc = subprocess.run([sys.executable, str(target_file)]).returncode
+    print("-" * 60, flush=True)
+    if rc == 0:
+        print(f"done. The script lives at {target_file} — edit + re-run as you experiment.")
+    return rc
+
+
 def cmd_plot(args: argparse.Namespace) -> int:
     from dendra.viz import load_run, plot_transition_curves
 
@@ -288,17 +384,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--max-train", type=int, default=None, help="Cap on training examples (smoke-test knob)."
     )
     p_bench.add_argument(
-        "--llm",
+        "--lm",
         choices=["ollama", "llamafile", "openai", "anthropic"],
         default=None,
-        help="Enable LLM shadow evaluation with the named provider.",
+        help="Enable language model shadow evaluation with the named provider.",
     )
-    p_bench.add_argument("--llm-model", default=None, help="Model ID passed to the LLM provider.")
     p_bench.add_argument(
-        "--llm-test-sample",
+        "--lm-id", default=None, help="Model ID passed to the language-model provider."
+    )
+    p_bench.add_argument(
+        "--lm-test-sample",
         type=int,
         default=None,
-        help="Subsample size for LLM test evaluation (default: full test set).",
+        help="Subsample size for language model test evaluation (default: full test set).",
     )
     p_bench.set_defaults(fn=cmd_bench)
 
@@ -358,8 +456,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         default="RULE",
         choices=[
             "RULE",
-            "LLM_SHADOW",
-            "LLM_PRIMARY",
+            "MODEL_SHADOW",
+            "MODEL_PRIMARY",
             "ML_SHADOW",
             "ML_WITH_FALLBACK",
             "ML_PRIMARY",
@@ -377,6 +475,37 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Print unified diff instead of modifying the file.",
     )
     p_init.set_defaults(fn=cmd_init)
+
+    p_quick = sub.add_parser(
+        "quickstart",
+        help="Copy a runnable example into the current directory and run it.",
+    )
+    p_quick.add_argument(
+        "example",
+        nargs="?",
+        default="tournament",
+        help=(
+            "Which example to copy. Default: 'tournament' (picks among "
+            "N candidates with statistical confidence). "
+            "Use --list to see all options."
+        ),
+    )
+    p_quick.add_argument(
+        "--target",
+        default=".",
+        help="Directory to copy the example into. Default: current directory.",
+    )
+    p_quick.add_argument(
+        "--no-run",
+        action="store_true",
+        help="Copy the file but don't execute it.",
+    )
+    p_quick.add_argument(
+        "--list",
+        action="store_true",
+        help="List the available examples and exit.",
+    )
+    p_quick.set_defaults(fn=cmd_quickstart)
 
     p_roi = sub.add_parser(
         "roi",

@@ -11,8 +11,8 @@ rule on ML failure, and shadow-path isolation that keeps observational
 classifiers from affecting user-visible output.
 
 Core public API: :class:`LearnedSwitch`, :func:`ml_switch` decorator,
-:class:`Phase`, :class:`SwitchConfig`, :class:`OutcomeRecord`,
-:class:`FileStorage`, and the LLM/ML protocol interfaces.
+:class:`Phase`, :class:`SwitchConfig`, :class:`ClassificationRecord`,
+:class:`FileStorage`, and the language model/ML protocol interfaces.
 
 Tooling (analyzer, ROI reporter, AST-based `wrap_function`, viz,
 research runners) ships in submodules — import directly:
@@ -24,57 +24,135 @@ See README.md and https://dendra.dev.
 
 __version__ = "0.2.0"
 
+from dendra.autoresearch import (
+    CandidateHarness,
+    CandidateReport,
+    Tournament,
+    TournamentReport,
+)
 from dendra.core import (
+    BulkVerdict,
+    BulkVerdictSummary,
+    ClassificationRecord,
+    ClassificationResult,
+    Label,
     LearnedSwitch,
-    Outcome,
-    OutcomeRecord,
     Phase,
     SwitchConfig,
-    SwitchResult,
     SwitchStatus,
+    Verdict,
 )
 from dendra.decorator import ml_switch
-from dendra.llm import (
-    AnthropicAdapter,
-    LlamafileAdapter,
-    LLMClassifier,
-    LLMPrediction,
-    OllamaAdapter,
-    OpenAIAdapter,
+from dendra.gates import (
+    AccuracyMarginGate,
+    CompositeGate,
+    Gate,
+    GateDecision,
+    ManualGate,
+    McNemarGate,
+    MinVolumeGate,
+    next_phase,
 )
 from dendra.ml import MLHead, MLPrediction, SklearnTextHead
-from dendra.storage import FileStorage, InMemoryStorage, Storage
+from dendra.models import (
+    AnthropicAdapter,
+    AnthropicAsyncAdapter,
+    LlamafileAdapter,
+    LlamafileAsyncAdapter,
+    ModelClassifier,
+    ModelPrediction,
+    OllamaAdapter,
+    OllamaAsyncAdapter,
+    OpenAIAdapter,
+    OpenAIAsyncAdapter,
+)
+from dendra.storage import (
+    BoundedInMemoryStorage,
+    FileStorage,
+    InMemoryStorage,
+    ResilientStorage,
+    SqliteStorage,
+    Storage,
+    StorageBase,
+    deserialize_record,
+    flock_supported,
+    serialize_record,
+)
 from dendra.telemetry import (
     ListEmitter,
     NullEmitter,
     StdoutEmitter,
     TelemetryEmitter,
 )
+from dendra.verdicts import (
+    CallableVerdictSource,
+    HumanReviewerSource,
+    JudgeCommittee,
+    JudgeSource,
+    NoVerifierAvailableError,
+    VerdictSource,
+    WebhookVerdictSource,
+    default_verifier,
+)
 
 __all__ = [
+    "AccuracyMarginGate",
     "AnthropicAdapter",
+    "AnthropicAsyncAdapter",
+    "BoundedInMemoryStorage",
+    "BulkVerdict",
+    "BulkVerdictSummary",
+    "CandidateHarness",
+    "CandidateReport",
+    "CompositeGate",
+    "ClassificationRecord",
+    "ClassificationResult",
     "FileStorage",
+    "Gate",
+    "GateDecision",
     "InMemoryStorage",
+    "Label",
     "LearnedSwitch",
     "ListEmitter",
-    "LLMClassifier",
-    "LLMPrediction",
     "LlamafileAdapter",
+    "LlamafileAsyncAdapter",
     "MLHead",
     "MLPrediction",
+    "ManualGate",
+    "McNemarGate",
+    "MinVolumeGate",
+    "ModelClassifier",
+    "ModelPrediction",
     "NullEmitter",
     "OllamaAdapter",
+    "OllamaAsyncAdapter",
     "OpenAIAdapter",
-    "Outcome",
-    "OutcomeRecord",
+    "OpenAIAsyncAdapter",
     "Phase",
+    "ResilientStorage",
     "SklearnTextHead",
+    "SqliteStorage",
     "StdoutEmitter",
     "Storage",
+    "StorageBase",
     "SwitchConfig",
-    "SwitchResult",
     "SwitchStatus",
+    "CallableVerdictSource",
+    "HumanReviewerSource",
+    "JudgeCommittee",
+    "JudgeSource",
     "TelemetryEmitter",
+    "Tournament",
+    "TournamentReport",
+    "Verdict",
+    "VerdictSource",
+    "NoVerifierAvailableError",
+    "WebhookVerdictSource",
     "__version__",
+    "default_verifier",
+    "deserialize_record",
+    "flock_supported",
     "ml_switch",
+    "next_phase",
+    "serialize_record",
 ]

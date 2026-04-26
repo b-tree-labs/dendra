@@ -19,7 +19,7 @@ Implements the experiment described in the Dendra paper §4.3:
     1. Start a switch at Phase.RULE.
     2. Stream labeled examples through the switch.
     3. Every ``checkpoint_every`` outcomes, record accuracy per source
-       (rule, llm, ml) over the outcomes observed so far.
+       (rule, model, ml) over the outcomes observed so far.
     4. Return a list of :class:`Checkpoint` rows — the raw data for
        the paper's Figure 1 transition curves.
 
@@ -34,50 +34,57 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from typing import Any
 
-from dendra.core import LearnedSwitch, Outcome
+from dendra.core import LearnedSwitch, Verdict
 
 
-def train_ml_from_llm_outcomes(
+def train_ml_from_model_outcomes(
     switch: LearnedSwitch,
     ml_head: Any,
     *,
     min_llm_outcomes: int = 200,
     outcome_label_filter: tuple[str, ...] = ("correct",),
 ) -> int:
-    """Bootstrap an ML head from LLM-labeled outcomes.
+    """Bootstrap an ML head from model-labeled outcomes.
 
     **The LLM-as-teacher pattern.** When a switch has been running at
-    ``Phase.LLM_PRIMARY`` (or any phase where ``source="llm"`` outcomes
-    accumulate), the LLM has been acting as a production labeler. This
-    helper filters the outcome log down to LLM-labeled records whose
+    ``Phase.MODEL_PRIMARY`` (or any phase where ``source="model"`` outcomes
+    accumulate), the language model has been acting as a production labeler. This
+    helper filters the outcome log down to model-labeled records whose
     downstream signal matched (outcome="correct" by default), then
     calls ``ml_head.fit(...)`` on those records.
 
     Returns the count of records used for fitting. If fewer than
     ``min_llm_outcomes`` qualify, the fit is SKIPPED and 0 is returned
     — training on too few labels produces an ML head that underperforms
-    the LLM and stalls phase graduation.
+    the language model and stalls phase graduation.
 
     Typical usage::
 
         from dendra import SklearnTextHead
-        from dendra.research import train_ml_from_llm_outcomes
+        from dendra.research import train_ml_from_model_outcomes
 
         head = SklearnTextHead(min_outcomes=200)
-        used = train_ml_from_llm_outcomes(
+        used = train_ml_from_model_outcomes(
             switch=my_switch, ml_head=head, min_llm_outcomes=500,
         )
         if used >= 500:
             my_switch._ml_head = head
-            my_switch.config.phase = Phase.ML_WITH_FALLBACK
+            my_switch.config.starting_phase = Phase.ML_WITH_FALLBACK
 
-    See ``docs/working/llm-as-teacher.md`` for the full pattern write-up.
+    The LLM-as-teacher pattern: start at MODEL_PRIMARY with no
+    labeled data, let the language model decide + label production traffic,
+    then train a local ML head on the accumulated language model labels and
+    graduate to ML_WITH_FALLBACK. This retires the language model from the
+    hot path once the cheaper ML head is trained.
+
+    See ``examples/07_llm_as_teacher.py`` for a runnable
+    demonstration.
     """
-    all_outcomes = switch.storage.load_outcomes(switch.name)
+    all_outcomes = switch.storage.load_records(switch.name)
     usable = [
         r
         for r in all_outcomes
-        if getattr(r, "source", None) == "llm"
+        if getattr(r, "source", None) == "model"
         and getattr(r, "outcome", None) in outcome_label_filter
     ]
     if len(usable) < min_llm_outcomes:
@@ -100,7 +107,7 @@ class Checkpoint:
 
     outcomes: int
     rule_accuracy: float
-    llm_accuracy: float | None
+    lm_accuracy: float | None
     ml_accuracy: float | None
     decision_accuracy: float  # accuracy of whatever the switch actually returned
 
@@ -115,7 +122,7 @@ def run_transition_curve(
     """Stream ``examples`` through ``switch`` and measure transition curves.
 
     Records one :class:`Checkpoint` per ``checkpoint_every`` outcomes.
-    ``rule_accuracy`` is always populated; ``llm_accuracy`` and
+    ``rule_accuracy`` is always populated; ``lm_accuracy`` and
     ``ml_accuracy`` appear when the switch's current phase is
     producing shadow observations for them.
     """
@@ -123,19 +130,15 @@ def run_transition_curve(
     total = 0
     for ex in examples:
         result = switch.classify(ex.input)
-        outcome = Outcome.CORRECT.value if result.output == ex.label else Outcome.INCORRECT.value
-        switch.record_outcome(
-            input=ex.input,
-            output=result.output,
-            outcome=outcome,
-            source=result.source,
-            confidence=result.confidence,
-        )
+        if result.label == ex.label:
+            result.mark_correct()
+        else:
+            result.mark_incorrect()
         total += 1
 
         if total % checkpoint_every == 0:
             if fit_each_checkpoint and switch._ml_head is not None:
-                switch._ml_head.fit(switch.storage.load_outcomes(switch.name))
+                switch._ml_head.fit(switch.storage.load_records(switch.name))
             checkpoints.append(_snapshot(switch, total))
 
     # Tail snapshot if we have outcomes beyond the last checkpoint.
@@ -146,8 +149,8 @@ def run_transition_curve(
 
 
 def _snapshot(switch: LearnedSwitch, total: int) -> Checkpoint:
-    outcomes = switch.storage.load_outcomes(switch.name)
-    correct = sum(1 for r in outcomes if r.outcome == Outcome.CORRECT.value)
+    outcomes = switch.storage.load_records(switch.name)
+    correct = sum(1 for r in outcomes if r.outcome == Verdict.CORRECT.value)
     decision_acc = correct / len(outcomes) if outcomes else 0.0
 
     rule_rows = [r for r in outcomes if r.rule_output is not None]
@@ -162,15 +165,15 @@ def _snapshot(switch: LearnedSwitch, total: int) -> Checkpoint:
     #     rule_output matches the actual ground truth label
     # and we recover ground truth from whichever source was correct.
     rule_correct = _source_accuracy(rule_rows, "rule_output")
-    llm_rows = [r for r in outcomes if r.llm_output is not None]
-    llm_acc = _source_accuracy(llm_rows, "llm_output") if llm_rows else None
+    model_rows = [r for r in outcomes if r.model_output is not None]
+    model_acc = _source_accuracy(model_rows, "model_output") if model_rows else None
     ml_rows = [r for r in outcomes if r.ml_output is not None]
     ml_acc = _source_accuracy(ml_rows, "ml_output") if ml_rows else None
 
     return Checkpoint(
         outcomes=total,
         rule_accuracy=rule_correct or 0.0,
-        llm_accuracy=llm_acc,
+        lm_accuracy=model_acc,
         ml_accuracy=ml_acc,
         decision_accuracy=decision_acc,
     )
@@ -183,10 +186,10 @@ def _source_accuracy(rows: list[Any], field_name: str) -> float:
     the actual ``output`` is the label. If outcome=="incorrect", we don't
     know the correct label from this row alone — those rows drop out.
     """
-    usable = [r for r in rows if r.outcome == Outcome.CORRECT.value]
+    usable = [r for r in rows if r.outcome == Verdict.CORRECT.value]
     if not usable:
         return 0.0
-    matches = sum(1 for r in usable if getattr(r, field_name) == r.output)
+    matches = sum(1 for r in usable if getattr(r, field_name) == r.label)
     return matches / len(usable)
 
 
@@ -199,10 +202,10 @@ class BenchmarkCheckpoint:
     at growing training-outcome counts. The earlier :class:`Checkpoint`
     scores each source over the historical stream.
 
-    ``llm_test_accuracy`` is flat across checkpoints when the LLM runs
+    ``model_test_accuracy`` is flat across checkpoints when the language model runs
     in pure shadow mode (no fine-tuning / context-accumulation between
     outcomes) — it reflects the zero-shot ceiling under §9.3's
-    "LLM-as-shadow-labeler" regime.
+    "model-as-shadow-labeler" regime.
 
     ``rule_correct`` / ``ml_correct`` are per-example booleans (test-row
     order) when paired-test reporting is enabled. They let callers
@@ -216,8 +219,8 @@ class BenchmarkCheckpoint:
     ml_test_accuracy: float
     ml_trained: bool
     ml_version: str
-    llm_test_accuracy: float | None = None
-    llm_test_sample: int | None = None
+    model_test_accuracy: float | None = None
+    lm_test_sample: int | None = None
     rule_correct: list[bool] | None = None
     ml_correct: list[bool] | None = None
 
@@ -231,9 +234,9 @@ def run_benchmark_experiment(
     checkpoint_every: int = 250,
     min_train_for_ml: int = 100,
     max_train: int | None = None,
-    llm: LLMClassifierT | None = None,
-    llm_labels: list[str] | None = None,
-    llm_test_sample_size: int | None = None,
+    model: LLMClassifierT | None = None,
+    lm_labels: list[str] | None = None,
+    lm_test_sample_size: int | None = None,
     record_per_example: bool = True,
     shuffle_seed: int | None = None,
 ) -> list[BenchmarkCheckpoint]:
@@ -248,7 +251,7 @@ def run_benchmark_experiment(
     ``ml_head`` must satisfy :class:`dendra.ml.MLHead`. The runner
     doesn't assume any particular backend — swap in a fake for tests.
     """
-    from dendra.core import LearnedSwitch, Outcome, Phase, SwitchConfig
+    from dendra.core import LearnedSwitch, Phase, SwitchConfig, Verdict
 
     train_list = list(train)
     test_list = list(test)
@@ -260,54 +263,74 @@ def run_benchmark_experiment(
     if max_train is not None:
         train_list = train_list[:max_train]
 
-    # One-time LLM evaluation — constant across checkpoints since the LLM
+    # One-time language model evaluation — constant across checkpoints since the language model
     # isn't updated between outcomes. Matches the paper §9.3 shadow regime.
-    llm_acc: float | None = None
-    llm_sample: int | None = None
-    if llm is not None:
+    model_acc: float | None = None
+    model_sample: int | None = None
+    if model is not None:
         eval_rows = test_list
-        if llm_test_sample_size is not None:
-            eval_rows = eval_rows[:llm_test_sample_size]
-        llm_sample = len(eval_rows)
+        if lm_test_sample_size is not None:
+            eval_rows = eval_rows[:lm_test_sample_size]
+        model_sample = len(eval_rows)
         labels_for_llm = (
-            list(llm_labels) if llm_labels is not None else sorted({lbl for _, lbl in test_list})
+            list(lm_labels) if lm_labels is not None else sorted({lbl for _, lbl in test_list})
         )
         correct = 0
         for text, lbl in eval_rows:
             try:
-                pred = llm.classify(text, labels_for_llm)
+                pred = model.classify(text, labels_for_llm)
             except Exception:
                 continue
             if pred.label == lbl:
                 correct += 1
-        llm_acc = correct / llm_sample if llm_sample else 0.0
+        model_acc = correct / model_sample if model_sample else 0.0
 
     def _rule_fn(text: str) -> str:
         return rule(text)
 
     # A single switch carries the outcome log; ML head retrains from it.
+    # auto_record=False: benchmark records verdicts explicitly per example;
+    # UNKNOWN auto-rows would double-count in transition-curve math.
+    #
+    # Unbounded storage: the benchmark harness OWNS the full training
+    # set and bounds its own lifetime. The default
+    # ``BoundedInMemoryStorage(10_000)`` is correct for production
+    # switches (prevents unbounded memory growth) but FIFO-evicts at
+    # cap — catastrophic when the benchmark stream is label-blocked
+    # (e.g. CLINC150 feeds 10 labels per 1,000-example window; at
+    # outcome 10,500 the first 500 records are evicted, meaning ~5
+    # entire label classes drop out of the ML head's training view).
+    # Using the explicit unbounded ``InMemoryStorage`` keeps the full
+    # stream addressable. See
+    # docs/papers/2026-when-should-a-rule-learn/results/findings.md
+    # "CLINC150 divergence" for the investigation log.
+    from dendra.storage import InMemoryStorage
+
     switch = LearnedSwitch(
         name="bench",
         rule=_rule_fn,
         author="bench",
         ml_head=ml_head,
-        config=SwitchConfig(phase=Phase.RULE),
+        storage=InMemoryStorage(),
+        config=SwitchConfig(phase=Phase.RULE, auto_record=False),
     )
 
     checkpoints: list[BenchmarkCheckpoint] = []
     for i, (text, label) in enumerate(train_list, start=1):
         # Route through the switch so phase-specific shadow observations
-        # are recorded. The return value is unused here — we record the
-        # *ground truth* (the actual label) as the outcome so the ML
-        # head trains on real labels regardless of what the rule said.
+        # are recorded. We override ``label`` / ``source`` with the
+        # oracle truth for training, but thread the classify result
+        # (_result_ctx) so the per-call shadow observations still
+        # attach to the persisted record.
         # See §6.1 "direct human label" assumption in the paper.
-        switch.classify(text)
-        switch.record_outcome(
+        result = switch.classify(text)
+        switch.record_verdict(
             input=text,
-            output=label,
-            outcome=Outcome.CORRECT.value,
+            label=label,
+            outcome=Verdict.CORRECT.value,
             source="oracle",
             confidence=1.0,
+            _result_ctx=result,
         )
 
         if i % checkpoint_every == 0:
@@ -319,8 +342,8 @@ def run_benchmark_experiment(
                     test_list=test_list,
                     training_outcomes=i,
                     min_train_for_ml=min_train_for_ml,
-                    llm_acc=llm_acc,
-                    llm_sample=llm_sample,
+                    model_acc=model_acc,
+                    model_sample=model_sample,
                     record_per_example=record_per_example,
                 )
             )
@@ -335,8 +358,8 @@ def run_benchmark_experiment(
                 test_list=test_list,
                 training_outcomes=len(train_list),
                 min_train_for_ml=min_train_for_ml,
-                llm_acc=llm_acc,
-                llm_sample=llm_sample,
+                model_acc=model_acc,
+                model_sample=model_sample,
                 record_per_example=record_per_example,
             )
         )
@@ -352,8 +375,8 @@ def _eval_checkpoint(
     test_list: list[tuple[str, str]],
     training_outcomes: int,
     min_train_for_ml: int,
-    llm_acc: float | None = None,
-    llm_sample: int | None = None,
+    model_acc: float | None = None,
+    model_sample: int | None = None,
     record_per_example: bool = True,
 ) -> BenchmarkCheckpoint:
     # Per-example rule correctness — constant across checkpoints (rule is
@@ -365,7 +388,7 @@ def _eval_checkpoint(
     ml_acc = 0.0
     ml_hits: list[bool] | None = None
     if training_outcomes >= min_train_for_ml:
-        ml_head.fit(switch.storage.load_outcomes(switch.name))
+        ml_head.fit(switch.storage.load_records(switch.name))
         ml_trained = True
         labels = sorted({lbl for _, lbl in test_list})
         ml_hits = []
@@ -380,8 +403,8 @@ def _eval_checkpoint(
         ml_test_accuracy=ml_acc,
         ml_trained=ml_trained,
         ml_version=ml_head.model_version() if ml_trained else "untrained",
-        llm_test_accuracy=llm_acc,
-        llm_test_sample=llm_sample,
+        model_test_accuracy=model_acc,
+        lm_test_sample=model_sample,
         rule_correct=rule_hits if record_per_example else None,
         ml_correct=ml_hits if record_per_example else None,
     )

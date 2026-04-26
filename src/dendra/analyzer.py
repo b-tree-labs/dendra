@@ -27,7 +27,7 @@ Six patterns ship in v1:
 - **P3** dict-lookup dispatcher
 - **P4** keyword-scanner
 - **P5** regex dispatcher
-- **P6** LLM-prompted classifier
+- **P6** model-prompted classifier
 
 Zero external dependencies. Runs on any repo via
 ``dendra analyze <path>``.
@@ -201,13 +201,13 @@ def _body_uses_regex_dispatch(fn: ast.FunctionDef) -> bool:
     return uses_re and has_str_return
 
 
-def _body_is_llm_prompted(fn: ast.FunctionDef) -> bool:
-    """Pattern P6 — calls an LLM client and returns a string.
+def _body_is_model_prompted(fn: ast.FunctionDef) -> bool:
+    """Pattern P6 — calls a language-model client and returns a string.
 
     Heuristic — we look for attribute accesses to known client names
     (openai.chat, anthropic.messages, requests.post, httpx.post).
     """
-    llm_markers = {
+    model_markers = {
         "chat",
         "completions",
         "messages",
@@ -215,7 +215,7 @@ def _body_is_llm_prompted(fn: ast.FunctionDef) -> bool:
     }
     has_llm_call = False
     for node in ast.walk(fn):
-        if isinstance(node, ast.Attribute) and node.attr in llm_markers:
+        if isinstance(node, ast.Attribute) and node.attr in model_markers:
             has_llm_call = True
             break
         if isinstance(node, ast.Call):
@@ -235,7 +235,7 @@ _PATTERNS: list[tuple[str, Any]] = [
     ("P3", _body_is_dict_lookup),
     ("P4", _body_has_keyword_scanner),
     ("P5", _body_uses_regex_dispatch),
-    ("P6", _body_is_llm_prompted),
+    ("P6", _body_is_model_prompted),
 ]
 
 

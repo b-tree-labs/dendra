@@ -58,9 +58,8 @@ commercial use; a file under BSL is governed by the terms in
 
 ## Which files are which?
 
-The license mapping is documented in
-[`docs/working/license-strategy.md`](./docs/working/license-strategy.md),
-but the rule of thumb is:
+Per-file headers declare the applicable license. The rule of
+thumb:
 
 - **Apache 2.0** — anything you'd reasonably `import` from your
   own process: the decorator, phase enum, config, storage,
@@ -73,9 +72,8 @@ but the rule of thumb is:
 
 DENDRA, TRANSITION CURVES, and AXIOM LABS are trademarks of
 B-Tree Ventures, LLC. The licenses above do not grant rights to
-use these marks. See
-[`docs/working/trademark-strategy.md`](./docs/working/trademark-strategy.md)
-for fair-use and attribution guidance.
+use these marks. See [`TRADEMARKS.md`](./TRADEMARKS.md) for
+fair-use and attribution guidance.
 
 ## Still unsure?
 

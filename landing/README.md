@@ -125,7 +125,7 @@ The landing page is a living artifact. Review quarterly:
 - Are the stats still the current measured numbers?
   (Check `tests/test_latency.py` and the paper results.)
 - Are the pricing tiers still accurate?
-  (Check `docs/marketing/business-model-and-moat.md` §3.1.)
+  (Check the canonical pricing page.)
 - Is the license language accurate?
   (Check `LICENSE.md` top-level split map.)
 - Any broken links in the resources footer?
