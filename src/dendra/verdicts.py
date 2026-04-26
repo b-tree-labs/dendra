@@ -616,7 +616,7 @@ class NoVerifierAvailableError(RuntimeError):
 def default_verifier(
     prefer: str = "local",
     *,
-    ollama_model: str = "llama3.2:3b",
+    ollama_model: str = "qwen2.5:7b",
     openai_model: str = "gpt-4o-mini",
     anthropic_model: str = "claude-haiku-4-5",
     ollama_host: str = "http://localhost:11434",
@@ -631,21 +631,23 @@ def default_verifier(
     ``prefer="openai"`` / ``prefer="anthropic"`` (and a
     corresponding API key in the environment).
 
-    The shipped default is ``llama3.2:3b`` (~2.0 GB) — picked
-    after benchmarking four candidate SLMs (see
-    ``docs/benchmarks/slm-verifier-results.md``). 97%
-    format-compliance on the verdict task; smaller models drift
-    into prose too often to be reliable. Pull it with
-    ``ollama pull llama3.2:3b``.
+    The shipped default is ``qwen2.5:7b`` (~4.7 GB) — picked
+    after benchmarking 11 candidate SLMs at n=102 corpus (see
+    ``docs/benchmarks/slm-verifier-results.md``). 85% accuracy
+    on judged verdicts (the load-bearing metric for the gate);
+    above-chance score 0.363, the highest among latency-feasible
+    local models. Pull it with ``ollama pull qwen2.5:7b``.
 
-    Verdict accuracy on the shipped default is bounded — local
-    SLMs at this size hit ~50% accuracy on judged rows. The
-    paired-McNemar gate handles noisy verdicts correctly (the
-    α-bound holds), but the gate takes more outcomes to clear
-    significance. Rule of thumb: a local SLM verifier graduates
-    a switch in 5-10× the data a cloud verifier needs. For
-    faster graduation, swap in a cloud verifier
-    (``prefer="openai"`` / ``prefer="anthropic"``).
+    Verdict latency is ~481 ms p50 — well under the 1-second
+    practical ceiling for verifier roles. The DeepSeek-R1 family
+    scores higher on accuracy alone (R1-7b: 78% acc, above-chance
+    0.421) but at 14 s p50 is disqualified for the verifier role.
+    Cloud verifiers (``prefer="openai"`` /
+    ``prefer="anthropic"``) are faster and approach the accuracy
+    ceiling; the bundled-local path
+    (``prefer="bundled"``, lazy-downloaded GGUF served via
+    ``llama-cpp-python``) serves the same ``qwen2.5:7b`` weights
+    offline without an Ollama install — see :mod:`dendra.bundled`.
 
     Modes:
 

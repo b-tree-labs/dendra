@@ -107,7 +107,7 @@ def _build_lm(args: argparse.Namespace):
 
     kind = args.lm_kind
     if kind == "ollama":
-        return OllamaAdapter(model=args.lm_id or "llama3.2:1b")
+        return OllamaAdapter(model=args.lm_id or "qwen2.5:7b")
     if kind == "llamafile":
         return LlamafileAdapter(model=args.lm_id or "LLaMA_CPP")
     if kind == "openai":
