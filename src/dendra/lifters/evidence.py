@@ -506,10 +506,22 @@ def _extract_evidence(
                         rule_body.append(stmt)
                         continue
                     seen_field_names.add(field)
+                    # If the probe expression already extracts a trailing
+                    # attribute (e.g. ``api.charge_probe(req).ok``), match
+                    # ``<bind>.<that_attr>`` in the rule body and replace
+                    # the whole Attribute (so we don't double-access).
+                    probe_attr = _trailing_attr(probe_expr)
+                    if probe_attr is not None:
+                        _refuse_if_attr_mismatch(
+                            body, bind_name, probe_attr, field
+                        )
+                        pred = _match_name_attr(bind_name, probe_attr)
+                    else:
+                        pred = _match_bare_name(bind_name)
                     annotation_evidence.append(_Evidence(
                         name=field,
                         expr=probe_expr,
-                        replace_pred=_match_bare_name(bind_name),
+                        replace_pred=pred,
                     ))
                     continue
                 bind_evidence.append(_Evidence(
@@ -776,6 +788,64 @@ def _match_bare_name(name: str):
             and isinstance(node.ctx, ast.Load)
         )
     return pred
+
+
+def _match_name_attr(name: str, attr: str):
+    """Match ``Attribute(Name(name), attr)`` in Load context.
+
+    Used when an ``@evidence_via_probe`` expression already extracts a
+    trailing attribute, so the rule body's ``<bind>.<attr>`` should
+    rewrite to ``evidence.<field>`` (dropping the redundant ``.attr``).
+    """
+    def pred(node: ast.AST) -> bool:
+        return (
+            isinstance(node, ast.Attribute)
+            and isinstance(node.value, ast.Name)
+            and node.value.id == name
+            and node.attr == attr
+            and isinstance(node.ctx, ast.Load)
+        )
+    return pred
+
+
+def _trailing_attr(expr: ast.expr) -> str | None:
+    """Return the trailing ``.attr`` of an expression, if any.
+
+    ``api.charge_probe(req).ok`` -> ``"ok"``. ``api.charge_probe(req)``
+    -> ``None``. We only consider the outermost shape: an Attribute
+    whose ``.value`` is a Call (or anything other than a bare Name) is
+    a meaningful trailing attribute the probe extracts.
+    """
+    if isinstance(expr, ast.Attribute) and not isinstance(expr.value, ast.Name):
+        return expr.attr
+    return None
+
+
+def _refuse_if_attr_mismatch(
+    body: list[ast.stmt], bind_name: str, probe_attr: str, field: str
+) -> None:
+    """Refuse if the rule body accesses ``<bind>.<other_attr>`` where
+    ``other_attr`` differs from the probe's trailing attribute. The
+    probe extracted ``probe_attr``, so any other attribute access on
+    the dropped bind cannot be served by the lifted evidence.
+    """
+    for stmt in body:
+        for node in ast.walk(stmt):
+            if (
+                isinstance(node, ast.Attribute)
+                and isinstance(node.value, ast.Name)
+                and node.value.id == bind_name
+                and node.attr != probe_attr
+            ):
+                raise LiftRefused(
+                    reason=(
+                        f"evidence_via_probe: probe for field {field!r} "
+                        f"extracts .{probe_attr} but the rule body reads "
+                        f".{node.attr} on {bind_name!r}; the lifted "
+                        "evidence cannot serve a different attribute"
+                    ),
+                    line=getattr(node, "lineno", 0),
+                )
 
 
 def _match_subscript(target: ast.Subscript):

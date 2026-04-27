@@ -1,11 +1,24 @@
 # Copyright (c) 2026 B-Tree Ventures, LLC
 # SPDX-License-Identifier: Apache-2.0
 
-"""Public intent-classification benchmark loaders.
+"""Public intent-classification benchmark loaders + close-the-loop harness.
 
-Requires the optional ``datasets`` dependency: ``pip install dendra[bench]``.
+The loaders (``load_banking77`` and friends) require the optional
+``datasets`` dependency (``pip install dendra[bench]``). The harness
+(``generate_benchmark_module``, ``run_benchmark``, ``aggregate_report``,
+``format_report``) has no extra dependencies.
 """
 
+from dendra.benchmarks.harness import (
+    GraduationEvent,
+    Report,
+    SwitchTimeseries,
+    aggregate_report,
+    format_report,
+    generate_benchmark_module,
+    run_benchmark,
+    run_benchmark_pytest,
+)
 from dendra.benchmarks.loaders import (
     BenchmarkDataset,
     load_ag_news,
@@ -21,6 +34,12 @@ from dendra.benchmarks.loaders import (
 
 __all__ = [
     "BenchmarkDataset",
+    "GraduationEvent",
+    "Report",
+    "SwitchTimeseries",
+    "aggregate_report",
+    "format_report",
+    "generate_benchmark_module",
     "load_ag_news",
     "load_atis",
     "load_banking77",
@@ -30,4 +49,6 @@ __all__ = [
     "load_hwu64",
     "load_snips",
     "load_trec6",
+    "run_benchmark",
+    "run_benchmark_pytest",
 ]

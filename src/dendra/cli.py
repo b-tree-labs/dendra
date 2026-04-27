@@ -124,6 +124,68 @@ def _bump_counter(key: str) -> None:
     _save_state(state)
 
 
+def _switch_class_name_for(func_name: str) -> str:
+    """Mirror ``dendra.lifters.evidence._class_name_for`` so the CLI can
+    point the benchmark stub at the same class the evidence lifter
+    emits (``CamelCaseFuncName + "Switch"``).
+    """
+    parts = func_name.split("_")
+    camel = "".join(p[:1].upper() + p[1:] for p in parts if p)
+    return f"{camel}Switch"
+
+
+def _try_emit_benchmarks(
+    *,
+    source_path: Path,
+    function_name: str,
+    original_source: str,
+) -> None:
+    """Emit the close-the-loop benchmark stub alongside the lifted Switch
+    module. Called from ``cmd_init`` when ``--with-benchmarks`` is set.
+
+    The benchmark stub has no runtime dependencies of its own beyond
+    pytest (which only the generated file imports, never the runtime
+    path). Failures here print to stderr and do not abort the wrap.
+    """
+    try:
+        from dendra import refresh as refresh_mod
+        from dendra.benchmarks import generate_benchmark_module
+        from dendra import __version__ as _dendra_version
+    except ImportError as e:
+        print(f"--with-benchmarks: harness unavailable ({e})", file=sys.stderr)
+        return
+
+    gen_dir = source_path.parent / "__dendra_generated__"
+    bench_path = gen_dir / f"{source_path.stem}__{function_name}_bench.py"
+    switch_class_name = _switch_class_name_for(function_name)
+    # The lifted module (sibling of the bench module) is imported as
+    # ``__dendra_generated__.<file_stem>__<func>``. The exact import
+    # path depends on the user's Python package layout; this default
+    # matches the sibling-file convention the evidence lifter uses.
+    switch_module = f"__dendra_generated__.{source_path.stem}__{function_name}"
+    try:
+        generate_benchmark_module(
+            out_path=bench_path,
+            source_module=source_path.stem,
+            source_function=function_name,
+            switch_class_name=switch_class_name,
+            switch_module=switch_module,
+            source_ast_hash=refresh_mod.ast_hash(original_source),
+            dendra_version=_dendra_version,
+            switch_name=function_name,
+        )
+    except Exception as e:  # noqa: BLE001 - defensive against codegen errors
+        print(f"--with-benchmarks: failed to write bench stub ({e})", file=sys.stderr)
+        return
+    init_path = gen_dir / "__init__.py"
+    if not init_path.exists():
+        init_path.write_text("")
+    print(
+        f"--with-benchmarks: wrote {bench_path.relative_to(source_path.parent)}",
+        file=sys.stderr,
+    )
+
+
 def _try_auto_lift(
     *,
     source_path: Path,
@@ -475,6 +537,13 @@ def cmd_init(args: argparse.Namespace) -> int:
             original_source=source,
         )
 
+    if getattr(args, "with_benchmarks", False):
+        _try_emit_benchmarks(
+            source_path=path,
+            function_name=function_name,
+            original_source=source,
+        )
+
     _bump_counter("init_count")
     state = _load_state()
     # The first successful `init` is a teachable moment — show the nudge
@@ -803,6 +872,85 @@ def cmd_mcp(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_benchmark(args: argparse.Namespace) -> int:
+    """Run the close-the-loop benchmark for one switch.
+
+    Resolves the generated bench module under
+    ``__dendra_generated__/<file_stem>__<function>_bench.py`` and
+    shells out to pytest. The bench module persists one JSONL row to
+    ``runtime/dendra/<switch>/benchmarks/<UTC-iso>.jsonl`` per run.
+
+    On success: prints headline numbers (latest run vs. baseline run,
+    or ``first run`` when no prior file exists). Exit code 0 on parity
+    within tolerance; non-zero on regression.
+    """
+    from dendra.benchmarks import run_benchmark_pytest, aggregate_report
+
+    try:
+        file_path, function_name = args.target.rsplit(":", 1)
+    except ValueError:
+        print(
+            f"target must be FILE:FUNCTION (got {args.target!r})",
+            file=sys.stderr,
+        )
+        return 2
+
+    src_path = Path(file_path)
+    bench_path = (
+        src_path.parent
+        / "__dendra_generated__"
+        / f"{src_path.stem}__{function_name}_bench.py"
+    )
+    if not bench_path.exists():
+        print(
+            f"dendra benchmark: no bench stub at {bench_path}.\n"
+            f"Run `dendra init --auto-lift --with-benchmarks {args.target}` "
+            f"to generate it.",
+            file=sys.stderr,
+        )
+        return 2
+
+    rc = run_benchmark_pytest(
+        bench_module_path=bench_path,
+        pytest_args=(["--tb=short"] if args.measure_real_cost else None),
+    )
+
+    # Surface the latest persisted line versus the prior baseline.
+    runtime_root = Path(args.runtime) if args.runtime else Path("runtime")
+    report = aggregate_report(runtime_root)
+    target = next(
+        (s for s in report.switches if s.switch_name == function_name), None
+    )
+    if target is None:
+        print("dendra benchmark: ran, but no JSONL files were persisted.", file=sys.stderr)
+        return rc or 1
+    if target.n_runs == 1:
+        print(
+            f"{function_name}: first run "
+            f"(phase={target.latest_phase}, "
+            f"cost ${target.cost_latest_low:.5f}-${target.cost_latest_high:.5f}/call)"
+        )
+    else:
+        pct = target.cost_pct_change_low
+        pct_label = f"{pct:+.1f}%" if pct is not None else "n/a"
+        print(
+            f"{function_name}: phase {target.first_phase} -> {target.latest_phase}, "
+            f"cost ${target.cost_baseline_low:.5f} -> ${target.cost_latest_low:.5f}/call "
+            f"({pct_label})"
+        )
+    return rc
+
+
+def cmd_report(args: argparse.Namespace) -> int:
+    """Walk runtime/dendra/*/benchmarks/*.jsonl and print the report."""
+    from dendra.benchmarks import aggregate_report, format_report
+
+    runtime_root = Path(args.runtime) if args.runtime else Path("runtime")
+    report = aggregate_report(runtime_root)
+    print(format_report(report))
+    return 0
+
+
 def cmd_plot(args: argparse.Namespace) -> int:
     from dendra.viz import load_run, plot_transition_curves
 
@@ -952,6 +1100,17 @@ def main(argv: Sequence[str] | None = None) -> int:
             "the basic decorator still applied."
         ),
     )
+    p_init.add_argument(
+        "--with-benchmarks",
+        action="store_true",
+        help=(
+            "Also emit a per-switch benchmark stub at "
+            "__dendra_generated__/<file>__<func>_bench.py. The stub "
+            "persists label-parity, latency, and per-call cost to "
+            "runtime/dendra/<switch>/benchmarks/. Use `dendra benchmark` "
+            "to run it; `dendra report` to aggregate across switches."
+        ),
+    )
     p_init.set_defaults(fn=cmd_init)
 
     p_quick = sub.add_parser(
@@ -1010,6 +1169,47 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Override monthly value per site (high bound).",
     )
     p_roi.set_defaults(fn=cmd_roi)
+
+    p_benchmark = sub.add_parser(
+        "benchmark",
+        help=(
+            "Run the close-the-loop benchmark for one switch (label parity "
+            "across phases + latency + per-call cost). Persists one JSONL "
+            "row to runtime/dendra/<switch>/benchmarks/."
+        ),
+    )
+    p_benchmark.add_argument(
+        "target",
+        help="FILE:FUNCTION - same shape as `dendra init`.",
+    )
+    p_benchmark.add_argument(
+        "--runtime",
+        default=None,
+        help="Project runtime root (default: ./runtime).",
+    )
+    p_benchmark.add_argument(
+        "--measure-real-cost",
+        action="store_true",
+        help=(
+            "Calls the configured model adapter and records actual "
+            "per-call spend. Off by default to avoid surprise charges."
+        ),
+    )
+    p_benchmark.set_defaults(fn=cmd_benchmark)
+
+    p_report = sub.add_parser(
+        "report",
+        help=(
+            "Aggregate runtime/dendra/*/benchmarks/*.jsonl across all "
+            "switches and print a human-readable summary."
+        ),
+    )
+    p_report.add_argument(
+        "--runtime",
+        default=None,
+        help="Project runtime root (default: ./runtime).",
+    )
+    p_report.set_defaults(fn=cmd_report)
 
     p_plot = sub.add_parser(
         "plot",
