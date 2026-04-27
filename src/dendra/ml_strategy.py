@@ -20,6 +20,7 @@ The strategy itself is a Dendra rule applied to Dendra: a
 hand-written rule today, with a clear graduation path (rule →
 ML head trained on the autoresearch trajectory) in v1.x.
 """
+
 from __future__ import annotations
 
 from collections import Counter

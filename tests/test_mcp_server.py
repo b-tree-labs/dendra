@@ -148,9 +148,7 @@ class TestAnalyzeTool:
 
     def test_analyze_missing_path_returns_structured_error(self, tmp_path):
         result = _run(
-            mcp_server.call_tool(
-                "dendra_analyze", {"path": str(tmp_path / "does-not-exist.py")}
-            )
+            mcp_server.call_tool("dendra_analyze", {"path": str(tmp_path / "does-not-exist.py")})
         )
         # The analyzer reports the missing path via its `errors` list.
         assert result["files_scanned"] == 0
@@ -238,9 +236,7 @@ class TestRefreshTool:
 
     def test_refresh_reports_up_to_date(self, tmp_path):
         proj = self._seed_generated(tmp_path)
-        result = _run(
-            mcp_server.call_tool("dendra_refresh", {"path": str(proj)})
-        )
+        result = _run(mcp_server.call_tool("dendra_refresh", {"path": str(proj)}))
         assert result["up_to_date"] == 1
         assert result["source_drift"] == 0
         assert result["user_edited"] == 0
@@ -254,9 +250,7 @@ class TestRefreshTool:
         # User edits source.
         src = proj / "myapp" / "routing.py"
         src.write_text("def route_user(text):\n    return 'premium'\n")
-        result = _run(
-            mcp_server.call_tool("dendra_refresh", {"path": str(proj)})
-        )
+        result = _run(mcp_server.call_tool("dendra_refresh", {"path": str(proj)}))
         assert result["source_drift"] == 1
         assert result["up_to_date"] == 0
 
@@ -264,19 +258,13 @@ class TestRefreshTool:
         proj = self._seed_generated(tmp_path)
         src = proj / "myapp" / "routing.py"
         src.write_text("def something_else(): pass\n")
-        result = _run(
-            mcp_server.call_tool("dendra_refresh", {"path": str(proj)})
-        )
+        result = _run(mcp_server.call_tool("dendra_refresh", {"path": str(proj)}))
         assert result["orphaned"] == 1
 
     def test_refresh_check_only_does_not_write(self, tmp_path):
         proj = self._seed_generated(tmp_path)
         before = sorted(p.name for p in proj.rglob("*.py"))
-        _run(
-            mcp_server.call_tool(
-                "dendra_refresh", {"path": str(proj), "check_only": True}
-            )
-        )
+        _run(mcp_server.call_tool("dendra_refresh", {"path": str(proj), "check_only": True}))
         after = sorted(p.name for p in proj.rglob("*.py"))
         assert before == after
 

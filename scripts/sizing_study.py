@@ -96,9 +96,7 @@ class SiteRecord:
 # ---------------------------------------------------------------------------
 
 
-def _extract_top_level_function_source(
-    file_source: str, function_name: str
-) -> str | None:
+def _extract_top_level_function_source(file_source: str, function_name: str) -> str | None:
     """Return source for ``function_name`` if it lives at the top level of
     ``file_source``, else None.
 
@@ -206,24 +204,26 @@ def study_corpus(corpus: Corpus) -> list[SiteRecord]:
             except Exception as e:  # noqa: BLE001
                 source_cache[abs_path] = ""
                 # Skip this site; can't lift without source.
-                records.append(SiteRecord(
-                    corpus=corpus.name,
-                    file_path=site.file_path,
-                    function_name=site.function_name,
-                    pattern=site.pattern,
-                    line_start=site.line_start,
-                    fit_score=site.fit_score,
-                    label_cardinality=site.label_cardinality,
-                    regime=site.regime,
-                    lift_status=site.lift_status,
-                    hazards=[asdict(h) for h in site.hazards],
-                    branch_lift_status="error",
-                    branch_lift_reason=f"file read failed: {e}",
-                    branch_lift_category="internal_error",
-                    evidence_lift_status="error",
-                    evidence_lift_reason=f"file read failed: {e}",
-                    evidence_lift_category="internal_error",
-                ))
+                records.append(
+                    SiteRecord(
+                        corpus=corpus.name,
+                        file_path=site.file_path,
+                        function_name=site.function_name,
+                        pattern=site.pattern,
+                        line_start=site.line_start,
+                        fit_score=site.fit_score,
+                        label_cardinality=site.label_cardinality,
+                        regime=site.regime,
+                        lift_status=site.lift_status,
+                        hazards=[asdict(h) for h in site.hazards],
+                        branch_lift_status="error",
+                        branch_lift_reason=f"file read failed: {e}",
+                        branch_lift_category="internal_error",
+                        evidence_lift_status="error",
+                        evidence_lift_reason=f"file read failed: {e}",
+                        evidence_lift_category="internal_error",
+                    )
+                )
                 continue
 
         source = source_cache[abs_path]
@@ -234,7 +234,33 @@ def study_corpus(corpus: Corpus) -> list[SiteRecord]:
         usable_source = _extract_top_level_function_source(source, site.function_name)
 
         if usable_source is None:
-            records.append(SiteRecord(
+            records.append(
+                SiteRecord(
+                    corpus=corpus.name,
+                    file_path=site.file_path,
+                    function_name=site.function_name,
+                    pattern=site.pattern,
+                    line_start=site.line_start,
+                    fit_score=site.fit_score,
+                    label_cardinality=site.label_cardinality,
+                    regime=site.regime,
+                    lift_status=site.lift_status,
+                    hazards=[asdict(h) for h in site.hazards],
+                    branch_lift_status="refused",
+                    branch_lift_reason="function not at module top level (nested or method)",
+                    branch_lift_category="nested_or_method",
+                    evidence_lift_status="refused",
+                    evidence_lift_reason="function not at module top level (nested or method)",
+                    evidence_lift_category="nested_or_method",
+                )
+            )
+            continue
+
+        b_status, b_reason, b_cat = _try_branch_lift(usable_source, site.function_name)
+        e_status, e_reason, e_cat = _try_evidence_lift(usable_source, site.function_name)
+
+        records.append(
+            SiteRecord(
                 corpus=corpus.name,
                 file_path=site.file_path,
                 function_name=site.function_name,
@@ -245,36 +271,14 @@ def study_corpus(corpus: Corpus) -> list[SiteRecord]:
                 regime=site.regime,
                 lift_status=site.lift_status,
                 hazards=[asdict(h) for h in site.hazards],
-                branch_lift_status="refused",
-                branch_lift_reason="function not at module top level (nested or method)",
-                branch_lift_category="nested_or_method",
-                evidence_lift_status="refused",
-                evidence_lift_reason="function not at module top level (nested or method)",
-                evidence_lift_category="nested_or_method",
-            ))
-            continue
-
-        b_status, b_reason, b_cat = _try_branch_lift(usable_source, site.function_name)
-        e_status, e_reason, e_cat = _try_evidence_lift(usable_source, site.function_name)
-
-        records.append(SiteRecord(
-            corpus=corpus.name,
-            file_path=site.file_path,
-            function_name=site.function_name,
-            pattern=site.pattern,
-            line_start=site.line_start,
-            fit_score=site.fit_score,
-            label_cardinality=site.label_cardinality,
-            regime=site.regime,
-            lift_status=site.lift_status,
-            hazards=[asdict(h) for h in site.hazards],
-            branch_lift_status=b_status,
-            branch_lift_reason=b_reason,
-            branch_lift_category=b_cat,
-            evidence_lift_status=e_status,
-            evidence_lift_reason=e_reason,
-            evidence_lift_category=e_cat,
-        ))
+                branch_lift_status=b_status,
+                branch_lift_reason=b_reason,
+                branch_lift_category=b_cat,
+                evidence_lift_status=e_status,
+                evidence_lift_reason=e_reason,
+                evidence_lift_category=e_cat,
+            )
+        )
 
     return records
 
@@ -337,8 +341,13 @@ def _disagreement_count(records: list[SiteRecord]) -> dict[str, int]:
       - both_success
       - both_refused
     """
-    out = {"branch_only_success": 0, "evidence_only_success": 0,
-           "both_success": 0, "both_refused": 0, "other": 0}
+    out = {
+        "branch_only_success": 0,
+        "evidence_only_success": 0,
+        "both_success": 0,
+        "both_refused": 0,
+        "other": 0,
+    }
     for r in records:
         b = r.branch_lift_status == "success"
         e = r.evidence_lift_status == "success"
@@ -355,9 +364,7 @@ def _disagreement_count(records: list[SiteRecord]) -> dict[str, int]:
     return out
 
 
-def render_markdown(
-    records: list[SiteRecord], corpora: list[Corpus]
-) -> str:
+def render_markdown(records: list[SiteRecord], corpora: list[Corpus]) -> str:
     lines: list[str] = []
     lines.append("# Auto-lift sizing study (2026-04-27)")
     lines.append("")
@@ -400,8 +407,7 @@ def render_markdown(
             lines.append(f"| {c.name} | (missing) | . | . | . |")
             continue
         lines.append(
-            f"| {c.name} | {t} | {a} ({_pct(a, t)}) | "
-            f"{n} ({_pct(n, t)}) | {rf} ({_pct(rf, t)}) |"
+            f"| {c.name} | {t} | {a} ({_pct(a, t)}) | {n} ({_pct(n, t)}) | {rf} ({_pct(rf, t)}) |"
         )
     lines.append("")
 
@@ -429,10 +435,7 @@ def render_markdown(
     eo = dis["evidence_only_success"]
     lines.append(f"- branch only succeeds: **{bo}** ({_pct(bo, total)})")
     lines.append(f"- evidence only succeeds: **{eo}** ({_pct(eo, total)})")
-    lines.append(
-        f"- mixed (one error, one not): **{dis['other']}** "
-        f"({_pct(dis['other'], total)})"
-    )
+    lines.append(f"- mixed (one error, one not): **{dis['other']}** ({_pct(dis['other'], total)})")
     lines.append("")
 
     # Refusal histogram.
@@ -446,15 +449,16 @@ def render_markdown(
     lines.append("")
 
     # Top 20 refused sites by fit score.
-    refused_sites = [r for r in records
-                     if r.branch_lift_status == "refused"
-                     or r.evidence_lift_status == "refused"]
+    refused_sites = [
+        r
+        for r in records
+        if r.branch_lift_status == "refused" or r.evidence_lift_status == "refused"
+    ]
     refused_sites.sort(key=lambda r: r.fit_score, reverse=True)
     lines.append("## Top 20 refused sites by fit_score")
     lines.append("")
     lines.append(
-        "| Corpus | File:Line | Function | Pattern | Fit | Branch "
-        "| Evidence | First refusal |"
+        "| Corpus | File:Line | Function | Pattern | Fit | Branch | Evidence | First refusal |"
     )
     lines.append("|---|---|---|---|---:|---|---|---|")
     for r in refused_sites[:20]:
@@ -508,10 +512,7 @@ def main() -> int:
     dis = _disagreement_count(all_records)
     payload = {
         "study_date": "2026-04-27",
-        "corpora": [
-            {"name": c.name, "root": str(c.root), "present": c.present}
-            for c in corpora
-        ],
+        "corpora": [{"name": c.name, "root": str(c.root), "present": c.present} for c in corpora],
         "totals": {
             "total_sites": total,
             "auto_liftable": auto,

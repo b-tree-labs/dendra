@@ -14,6 +14,7 @@ Outputs:
 Run from repo root:
     .venv/bin/python scripts/screenshot_landing.py
 """
+
 from __future__ import annotations
 
 import sys

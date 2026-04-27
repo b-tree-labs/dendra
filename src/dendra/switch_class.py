@@ -55,11 +55,11 @@ class Switch:
     locals()[_BASE_MARKER] = True
 
     # ------- populated by __init_subclass__ on each user subclass -------
-    _evidence_method_names: dict[str, str]   # field_name -> method name
-    _evidence_class: type                    # auto-built dataclass
-    _rule_method_name: str | None            # "_rule" if defined, else None
-    _when_method_names: dict[str, str]       # label -> "_when_<label>"
-    _on_method_names: dict[str, str]         # label -> "_on_<label>"
+    _evidence_method_names: dict[str, str]  # field_name -> method name
+    _evidence_class: type  # auto-built dataclass
+    _rule_method_name: str | None  # "_rule" if defined, else None
+    _when_method_names: dict[str, str]  # label -> "_when_<label>"
+    _on_method_names: dict[str, str]  # label -> "_on_<label>"
     _meta_default_label: str | None
     _meta_no_action: tuple[str, ...]
     # Public-facing call signature shared by every _evidence_* and
@@ -273,7 +273,7 @@ def _gather_evidence_methods(methods: dict[str, Callable]) -> dict[str, str]:
     for method_name in methods:
         if not method_name.startswith("_evidence_"):
             continue
-        field_name = method_name[len("_evidence_"):]
+        field_name = method_name[len("_evidence_") :]
         if not field_name:
             raise TypeError(
                 f"Switch evidence method {method_name!r} has no field name "
@@ -330,11 +330,10 @@ def _gather_rule_or_when(
     for method_name in methods:
         if not method_name.startswith("_when_"):
             continue
-        label = method_name[len("_when_"):]
+        label = method_name[len("_when_") :]
         if not label:
             raise TypeError(
-                f"Switch when method {method_name!r} has no label name "
-                "after the '_when_' prefix."
+                f"Switch when method {method_name!r} has no label name after the '_when_' prefix."
             )
         when_methods[label] = method_name
 
@@ -359,11 +358,10 @@ def _gather_on_methods(methods: dict[str, Callable]) -> dict[str, str]:
     for method_name in methods:
         if not method_name.startswith("_on_"):
             continue
-        label = method_name[len("_on_"):]
+        label = method_name[len("_on_") :]
         if not label:
             raise TypeError(
-                f"Switch action method {method_name!r} has no label name "
-                "after the '_on_' prefix."
+                f"Switch action method {method_name!r} has no label name after the '_on_' prefix."
             )
         out[label] = method_name
     return out
@@ -388,9 +386,7 @@ def _collect_meta(cls: type) -> tuple[str | None, tuple[str, ...]]:
     return default_label, no_action
 
 
-def _detect_input_signature(
-    cls: type, methods: dict[str, Callable]
-) -> PackedSignature | None:
+def _detect_input_signature(cls: type, methods: dict[str, Callable]) -> PackedSignature | None:
     """Read the public input signature off the subclass's ``_evidence_*``
     methods. All evidence methods must declare the same positional
     parameters (excluding ``self``); a mismatch is a class-definition-
@@ -401,10 +397,7 @@ def _detect_input_signature(
     cleanly), or when the inferred signature is a single positional
     arg (the back-compat fast path).
     """
-    ev_methods = [
-        m for name, m in methods.items()
-        if name.startswith("_evidence_")
-    ]
+    ev_methods = [m for name, m in methods.items() if name.startswith("_evidence_")]
     if not ev_methods:
         return None
 
@@ -476,10 +469,7 @@ def _validate_structure(cls: type) -> None:
         if cls._meta_default_label is not None:
             valid_labels.add(cls._meta_default_label)
         valid_labels.update(cls._meta_no_action)
-        orphans = sorted(
-            label for label in cls._on_method_names
-            if label not in valid_labels
-        )
+        orphans = sorted(label for label in cls._on_method_names if label not in valid_labels)
         if orphans:
             label = orphans[0]
             raise TypeError(

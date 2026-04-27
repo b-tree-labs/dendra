@@ -172,11 +172,11 @@ def parse_generated_header(text: str) -> GeneratedHeader:
 class DriftStatus(enum.Enum):
     """Outcome of comparing one source function against its generated file."""
 
-    UP_TO_DATE = "up_to_date"          # both hashes match
-    SOURCE_DRIFT = "source_drift"      # source changed; regenerate
-    USER_EDITED = "user_edited"        # generated file was hand-edited
-    MISSING_GENERATED = "missing"      # source exists, no generated file
-    ORPHANED = "orphaned"              # generated file exists, source function gone
+    UP_TO_DATE = "up_to_date"  # both hashes match
+    SOURCE_DRIFT = "source_drift"  # source changed; regenerate
+    USER_EDITED = "user_edited"  # generated file was hand-edited
+    MISSING_GENERATED = "missing"  # source exists, no generated file
+    ORPHANED = "orphaned"  # generated file exists, source function gone
 
 
 def _extract_function_source(source_text: str, function_name: str) -> str | None:

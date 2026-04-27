@@ -746,9 +746,9 @@ __all__ = [
 class LiftStatus(_enum.Enum):
     """Whether `dendra init --auto-lift` would succeed on this site."""
 
-    AUTO_LIFTABLE = "auto_liftable"        # safe to lift today
+    AUTO_LIFTABLE = "auto_liftable"  # safe to lift today
     NEEDS_ANNOTATION = "needs_annotation"  # liftable with explicit annotation
-    REFUSED = "refused"                    # cannot lift; structural issue
+    REFUSED = "refused"  # cannot lift; structural issue
 
 
 @dataclass
@@ -785,8 +785,7 @@ def _detect_zero_arg_no_return(fn: ast.FunctionDef) -> list[Hazard]:
     """Pytest-style: zero args + no `return` = not a classifier."""
     has_args = bool(fn.args.args) or fn.args.vararg or fn.args.kwarg or bool(fn.args.kwonlyargs)
     has_return = any(
-        isinstance(node, ast.Return) and node.value is not None
-        for node in ast.walk(fn)
+        isinstance(node, ast.Return) and node.value is not None for node in ast.walk(fn)
     )
     if not has_args and not has_return:
         return [
@@ -976,9 +975,7 @@ _HAZARD_DETECTORS: list[Callable[[ast.FunctionDef], list[Hazard]]] = [
 ]
 
 
-def analyze_function_source(
-    source: str, function_name: str
-) -> HazardAnalysis:
+def analyze_function_source(source: str, function_name: str) -> HazardAnalysis:
     """Run hazard detection on a single function defined in ``source``.
 
     Returns a :class:`HazardAnalysis` whose ``lift_status`` summarizes the
@@ -997,8 +994,7 @@ def analyze_function_source(
             break
     if target is None:
         raise ValueError(
-            f"Function {function_name!r} not found at the top level of "
-            "the supplied source."
+            f"Function {function_name!r} not found at the top level of the supplied source."
         )
 
     hazards: list[Hazard] = []

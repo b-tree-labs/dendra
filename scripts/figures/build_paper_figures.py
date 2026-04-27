@@ -9,6 +9,7 @@ and writes figure-{1..5}-*.{png,svg} into the same directory.
 Run from the repo root:
     python scripts/figures/build_paper_figures.py
 """
+
 from __future__ import annotations
 
 import json
@@ -21,7 +22,10 @@ from scipy.stats import binom, norm
 
 RESULTS_DIR = (
     Path(__file__).resolve().parents[2]
-    / "docs" / "papers" / "2026-when-should-a-rule-learn" / "results"
+    / "docs"
+    / "papers"
+    / "2026-when-should-a-rule-learn"
+    / "results"
 )
 
 BENCHES = [
@@ -66,36 +70,38 @@ COLOR_REGIME_B = COLOR_INK_SOFT
 
 def _apply_dendra_style() -> None:
     """Apply Dendra brand styling globally before any figure renders."""
-    plt.rcParams.update({
-        "figure.facecolor": COLOR_GROUND,
-        "axes.facecolor": COLOR_GROUND,
-        "savefig.facecolor": COLOR_GROUND,
-        "axes.edgecolor": COLOR_INK,
-        "axes.labelcolor": COLOR_INK,
-        "axes.titlecolor": COLOR_INK,
-        "axes.spines.top": False,
-        "axes.spines.right": False,
-        "axes.grid": True,
-        "grid.color": COLOR_INK,
-        "grid.alpha": 0.08,
-        "grid.linewidth": 0.6,
-        "xtick.color": COLOR_INK,
-        "ytick.color": COLOR_INK,
-        "xtick.labelcolor": COLOR_INK,
-        "ytick.labelcolor": COLOR_INK,
-        "xtick.minor.visible": False,
-        "ytick.minor.visible": False,
-        "text.color": COLOR_INK,
-        "font.family": ["Space Grotesk", "Inter", "Helvetica Neue", "Arial", "DejaVu Sans"],
-        "font.size": 10.5,
-        "axes.titleweight": "500",
-        "axes.titlesize": 11.5,
-        "legend.frameon": True,
-        "legend.facecolor": COLOR_GROUND,
-        "legend.edgecolor": COLOR_INK_SOFT,
-        "legend.framealpha": 1.0,
-        "legend.fontsize": 9.5,
-    })
+    plt.rcParams.update(
+        {
+            "figure.facecolor": COLOR_GROUND,
+            "axes.facecolor": COLOR_GROUND,
+            "savefig.facecolor": COLOR_GROUND,
+            "axes.edgecolor": COLOR_INK,
+            "axes.labelcolor": COLOR_INK,
+            "axes.titlecolor": COLOR_INK,
+            "axes.spines.top": False,
+            "axes.spines.right": False,
+            "axes.grid": True,
+            "grid.color": COLOR_INK,
+            "grid.alpha": 0.08,
+            "grid.linewidth": 0.6,
+            "xtick.color": COLOR_INK,
+            "ytick.color": COLOR_INK,
+            "xtick.labelcolor": COLOR_INK,
+            "ytick.labelcolor": COLOR_INK,
+            "xtick.minor.visible": False,
+            "ytick.minor.visible": False,
+            "text.color": COLOR_INK,
+            "font.family": ["Space Grotesk", "Inter", "Helvetica Neue", "Arial", "DejaVu Sans"],
+            "font.size": 10.5,
+            "axes.titleweight": "500",
+            "axes.titlesize": 11.5,
+            "legend.frameon": True,
+            "legend.facecolor": COLOR_GROUND,
+            "legend.edgecolor": COLOR_INK_SOFT,
+            "legend.framealpha": 1.0,
+            "legend.fontsize": 9.5,
+        }
+    )
 
 
 _apply_dendra_style()
@@ -169,8 +175,9 @@ def figure_1_transition_curves() -> None:
     for idx, (ax, (slug, name, k)) in enumerate(zip(axes.flat, panels, strict=False)):
         path = RESULTS_DIR / f"{slug}_paired.jsonl"
         if not path.exists():
-            ax.text(0.5, 0.5, f"{slug}\n(no data)", ha="center", va="center",
-                    transform=ax.transAxes)
+            ax.text(
+                0.5, 0.5, f"{slug}\n(no data)", ha="center", va="center", transform=ax.transAxes
+            )
             ax.axis("off")
             continue
         _, ckpts = load_paired(slug)
@@ -185,13 +192,15 @@ def figure_1_transition_curves() -> None:
                 first_fire = c["training_outcomes"]
                 break
 
-        ax.fill_between(outcomes, rule_acc, ml_acc,
-                        where=ml_acc >= rule_acc, color=COLOR_ML, alpha=0.10)
+        ax.fill_between(
+            outcomes, rule_acc, ml_acc, where=ml_acc >= rule_acc, color=COLOR_ML, alpha=0.10
+        )
         ax.plot(outcomes, rule_acc, color=COLOR_RULE, lw=1.8, label="Rule")
         ax.plot(outcomes, ml_acc, color=COLOR_ML, lw=2.0, label="ML head")
         if first_fire is not None:
-            ax.axvline(first_fire, color=COLOR_ACCENT_DEEP, lw=1.0, ls="--", alpha=0.7,
-                       label="Gate fires")
+            ax.axvline(
+                first_fire, color=COLOR_ACCENT_DEEP, lw=1.0, ls="--", alpha=0.7, label="Gate fires"
+            )
 
         ax.set_xscale("log")
         ax.set_xlim(left=outcomes.min() * 0.8)
@@ -199,8 +208,7 @@ def figure_1_transition_curves() -> None:
         ax.set_xlabel("Training outcomes", fontsize=9)
         if idx % 4 == 0:
             ax.set_ylabel("Test accuracy (%)", fontsize=9)
-        ax.set_title(f"{panel_labels[idx]} {name} ({k} labels)",
-                     loc="left", fontsize=10)
+        ax.set_title(f"{panel_labels[idx]} {name} ({k} labels)", loc="left", fontsize=10)
         ax.grid(True, alpha=0.3)
         if idx == 0:
             ax.legend(loc="center right", fontsize=8, framealpha=0.92)
@@ -208,7 +216,8 @@ def figure_1_transition_curves() -> None:
     fig.suptitle(
         "Figure 1. Transition curves across the eight-benchmark suite "
         "(sorted by descending rule baseline)",
-        fontsize=12, y=1.00,
+        fontsize=12,
+        y=1.00,
     )
     fig.tight_layout()
     out_png = RESULTS_DIR / "figure-1-transition-curves.png"
@@ -253,9 +262,7 @@ def figure_2_pvalue_trajectories() -> None:
     ax.set_xlim(left=80)
     ax.set_xlabel("Training outcomes (log)")
     ax.set_ylabel("Paired McNemar p-value (log)")
-    ax.set_title(
-        "Figure 2. Paired McNemar p-value trajectories across the eight-benchmark suite"
-    )
+    ax.set_title("Figure 2. Paired McNemar p-value trajectories across the eight-benchmark suite")
     ax.grid(True, which="both", alpha=0.3)
     ax.legend(loc="lower left", fontsize=9, ncol=2)
     fig.tight_layout()
@@ -298,12 +305,25 @@ def figure_4_paired_vs_unpaired() -> None:
             paired_ps.append(max(p_paired, 1e-300))
             unpaired_ps.append(max(p_unpaired, 1e-300))
 
-        ax.plot(outcomes, unpaired_ps, color="#aec7e8", lw=2, marker="s",
-                markersize=4, label="Unpaired z")
-        ax.plot(outcomes, paired_ps, color=COLOR_ML, lw=2.2, marker="o",
-                markersize=4, label="Paired McNemar")
-        ax.axhline(ALPHA, color=COLOR_ACCENT_DEEP, ls="--", lw=1.2,
-                   label=f"alpha = {ALPHA}")
+        ax.plot(
+            outcomes,
+            unpaired_ps,
+            color="#aec7e8",
+            lw=2,
+            marker="s",
+            markersize=4,
+            label="Unpaired z",
+        )
+        ax.plot(
+            outcomes,
+            paired_ps,
+            color=COLOR_ML,
+            lw=2.2,
+            marker="o",
+            markersize=4,
+            label="Paired McNemar",
+        )
+        ax.axhline(ALPHA, color=COLOR_ACCENT_DEEP, ls="--", lw=1.2, label=f"alpha = {ALPHA}")
 
         ax.set_yscale("log")
         ax.set_xscale("log")
@@ -316,7 +336,8 @@ def figure_4_paired_vs_unpaired() -> None:
 
     fig.suptitle(
         "Figure 4. Paired McNemar p-value is consistently below unpaired-z at every checkpoint",
-        fontsize=13, y=1.00,
+        fontsize=13,
+        y=1.00,
     )
     fig.tight_layout()
     out_png = RESULTS_DIR / "figure-4-paired-vs-unpaired.png"
@@ -349,9 +370,15 @@ def figure_5_lifecycle() -> None:
     xs = [x_start + i * spacing for i in range(len(phases))]
 
     for (code, name), x in zip(phases, xs, strict=False):
-        box = FancyBboxPatch((x - box_w / 2, y_box - box_h / 2), box_w, box_h,
-                             boxstyle="round,pad=0.02", linewidth=1.5,
-                             edgecolor="#333", facecolor="#f0f0f0")
+        box = FancyBboxPatch(
+            (x - box_w / 2, y_box - box_h / 2),
+            box_w,
+            box_h,
+            boxstyle="round,pad=0.02",
+            linewidth=1.5,
+            edgecolor="#333",
+            facecolor="#f0f0f0",
+        )
         ax.add_patch(box)
         ax.text(x, y_box + 0.18, code, ha="center", fontsize=11, fontweight="bold")
         ax.text(x, y_box - 0.22, name, ha="center", fontsize=8.5, family="monospace")
@@ -361,38 +388,84 @@ def figure_5_lifecycle() -> None:
     for i in range(5):
         x0 = xs[i] + box_w / 2 + 0.05
         x1 = xs[i + 1] - box_w / 2 - 0.05
-        arrow = FancyArrowPatch((x0, y_advance), (x1, y_advance), arrowstyle="->",
-                                mutation_scale=14, lw=1.6, color="#1f77b4")
+        arrow = FancyArrowPatch(
+            (x0, y_advance),
+            (x1, y_advance),
+            arrowstyle="->",
+            mutation_scale=14,
+            lw=1.6,
+            color="#1f77b4",
+        )
         ax.add_patch(arrow)
-        ax.text((x0 + x1) / 2, y_advance + 0.18, advance_labels[i],
-                ha="center", fontsize=8.5, color="#1f77b4")
+        ax.text(
+            (x0 + x1) / 2,
+            y_advance + 0.18,
+            advance_labels[i],
+            ha="center",
+            fontsize=8.5,
+            color="#1f77b4",
+        )
 
     y_demote = y_box - 0.82
     for i in range(1, 6):
         x0 = xs[i] - box_w / 2 - 0.05
         x1 = xs[i - 1] + box_w / 2 + 0.05
-        arrow = FancyArrowPatch((x0, y_demote), (x1, y_demote), arrowstyle="->",
-                                mutation_scale=12, lw=1.2, color=COLOR_ACCENT_DEEP,
-                                linestyle=(0, (4, 2)))
+        arrow = FancyArrowPatch(
+            (x0, y_demote),
+            (x1, y_demote),
+            arrowstyle="->",
+            mutation_scale=12,
+            lw=1.2,
+            color=COLOR_ACCENT_DEEP,
+            linestyle=(0, (4, 2)),
+        )
         ax.add_patch(arrow)
     mid = (xs[0] + xs[-1]) / 2
-    ax.text(mid, y_demote - 0.30, "demote (gate fires in reverse on accumulated drift)",
-            ha="center", fontsize=9, color=COLOR_ACCENT_DEEP, style="italic")
+    ax.text(
+        mid,
+        y_demote - 0.30,
+        "demote (gate fires in reverse on accumulated drift)",
+        ha="center",
+        fontsize=9,
+        color=COLOR_ACCENT_DEEP,
+        style="italic",
+    )
 
     band_x0 = xs[0] - box_w / 2 - 0.1
     band_x1 = xs[-1] + box_w / 2 + 0.1
-    ax.add_patch(FancyBboxPatch((band_x0, 0.25), band_x1 - band_x0, 0.65,
-                                boxstyle="round,pad=0.02",
-                                edgecolor="#666", facecolor="#fff8e1", linewidth=1.0))
-    ax.text((band_x0 + band_x1) / 2, 0.58,
-            ("Rule R is structurally preserved as the safety floor in "
-             "P1–P4 and as the circuit-breaker target in P5."),
-            ha="center", fontsize=9.5, color="#444")
+    ax.add_patch(
+        FancyBboxPatch(
+            (band_x0, 0.25),
+            band_x1 - band_x0,
+            0.65,
+            boxstyle="round,pad=0.02",
+            edgecolor="#666",
+            facecolor="#fff8e1",
+            linewidth=1.0,
+        )
+    )
+    ax.text(
+        (band_x0 + band_x1) / 2,
+        0.58,
+        (
+            "Rule R is structurally preserved as the safety floor in "
+            "P1–P4 and as the circuit-breaker target in P5."
+        ),
+        ha="center",
+        fontsize=9.5,
+        color="#444",
+    )
 
-    ax.text(mid, 4.55,
-            ("Figure 5. The graduated-autonomy lifecycle. Solid arrows "
-             "= advance; dashed arrows = demote."),
-            ha="center", fontsize=11)
+    ax.text(
+        mid,
+        4.55,
+        (
+            "Figure 5. The graduated-autonomy lifecycle. Solid arrows "
+            "= advance; dashed arrows = demote."
+        ),
+        ha="center",
+        fontsize=11,
+    )
 
     out_png = RESULTS_DIR / "figure-5-lifecycle.png"
     out_svg = RESULTS_DIR / "figure-5-lifecycle.svg"
@@ -411,6 +484,7 @@ def figure_3b_extended_two_regimes() -> None:
     moderate), B (rule at floor).
     """
     import json as _json
+
     summary_path = RESULTS_DIR / "paired_mcnemar_summary.json"
     _json.loads(summary_path.read_text()) if summary_path.exists() else {}
 
@@ -477,7 +551,8 @@ def figure_3b_extended_two_regimes() -> None:
     ax.set_yticks([0, 20, 40, 60, 80, 100])
     ax.set_title(
         "Figure 3b. Rule baseline vs ML head across the extended benchmark suite",
-        fontsize=12, loc="center",
+        fontsize=12,
+        loc="center",
     )
     ax.grid(True, axis="y", alpha=0.3)
     ax.legend(loc="lower left", fontsize=10)
@@ -526,10 +601,18 @@ def figure_6_autoresearch_winners() -> None:
         marker = head_marker.get(winner, "x")
         label = winner if winner not in annotated_heads else None
         annotated_heads.add(winner)
-        ax.scatter([k], [winner_acc], s=140, c=color, marker=marker,
-                   edgecolors="black", linewidths=0.6, label=label, zorder=3)
-        ax.annotate(name, (k, winner_acc), textcoords="offset points",
-                    xytext=(8, 5), fontsize=9)
+        ax.scatter(
+            [k],
+            [winner_acc],
+            s=140,
+            c=color,
+            marker=marker,
+            edgecolors="black",
+            linewidths=0.6,
+            label=label,
+            zorder=3,
+        )
+        ax.annotate(name, (k, winner_acc), textcoords="offset points", xytext=(8, 5), fontsize=9)
 
     ax.set_xscale("log")
     ax.set_xlabel("Label cardinality (log)")
@@ -592,14 +675,26 @@ def figure_7_cifar10_transition() -> None:
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.6))
 
-    ax1.fill_between(outcomes, rule_acc, ml_acc,
-                     where=ml_acc >= rule_acc, color=COLOR_ML, alpha=0.10,
-                     label="ML margin over rule")
+    ax1.fill_between(
+        outcomes,
+        rule_acc,
+        ml_acc,
+        where=ml_acc >= rule_acc,
+        color=COLOR_ML,
+        alpha=0.10,
+        label="ML margin over rule",
+    )
     ax1.plot(outcomes, rule_acc, color=COLOR_RULE, lw=2, label="Color-centroid rule")
     ax1.plot(outcomes, ml_acc, color=COLOR_ML, lw=2.2, label="Pixel LogReg head")
     if first_fire is not None:
-        ax1.axvline(first_fire, color=COLOR_ACCENT_DEEP, lw=1.2, ls="--", alpha=0.7,
-                    label=f"Gate fires (p<{ALPHA})")
+        ax1.axvline(
+            first_fire,
+            color=COLOR_ACCENT_DEEP,
+            lw=1.2,
+            ls="--",
+            alpha=0.7,
+            label=f"Gate fires (p<{ALPHA})",
+        )
     ax1.set_xscale("log")
     ax1.set_xlim(left=40)
     ax1.set_ylim(0, 50)
@@ -609,8 +704,9 @@ def figure_7_cifar10_transition() -> None:
     ax1.grid(True, alpha=0.3)
     ax1.legend(loc="lower right", fontsize=9)
 
-    ax2.plot(outcomes, np.maximum(p_values, 1e-300),
-             color=COLOR_ML, lw=2.2, marker="o", markersize=5)
+    ax2.plot(
+        outcomes, np.maximum(p_values, 1e-300), color=COLOR_ML, lw=2.2, marker="o", markersize=5
+    )
     ax2.axhline(ALPHA, color=COLOR_ACCENT_DEEP, lw=1.2, ls="--", label=f"alpha = {ALPHA}")
     ax2.set_yscale("log")
     ax2.set_xscale("log")
@@ -623,7 +719,8 @@ def figure_7_cifar10_transition() -> None:
 
     fig.suptitle(
         "Figure 7. The transition curve generalizes to image classification (CIFAR-10)",
-        fontsize=12, y=1.02,
+        fontsize=12,
+        y=1.02,
     )
     fig.tight_layout()
     out_png = RESULTS_DIR / "figure-7-cifar10-transition.png"

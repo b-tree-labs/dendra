@@ -24,6 +24,7 @@ Also filters out test-suite false positives. A site is dropped if any of:
 Run from repo root:
     python3 scripts/enrich_landing_corpus.py
 """
+
 from __future__ import annotations
 
 import ast
@@ -47,10 +48,10 @@ CORPUS_ROOT = Path("/tmp/dendra-corpus")
 # (preset slug, github org/repo, default branch). Used to build raw.githubusercontent
 # URLs so the UI can deep-link to the actual file at the line.
 REPOS = {
-    "fastapi":  ("tiangolo/fastapi",     "master"),
-    "requests": ("psf/requests",         "main"),
-    "dvc":      ("iterative/dvc",        "main"),
-    "marimo":   ("marimo-team/marimo",   "main"),
+    "fastapi": ("tiangolo/fastapi", "master"),
+    "requests": ("psf/requests", "main"),
+    "dvc": ("iterative/dvc", "main"),
+    "marimo": ("marimo-team/marimo", "main"),
 }
 
 ENRICH_TOP_N = 15  # match the UI's row cap with a buffer
@@ -62,14 +63,16 @@ CONTEXT_AFTER = 12
 # ---------------------------------------------------------------------------
 
 _TEST_NAME_RE = re.compile(r"^test_")
-_UNITTEST_FIXTURE_NAMES = frozenset({
-    "setUp",
-    "tearDown",
-    "setUpClass",
-    "tearDownClass",
-    "setUpModule",
-    "tearDownModule",
-})
+_UNITTEST_FIXTURE_NAMES = frozenset(
+    {
+        "setUp",
+        "tearDown",
+        "setUpClass",
+        "tearDownClass",
+        "setUpModule",
+        "tearDownModule",
+    }
+)
 _TEST_PATH_FRAGMENTS = ("/tests/", "/test/", "_test.py", "test_", "/conftest.py")
 
 
@@ -180,7 +183,7 @@ def extract_snippet(file_path: Path, line_start: int, line_end: int) -> dict | N
     n = len(lines)
     snippet_start = max(1, line_start - CONTEXT_BEFORE)
     snippet_end = min(n, line_end + CONTEXT_AFTER)
-    snippet = "\n".join(lines[snippet_start - 1:snippet_end])
+    snippet = "\n".join(lines[snippet_start - 1 : snippet_end])
     return {
         "snippet": snippet,
         "snippet_start_line": snippet_start,

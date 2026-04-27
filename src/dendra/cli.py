@@ -110,8 +110,7 @@ def _maybe_nudge_signup() -> None:
     if count < _NUDGE_THRESHOLD:
         return
     print(
-        "\nLoving Dendra? Sign up for a free account to enable shared team "
-        "analysis: dendra login",
+        "\nLoving Dendra? Sign up for a free account to enable shared team analysis: dendra login",
         file=sys.stderr,
     )
     state["nudge_shown"] = True
@@ -350,6 +349,7 @@ def cmd_whoami(args: argparse.Namespace) -> int:
     email = creds.get("email") or "(email unknown)"
     print(f"{email}  {_truncate_key(creds['api_key'])}")
     return 0
+
 
 _BENCHMARKS = {
     "banking77": "load_banking77",
@@ -756,9 +756,7 @@ def cmd_refresh(args: argparse.Namespace) -> int:
                 f"{header.source_module}:{header.source_function}\n"
             )
             continue
-        status = refresh_mod.detect_drift(
-            candidate, header.source_function, gen_path
-        )
+        status = refresh_mod.detect_drift(candidate, header.source_function, gen_path)
         counts[status] += 1
         if status is not refresh_mod.DriftStatus.UP_TO_DATE:
             drifted.append((gen_path, status, header.source_function))
@@ -844,9 +842,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
                 )
                 issues += 1
                 continue
-            status = refresh_mod.detect_drift(
-                candidate, header.source_function, gen_path
-            )
+            status = refresh_mod.detect_drift(candidate, header.source_function, gen_path)
             if status is refresh_mod.DriftStatus.UP_TO_DATE:
                 continue
             print(
@@ -909,9 +905,7 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
 
     src_path = Path(file_path)
     bench_path = (
-        src_path.parent
-        / "__dendra_generated__"
-        / f"{src_path.stem}__{function_name}_bench.py"
+        src_path.parent / "__dendra_generated__" / f"{src_path.stem}__{function_name}_bench.py"
     )
     if not bench_path.exists():
         print(
@@ -930,9 +924,7 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
     # Surface the latest persisted line versus the prior baseline.
     runtime_root = Path(args.runtime) if args.runtime else Path("runtime")
     report = aggregate_report(runtime_root)
-    target = next(
-        (s for s in report.switches if s.switch_name == function_name), None
-    )
+    target = next((s for s in report.switches if s.switch_name == function_name), None)
     if target is None:
         print("dendra benchmark: ran, but no JSONL files were persisted.", file=sys.stderr)
         return rc or 1
@@ -1265,9 +1257,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     p_refresh = sub.add_parser(
         "refresh",
-        help=(
-            "Check or regenerate Dendra-generated files in __dendra_generated__/."
-        ),
+        help=("Check or regenerate Dendra-generated files in __dendra_generated__/."),
     )
     p_refresh.add_argument(
         "path",

@@ -266,9 +266,7 @@ class TfidfLinearSVCHead(TfidfHeadBase):
             return MLPrediction(label="", confidence=0.0)
         import numpy as np
 
-        scores = self._pipeline.decision_function(
-            [serialize_input_for_features(input)]
-        )[0]
+        scores = self._pipeline.decision_function([serialize_input_for_features(input)])[0]
         scores = np.atleast_1d(scores)
         classes = list(self._pipeline.classes_)
         if scores.size == 1:
@@ -468,9 +466,7 @@ def make_ml_head(name: str) -> MLHead:
     not registered.
     """
     if name not in _HEAD_REGISTRY:
-        raise ValueError(
-            f"unknown MLHead {name!r}; registered: {sorted(_HEAD_REGISTRY)}"
-        )
+        raise ValueError(f"unknown MLHead {name!r}; registered: {sorted(_HEAD_REGISTRY)}")
     return _HEAD_REGISTRY[name]()
 
 

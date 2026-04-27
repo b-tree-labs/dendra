@@ -6,6 +6,7 @@ existing figure scripts can consume.
 
 Output: docs/papers/2026-when-should-a-rule-learn/results/cifar10_paired.jsonl
 """
+
 from __future__ import annotations
 
 import json
@@ -43,23 +44,32 @@ def main() -> int:
 
     out_path = (
         Path(__file__).resolve().parents[1]
-        / "docs" / "papers" / "2026-when-should-a-rule-learn" / "results"
+        / "docs"
+        / "papers"
+        / "2026-when-should-a-rule-learn"
+        / "results"
         / "cifar10_paired.jsonl"
     )
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    citation = "Krizhevsky 2009, 'Learning Multiple Layers of Features from Tiny Images'"
     with out_path.open("w") as fh:
-        fh.write(json.dumps({
-            "kind": "summary",
-            "benchmark": "cifar10",
-            "labels": len(ds.labels),
-            "train_rows": len(ds.train),
-            "test_rows": len(ds.test),
-            "seed_size": 100,
-            "rule": "color-centroid mean-RGB nearest-neighbor",
-            "ml_head": "ImagePixelLogRegHead (sklearn LogReg on flat pixels)",
-            "checkpoint_every": "explicit list",
-            "citation": "Krizhevsky 2009, 'Learning Multiple Layers of Features from Tiny Images'",
-        }) + "\n")
+        fh.write(
+            json.dumps(
+                {
+                    "kind": "summary",
+                    "benchmark": "cifar10",
+                    "labels": len(ds.labels),
+                    "train_rows": len(ds.train),
+                    "test_rows": len(ds.test),
+                    "seed_size": 100,
+                    "rule": "color-centroid mean-RGB nearest-neighbor",
+                    "ml_head": "ImagePixelLogRegHead (sklearn LogReg on flat pixels)",
+                    "checkpoint_every": "explicit list",
+                    "citation": citation,
+                }
+            )
+            + "\n"
+        )
 
         for n in CHECKPOINTS:
             head = ImagePixelLogRegHead(min_outcomes=10)
@@ -71,18 +81,23 @@ def main() -> int:
                 ml_correct.append(pred.label == true_lbl)
             ml_acc = sum(ml_correct) / len(ml_correct)
             print(f"  ckpt {n:5d}: rule={rule_acc:.4f}  ml={ml_acc:.4f}")
-            fh.write(json.dumps({
-                "kind": "checkpoint",
-                "training_outcomes": n,
-                "rule_test_accuracy": rule_acc,
-                "ml_test_accuracy": ml_acc,
-                "ml_trained": True,
-                "ml_version": head.model_version(),
-                "model_test_accuracy": None,
-                "lm_test_sample": None,
-                "rule_correct": rule_correct,
-                "ml_correct": ml_correct,
-            }) + "\n")
+            fh.write(
+                json.dumps(
+                    {
+                        "kind": "checkpoint",
+                        "training_outcomes": n,
+                        "rule_test_accuracy": rule_acc,
+                        "ml_test_accuracy": ml_acc,
+                        "ml_trained": True,
+                        "ml_version": head.model_version(),
+                        "model_test_accuracy": None,
+                        "lm_test_sample": None,
+                        "rule_correct": rule_correct,
+                        "ml_correct": ml_correct,
+                    }
+                )
+                + "\n"
+            )
     print(f"\nwrote {out_path}")
     return 0
 

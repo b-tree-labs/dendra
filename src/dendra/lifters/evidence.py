@@ -135,9 +135,7 @@ def lift_evidence(source: str, function_name: str) -> str:
                     and _all_getattrs_covered(func, inputs_overrides)
                 ):
                     continue
-                raise LiftRefused(
-                    reason=f"{hz.category}: {hz.reason}", line=hz.line
-                )
+                raise LiftRefused(reason=f"{hz.category}: {hz.reason}", line=hz.line)
 
     arg_names = _validate_args(func)
 
@@ -181,7 +179,7 @@ class _Evidence:
 class _Extraction:
     arg_passthroughs: list[_Evidence]
     hidden_evidence: list[_Evidence]
-    rule_body: list[ast.stmt]   # function body with mid-func binds dropped
+    rule_body: list[ast.stmt]  # function body with mid-func binds dropped
     branch_bodies_have_side_effects: bool
     # v1.1: short-circuit chains lift to a list of fields whose
     # gatherers depend on prior fields. Each entry is keyed by field
@@ -208,9 +206,7 @@ class _ShortCircuitChain:
 # ----------------------------------------------------------------------
 
 
-def _find_function(
-    tree: ast.Module, name: str
-) -> tuple[ast.FunctionDef, ast.FunctionDef | None]:
+def _find_function(tree: ast.Module, name: str) -> tuple[ast.FunctionDef, ast.FunctionDef | None]:
     """Locate ``name`` in ``tree`` and return ``(func, enclosing)``.
 
     ``enclosing`` is the immediately containing FunctionDef if ``func``
@@ -306,9 +302,7 @@ def _extract_inputs_overrides(
     return out
 
 
-def _all_getattrs_covered(
-    func: ast.FunctionDef, inputs_overrides: dict[str, ast.expr]
-) -> bool:
+def _all_getattrs_covered(func: ast.FunctionDef, inputs_overrides: dict[str, ast.expr]) -> bool:
     """True iff every ``getattr`` Call in ``func`` body appears as a
     sub-expression of at least one annotated lambda body. Annotations
     that don't cover all dynamic accesses leave the lifter in refuse.
@@ -340,9 +334,7 @@ def _ast_contains(haystack: ast.AST, needle: ast.AST) -> bool:
 _FROZEN_TYPE_NAMES = {"str", "int", "float", "bool", "tuple", "frozenset", "bytes"}
 
 
-def _detect_closure_names(
-    func: ast.FunctionDef, enclosing: ast.FunctionDef
-) -> set[str]:
+def _detect_closure_names(func: ast.FunctionDef, enclosing: ast.FunctionDef) -> set[str]:
     """Return names read by ``func`` that resolve to a parameter or
     local of ``enclosing`` (i.e. closure captures, not globals).
     """
@@ -479,11 +471,13 @@ def _extract_evidence(
     # evidence.<field>.
     for field, gather_body in inputs_overrides.items():
         seen_field_names.add(field)
-        annotation_evidence.append(_Evidence(
-            name=field,
-            expr=gather_body,
-            replace_pred=_match_ast_equals(gather_body),
-        ))
+        annotation_evidence.append(
+            _Evidence(
+                name=field,
+                expr=gather_body,
+                replace_pred=_match_ast_equals(gather_body),
+            )
+        )
 
     # First-pass strip: collect mid-function ``Assign-to-Call`` binds.
     # ``@evidence_via_probe`` reroutes a bind into an annotation field
@@ -517,23 +511,25 @@ def _extract_evidence(
                     # the whole Attribute (so we don't double-access).
                     probe_attr = _trailing_attr(probe_expr)
                     if probe_attr is not None:
-                        _refuse_if_attr_mismatch(
-                            body, bind_name, probe_attr, field
-                        )
+                        _refuse_if_attr_mismatch(body, bind_name, probe_attr, field)
                         pred = _match_name_attr(bind_name, probe_attr)
                     else:
                         pred = _match_bare_name(bind_name)
-                    annotation_evidence.append(_Evidence(
-                        name=field,
-                        expr=probe_expr,
-                        replace_pred=pred,
-                    ))
+                    annotation_evidence.append(
+                        _Evidence(
+                            name=field,
+                            expr=probe_expr,
+                            replace_pred=pred,
+                        )
+                    )
                     continue
-                bind_evidence.append(_Evidence(
-                    name=bind_name,
-                    expr=stmt.value,
-                    replace_pred=_match_bare_name(bind_name),
-                ))
+                bind_evidence.append(
+                    _Evidence(
+                        name=bind_name,
+                        expr=stmt.value,
+                        replace_pred=_match_bare_name(bind_name),
+                    )
+                )
                 bind_names.add(bind_name)
                 seen_field_names.add(bind_name)
                 continue
@@ -547,25 +543,26 @@ def _extract_evidence(
     for stmt in rule_body:
         for if_node in _iter_if_nodes(stmt):
             test = if_node.test
-            if (
-                isinstance(test, ast.BoolOp)
-                and all(isinstance(v, ast.Call) for v in test.values)
-            ):
+            if isinstance(test, ast.BoolOp) and all(isinstance(v, ast.Call) for v in test.values):
                 op = "or" if isinstance(test.op, ast.Or) else "and"
                 operand_fields: list[_Evidence] = []
                 for call in test.values:
                     field_name = _short_circuit_field_name(call, seen_field_names)
                     seen_field_names.add(field_name)
-                    operand_fields.append(_Evidence(
-                        name=field_name,
-                        expr=call,
-                        replace_pred=lambda _n: False,  # rewrite handled at chain level
-                    ))
-                short_circuit_chains.append(_ShortCircuitChain(
-                    op=op,
-                    operands=operand_fields,
-                    original_node=test,
-                ))
+                    operand_fields.append(
+                        _Evidence(
+                            name=field_name,
+                            expr=call,
+                            replace_pred=lambda _n: False,  # rewrite handled at chain level
+                        )
+                    )
+                short_circuit_chains.append(
+                    _ShortCircuitChain(
+                        op=op,
+                        operands=operand_fields,
+                        original_node=test,
+                    )
+                )
 
     # Second pass: hidden-state reads (globals, self.attr, closures).
     hidden_evidence: list[_Evidence] = []
@@ -591,11 +588,13 @@ def _extract_evidence(
                 continue
             seen_field_names.add(field_name)
             closure_consumed.add(node.value.id)
-            hidden_evidence.append(_Evidence(
-                name=field_name,
-                expr=node,
-                replace_pred=_match_subscript(node),
-            ))
+            hidden_evidence.append(
+                _Evidence(
+                    name=field_name,
+                    expr=node,
+                    replace_pred=_match_subscript(node),
+                )
+            )
 
     for node in _walk_rule_nodes(rule_body):
         # Closure captures: Name reads that resolve to enclosing scope
@@ -620,11 +619,13 @@ def _extract_evidence(
             if field_name in seen_field_names:
                 continue
             seen_field_names.add(field_name)
-            hidden_evidence.append(_Evidence(
-                name=field_name,
-                expr=ast.Name(id=node.id, ctx=ast.Load()),
-                replace_pred=_match_bare_name(node.id),
-            ))
+            hidden_evidence.append(
+                _Evidence(
+                    name=field_name,
+                    expr=ast.Name(id=node.id, ctx=ast.Load()),
+                    replace_pred=_match_bare_name(node.id),
+                )
+            )
             continue
 
         # Subscripted module global: FEATURE_FLAGS["fast_lane"]
@@ -642,11 +643,13 @@ def _extract_evidence(
                 continue
             seen_field_names.add(field_name)
             target_node = node
-            hidden_evidence.append(_Evidence(
-                name=field_name,
-                expr=target_node,
-                replace_pred=_match_subscript(target_node),
-            ))
+            hidden_evidence.append(
+                _Evidence(
+                    name=field_name,
+                    expr=target_node,
+                    replace_pred=_match_subscript(target_node),
+                )
+            )
             continue
 
         # self.<attr>
@@ -659,15 +662,17 @@ def _extract_evidence(
             if field_name in seen_field_names:
                 continue
             seen_field_names.add(field_name)
-            hidden_evidence.append(_Evidence(
-                name=field_name,
-                expr=ast.Attribute(
-                    value=ast.Name(id="self", ctx=ast.Load()),
-                    attr=node.attr,
-                    ctx=ast.Load(),
-                ),
-                replace_pred=_match_self_attr(node.attr),
-            ))
+            hidden_evidence.append(
+                _Evidence(
+                    name=field_name,
+                    expr=ast.Attribute(
+                        value=ast.Name(id="self", ctx=ast.Load()),
+                        attr=node.attr,
+                        ctx=ast.Load(),
+                    ),
+                    replace_pred=_match_self_attr(node.attr),
+                )
+            )
             continue
 
     short_circuit_evidence: list[_Evidence] = []
@@ -677,10 +682,7 @@ def _extract_evidence(
     return _Extraction(
         arg_passthroughs=arg_passthroughs,
         hidden_evidence=(
-            annotation_evidence
-            + bind_evidence
-            + short_circuit_evidence
-            + hidden_evidence
+            annotation_evidence + bind_evidence + short_circuit_evidence + hidden_evidence
         ),
         rule_body=rule_body,
         branch_bodies_have_side_effects=_any_branch_body_has_side_effects(rule_body),
@@ -747,9 +749,7 @@ def _parent_map(stmts: list[ast.stmt]) -> dict[int, ast.AST]:
     return out
 
 
-def _name_read_after(
-    name: str, body: list[ast.stmt], after: ast.stmt
-) -> bool:
+def _name_read_after(name: str, body: list[ast.stmt], after: ast.stmt) -> bool:
     seen = False
     for stmt in body:
         if stmt is after:
@@ -786,11 +786,8 @@ def _safe_field_name(raw: str, taken: set[str]) -> str:
 
 def _match_bare_name(name: str):
     def pred(node: ast.AST) -> bool:
-        return (
-            isinstance(node, ast.Name)
-            and node.id == name
-            and isinstance(node.ctx, ast.Load)
-        )
+        return isinstance(node, ast.Name) and node.id == name and isinstance(node.ctx, ast.Load)
+
     return pred
 
 
@@ -801,6 +798,7 @@ def _match_name_attr(name: str, attr: str):
     trailing attribute, so the rule body's ``<bind>.<attr>`` should
     rewrite to ``evidence.<field>`` (dropping the redundant ``.attr``).
     """
+
     def pred(node: ast.AST) -> bool:
         return (
             isinstance(node, ast.Attribute)
@@ -809,6 +807,7 @@ def _match_name_attr(name: str, attr: str):
             and node.attr == attr
             and isinstance(node.ctx, ast.Load)
         )
+
     return pred
 
 
@@ -864,6 +863,7 @@ def _match_subscript(target: ast.Subscript):
             and isinstance(node.slice, ast.Constant)
             and node.slice.value == target_key
         )
+
     return pred
 
 
@@ -875,6 +875,7 @@ def _match_self_attr(attr: str):
             and node.value.id == "self"
             and node.attr == attr
         )
+
     return pred
 
 
@@ -891,8 +892,7 @@ def _any_branch_body_has_side_effects(rule_body: list[ast.stmt]) -> bool:
     for stmt in rule_body:
         for sub in ast.walk(stmt):
             if isinstance(sub, ast.If) and (
-                _branch_body_has_side_effects(sub.body)
-                or _branch_body_has_side_effects(sub.orelse)
+                _branch_body_has_side_effects(sub.body) or _branch_body_has_side_effects(sub.orelse)
             ):
                 return True
     return False
@@ -927,9 +927,7 @@ def _check_side_effect_branches(
     """
     if probe_overrides:
         return
-    has_mid_bind = any(
-        isinstance(ev.expr, ast.Call) for ev in extraction.hidden_evidence
-    )
+    has_mid_bind = any(isinstance(ev.expr, ast.Call) for ev in extraction.hidden_evidence)
     if has_mid_bind and extraction.branch_bodies_have_side_effects:
         raise LiftRefused(
             reason=(
@@ -962,14 +960,14 @@ def _build_switch_module(
     closure_kinds = closure_kinds or {}
 
     module_body: list[ast.stmt] = []
-    module_body.append(ast.ImportFrom(
-        module="dendra",
-        names=[ast.alias(name="Switch", asname=None)],
-        level=0,
-    ))
-    module_body.append(_build_switch_class(
-        class_name, func, arg_names, extraction, closure_kinds
-    ))
+    module_body.append(
+        ast.ImportFrom(
+            module="dendra",
+            names=[ast.alias(name="Switch", asname=None)],
+            level=0,
+        )
+    )
+    module_body.append(_build_switch_class(class_name, func, arg_names, extraction, closure_kinds))
 
     new_module = ast.Module(body=module_body, type_ignores=[])
     ast.fix_missing_locations(new_module)
@@ -991,9 +989,11 @@ def _build_switch_class(
     for ev in all_evidence:
         kind = closure_kinds.get(_evidence_capture_name(ev))
         priors = chain_priors.get(ev.name)
-        body.append(_build_evidence_method(
-            ev, func, arg_names, closure_kind=kind, short_circuit_priors=priors
-        ))
+        body.append(
+            _build_evidence_method(
+                ev, func, arg_names, closure_kind=kind, short_circuit_priors=priors
+            )
+        )
     body.append(_build_rule(arg_names, extraction))
 
     return ast.ClassDef(
@@ -1056,9 +1056,7 @@ def _build_evidence_method(
     short-circuited.
     """
     args = [ast.arg(arg="self", annotation=None)]
-    arg_lookup = {a.arg: a for a in (
-        list(func.args.posonlyargs) + list(func.args.args)
-    )}
+    arg_lookup = {a.arg: a for a in (list(func.args.posonlyargs) + list(func.args.args))}
     for name in arg_names:
         original = arg_lookup.get(name)
         annotation = original.annotation if original is not None else None
@@ -1073,24 +1071,31 @@ def _build_evidence_method(
         captured_arg = f"_captured_{capture_name}"
         args.append(ast.arg(arg=captured_arg, annotation=None))
         defaults.append(ast.Name(id=capture_name, ctx=ast.Load()))
-        body.append(ast.Expr(value=ast.Constant(
-            value=(
-                f"Decoration-time snapshot: closure `{capture_name}` "
-                "annotated as Final or a frozen type, captured once."
+        body.append(
+            ast.Expr(
+                value=ast.Constant(
+                    value=(
+                        f"Decoration-time snapshot: closure `{capture_name}` "
+                        "annotated as Final or a frozen type, captured once."
+                    )
+                )
             )
-        )))
+        )
         # Replace the live closure name with the captured arg in the
         # gather expression.
         gather_expr = _replace_name(ev.expr, capture_name, captured_arg)
         body.append(ast.Return(value=gather_expr))
     elif closure_kind == "mutable":
         capture_name = _evidence_capture_name(ev)
-        body.append(ast.Expr(value=ast.Constant(
-            value=(
-                f"Dispatch-time snapshot: re-reads closure `{capture_name}` "
-                "on every call."
+        body.append(
+            ast.Expr(
+                value=ast.Constant(
+                    value=(
+                        f"Dispatch-time snapshot: re-reads closure `{capture_name}` on every call."
+                    )
+                )
             )
-        )))
+        )
         body.append(ast.Return(value=ev.expr))
     elif short_circuit_priors is not None:
         op, priors = short_circuit_priors
@@ -1111,11 +1116,13 @@ def _build_evidence_method(
                 test: ast.expr = call_prior
             else:  # "and"
                 test = ast.UnaryOp(op=ast.Not(), operand=call_prior)
-            body.append(ast.If(
-                test=test,
-                body=[ast.Return(value=ast.Constant(value=None))],
-                orelse=[],
-            ))
+            body.append(
+                ast.If(
+                    test=test,
+                    body=[ast.Return(value=ast.Constant(value=None))],
+                    orelse=[],
+                )
+            )
         body.append(ast.Return(value=ev.expr))
     else:
         body.append(ast.Return(value=ev.expr))
@@ -1153,9 +1160,7 @@ def _replace_name(expr: ast.expr, old: str, new: str) -> ast.expr:
     return _Renamer().visit(cloned)
 
 
-def _build_rule(
-    arg_names: list[str], extraction: _Extraction
-) -> ast.FunctionDef:
+def _build_rule(arg_names: list[str], extraction: _Extraction) -> ast.FunctionDef:
     """Build ``_rule(self, evidence)``.
 
     For each piece of evidence with a non-trivial source (hidden state),
@@ -1167,22 +1172,22 @@ def _build_rule(
     the BoolOp's component Calls don't double-match (a short-circuit
     operand can otherwise look like a normal mid-bind expression).
     """
-    sc_rewritten = _rewrite_short_circuit(
-        extraction.rule_body, extraction.short_circuit_chains
-    )
+    sc_rewritten = _rewrite_short_circuit(extraction.rule_body, extraction.short_circuit_chains)
     rewritten = _rewrite_body(sc_rewritten, extraction.hidden_evidence)
 
     body: list[ast.stmt] = []
     for arg_name in arg_names:
         if _name_used_in(arg_name, rewritten):
-            body.append(ast.Assign(
-                targets=[ast.Name(id=arg_name, ctx=ast.Store())],
-                value=ast.Attribute(
-                    value=ast.Name(id="evidence", ctx=ast.Load()),
-                    attr=arg_name,
-                    ctx=ast.Load(),
-                ),
-            ))
+            body.append(
+                ast.Assign(
+                    targets=[ast.Name(id=arg_name, ctx=ast.Store())],
+                    value=ast.Attribute(
+                        value=ast.Name(id="evidence", ctx=ast.Load()),
+                        attr=arg_name,
+                        ctx=ast.Load(),
+                    ),
+                )
+            )
     body.extend(rewritten)
 
     return ast.FunctionDef(
@@ -1206,9 +1211,7 @@ def _build_rule(
     )
 
 
-def _rewrite_body(
-    body: list[ast.stmt], evidence: list[_Evidence]
-) -> list[ast.stmt]:
+def _rewrite_body(body: list[ast.stmt], evidence: list[_Evidence]) -> list[ast.stmt]:
     """Return a rewritten copy of ``body`` where every node matching an
     evidence's predicate is replaced with ``evidence.<name>``.
     """

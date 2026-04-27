@@ -263,10 +263,7 @@ def load_cifar10(*, train_n: int = 1000, test_n: int = 200) -> BenchmarkDataset:
         train=train,
         test=test,
         labels=sorted(names),
-        citation=(
-            "Krizhevsky 2009, 'Learning Multiple Layers of Features from "
-            "Tiny Images'"
-        ),
+        citation=("Krizhevsky 2009, 'Learning Multiple Layers of Features from Tiny Images'"),
     )
 
 
@@ -291,8 +288,7 @@ def load_codelangs() -> BenchmarkDataset:
     data_dir = repo_root / "data" / "codelangs"
     if not data_dir.exists():
         raise FileNotFoundError(
-            "data/codelangs/ not found. Run scripts/fetch_codelangs.py "
-            "to populate it."
+            "data/codelangs/ not found. Run scripts/fetch_codelangs.py to populate it."
         )
     pairs: list[tuple[str, str]] = []
     for lang_dir in sorted(p for p in data_dir.iterdir() if p.is_dir()):
@@ -305,8 +301,7 @@ def load_codelangs() -> BenchmarkDataset:
                 pairs.append((text, lang_dir.name))
     if not pairs:
         raise RuntimeError(
-            "data/codelangs/ exists but contains no samples; "
-            "re-run scripts/fetch_codelangs.py"
+            "data/codelangs/ exists but contains no samples; re-run scripts/fetch_codelangs.py"
         )
     # Deterministic shuffle + 80/20 split per language to keep test
     # set roughly balanced across languages.

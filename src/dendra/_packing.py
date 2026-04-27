@@ -76,8 +76,7 @@ class PackedSignature:
         # Walk named (non-var) params in declaration order, consuming
         # positional first then named.
         named_params = [
-            p for p in self.params
-            if p != self.var_positional and p != self.var_keyword
+            p for p in self.params if p != self.var_positional and p != self.var_keyword
         ]
         positional_iter = iter(args)
         consumed = 0
@@ -91,26 +90,20 @@ class PackedSignature:
                 elif name in self.defaults:
                     bound[name] = self.defaults[name]
                 else:
-                    raise TypeError(
-                        f"missing required positional argument: {name!r}"
-                    ) from exc
+                    raise TypeError(f"missing required positional argument: {name!r}") from exc
 
         # Capture any remaining positional args under *args field.
         remaining_positional = tuple(positional_iter)
         if self.var_positional is not None:
             bound[self.var_positional] = remaining_positional
         elif remaining_positional:
-            raise TypeError(
-                f"unexpected positional argument(s): {remaining_positional!r}"
-            )
+            raise TypeError(f"unexpected positional argument(s): {remaining_positional!r}")
 
         # Capture any remaining kwargs under **kwargs field.
         if self.var_keyword is not None:
             bound[self.var_keyword] = kwargs_in
         elif kwargs_in:
-            raise TypeError(
-                f"unexpected keyword argument(s): {tuple(kwargs_in)!r}"
-            )
+            raise TypeError(f"unexpected keyword argument(s): {tuple(kwargs_in)!r}")
 
         return self.packed_class(**bound)
 
@@ -123,8 +116,7 @@ class PackedSignature:
 
         args_out: list[Any] = []
         named_params = [
-            p for p in self.params
-            if p != self.var_positional and p != self.var_keyword
+            p for p in self.params if p != self.var_positional and p != self.var_keyword
         ]
         for name in named_params:
             args_out.append(getattr(packed, name))
@@ -189,8 +181,10 @@ def introspect_signature(
             annotations[p.name] = hints.get(p.name, p.annotation)
 
     named_count = sum(
-        1 for p in parameters
-        if p.kind not in (
+        1
+        for p in parameters
+        if p.kind
+        not in (
             inspect.Parameter.VAR_POSITIONAL,
             inspect.Parameter.VAR_KEYWORD,
         )
@@ -213,11 +207,7 @@ def introspect_signature(
                     # is tuple / dict by construction).
                     continue
                 if p.name not in annotations:
-                    where = (
-                        f"{class_name}.{fn.__name__}"
-                        if class_name is not None
-                        else fn.__name__
-                    )
+                    where = f"{class_name}.{fn.__name__}" if class_name is not None else fn.__name__
                     raise TypeError(
                         f"{where!r} has parameter {p.name!r} with no "
                         "annotation; multi-argument rules and evidence "
@@ -227,11 +217,7 @@ def introspect_signature(
                     )
 
     # Decide if we can use the fast single-arg passthrough path.
-    is_single_passthrough = (
-        named_count == 1
-        and var_positional is None
-        and var_keyword is None
-    )
+    is_single_passthrough = named_count == 1 and var_positional is None and var_keyword is None
 
     # Build a dataclass even on the passthrough path so introspection
     # works uniformly (e.g., tests that read ``_packed_input_class``).
@@ -269,9 +255,7 @@ def introspect_signature(
     )
 
 
-def signatures_match(
-    a: inspect.Signature, b: inspect.Signature, *, skip_self: bool = True
-) -> bool:
+def signatures_match(a: inspect.Signature, b: inspect.Signature, *, skip_self: bool = True) -> bool:
     """Return ``True`` iff ``a`` and ``b`` declare the same positional
     parameters (names + kinds + annotations + defaults), ignoring the
     leading ``self`` when ``skip_self`` is True.
@@ -283,16 +267,8 @@ def signatures_match(
             params = params[1:]
         out = []
         for p in params:
-            ann = (
-                p.annotation
-                if p.annotation is not inspect.Parameter.empty
-                else None
-            )
-            default = (
-                p.default
-                if p.default is not inspect.Parameter.empty
-                else _NO_DEFAULT
-            )
+            ann = p.annotation if p.annotation is not inspect.Parameter.empty else None
+            default = p.default if p.default is not inspect.Parameter.empty else _NO_DEFAULT
             out.append((p.name, p.kind, ann, default))
         return out
 

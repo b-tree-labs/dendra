@@ -12,6 +12,7 @@ heuristics. This module provides one such heuristic
 The lifecycle, gates, and theorem are modality-agnostic. Only the
 auto-rule construction differs per modality.
 """
+
 from __future__ import annotations
 
 from collections import defaultdict
@@ -44,6 +45,7 @@ def build_color_centroid_rule(
         # protocol contract that a rule is always callable.
         def _empty_rule(img: np.ndarray) -> str:
             return ""
+
         return _empty_rule
 
     centroids: dict[str, np.ndarray] = {

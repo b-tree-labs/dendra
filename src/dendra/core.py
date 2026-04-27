@@ -1086,10 +1086,7 @@ class LearnedSwitch:
         # Opt-in: re-raise the original handler exception AFTER the
         # outcome row + telemetry have landed, so the failure is visible
         # in the log even when the caller's ``except`` block fires.
-        if (
-            self.config.propagate_action_exceptions
-            and result._action_exception is not None
-        ):
+        if self.config.propagate_action_exceptions and result._action_exception is not None:
             raise result._action_exception
         return result
 
@@ -2336,9 +2333,7 @@ class LearnedSwitch:
         when the same switch is being persisted concurrently.
         """
         if self._ml_head is None:
-            raise ValueError(
-                f"switch {self.name!r} has no ml_head; cannot refit"
-            )
+            raise ValueError(f"switch {self.name!r} has no ml_head; cannot refit")
         with self._head_lock:
             self._ml_head.fit(records)
         # Save outside the head lock — the trained pipeline is the

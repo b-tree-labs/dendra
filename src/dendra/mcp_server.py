@@ -218,9 +218,7 @@ def _tool_analyze(args: Mapping[str, Any]) -> dict[str, Any]:
     if fmt != "json":
         from dendra.analyzer import render_markdown, render_text
 
-        payload["rendered"] = (
-            render_markdown(report) if fmt == "markdown" else render_text(report)
-        )
+        payload["rendered"] = render_markdown(report) if fmt == "markdown" else render_text(report)
         payload["format"] = fmt
     return payload
 
@@ -325,9 +323,7 @@ def _walk_drift(root: Path) -> list[dict[str, Any]]:
         candidate = root / Path(*header.source_module.split(".")).with_suffix(".py")
         if not candidate.exists():
             short = header.source_module.split(".")[-1] + ".py"
-            matches = [
-                p for p in root.rglob(short) if "__dendra_generated__" not in p.parts
-            ]
+            matches = [p for p in root.rglob(short) if "__dendra_generated__" not in p.parts]
             candidate = matches[0] if matches else candidate
 
         if not candidate.exists():
@@ -396,8 +392,7 @@ _SUGGESTIONS = {
     "user_edited": "run `dendra refresh --force` to overwrite manual edits, or revert them",
     "missing": "run `dendra refresh` to regenerate the missing file",
     "orphaned": (
-        "delete the generated file; the source function is gone "
-        "(or run `dendra refresh --prune`)"
+        "delete the generated file; the source function is gone (or run `dendra refresh --prune`)"
     ),
     "malformed": "delete the generated file and re-run `dendra init` for the source function",
 }
@@ -413,9 +408,7 @@ def _tool_doctor(args: Mapping[str, Any]) -> dict[str, Any]:
             {
                 **r,
                 "severity": _SEVERITY.get(status, "warning"),
-                "suggestion": _SUGGESTIONS.get(
-                    status, "run `dendra refresh` for guidance"
-                ),
+                "suggestion": _SUGGESTIONS.get(status, "run `dendra refresh` for guidance"),
             }
         )
     counts = _summarize(annotated)

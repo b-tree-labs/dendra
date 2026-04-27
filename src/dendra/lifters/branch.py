@@ -54,11 +54,11 @@ class LiftRefused(Exception):
 class _Branch:
     """One concrete branch we extracted from the function."""
 
-    label: str                  # the literal string returned by the branch
-    test: ast.expr | None       # condition (None for else / wildcard)
-    body: list[ast.stmt]        # pre-return statements
-    return_lineno: int          # for diagnostics
-    is_else: bool = False       # True for the trailing else / case _
+    label: str  # the literal string returned by the branch
+    test: ast.expr | None  # condition (None for else / wildcard)
+    body: list[ast.stmt]  # pre-return statements
+    return_lineno: int  # for diagnostics
+    is_else: bool = False  # True for the trailing else / case _
 
 
 @dataclass
@@ -67,8 +67,8 @@ class _ExtractionResult:
 
     branches: list[_Branch]
     leading_stmts: list[ast.stmt]
-    chain_kind: str             # "if" or "match"
-    chain_node: ast.AST         # the original If / Match node
+    chain_kind: str  # "if" or "match"
+    chain_node: ast.AST  # the original If / Match node
     has_trailing_default: bool  # True if a bare `return <lit>` followed an if/elif
     trailing_default_label: str | None
 
@@ -135,9 +135,7 @@ def _build_switch_module(func: ast.FunctionDef) -> str:
     _check_for_dynamic_dispatch(func)
 
     extraction = _extract_branches(func)
-    _check_no_shared_state(
-        extraction.leading_stmts, extraction.branches, func.lineno
-    )
+    _check_no_shared_state(extraction.leading_stmts, extraction.branches, func.lineno)
 
     class_name = _class_name_for(func.name)
     multi_arg = len(arg_names) > 1
@@ -146,9 +144,7 @@ def _build_switch_module(func: ast.FunctionDef) -> str:
     module_body.extend(_build_imports(multi_arg))
     if multi_arg:
         module_body.append(_build_args_dataclass(class_name, arg_names))
-    module_body.append(
-        _build_switch_class(class_name, arg_names, extraction, multi_arg)
-    )
+    module_body.append(_build_switch_class(class_name, arg_names, extraction, multi_arg))
 
     new_module = ast.Module(body=module_body, type_ignores=[])
     ast.fix_missing_locations(new_module)
@@ -240,7 +236,7 @@ def _extract_branches(func: ast.FunctionDef) -> _ExtractionResult:
         )
 
     chain_node = body[idx]
-    trailing = body[idx + 1:]
+    trailing = body[idx + 1 :]
     has_trailing_default = False
     trailing_default_label: str | None = None
 
@@ -293,17 +289,21 @@ def _extract_if_chain(
     trailing_default_label: str | None = None
     if not has_else:
         # No else; require a trailing `return <literal>` as the default.
-        if (len(trailing) == 1
-                and isinstance(trailing[0], ast.Return)
-                and _is_string_literal_return(trailing[0])):
+        if (
+            len(trailing) == 1
+            and isinstance(trailing[0], ast.Return)
+            and _is_string_literal_return(trailing[0])
+        ):
             label = trailing[0].value.value  # type: ignore[union-attr]
-            branches.append(_Branch(
-                label=label,
-                test=None,
-                body=[],
-                return_lineno=trailing[0].lineno,
-                is_else=True,
-            ))
+            branches.append(
+                _Branch(
+                    label=label,
+                    test=None,
+                    body=[],
+                    return_lineno=trailing[0].lineno,
+                    is_else=True,
+                )
+            )
             has_trailing_default = True
             trailing_default_label = label
         elif trailing:
@@ -334,9 +334,7 @@ def _extract_if_chain(
     return branches, has_trailing_default, trailing_default_label
 
 
-def _branch_from_block(
-    stmts: list[ast.stmt], test: ast.expr | None, is_else: bool
-) -> _Branch:
+def _branch_from_block(stmts: list[ast.stmt], test: ast.expr | None, is_else: bool) -> _Branch:
     """Pull the trailing return out of a branch body, validate the rest."""
     if not stmts:
         raise LiftRefused(reason="empty branch body", line=0)
@@ -383,16 +381,13 @@ def _validate_branch_body(stmts: list[ast.stmt]) -> None:
             if isinstance(sub, (ast.Try,)):
                 raise LiftRefused(
                     reason=(
-                        "try/except inside a branch body couples "
-                        "exception flow to label selection"
+                        "try/except inside a branch body couples exception flow to label selection"
                     ),
                     line=sub.lineno,
                 )
 
 
-def _extract_match(
-    head: ast.Match, trailing: list[ast.stmt]
-) -> list[_Branch]:
+def _extract_match(head: ast.Match, trailing: list[ast.stmt]) -> list[_Branch]:
     """Lift a ``match`` statement with literal cases and an optional
     wildcard default. Captures-with-guards and class-patterns are
     out of v1 scope.
@@ -415,9 +410,7 @@ def _extract_match(
         # `if` test — the rule body keeps the match shape verbatim.
         # ``test`` is only used to reconstruct an if-chain, so we
         # leave it None for match arms.
-        branches.append(
-            _branch_from_match_case(case, is_wildcard=is_wildcard)
-        )
+        branches.append(_branch_from_match_case(case, is_wildcard=is_wildcard))
         if is_wildcard:
             seen_wildcard = True
 
@@ -543,16 +536,20 @@ def _class_name_for(func_name: str) -> str:
 def _build_imports(multi_arg: bool) -> list[ast.stmt]:
     out: list[ast.stmt] = []
     if multi_arg:
-        out.append(ast.ImportFrom(
-            module="dataclasses",
-            names=[ast.alias(name="dataclass", asname=None)],
+        out.append(
+            ast.ImportFrom(
+                module="dataclasses",
+                names=[ast.alias(name="dataclass", asname=None)],
+                level=0,
+            )
+        )
+    out.append(
+        ast.ImportFrom(
+            module="dendra",
+            names=[ast.alias(name="Switch", asname=None)],
             level=0,
-        ))
-    out.append(ast.ImportFrom(
-        module="dendra",
-        names=[ast.alias(name="Switch", asname=None)],
-        level=0,
-    ))
+        )
+    )
     return out
 
 
@@ -622,8 +619,7 @@ def _build_evidence_input(arg_name: str) -> ast.FunctionDef:
         name="_evidence_input",
         args=ast.arguments(
             posonlyargs=[],
-            args=[ast.arg(arg="self", annotation=None),
-                  ast.arg(arg=arg_name, annotation=None)],
+            args=[ast.arg(arg="self", annotation=None), ast.arg(arg=arg_name, annotation=None)],
             vararg=None,
             kwonlyargs=[],
             kw_defaults=[],
@@ -654,34 +650,40 @@ def _build_rule(
     body: list[ast.stmt] = []
     if multi_arg:
         for name in arg_names:
-            body.append(_assign(
-                name,
-                ast.Attribute(
-                    value=ast.Attribute(
-                        value=ast.Name(id="evidence", ctx=ast.Load()),
-                        attr="input",
+            body.append(
+                _assign(
+                    name,
+                    ast.Attribute(
+                        value=ast.Attribute(
+                            value=ast.Name(id="evidence", ctx=ast.Load()),
+                            attr="input",
+                            ctx=ast.Load(),
+                        ),
+                        attr=name,
                         ctx=ast.Load(),
                     ),
-                    attr=name,
+                )
+            )
+    else:
+        body.append(
+            _assign(
+                arg_names[0],
+                ast.Attribute(
+                    value=ast.Name(id="evidence", ctx=ast.Load()),
+                    attr="input",
                     ctx=ast.Load(),
                 ),
-            ))
-    else:
-        body.append(_assign(
-            arg_names[0],
-            ast.Attribute(
-                value=ast.Name(id="evidence", ctx=ast.Load()),
-                attr="input",
-                ctx=ast.Load(),
-            ),
-        ))
+            )
+        )
 
     if extraction.chain_kind == "if":
-        body.append(_collapse_if_chain(
-            extraction.chain_node,  # type: ignore[arg-type]
-            extraction.has_trailing_default,
-            extraction.trailing_default_label,
-        ))
+        body.append(
+            _collapse_if_chain(
+                extraction.chain_node,  # type: ignore[arg-type]
+                extraction.has_trailing_default,
+                extraction.trailing_default_label,
+            )
+        )
     else:
         body.append(_collapse_match(extraction.chain_node))  # type: ignore[arg-type]
 
@@ -689,8 +691,7 @@ def _build_rule(
         name="_rule",
         args=ast.arguments(
             posonlyargs=[],
-            args=[ast.arg(arg="self", annotation=None),
-                  ast.arg(arg="evidence", annotation=None)],
+            args=[ast.arg(arg="self", annotation=None), ast.arg(arg="evidence", annotation=None)],
             vararg=None,
             kwonlyargs=[],
             kw_defaults=[],
@@ -723,9 +724,7 @@ def _collapse_if_chain(
         node = new_head
         while True:
             if not node.orelse:
-                node.orelse = [ast.Return(
-                    value=ast.Constant(value=trailing_default_label)
-                )]
+                node.orelse = [ast.Return(value=ast.Constant(value=trailing_default_label))]
                 break
             if len(node.orelse) == 1 and isinstance(node.orelse[0], ast.If):
                 node = node.orelse[0]
@@ -761,11 +760,13 @@ def _collapse_match(node: ast.Match) -> ast.Match:
     new_cases: list[ast.match_case] = []
     for case in node.cases:
         label = _branch_label(case.body)
-        new_cases.append(ast.match_case(
-            pattern=case.pattern,
-            guard=case.guard,
-            body=[ast.Return(value=ast.Constant(value=label))],
-        ))
+        new_cases.append(
+            ast.match_case(
+                pattern=case.pattern,
+                guard=case.guard,
+                body=[ast.Return(value=ast.Constant(value=label))],
+            )
+        )
     return ast.Match(subject=node.subject, cases=new_cases)
 
 
@@ -793,14 +794,16 @@ def _build_on_handler(
     body: list[ast.stmt] = []
     if multi_arg:
         for name in arg_names:
-            body.append(_assign(
-                name,
-                ast.Attribute(
-                    value=ast.Name(id="packed", ctx=ast.Load()),
-                    attr=name,
-                    ctx=ast.Load(),
-                ),
-            ))
+            body.append(
+                _assign(
+                    name,
+                    ast.Attribute(
+                        value=ast.Name(id="packed", ctx=ast.Load()),
+                        attr=name,
+                        ctx=ast.Load(),
+                    ),
+                )
+            )
     body.extend(branch.body)
 
     handler_arg = "packed" if multi_arg else arg_names[0]
@@ -808,8 +811,7 @@ def _build_on_handler(
         name=f"_on_{branch.label}",
         args=ast.arguments(
             posonlyargs=[],
-            args=[ast.arg(arg="self", annotation=None),
-                  ast.arg(arg=handler_arg, annotation=None)],
+            args=[ast.arg(arg="self", annotation=None), ast.arg(arg=handler_arg, annotation=None)],
             vararg=None,
             kwonlyargs=[],
             kw_defaults=[],

@@ -13,6 +13,7 @@ source in SOURCES.md).
 Run from the repo root:
     python scripts/fetch_codelangs.py
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -188,10 +189,7 @@ def _truncate(text: str, max_lines: int = 50) -> str:
 
 def _stable_pick(items: list[Path], n: int, seed: str) -> list[Path]:
     """Deterministic sample: rank by hash(seed + path)."""
-    salted = [
-        (hashlib.sha256(f"{seed}:{p}".encode()).hexdigest(), p)
-        for p in items
-    ]
+    salted = [(hashlib.sha256(f"{seed}:{p}".encode()).hexdigest(), p) for p in items]
     salted.sort()
     return [p for _, p in salted[:n]]
 
@@ -279,8 +277,7 @@ def main(argv: list[str] | None = None) -> int:
     ]
     for src, sha in sha_log:
         lines.append(
-            f"| {src.lang} | {src.repo} | {src.license} | "
-            f"{src.n_samples} | `{sha[:12]}` |"
+            f"| {src.lang} | {src.repo} | {src.license} | {src.n_samples} | `{sha[:12]}` |"
         )
     if any(s.notes for s, _ in sha_log):
         lines.extend(["", "## Notes", ""])

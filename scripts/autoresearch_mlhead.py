@@ -18,6 +18,7 @@ Run:
 
 If no slugs are provided, runs all five benchmarks.
 """
+
 from __future__ import annotations
 
 import json
@@ -64,10 +65,7 @@ class CandidateReport:
     correct_count: int
 
     def cleared_against_incumbent(self, alpha: float) -> bool:
-        return (
-            self.discordant_b > self.discordant_c
-            and self.mcnemar_p < alpha
-        )
+        return self.discordant_b > self.discordant_c and self.mcnemar_p < alpha
 
 
 @dataclass

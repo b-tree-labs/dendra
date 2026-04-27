@@ -581,10 +581,7 @@ def format_report(report: Report) -> str:
     leaks em-dashes; a human-and-Claude paper substitutes).
     """
     lines: list[str] = []
-    header = (
-        f"Dendra report - {report.n_switches} switches, "
-        f"{report.days_of_data} days of data"
-    )
+    header = f"Dendra report - {report.n_switches} switches, {report.days_of_data} days of data"
     lines.append(header)
     lines.append("")
     for sw in report.switches:
@@ -606,9 +603,7 @@ def format_report(report: Report) -> str:
                 f"({pct_label})"
             )
         else:
-            lines.append(
-                f"{sw.switch_name}  {sw.latest_phase} (no graduation yet)"
-            )
+            lines.append(f"{sw.switch_name}  {sw.latest_phase} (no graduation yet)")
             lines.append(
                 f"{' ' * len(sw.switch_name)}  cost: "
                 f"${sw.cost_latest_low:.4f}/call (no baseline yet)"
