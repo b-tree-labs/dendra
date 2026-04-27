@@ -36,6 +36,10 @@ _BENCHMARKS = {
     "clinc150": "load_clinc150",
     "hwu64": "load_hwu64",
     "atis": "load_atis",
+    "snips": "load_snips",
+    "trec6": "load_trec6",
+    "ag_news": "load_ag_news",
+    "codelangs": "load_codelangs",
 }
 
 
@@ -362,7 +366,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     p_bench.add_argument(
         "benchmark",
         choices=sorted(_BENCHMARKS),
-        help="Benchmark ID (banking77 | clinc150 | hwu64 | atis).",
+        help="Benchmark ID (banking77 | clinc150 | hwu64 | atis | snips).",
     )
     p_bench.add_argument(
         "--seed-size",
