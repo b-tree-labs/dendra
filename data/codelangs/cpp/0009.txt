@@ -1,0 +1,50 @@
+//  Boost string_algo library replace_storage.hpp header file  ---------------------------//
+
+//  Copyright Pavol Droba 2002-2003.
+//
+// Distributed under the Boost Software License, Version 1.0.
+//    (See accompanying file LICENSE_1_0.txt or copy at
+//          http://www.boost.org/LICENSE_1_0.txt)
+
+//  See http://www.boost.org/ for updates, documentation, and revision history.
+
+#ifndef BOOST_STRING_REPLACE_STORAGE_DETAIL_HPP
+#define BOOST_STRING_REPLACE_STORAGE_DETAIL_HPP
+
+#include <boost/algorithm/string/config.hpp>
+#include <algorithm>
+#include <boost/mpl/bool.hpp>
+#include <boost/algorithm/string/sequence_traits.hpp>
+#include <boost/algorithm/string/detail/sequence.hpp>
+
+namespace boost {
+    namespace algorithm {
+        namespace detail {
+
+//  storage handling routines -----------------------------------------------//
+            
+            template< typename StorageT, typename OutputIteratorT >
+            inline OutputIteratorT move_from_storage(
+                StorageT& Storage,
+                OutputIteratorT DestBegin,
+                OutputIteratorT DestEnd )
+            {
+                OutputIteratorT OutputIt=DestBegin;
+                
+                while( !Storage.empty() && OutputIt!=DestEnd )
+                {
+                    *OutputIt=Storage.front();
+                    Storage.pop_front();
+                    ++OutputIt;
+                }
+
+                return OutputIt;
+            }
+
+            template< typename StorageT, typename WhatT >
+            inline void copy_to_storage(
+                StorageT& Storage,
+                const WhatT& What )
+            {
+                Storage.insert( Storage.end(), ::boost::begin(What), ::boost::end(What) );
+            }

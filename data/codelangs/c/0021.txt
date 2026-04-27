@@ -1,0 +1,50 @@
+/***************************************************************************
+ *                                  _   _ ____  _
+ *  Project                     ___| | | |  _ \| |
+ *                             / __| | | | |_) | |
+ *                            | (__| |_| |  _ <| |___
+ *                             \___|\___/|_| \_\_____|
+ *
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
+ *
+ * This software is licensed as described in the file COPYING, which
+ * you should have received as part of this distribution. The terms
+ * are also available at https://curl.se/docs/copyright.html.
+ *
+ * You may opt to use, copy, modify, merge, publish, distribute and/or sell
+ * copies of the Software, and permit persons to whom the Software is
+ * furnished to do so, under the terms of the COPYING file.
+ *
+ * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
+ * KIND, either express or implied.
+ *
+ * SPDX-License-Identifier: curl
+ *
+ ***************************************************************************/
+#include "curl_setup.h"
+
+#include "dynhds.h"
+#include "strcase.h"
+
+static struct dynhds_entry *entry_new(const char *name, size_t namelen,
+                                      const char *value, size_t valuelen,
+                                      int opts)
+{
+  struct dynhds_entry *e;
+  char *p;
+
+  DEBUGASSERT(name);
+  DEBUGASSERT(value);
+  e = curlx_calloc(1, sizeof(*e) + namelen + valuelen + 2);
+  if(!e)
+    return NULL;
+  e->name = p = (char *)e + sizeof(*e);
+  memcpy(p, name, namelen);
+  e->namelen = namelen;
+  e->value = p += namelen + 1; /* leave a \0 at the end of name */
+  memcpy(p, value, valuelen);
+  e->valuelen = valuelen;
+  if(opts & DYNHDS_OPT_LOWERCASE)
+    Curl_strntolower(e->name, e->name, e->namelen);
+  return e;
+}

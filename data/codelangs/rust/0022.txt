@@ -1,0 +1,50 @@
+use crate::de::{deserialize_seq, has_flatten, Parameters, TupleForm};
+#[cfg(feature = "deserialize_in_place")]
+use crate::de::{deserialize_seq_in_place, place_lifetime};
+use crate::fragment::{Fragment, Stmts};
+use crate::internals::ast::Field;
+use crate::internals::attr;
+use crate::private;
+use proc_macro2::TokenStream;
+use quote::{quote, quote_spanned};
+use syn::spanned::Spanned;
+
+/// Generates `Deserialize::deserialize` body for a `struct Tuple(...);` including `struct Newtype(T);`
+pub(super) fn deserialize(
+    params: &Parameters,
+    fields: &[Field],
+    cattrs: &attr::Container,
+    form: TupleForm,
+) -> Fragment {
+    assert!(
+        !has_flatten(fields),
+        "tuples and tuple variants cannot have flatten fields"
+    );
+
+    let field_count = fields
+        .iter()
+        .filter(|field| !field.attrs.skip_deserializing())
+        .count();
+
+    let this_type = &params.this_type;
+    let this_value = &params.this_value;
+    let (de_impl_generics, de_ty_generics, ty_generics, where_clause) =
+        params.generics_with_de_lifetime();
+    let delife = params.borrowed.de_lifetime();
+
+    // If there are getters (implying private fields), construct the local type
+    // and use an `Into` conversion to get the remote type. If there are no
+    // getters then construct the target type directly.
+    let construct = if params.has_getter {
+        let local = &params.local;
+        quote!(#local)
+    } else {
+        quote!(#this_value)
+    };
+
+    let type_path = match form {
+        TupleForm::Tuple => construct,
+        TupleForm::ExternallyTagged(variant_ident) | TupleForm::Untagged(variant_ident) => {
+            quote!(#construct::#variant_ident)
+        }
+    };

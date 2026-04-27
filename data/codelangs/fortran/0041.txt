@@ -1,0 +1,50 @@
+*> \brief \b ZLA_HERFSX_EXTENDED improves the computed solution to a system of linear equations for Hermitian indefinite matrices by performing extra-precise iterative refinement and provides error bounds and backward error estimates for the solution.
+*
+*  =========== DOCUMENTATION ===========
+*
+* Online html documentation available at
+*            http://www.netlib.org/lapack/explore-html/
+*
+*> Download ZLA_HERFSX_EXTENDED + dependencies
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.tgz?format=tgz&filename=/lapack/lapack_routine/zla_herfsx_extended.f">
+*> [TGZ]</a>
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.zip?format=zip&filename=/lapack/lapack_routine/zla_herfsx_extended.f">
+*> [ZIP]</a>
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.txt?format=txt&filename=/lapack/lapack_routine/zla_herfsx_extended.f">
+*> [TXT]</a>
+*
+*  Definition:
+*  ===========
+*
+*       SUBROUTINE ZLA_HERFSX_EXTENDED( PREC_TYPE, UPLO, N, NRHS, A, LDA,
+*                                       AF, LDAF, IPIV, COLEQU, C, B, LDB,
+*                                       Y, LDY, BERR_OUT, N_NORMS,
+*                                       ERR_BNDS_NORM, ERR_BNDS_COMP, RES,
+*                                       AYB, DY, Y_TAIL, RCOND, ITHRESH,
+*                                       RTHRESH, DZ_UB, IGNORE_CWISE,
+*                                       INFO )
+*
+*       .. Scalar Arguments ..
+*       INTEGER            INFO, LDA, LDAF, LDB, LDY, N, NRHS, PREC_TYPE,
+*      $                   N_NORMS, ITHRESH
+*       CHARACTER          UPLO
+*       LOGICAL            COLEQU, IGNORE_CWISE
+*       DOUBLE PRECISION   RTHRESH, DZ_UB
+*       ..
+*       .. Array Arguments ..
+*       INTEGER            IPIV( * )
+*       COMPLEX*16         A( LDA, * ), AF( LDAF, * ), B( LDB, * ),
+*      $                   Y( LDY, * ), RES( * ), DY( * ), Y_TAIL( * )
+*       DOUBLE PRECISION   C( * ), AYB( * ), RCOND, BERR_OUT( * ),
+*      $                   ERR_BNDS_NORM( NRHS, * ),
+*      $                   ERR_BNDS_COMP( NRHS, * )
+*       ..
+*
+*
+*> \par Purpose:
+*  =============
+*>
+*> \verbatim
+*>
+*> ZLA_HERFSX_EXTENDED improves the computed solution to a system of
+*> linear equations by performing extra-precise iterative refinement

@@ -1,0 +1,50 @@
+import importlib
+import re
+import textwrap
+import unittest
+
+from importlib.metadata import (
+    Distribution,
+    PackageNotFoundError,
+    Prepared,
+    distribution,
+    entry_points,
+    files,
+    metadata,
+    requires,
+    version,
+)
+
+from . import fixtures
+
+
+class APITests(
+    fixtures.EggInfoPkg,
+    fixtures.EggInfoPkgPipInstalledNoToplevel,
+    fixtures.EggInfoPkgPipInstalledNoModules,
+    fixtures.EggInfoPkgPipInstalledExternalDataFiles,
+    fixtures.EggInfoPkgSourcesFallback,
+    fixtures.DistInfoPkg,
+    fixtures.DistInfoPkgWithDot,
+    fixtures.EggInfoFile,
+    unittest.TestCase,
+):
+    version_pattern = r'\d+\.\d+(\.\d)?'
+
+    def test_retrieves_version_of_self(self):
+        pkg_version = version('egginfo-pkg')
+        assert isinstance(pkg_version, str)
+        assert re.match(self.version_pattern, pkg_version)
+
+    def test_retrieves_version_of_distinfo_pkg(self):
+        pkg_version = version('distinfo-pkg')
+        assert isinstance(pkg_version, str)
+        assert re.match(self.version_pattern, pkg_version)
+
+    def test_for_name_does_not_exist(self):
+        with self.assertRaises(PackageNotFoundError):
+            distribution('does-not-exist')
+
+    def test_name_normalization(self):
+        names = 'pkg.dot', 'pkg_dot', 'pkg-dot', 'pkg..dot', 'Pkg.Dot'
+        for name in names:

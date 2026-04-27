@@ -1,0 +1,50 @@
+/*
+    Copyright 2008 Adobe Systems Incorporated
+
+   Distributed under the Boost Software License, Version 1.0. (See accompanying
+   file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+ Revision history:
+   January 2008 mtc Version for Adobe Source Library
+   January 2013 mtc Version for Boost.Algorithm
+
+*/
+
+/**************************************************************************************************/
+
+/*!
+\author Marshall Clow
+\date    January 2008
+*/
+
+#ifndef BOOST_ALGORITHM_GATHER_HPP
+#define BOOST_ALGORITHM_GATHER_HPP
+
+#include <algorithm>                // for std::stable_partition
+#include <functional>
+#include <utility>                  // for std::make_pair
+
+#include <boost/config.hpp>
+#include <boost/bind/bind.hpp>      // for boost::bind
+#include <boost/range/begin.hpp>    // for boost::begin(range)
+#include <boost/range/end.hpp>      // for boost::end(range)
+
+
+/**************************************************************************************************/
+/*!
+    \defgroup gather gather
+    \ingroup mutating_algorithm
+
+    \c gather() takes a collection of elements defined by a pair of iterators and moves
+    the ones satisfying a predicate to them to a position (called the pivot) within
+    the sequence. The algorithm is stable. The result is a pair of iterators that
+    contains the items that satisfy the predicate.
+
+    Given an sequence containing:
+    <pre>
+    0 1 2 3 4 5 6 7 8 9
+    </pre>
+
+    a call to gather ( arr, arr + 10, arr + 4, IsEven ()) will result in:
+
+    <pre>

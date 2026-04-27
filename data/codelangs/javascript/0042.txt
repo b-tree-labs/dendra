@@ -1,0 +1,49 @@
+'use strict';
+
+const {
+  ObjectDefineProperties,
+  Symbol,
+} = primordials;
+
+const {
+  codes: {
+    ERR_ILLEGAL_CONSTRUCTOR,
+  },
+} = require('internal/errors');
+
+const {
+  customInspectSymbol: kInspect,
+  kEnumerableProperty,
+} = require('internal/util');
+const { validateThisInternalField } = require('internal/validators');
+
+const { inspect } = require('util');
+
+const kName = Symbol('PerformanceEntry.Name');
+const kEntryType = Symbol('PerformanceEntry.EntryType');
+const kStartTime = Symbol('PerformanceEntry.StartTime');
+const kDuration = Symbol('PerformanceEntry.Duration');
+const kDetail = Symbol('NodePerformanceEntry.Detail');
+const kSkipThrow = Symbol('kSkipThrow');
+
+function isPerformanceEntry(obj) {
+  return obj?.[kName] !== undefined;
+}
+
+class PerformanceEntry {
+  constructor(
+    skipThrowSymbol = undefined,
+    name = undefined,
+    type = undefined,
+    start = undefined,
+    duration = undefined,
+  ) {
+    if (skipThrowSymbol !== kSkipThrow) {
+      throw new ERR_ILLEGAL_CONSTRUCTOR();
+    }
+
+    this[kName] = name;
+    this[kEntryType] = type;
+    this[kStartTime] = start;
+    this[kDuration] = duration;
+  }

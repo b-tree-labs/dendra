@@ -1,0 +1,50 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Provides highly reusable utility methods, chiefly concerned with adding value to the {@link java.lang} classes.
+ * Most of these classes are immutable and thus thread-safe.
+ * However {@link org.apache.commons.lang3.CharSet} is not currently guaranteed thread-safe under all circumstances.
+ *
+ * <p>The top level package contains various Utils classes, whilst there are various subpackages including {@link org.apache.commons.lang3.math}, {@link org.apache.commons.lang3.concurrent} and {@link org.apache.commons.lang3.builder}.
+ * Using the Utils classes is generally simplicity itself.
+ * They are the equivalent of global functions in another language, a collection of stand-alone, thread-safe, static methods.
+ * In contrast, subpackages may contain interfaces which may have to be implemented or classes which may need to be extended to get the full functionality from the code.
+ * They may, however, contain more global-like functions.</p>
+ *
+ * <p>Lang 3.0 requires JDK 1.5+, since Lang 3.2 it requires JDK 6+; The legacy release 2.6 requires JDK 1.2+.
+ * In both cases you can find features of later JDKs being maintained by us and likely to be removed or modified in favor of the JDK in the next major version.
+ * Note that Lang 3.0 uses a different package than its predecessors, allowing it to be used at the same time as an earlier version.</p>
+ *
+ * <p>You will find deprecated methods as you stroll through the Lang documentation. These are removed in the next major version.</p>
+ *
+ * <p>All util classes contain empty public constructors with warnings not to use.
+ * This may seem an odd thing to do, but it allows tools like Velocity to access the class as if it were a bean.
+ * In other words, yes we know about private constructors and have chosen not to use them.</p>
+ *
+ * <h2>String manipulation - StringUtils, StringEscapeUtils, RandomStringUtils</h2>
+ *
+ * <p>Lang has a series of String utilities.
+ * The first is {@link org.apache.commons.lang3.StringUtils}, oodles and oodles of functions which tweak, transform, squeeze and cuddle {@link String java.lang.Strings}.
+ * In addition to StringUtils, there are a series of other String manipulating classes; {@link org.apache.commons.lang3.RandomStringUtils} and {@link org.apache.commons.lang3.StringEscapeUtils StringEscapeUtils}.
+ * RandomStringUtils speaks for itself.
+ * It's provides ways in which to generate pieces of text, such as might be used for default passwords.
+ * StringEscapeUtils contains methods to escape and unescape Java, JavaScript, JSON, HTML and XML.</p>
+ *
+ * <p>These are ideal classes to start using if you're looking to get into Lang.
+ * StringUtils' {@link org.apache.commons.lang3.StringUtils#capitalize(String)}, {@link org.apache.commons.lang3.StringUtils#substringBetween(String, String)}/{@link org.apache.commons.lang3.StringUtils#substringBefore(String, String) Before}/{@link org.apache.commons.lang3.StringUtils#substringAfter(String, String) After}, {@link org.apache.commons.lang3.StringUtils#split(String)} and {@link org.apache.commons.lang3.StringUtils#join(Object[])} are good methods to begin with.</p>
+ *

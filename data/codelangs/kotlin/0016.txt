@@ -1,0 +1,50 @@
+/*
+ * Copyright 2010-2025 JetBrains s.r.o. and Kotlin Programming Language contributors.
+ * Use of this source code is governed by the Apache 2.0 license that can be found in the license/LICENSE.txt file.
+ */
+
+package org.jetbrains.kotlin.resolve
+
+import com.google.common.collect.ImmutableSet
+import com.intellij.psi.PsiElement
+import org.jetbrains.kotlin.builtins.KotlinBuiltIns
+import org.jetbrains.kotlin.builtins.StandardNames
+import org.jetbrains.kotlin.builtins.UnsignedTypes
+import org.jetbrains.kotlin.config.LanguageFeature
+import org.jetbrains.kotlin.config.LanguageVersionSettings
+import org.jetbrains.kotlin.descriptors.*
+import org.jetbrains.kotlin.descriptors.annotations.AnnotationDescriptor
+import org.jetbrains.kotlin.diagnostics.DiagnosticFactory0
+import org.jetbrains.kotlin.diagnostics.Errors.*
+import org.jetbrains.kotlin.incremental.KotlinLookupLocation
+import org.jetbrains.kotlin.lexer.KtTokens
+import org.jetbrains.kotlin.psi.*
+import org.jetbrains.kotlin.psi.psiUtil.hasActualModifier
+import org.jetbrains.kotlin.psi.psiUtil.visibilityModifier
+import org.jetbrains.kotlin.resolve.BindingContext.*
+import org.jetbrains.kotlin.resolve.DescriptorUtils.classCanHaveAbstractDeclaration
+import org.jetbrains.kotlin.resolve.DescriptorUtils.classCanHaveOpenMembers
+import org.jetbrains.kotlin.resolve.calls.results.TypeSpecificityComparator
+import org.jetbrains.kotlin.resolve.checkers.PlatformDiagnosticSuppressor
+import org.jetbrains.kotlin.resolve.descriptorUtil.builtIns
+import org.jetbrains.kotlin.resolve.descriptorUtil.isEffectivelyExternal
+import org.jetbrains.kotlin.resolve.inline.isInlineOnly
+import org.jetbrains.kotlin.resolve.source.KotlinSourceElement
+import org.jetbrains.kotlin.types.*
+import org.jetbrains.kotlin.types.checker.KotlinTypeChecker
+import org.jetbrains.kotlin.types.typeUtil.constituentTypes
+import org.jetbrains.kotlin.types.typeUtil.contains
+import org.jetbrains.kotlin.types.typeUtil.isArrayOfNothing
+import org.jetbrains.kotlin.types.typeUtil.isNothing
+
+internal class DeclarationsCheckerBuilder(
+    private val descriptorResolver: DescriptorResolver,
+    private val originalModifiersChecker: ModifiersChecker,
+    private val annotationChecker: AnnotationChecker,
+    private val identifierChecker: IdentifierChecker,
+    private val languageVersionSettings: LanguageVersionSettings,
+    private val typeSpecificityComparator: TypeSpecificityComparator,
+    private val diagnosticSuppressor: PlatformDiagnosticSuppressor,
+    private val upperBoundChecker: UpperBoundChecker
+) {
+    fun withTrace(trace: BindingTrace) = DeclarationsChecker(

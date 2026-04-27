@@ -1,0 +1,50 @@
+module graph
+   ! provides basic 2-D and 3-D graphing routines for Postscript
+   use locale
+   implicit none
+   private
+
+   !--Public routines
+   public initp,window,endp,endw,init2,frame2,endfr,init3,vect3
+   public axis2,axis3,xscale,yscale,xinvrs,yinvrs
+   public trans3,grid2,grid3,curv2,curv3,poly2,text3,txtlen,dsym
+   public gplot,gdone
+
+   !--Private global variables
+   integer::ipage,nps
+   real(kr)::width,ht
+   integer::ifont
+   real(kr)::xpaper,ypaper
+   integer::ifg,ibg
+   integer::land
+   !   wt     weight of tick marks
+   !   wg     weight of grid lines
+   !   wa     weight of axis lines
+   !   tic    length of tic marks
+   !   gap    space between axis and numbers
+   !   hf     height fraction of fonts numbers
+   !   hl     height of labels
+   !   hn     height of numbers
+   !   lfont  font for numbers and labels
+   real(kr)::wt,wg,wa,tic,gap,hf,hl,hn
+   integer::lfont
+   real(kr)::fvx,dvx,fvy,dvy,fvz,dvz
+   integer::logx,logy,logz
+   real(kr)::xwll,ywll,www,wwh,wwr,tspace
+   real(kr)::rs,ro,rp,ct,st,cp,sp,du,dv
+
+   real(kr)::ushift,vshift,uwidth
+   real(kr)::xmin,xmax,xstp,ymin,ymax,ystp,zmin,zmax,zstp
+
+   ! font names
+   character(25),dimension(3)::font=(/&
+     'Times-Roman              ',&
+     'Helvetica                ',&
+     'Symbol                   '/)
+
+   ! tables of font sizes -------------------------------------------
+
+   real(kr),dimension(128,3)::cw
+
+   ! times-roman 00-1f
+   real(kr),dimension(32)::cw1=(/&

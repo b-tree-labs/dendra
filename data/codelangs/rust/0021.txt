@@ -1,0 +1,49 @@
+//! Deserialization for externally tagged enums:
+//!
+//! ```ignore
+//! enum Enum {}
+//! ```
+
+use crate::de::enum_;
+use crate::de::struct_;
+use crate::de::tuple;
+use crate::de::{
+    expr_is_missing, field_i, unwrap_to_variant_closure, wrap_deserialize_field_with,
+    wrap_deserialize_with, Parameters, StructForm, TupleForm,
+};
+use crate::fragment::{Expr, Fragment, Match};
+use crate::internals::ast::{Field, Style, Variant};
+use crate::internals::attr;
+use crate::private;
+use proc_macro2::TokenStream;
+use quote::{quote, quote_spanned};
+use syn::spanned::Spanned;
+
+/// Generates `Deserialize::deserialize` body for an `enum Enum {...}` without additional attributes
+pub(super) fn deserialize(
+    params: &Parameters,
+    variants: &[Variant],
+    cattrs: &attr::Container,
+) -> Fragment {
+    let this_type = &params.this_type;
+    let (de_impl_generics, de_ty_generics, ty_generics, where_clause) =
+        params.generics_with_de_lifetime();
+    let delife = params.borrowed.de_lifetime();
+
+    let type_name = cattrs.name().deserialize_name();
+    let expecting = format!("enum {}", params.type_name());
+    let expecting = cattrs.expecting().unwrap_or(&expecting);
+
+    let (variants_stmt, variant_visitor) = enum_::prepare_enum_variant_enum(variants);
+
+    // Match arms to extract a variant from a string
+    let variant_arms = variants
+        .iter()
+        .enumerate()
+        .filter(|&(_, variant)| !variant.attrs.skip_deserializing())
+        .map(|(i, variant)| {
+            let variant_name = field_i(i);
+
+            let block = Match(deserialize_externally_tagged_variant(
+                params, variant, cattrs,
+            ));

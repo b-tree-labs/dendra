@@ -1,0 +1,50 @@
+module Bundler::PubGrub
+  class FailureWriter
+    def initialize(root)
+      @root = root
+
+      # { Incompatibility => Integer }
+      @derivations = {}
+
+      # [ [ String, Integer or nil ] ]
+      @lines = []
+
+      # { Incompatibility => Integer }
+      @line_numbers = {}
+
+      count_derivations(root)
+    end
+
+    def write
+      return @root.to_s unless @root.conflict?
+
+      visit(@root)
+
+      padding = @line_numbers.empty? ? 0 : "(#{@line_numbers.values.last}) ".length
+
+      @lines.map do |message, number|
+        next "" if message.empty?
+
+        lead = number ? "(#{number}) " : ""
+        lead = lead.ljust(padding)
+        message = message.gsub("\n", "\n" + " " * (padding + 2))
+        "#{lead}#{message}"
+      end.join("\n")
+    end
+
+    private
+
+    def write_line(incompatibility, message, numbered:)
+      if numbered
+        number = @line_numbers.length + 1
+        @line_numbers[incompatibility] = number
+      end
+
+      @lines << [message, number]
+    end
+
+    def visit(incompatibility, conclusion: false)
+      raise unless incompatibility.conflict?
+
+      numbered = conclusion || @derivations[incompatibility] > 1;
+      conjunction = conclusion || incompatibility == @root ? "So," : "And"

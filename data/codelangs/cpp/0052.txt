@@ -1,0 +1,50 @@
+//  Boost string_algo library classification.hpp header file  ---------------------------//
+
+//  Copyright Pavol Droba 2002-2003.
+//
+// Distributed under the Boost Software License, Version 1.0.
+//    (See accompanying file LICENSE_1_0.txt or copy at
+//          http://www.boost.org/LICENSE_1_0.txt)
+
+//  See http://www.boost.org/ for updates, documentation, and revision history.
+
+#ifndef BOOST_STRING_CLASSIFICATION_HPP
+#define BOOST_STRING_CLASSIFICATION_HPP
+
+#include <algorithm>
+#include <locale>
+#include <boost/range/value_type.hpp>
+#include <boost/range/as_literal.hpp>
+#include <boost/algorithm/string/detail/classification.hpp>
+#include <boost/algorithm/string/predicate_facade.hpp>
+
+
+/*! \file
+    Classification predicates are included in the library to give 
+    some more convenience when using algorithms like \c trim() and \c all(). 
+    They wrap functionality of STL classification functions ( e.g. \c std::isspace() )
+    into generic functors. 
+*/
+
+namespace boost {
+    namespace algorithm {
+
+//  classification functor generator -------------------------------------//
+
+        //! is_classified predicate
+        /*!
+            Construct the \c is_classified predicate. This predicate holds if the input is
+            of specified \c std::ctype category.
+
+            \param Type A \c std::ctype category
+            \param Loc A locale used for classification
+            \return An instance of the \c is_classified predicate 
+        */
+        inline detail::is_classifiedF
+        is_classified(std::ctype_base::mask Type, const std::locale& Loc=std::locale())
+        {
+            return detail::is_classifiedF(Type, Loc);
+        }
+
+        //! is_space predicate
+        /*!

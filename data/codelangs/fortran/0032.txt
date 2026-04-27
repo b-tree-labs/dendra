@@ -1,0 +1,50 @@
+module modem
+   ! provides moder for NJOY2016
+   use locale
+   implicit none
+   private
+   public moder
+
+   ! global variables
+   integer::ntw,ng
+
+contains
+
+   subroutine moder
+   !-------------------------------------------------------------------
+   !
+   !  Change the mode of an ENDF tape.
+   !
+   !  Converts ENDF-type files between binary and text formats.
+   !  Also works for PENDF, GENDF and covariance tapes.
+   !  Moder can also be used to select materials from an ENDF-type
+   !  tape, or to merge several materials into a new tape.
+   !
+   !---input specifications (free format)---------------------------
+   !
+   ! card 1       unit numbers
+   !      nin     input unit
+   !      nout    output unit
+   !
+   !  a positive unit is coded (mode 3).
+   !  a negative unit is blocked binary (njoy mode).
+   !
+   !  note: abs(nin) ge 1 and le 19 is a flag to select various
+   !        materials from one or more input tapes, with or
+   !        without mode conversion.  the kind of data to be
+   !        processed is keyed to nin as follows:
+   !             nin=1, for endf or pendf input and output,
+   !                 2, for gendf input and output,
+   !                 3, for errorr-format input and output.
+   !
+   !      cards 2 and 3 for abs (nin) ge 1 and le 19 only.
+   !
+   ! card 2
+   !      tpid    tapeid for nout.  66 characters allowed
+   !              (delimited with *, ended with /)
+   ! card 3
+   !      nin     input unit
+   !              terminate moder by setting nin=0
+   !      matd    material on this tape to add to nout
+   !-------------------------------------------------------------------
+   use mainio ! provides nysi,nsyso

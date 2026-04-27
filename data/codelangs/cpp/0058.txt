@@ -1,0 +1,50 @@
+//  Boost string_algo library find_format_all.hpp header file  ---------------------------//
+
+//  Copyright Pavol Droba 2002-2003.
+//
+// Distributed under the Boost Software License, Version 1.0.
+//    (See accompanying file LICENSE_1_0.txt or copy at
+//          http://www.boost.org/LICENSE_1_0.txt)
+
+//  See http://www.boost.org/ for updates, documentation, and revision history.
+
+#ifndef BOOST_STRING_FIND_FORMAT_ALL_DETAIL_HPP
+#define BOOST_STRING_FIND_FORMAT_ALL_DETAIL_HPP
+
+#include <boost/algorithm/string/config.hpp>
+#include <boost/range/iterator_range_core.hpp>
+#include <boost/range/const_iterator.hpp>
+#include <boost/range/value_type.hpp>
+#include <boost/algorithm/string/detail/find_format_store.hpp>
+#include <boost/algorithm/string/detail/replace_storage.hpp>
+
+#include <deque>
+
+namespace boost {
+    namespace algorithm {
+        namespace detail {
+
+// find_format_all_copy (iterator variant) implementation ---------------------------//
+
+           template< 
+                typename OutputIteratorT,
+                typename InputT,
+                typename FinderT,
+                typename FormatterT,
+                typename FindResultT,
+                typename FormatResultT >
+            inline OutputIteratorT find_format_all_copy_impl2(
+                OutputIteratorT Output,
+                const InputT& Input,
+                FinderT Finder,
+                FormatterT Formatter,
+                const FindResultT& FindResult,
+                const FormatResultT& FormatResult )
+            {       
+                typedef BOOST_STRING_TYPENAME 
+                    range_const_iterator<InputT>::type input_iterator_type; 
+
+                typedef find_format_store<
+                        input_iterator_type, 
+                        FormatterT,
+                        FormatResultT > store_type;

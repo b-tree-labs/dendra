@@ -1,0 +1,50 @@
+use crate::de::identifier;
+use crate::de::{
+    deserialize_seq, expr_is_missing, field_i, has_flatten, wrap_deserialize_field_with,
+    FieldWithAliases, Parameters, StructForm,
+};
+#[cfg(feature = "deserialize_in_place")]
+use crate::de::{deserialize_seq_in_place, place_lifetime};
+use crate::fragment::{Expr, Fragment, Match, Stmts};
+use crate::internals::ast::Field;
+use crate::internals::attr;
+use crate::private;
+use proc_macro2::TokenStream;
+use quote::{quote, quote_spanned};
+use syn::spanned::Spanned;
+
+/// Generates `Deserialize::deserialize` body for a `struct Struct {...}`
+pub(super) fn deserialize(
+    params: &Parameters,
+    fields: &[Field],
+    cattrs: &attr::Container,
+    form: StructForm,
+) -> Fragment {
+    let this_type = &params.this_type;
+    let this_value = &params.this_value;
+    let (de_impl_generics, de_ty_generics, ty_generics, where_clause) =
+        params.generics_with_de_lifetime();
+    let delife = params.borrowed.de_lifetime();
+
+    // If there are getters (implying private fields), construct the local type
+    // and use an `Into` conversion to get the remote type. If there are no
+    // getters then construct the target type directly.
+    let construct = if params.has_getter {
+        let local = &params.local;
+        quote!(#local)
+    } else {
+        quote!(#this_value)
+    };
+
+    let type_path = match form {
+        StructForm::Struct => construct,
+        StructForm::ExternallyTagged(variant_ident)
+        | StructForm::InternallyTagged(variant_ident)
+        | StructForm::Untagged(variant_ident) => quote!(#construct::#variant_ident),
+    };
+    let expecting = match form {
+        StructForm::Struct => format!("struct {}", params.type_name()),
+        StructForm::ExternallyTagged(variant_ident)
+        | StructForm::InternallyTagged(variant_ident)
+        | StructForm::Untagged(variant_ident) => {
+            format!("struct variant {}::{}", params.type_name(), variant_ident)

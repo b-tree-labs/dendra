@@ -1,0 +1,50 @@
+program njoy
+!-----------------------------------------------------------------------
+!
+!    NJOY Nuclear Data Processing System
+!    Version 2016.20
+!
+!-----------------------------------------------------------------------
+!
+! NJOY is a system of processing modules intended to convert evaluated
+! nuclear data in the ENDF format into forms useful for practical
+! applications.  It consists of a number of independent processing
+! modules that perform various processing tasks and this main program
+! (njoy) that runs the modules in the desired order.  The modules
+! currently available are the following:
+!
+! reconr...reconstruct pointwise cross sections from ENDF/B resonance
+!          parameters and interpolation schemes.
+!
+! broadr...doppler broaden and thin pointwise cross sections.
+!
+! unresr...compute effective pointwise self-shielded cross sections in
+!          the unresolved energy range.
+!
+! heatr....compute heat production cross sections (kerma) and damage
+!          energy production.
+!
+! thermr...generate neutron scattering cross sections and
+!          point-to-point scattering kernels in the thermal range for
+!          free or bound atoms.
+!
+! groupr...generate self-shielded multigroup cross sections and
+!          group-to-group scattering and photon production matrices.
+!
+! gaminr...compute multigroup photon interaction cross sections,
+!          scattering matrices, and heat production.
+!
+! errorr...construct multigroup covariance matrices.
+!
+! covr.....process covariance data from errorr.
+!
+! moder....convert between ENDF/B standard coded mode and the njoy
+!          blocked binary mode.
+!
+! dtfr.....output and plot multigroup data for discrete ordinates
+!          transport codes.
+!
+! ccccr....format multigroup data into the CCCC standard interface
+!          files ISOTXS, BRKOXS, and DLAYXS.
+!
+! matxsr...convert multigroup data into the comprehensive MATXS

@@ -1,0 +1,50 @@
+from collections import namedtuple
+import contextlib
+import errno
+import json
+import logging
+import os
+import os.path
+#import select
+import subprocess
+import sys
+import tempfile
+from textwrap import dedent
+import threading
+import types
+import unittest
+
+from test import support
+
+# We would use test.support.import_helper.import_module(),
+# but the indirect import of test.support.os_helper causes refleaks.
+try:
+    import _interpreters
+except ImportError as exc:
+    raise unittest.SkipTest(str(exc))
+from concurrent import interpreters
+
+
+try:
+    import _testinternalcapi
+    import _testcapi
+except ImportError:
+    _testinternalcapi = None
+    _testcapi = None
+
+def requires_test_modules(func):
+    return unittest.skipIf(_testinternalcapi is None, "test requires _testinternalcapi module")(func)
+
+
+def _dump_script(text):
+    lines = text.splitlines()
+    print()
+    print('-' * 20)
+    for i, line in enumerate(lines, 1):
+        print(f' {i:>{len(str(len(lines)))}}  {line}')
+    print('-' * 20)
+
+
+def _close_file(file):
+    try:
+        if hasattr(file, 'close'):

@@ -1,0 +1,50 @@
+# frozen_string_literal: true
+
+require "digest"
+require "fileutils"
+require "tmpdir"
+require_relative "../gemspec_helpers"
+require_relative "../package"
+
+class Gem::Commands::RebuildCommand < Gem::Command
+  include Gem::GemspecHelpers
+
+  def initialize
+    super "rebuild", "Attempt to reproduce a build of a gem."
+
+    add_option "--diff", "If the files don't match, compare them using diffoscope." do |_value, options|
+      options[:diff] = true
+    end
+
+    add_option "--force", "Skip validation of the spec." do |_value, options|
+      options[:force] = true
+    end
+
+    add_option "--strict", "Consider warnings as errors when validating the spec." do |_value, options|
+      options[:strict] = true
+    end
+
+    add_option "--source GEM_SOURCE", "Specify the source to download the gem from." do |value, options|
+      options[:source] = value
+    end
+
+    add_option "--original GEM_FILE", "Specify a local file to compare against (instead of downloading it)." do |value, options|
+      options[:original_gem_file] = value
+    end
+
+    add_option "--gemspec GEMSPEC_FILE", "Specify the name of the gemspec file." do |value, options|
+      options[:gemspec_file] = value
+    end
+
+    add_option "-C PATH", "Run as if gem build was started in <PATH> instead of the current working directory." do |value, options|
+      options[:build_path] = value
+    end
+  end
+
+  def arguments # :nodoc:
+    "GEM_NAME      gem name on gem server\n" \
+    "GEM_VERSION   gem version you are attempting to rebuild"
+  end
+
+  def description # :nodoc:
+    <<-EOF

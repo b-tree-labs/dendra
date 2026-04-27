@@ -1,0 +1,50 @@
+/***************************************************************************
+ *                                  _   _ ____  _
+ *  Project                     ___| | | |  _ \| |
+ *                             / __| | | | |_) | |
+ *                            | (__| |_| |  _ <| |___
+ *                             \___|\___/|_| \_\_____|
+ *
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
+ *
+ * This software is licensed as described in the file COPYING, which
+ * you should have received as part of this distribution. The terms
+ * are also available at https://curl.se/docs/copyright.html.
+ *
+ * You may opt to use, copy, modify, merge, publish, distribute and/or sell
+ * copies of the Software, and permit persons to whom the Software is
+ * furnished to do so, under the terms of the COPYING file.
+ *
+ * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
+ * KIND, either express or implied.
+ *
+ * SPDX-License-Identifier: curl
+ *
+ ***************************************************************************/
+#include "tool_setup.h"
+
+#ifdef _WIN32
+#include <tchar.h>
+#endif
+
+#include <signal.h>
+
+#ifdef HAVE_FCNTL_H
+#include <fcntl.h>
+#endif
+
+#include "tool_cfgable.h"
+#include "tool_doswin.h"
+#include "tool_msgs.h"
+#include "tool_operate.h"
+#include "tool_vms.h"
+#include "tool_main.h"
+#include "tool_stderr.h"
+
+#ifdef __VMS
+/*
+ * vms_show is a global variable, used in main() as parameter for
+ * function vms_special_exit() to allow proper curl tool exiting.
+ * Its value may be set in other tool_*.c source files thanks to
+ * forward declaration present in tool_vms.h
+ */

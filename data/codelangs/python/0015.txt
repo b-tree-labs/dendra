@@ -1,0 +1,50 @@
+# Python test set -- part 6, built-in types
+
+from test.support import (
+    run_with_locale, cpython_only, no_rerun,
+    MISSING_C_DOCSTRINGS, EqualToForwardRef, check_disallow_instantiation,
+)
+from test.support.script_helper import assert_python_ok
+from test.support.import_helper import import_fresh_module
+
+import collections.abc
+from collections import namedtuple, UserDict
+import copy
+import _datetime
+import gc
+import inspect
+import pickle
+import locale
+import sys
+import textwrap
+import types
+import unittest.mock
+import weakref
+import typing
+import re
+
+c_types = import_fresh_module('types', fresh=['_types'])
+py_types = import_fresh_module('types', blocked=['_types'])
+
+T = typing.TypeVar("T")
+
+class Example:
+    pass
+
+class Forward: ...
+
+def clear_typing_caches():
+    for f in typing._cleanups:
+        f()
+
+
+class TypesTests(unittest.TestCase):
+
+    def test_names(self):
+        c_only_names = {'CapsuleType', 'LazyImportType'}
+        ignored = {'new_class', 'resolve_bases', 'prepare_class',
+                   'get_original_bases', 'DynamicClassAttribute', 'coroutine'}
+
+        for name in c_types.__all__:
+            if name not in c_only_names | ignored:
+                self.assertIs(getattr(c_types, name), getattr(py_types, name))

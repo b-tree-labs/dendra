@@ -1,0 +1,50 @@
+*> \brief \b CPBRFS
+*
+*  =========== DOCUMENTATION ===========
+*
+* Online html documentation available at
+*            http://www.netlib.org/lapack/explore-html/
+*
+*> Download CPBRFS + dependencies
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.tgz?format=tgz&filename=/lapack/lapack_routine/cpbrfs.f">
+*> [TGZ]</a>
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.zip?format=zip&filename=/lapack/lapack_routine/cpbrfs.f">
+*> [ZIP]</a>
+*> <a href="http://www.netlib.org/cgi-bin/netlibfiles.txt?format=txt&filename=/lapack/lapack_routine/cpbrfs.f">
+*> [TXT]</a>
+*
+*  Definition:
+*  ===========
+*
+*       SUBROUTINE CPBRFS( UPLO, N, KD, NRHS, AB, LDAB, AFB, LDAFB, B,
+*                          LDB, X, LDX, FERR, BERR, WORK, RWORK, INFO )
+*
+*       .. Scalar Arguments ..
+*       CHARACTER          UPLO
+*       INTEGER            INFO, KD, LDAB, LDAFB, LDB, LDX, N, NRHS
+*       ..
+*       .. Array Arguments ..
+*       REAL               BERR( * ), FERR( * ), RWORK( * )
+*       COMPLEX            AB( LDAB, * ), AFB( LDAFB, * ), B( LDB, * ),
+*      $                   WORK( * ), X( LDX, * )
+*       ..
+*
+*
+*> \par Purpose:
+*  =============
+*>
+*> \verbatim
+*>
+*> CPBRFS improves the computed solution to a system of linear
+*> equations when the coefficient matrix is Hermitian positive definite
+*> and banded, and provides error bounds and backward error estimates
+*> for the solution.
+*> \endverbatim
+*
+*  Arguments:
+*  ==========
+*
+*> \param[in] UPLO
+*> \verbatim
+*>          UPLO is CHARACTER*1
+*>          = 'U':  Upper triangle of A is stored;

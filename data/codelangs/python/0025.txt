@@ -1,0 +1,50 @@
+"""Module browser.
+
+XXX TO DO:
+
+- reparse when source changed (maybe just a button would be OK?)
+    (or recheck on window popup)
+- add popup menu with more options (e.g. doc strings, base classes, imports)
+- add base classes to class browser tree
+"""
+
+import os
+import pyclbr
+import sys
+
+from idlelib.config import idleConf
+from idlelib import pyshell
+from idlelib.tree import TreeNode, TreeItem, ScrolledCanvas
+from idlelib.util import py_extensions
+from idlelib.window import ListedToplevel
+
+
+file_open = None  # Method...Item and Class...Item use this.
+# Normally pyshell.flist.open, but there is no pyshell.flist for htest.
+
+# The browser depends on pyclbr and importlib which do not support .pyi files.
+browseable_extension_blocklist = ('.pyi',)
+
+
+def is_browseable_extension(path):
+    _, ext = os.path.splitext(path)
+    ext = os.path.normcase(ext)
+    return ext in py_extensions and ext not in browseable_extension_blocklist
+
+
+def transform_children(child_dict, modname=None):
+    """Transform a child dictionary to an ordered sequence of objects.
+
+    The dictionary maps names to pyclbr information objects.
+    Filter out imported objects.
+    Augment class names with bases.
+    The insertion order of the dictionary is assumed to have been in line
+    number order, so sorting is not necessary.
+
+    The current tree only calls this once per child_dict as it saves
+    TreeItems once created.  A future tree and tests might violate this,
+    so a check prevents multiple in-place augmentations.
+    """
+    obs = []  # Use list since values should already be sorted.
+    for key, obj in child_dict.items():
+        if modname is None or obj.module == modname:

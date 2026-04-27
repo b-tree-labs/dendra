@@ -1,0 +1,50 @@
+module gaspm
+   ! provides subroutine gaspr for NJOY2016
+   use locale
+   implicit none
+   private
+   public gaspr
+contains
+
+   subroutine gaspr
+   !-------------------------------------------------------------------
+   !
+   ! Add gas production reactions (mt203-207) to the pendf tape.
+   ! Any old gas sections on the input pendf tape are deleted.
+   ! The directory is updated to show the new reactions.
+   ! This module can be run anywhere in the pendf preparation
+   ! sequence as long as it is somewhere after broadr.
+   !
+   ! If the input pendf tape omits mt103 to mt107, but it does
+   ! have the corresponding charged-particle cross sections, they
+   ! are processed and will appear in the appropriate mt20x section.
+   !
+   !---input specifications (free format)--------------------------
+   !
+   ! card 1
+   !    nendf    unit for endf tape
+   !    nin      unit for input pendf tape
+   !    nout     unit for output pendf tape
+   !
+   !-------------------------------------------------------------------
+   use mainio ! provides nsysi,nsyso,nsyse
+   use endf   ! provides endf routines and variables
+   use util   ! provides timer,error,openz,sigfig
+   ! internals
+   integer::nscr1,iprint,nendf,npend,noutp,nb,nw
+   integer::n6,nx,nsub,matd,mf6mt5,i,idone,mfi,mti,mfd,mtd
+   integer::nk,lsix,l203,l204,l205,l206,l207
+   integer::ik,izap,law,ll,ne,ie,nmu,imu,itemp,mfb
+   integer::izg,izr,idis,lr,ngas,j,ip,ir,nsec
+   integer::n203,n204,n205,n206,n207,jg,ii,k,nold
+   integer::ni,nm,mtb,ifini,np,istart,iend,ib
+   integer::mpmin,mpmax,mdmin,mdmax,mtmin,mtmax,m3min,m3max,m4min,m4max
+   integer::maxg
+   real(kr)::time,za,awr,zain,thrg,en,enext,y
+   real(kr)::y203,y204,y205,y206,y207,yyy,xnext
+   real(kr)::a(10000)
+   real(kr)::b(6)
+   real(kr),dimension(:),allocatable::egas
+   real(kr),dimension(:,:),allocatable::sgas
+   real(kr)::six(5000)
+   real(kr),parameter::emax=1.e10_kr

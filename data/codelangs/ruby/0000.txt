@@ -1,0 +1,50 @@
+# frozen_string_literal: true
+# :markup: markdown
+
+require "strscan"
+require_relative "../../polyfill/append_as_bytes"
+require_relative "../../polyfill/scan_byte"
+
+module Prism
+  module Translation
+    class Parser
+      # Accepts a list of prism tokens and converts them into the expected
+      # format for the parser gem.
+      class Lexer # :nodoc:
+        # These tokens are always skipped
+        TYPES_ALWAYS_SKIP = Set.new(%i[IGNORED_NEWLINE __END__ EOF])
+        private_constant :TYPES_ALWAYS_SKIP
+
+        # The direct translating of types between the two lexers.
+        TYPES = {
+          # These tokens should never appear in the output of the lexer.
+          EMBDOC_END: nil,
+          EMBDOC_LINE: nil,
+
+          # These tokens have more or less direct mappings.
+          AMPERSAND: :tAMPER2,
+          AMPERSAND_AMPERSAND: :tANDOP,
+          AMPERSAND_AMPERSAND_EQUAL: :tOP_ASGN,
+          AMPERSAND_DOT: :tANDDOT,
+          AMPERSAND_EQUAL: :tOP_ASGN,
+          BACK_REFERENCE: :tBACK_REF,
+          BACKTICK: :tXSTRING_BEG,
+          BANG: :tBANG,
+          BANG_EQUAL: :tNEQ,
+          BANG_TILDE: :tNMATCH,
+          BRACE_LEFT: :tLCURLY,
+          BRACE_RIGHT: :tRCURLY,
+          BRACKET_LEFT: :tLBRACK2,
+          BRACKET_LEFT_ARRAY: :tLBRACK,
+          BRACKET_LEFT_RIGHT: :tAREF,
+          BRACKET_LEFT_RIGHT_EQUAL: :tASET,
+          BRACKET_RIGHT: :tRBRACK,
+          CARET: :tCARET,
+          CARET_EQUAL: :tOP_ASGN,
+          CHARACTER_LITERAL: :tCHARACTER,
+          CLASS_VARIABLE: :tCVAR,
+          COLON: :tCOLON,
+          COLON_COLON: :tCOLON2,
+          COMMA: :tCOMMA,
+          COMMENT: :tCOMMENT,
+          CONSTANT: :tCONSTANT,

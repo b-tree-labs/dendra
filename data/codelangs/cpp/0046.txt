@@ -1,0 +1,50 @@
+//  (C) Copyright Herve Bronnimann 2004.
+//
+// Distributed under the Boost Software License, Version 1.0. (See accompanying
+// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+/*
+ Revision history:
+   1 July 2004
+      Split the code into two headers to lessen dependence on
+      Boost.tuple. (Herve)
+   26 June 2004
+      Added the code for the boost minmax library. (Herve)
+*/
+
+#ifndef BOOST_ALGORITHM_MINMAX_ELEMENT_HPP
+#define BOOST_ALGORITHM_MINMAX_ELEMENT_HPP
+
+/* PROPOSED STANDARD EXTENSIONS:
+ *
+ * minmax_element(first, last)
+ * Effect: std::make_pair( std::min_element(first, last),
+ *                         std::max_element(first, last) );
+ *
+ * minmax_element(first, last, comp)
+ * Effect: std::make_pair( std::min_element(first, last, comp),
+ *                         std::max_element(first, last, comp) );
+ */
+
+#include <utility> // for std::pair and std::make_pair
+
+#include <boost/config.hpp>
+
+namespace boost {
+
+  namespace detail {  // for obtaining a uniform version of minmax_element
+    // that compiles with VC++ 6.0 -- avoid the iterator_traits by
+    // having comparison object over iterator, not over dereferenced value
+
+    template <typename Iterator>
+    struct less_over_iter {
+      bool operator()(Iterator const& it1,
+                      Iterator const& it2) const { return *it1 < *it2; }
+    };
+
+    template <typename Iterator, class BinaryPredicate>
+    struct binary_pred_over_iter {
+      explicit binary_pred_over_iter(BinaryPredicate const& p ) : m_p( p ) {}
+      bool operator()(Iterator const& it1,
+                      Iterator const& it2) const { return m_p(*it1, *it2); }
+    private:

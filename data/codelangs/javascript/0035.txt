@@ -1,0 +1,50 @@
+'use strict';
+
+// Public entry point for the iterable streams API.
+// Usage: require('stream/iter') or require('node:stream/iter')
+// Requires: --experimental-stream-iter
+
+const {
+  ObjectFreeze,
+} = primordials;
+
+const { emitExperimentalWarning } = require('internal/util');
+emitExperimentalWarning('stream/iter');
+
+// Protocol symbols
+const {
+  toStreamable,
+  toAsyncStreamable,
+  broadcastProtocol,
+  shareProtocol,
+  shareSyncProtocol,
+  drainableProtocol,
+} = require('internal/streams/iter/types');
+
+// Factories
+const { push } = require('internal/streams/iter/push');
+const { duplex } = require('internal/streams/iter/duplex');
+const { from, fromSync } = require('internal/streams/iter/from');
+
+// Pipelines
+const {
+  pull,
+  pullSync,
+  pipeTo,
+  pipeToSync,
+} = require('internal/streams/iter/pull');
+
+// Consumers
+const {
+  bytes,
+  bytesSync,
+  text,
+  textSync,
+  arrayBuffer,
+  arrayBufferSync,
+  array,
+  arraySync,
+  tap,
+  tapSync,
+  merge,
+  ondrain,

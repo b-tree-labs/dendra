@@ -1,0 +1,50 @@
+/***************************************************************************
+ *                                  _   _ ____  _
+ *  Project                     ___| | | |  _ \| |
+ *                             / __| | | | |_) | |
+ *                            | (__| |_| |  _ <| |___
+ *                             \___|\___/|_| \_\_____|
+ *
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
+ *
+ * This software is licensed as described in the file COPYING, which
+ * you should have received as part of this distribution. The terms
+ * are also available at https://curl.se/docs/copyright.html.
+ *
+ * You may opt to use, copy, modify, merge, publish, distribute and/or sell
+ * copies of the Software, and permit persons to whom the Software is
+ * furnished to do so, under the terms of the COPYING file.
+ *
+ * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
+ * KIND, either express or implied.
+ *
+ * SPDX-License-Identifier: curl
+ *
+ ***************************************************************************/
+#include "tool_setup.h"
+
+#include "tool_xattr.h"
+
+#ifdef USE_XATTR
+
+/* mapping table of curl metadata to extended attribute names */
+static const struct xattr_mapping {
+  const char *attr; /* name of the xattr */
+  CURLINFO info;
+} mappings[] = {
+  /* mappings proposed by
+   * https://freedesktop.org/wiki/CommonExtendedAttributes/
+   */
+  { "user.xdg.referrer.url", CURLINFO_REFERER },
+  { "user.mime_type",        CURLINFO_CONTENT_TYPE },
+  { NULL,                    CURLINFO_NONE } /* last element, abort here */
+};
+
+/* returns a new URL that needs to be freed */
+/* @unittest: 1621 */
+UNITTEST char *stripcredentials(const char *url)
+{
+  CURLU *u;
+  CURLUcode uc;
+  char *nurl;
+  u = curl_url();

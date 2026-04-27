@@ -1,0 +1,50 @@
+'use strict';
+
+const {
+  ArrayPrototypePush,
+  ArrayPrototypeShift,
+  FunctionPrototypeBind,
+  FunctionPrototypeCall,
+  ObjectDefineProperties,
+  ObjectSetPrototypeOf,
+  Promise,
+  PromisePrototypeThen,
+  PromiseReject,
+  PromiseResolve,
+  PromiseWithResolvers,
+  Symbol,
+  SymbolToStringTag,
+} = primordials;
+
+const {
+  codes: {
+    ERR_ILLEGAL_CONSTRUCTOR,
+    ERR_INVALID_ARG_TYPE,
+    ERR_INVALID_ARG_VALUE,
+    ERR_INVALID_STATE,
+    ERR_INVALID_THIS,
+  },
+} = require('internal/errors');
+
+const {
+  DOMException,
+} = internalBinding('messaging');
+
+const {
+  customInspectSymbol: kInspect,
+  kEmptyObject,
+  kEnumerableProperty,
+  SideEffectFreeRegExpPrototypeSymbolReplace,
+} = require('internal/util');
+
+const {
+  validateObject,
+  kValidateObjectAllowObjects,
+  kValidateObjectAllowObjectsAndNull,
+} = require('internal/validators');
+
+const {
+  MessageChannel,
+} = require('internal/worker/io');
+
+const {

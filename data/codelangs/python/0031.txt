@@ -1,0 +1,50 @@
+import unittest
+from collections import OrderedDict
+from test import support
+from test.support import import_helper
+
+_testcapi = import_helper.import_module('_testcapi')
+_testlimitedcapi = import_helper.import_module('_testlimitedcapi')
+from _testcapi import PY_SSIZE_T_MIN, PY_SSIZE_T_MAX
+
+NULL = None
+
+class StrSubclass(str):
+    pass
+
+class BytesSubclass(bytes):
+    pass
+
+class WithStr:
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return self.value
+
+class WithRepr:
+    def __init__(self, value):
+        self.value = value
+    def __repr__(self):
+        return self.value
+
+class WithBytes:
+    def __init__(self, value):
+        self.value = value
+    def __bytes__(self):
+        return self.value
+
+class TestObject:
+    @property
+    def evil(self):
+        raise RuntimeError('do not get evil')
+    @evil.setter
+    def evil(self, value):
+        raise RuntimeError('do not set evil')
+    @evil.deleter
+    def evil(self):
+        raise RuntimeError('do not del evil')
+
+class ProxyGetItem:
+    def __init__(self, obj):
+        self.obj = obj
+    def __getitem__(self, key):

@@ -1,0 +1,49 @@
+# frozen_string_literal: true
+# :markup: markdown
+
+module Prism
+  module Translation
+    class Parser
+      # A visitor that knows how to convert a prism syntax tree into the
+      # whitequark/parser gem's syntax tree.
+      class Compiler < ::Prism::Compiler # :nodoc:
+        # Raised when the tree is malformed or there is a bug in the compiler.
+        class CompilationError < StandardError # :nodoc:
+        end
+
+        # The Parser::Base instance that is being used to build the AST.
+        attr_reader :parser
+
+        # The Parser::Builders::Default instance that is being used to build the
+        # AST.
+        attr_reader :builder
+
+        # The Parser::Source::Buffer instance that is holding a reference to the
+        # source code.
+        attr_reader :source_buffer
+
+        # The offset cache that is used to map between byte and character
+        # offsets in the file.
+        attr_reader :offset_cache
+
+        # The types of values that can be forwarded in the current scope.
+        attr_reader :forwarding
+
+        # Whether or not the current node is in a destructure.
+        attr_reader :in_destructure
+
+        # Whether or not the current node is in a pattern.
+        attr_reader :in_pattern
+
+        # Initialize a new compiler with the given parser, offset cache, and
+        # options.
+        def initialize(parser, offset_cache, forwarding: [], in_destructure: false, in_pattern: false)
+          @parser = parser
+          @builder = parser.builder
+          @source_buffer = parser.source_buffer
+          @offset_cache = offset_cache
+
+          @forwarding = forwarding
+          @in_destructure = in_destructure
+          @in_pattern = in_pattern
+        end

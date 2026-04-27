@@ -1,0 +1,50 @@
+module acepn
+   ! provides photonuclear options for acer
+   use locale
+   use acecm, only: xss,nxss
+   implicit none
+   private
+
+   !--Public routines
+   public acephn,phnfix
+
+   !--Private global variables
+
+   ! ace file header information
+   character(13)::hz
+   character(10)::hd
+   character(10)::hm
+   real(kr)::aw0,tz
+
+   ! parameters for photonuclear nxs block
+   integer::lxs,za,nes,ntr,ntype,npixs,neixs,ignored,is,iz,ia,nxsd(4),tvn
+
+   ! parameters for photonuclear jxs block
+   integer::esz,tot,non,els,thn,mtr,lqr,lsig,sig,ixsa,ixs,jxsd(21)
+
+contains
+
+   subroutine acephn(nendf,npend,nace,ndir,matd,tempd,iprint,mcnpx,&
+     ityp,suff,hk,izn,awn,izaoption)
+   !-------------------------------------------------------------------
+   ! Prepare ACE photo-nuclear files.
+   !-------------------------------------------------------------------
+   use mainio ! provides nsyso
+   use physics ! provides amassn,amu,ev,pi,clight
+   use util  ! provides openz,closz,repoz,mess,error
+   use mathm ! provides erfc
+   use endf  ! provides endf routines and variables
+   use acecm ! provides bachaa,eavl,ptleg2,pttab2
+   ! externals
+   integer::nendf,npend,nace,ndir,matd,iprint,mcnpx,ityp,izaoption
+   real(kr)::tempd,suff
+   integer::izn(16)
+   real(kr)::awn(16)
+   character(70)::hk
+   ! internals
+   integer::nin,nb,nw,nwscr,nx,mtx,ielas,mf4,mf6,mt452,mt456,mtxnu
+   integer::mt103,mt104,mt105,mt106,mt107
+   integer::i,mfd,mtd,l,mttot,idis,nex,nexc,ir,j,idone,nnex,n
+   integer::nneut,nphot,nprot,ndeut,ntrit,nhe3,nhe4
+   integer::k,ib,iaa,nk,ik,lly,izai,izap,law,jscr,nrr,npp
+   integer::ll,lll,lep,ne,llh,lld,ie,np,ip,mtt,lct,ii

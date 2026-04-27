@@ -1,0 +1,50 @@
+import {
+    CallExpression,
+    Debug,
+    Expression,
+    getSourceTextOfNodeFromSourceFile,
+    hasInvalidEscape,
+    Identifier,
+    isExpression,
+    isExternalModule,
+    isNoSubstitutionTemplateLiteral,
+    NodeFactory,
+    NoSubstitutionTemplateLiteral,
+    setTextRange,
+    SourceFile,
+    SyntaxKind,
+    TaggedTemplateExpression,
+    TemplateHead,
+    TemplateLiteralLikeNode,
+    TemplateMiddle,
+    TemplateTail,
+    TokenFlags,
+    TransformationContext,
+    visitEachChild,
+    visitNode,
+    Visitor,
+} from "../_namespaces/ts.js";
+
+/** @internal */
+export enum ProcessLevel {
+    LiftRestriction,
+    All,
+}
+
+/** @internal */
+export function processTaggedTemplateExpression(
+    context: TransformationContext,
+    node: TaggedTemplateExpression,
+    visitor: Visitor,
+    currentSourceFile: SourceFile,
+    recordTaggedTemplateString: (temp: Identifier) => void,
+    level: ProcessLevel,
+): CallExpression | TaggedTemplateExpression {
+    // Visit the tag expression
+    const tag = visitNode(node.tag, visitor, isExpression);
+    Debug.assert(tag);
+
+    // Build up the template arguments and the raw and cooked strings for the template.
+    // We start out with 'undefined' for the first argument and revisit later
+    // to avoid walking over the template string twice and shifting all our arguments over after the fact.
+    const templateArguments: Expression[] = [undefined!];

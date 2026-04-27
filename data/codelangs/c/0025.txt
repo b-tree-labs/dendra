@@ -1,0 +1,50 @@
+/***************************************************************************
+ *                                  _   _ ____  _
+ *  Project                     ___| | | |  _ \| |
+ *                             / __| | | | |_) | |
+ *                            | (__| |_| |  _ <| |___
+ *                             \___|\___/|_| \_\_____|
+ *
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
+ *
+ * This software is licensed as described in the file COPYING, which
+ * you should have received as part of this distribution. The terms
+ * are also available at https://curl.se/docs/copyright.html.
+ *
+ * You may opt to use, copy, modify, merge, publish, distribute and/or sell
+ * copies of the Software, and permit persons to whom the Software is
+ * furnished to do so, under the terms of the COPYING file.
+ *
+ * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
+ * KIND, either express or implied.
+ *
+ * SPDX-License-Identifier: curl
+ *
+ ***************************************************************************/
+#include "tool_setup.h"
+
+#include "tool_cfgable.h"
+#include "tool_getparam.h"
+#include "tool_msgs.h"
+#include "tool_paramhlp.h"
+#include "tool_writeout_json.h"
+#include "var.h"
+
+#define MAX_EXPAND_CONTENT 10000000
+#define MAX_VAR_LEN        128 /* max length of a name */
+
+/* free everything */
+void varcleanup(void)
+{
+  struct tool_var *list = global->variables;
+  while(list) {
+    struct tool_var *t = list;
+    list = list->next;
+    curlx_free(CURL_UNCONST(t->content));
+    curlx_free(t);
+  }
+}
+
+static const struct tool_var *varcontent(const char *name, size_t nlen)
+{
+  struct tool_var *list = global->variables;

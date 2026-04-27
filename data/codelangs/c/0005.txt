@@ -1,0 +1,50 @@
+/***************************************************************************
+ *                                  _   _ ____  _
+ *  Project                     ___| | | |  _ \| |
+ *                             / __| | | | |_) | |
+ *                            | (__| |_| |  _ <| |___
+ *                             \___|\___/|_| \_\_____|
+ *
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
+ *
+ * This software is licensed as described in the file COPYING, which
+ * you should have received as part of this distribution. The terms
+ * are also available at https://curl.se/docs/copyright.html.
+ *
+ * You may opt to use, copy, modify, merge, publish, distribute and/or sell
+ * copies of the Software, and permit persons to whom the Software is
+ * furnished to do so, under the terms of the COPYING file.
+ *
+ * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
+ * KIND, either express or implied.
+ *
+ * SPDX-License-Identifier: curl
+ *
+ ***************************************************************************/
+#include "tool_setup.h"
+
+#include "tool_dirhie.h"
+#include "tool_msgs.h"
+
+#ifdef _WIN32
+#  include <direct.h>
+#  define toolx_mkdir(x, y) _mkdir(x)
+#elif defined(MSDOS) && !defined(__DJGPP__)
+#  define toolx_mkdir(x, y) mkdir(x)
+#else
+#  define toolx_mkdir mkdir
+#endif
+
+static void show_dir_errno(const char *name)
+{
+  switch(errno) {
+#ifdef EACCES
+  /* !checksrc! disable ERRNOVAR 1 */
+  case EACCES:
+    errorf("You do not have permission to create %s", name);
+    break;
+#endif
+#ifdef ENAMETOOLONG
+  case ENAMETOOLONG:
+    errorf("The directory name %s is too long", name);
+    break;

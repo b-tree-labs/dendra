@@ -1,0 +1,50 @@
+// Copyright 2023 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+package test
+
+import (
+	"testing"
+)
+
+var Output int
+
+func BenchmarkDiv64UnsignedSmall(b *testing.B) {
+	q := uint64(1)
+	for i := 1; i <= b.N; i++ {
+		q = (q + uint64(i)) / uint64(i)
+	}
+	Output = int(q)
+}
+
+func BenchmarkDiv64Small(b *testing.B) {
+	q := int64(1)
+	for i := 1; i <= b.N; i++ {
+		q = (q + int64(i)) / int64(i)
+	}
+	Output = int(q)
+}
+
+func BenchmarkDiv64SmallNegDivisor(b *testing.B) {
+	q := int64(-1)
+	for i := 1; i <= b.N; i++ {
+		q = (int64(i) - q) / -int64(i)
+	}
+	Output = int(q)
+}
+
+func BenchmarkDiv64SmallNegDividend(b *testing.B) {
+	q := int64(-1)
+	for i := 1; i <= b.N; i++ {
+		q = -(int64(i) - q) / int64(i)
+	}
+	Output = int(q)
+}
+
+func BenchmarkDiv64SmallNegBoth(b *testing.B) {
+	q := int64(1)
+	for i := 1; i <= b.N; i++ {
+		q = -(int64(i) + q) / -int64(i)
+	}
+	Output = int(q)

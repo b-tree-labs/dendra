@@ -1,0 +1,50 @@
+# ===----------------------------------------------------------------------=== #
+# Copyright (c) 2026, Modular Inc. All rights reserved.
+#
+# Licensed under the Apache License v2.0 with LLVM Exceptions:
+# https://llvm.org/LICENSE.txt
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ===----------------------------------------------------------------------=== #
+"""Implements SIMD primitives and abstractions.
+
+Provides high-performance SIMD primitives and abstractions for
+vectorized computation in Mojo. It enables efficient data-parallel operations
+by leveraging hardware vector processing units across different architectures.
+
+Key Features:
+1. Architecture-agnostic SIMD abstractions with automatic hardware detection
+2. Optimized vector operations for common numerical computations
+3. Explicit control over vectorization strategies and memory layouts
+4. Zero-cost abstractions that compile to efficient machine code
+5. Support for different vector widths and element types
+
+Primary Components:
+- Vector types: Strongly-typed vector containers with element-wise operations
+- SIMD intrinsics: Low-level access to hardware SIMD instructions
+- Vectorized algorithms: Common algorithms optimized for SIMD execution
+- Memory utilities: Aligned memory allocation and vector load/store operations
+
+Performance Considerations:
+- Vector width selection should match target hardware capabilities
+- Memory alignment affects load/store performance
+- Data layout transformations may be necessary for optimal vectorization
+
+Integration:
+This module is designed to work seamlessly with other Mojo numerical computing
+components, including tensor operations, linear algebra routines, and
+domain-specific libraries for machine learning and scientific computing.
+"""
+
+import std.math
+from std.collections import InlineArray
+from std.collections.string.string import _calc_initial_buffer_size
+from std.hashlib.hasher import Hasher
+from std.math import Ceilable, CeilDivable, Floorable, Truncable
+from std.math.math import _call_ptx_intrinsic, trunc
+from std.sys import (
+    CompilationTarget,

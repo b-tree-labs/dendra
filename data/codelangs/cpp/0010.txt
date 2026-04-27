@@ -1,0 +1,50 @@
+//  Boost string_algo library replace.hpp header file  ---------------------------//
+
+//  Copyright Pavol Droba 2002-2006.
+//
+// Distributed under the Boost Software License, Version 1.0.
+//    (See accompanying file LICENSE_1_0.txt or copy at
+//          http://www.boost.org/LICENSE_1_0.txt)
+
+//  See http://www.boost.org/ for updates, documentation, and revision history.
+
+#ifndef BOOST_STRING_REPLACE_HPP
+#define BOOST_STRING_REPLACE_HPP
+
+#include <boost/algorithm/string/config.hpp>
+
+#include <boost/range/iterator_range_core.hpp>
+#include <boost/range/begin.hpp>
+#include <boost/range/end.hpp>
+#include <boost/range/iterator.hpp>
+#include <boost/range/const_iterator.hpp>
+
+#include <boost/algorithm/string/find_format.hpp>
+#include <boost/algorithm/string/finder.hpp>
+#include <boost/algorithm/string/formatter.hpp>
+#include <boost/algorithm/string/compare.hpp>
+
+/*! \file
+    Defines various replace algorithms. Each algorithm replaces
+    part(s) of the input according to set of searching and replace criteria.
+*/
+
+namespace boost {
+    namespace algorithm {
+
+//  replace_range --------------------------------------------------------------------//
+
+        //! Replace range algorithm
+        /*!
+            Replace the given range in the input string.
+            The result is a modified copy of the input. It is returned as a sequence 
+            or copied to the output iterator.
+            
+            \param Output An output iterator to which the result will be copied
+            \param Input An input string
+            \param SearchRange A range in the input to be substituted
+            \param Format A substitute string
+            \return An output iterator pointing just after the last inserted character or
+                a modified copy of the input
+
+              \note The second variant of this function provides the strong exception-safety guarantee

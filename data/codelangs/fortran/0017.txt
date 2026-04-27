@@ -1,0 +1,50 @@
+module aceth
+   ! provides thermal ace stuff
+   use locale
+   use acecm, only: xss,nxss
+   implicit none
+   private
+
+   !--Public routines
+   public acesix,thrfix
+
+   !--Private global variables
+
+   ! ace header parameters
+   character(13)::hz
+   character(10)::hd
+   character(10)::hm
+   real(kr)::aw0,tz
+
+   ! ace nxs parameters for thermal data
+   integer::len2,idpni,nil,nieb,idpnc,ncl,ifeng,ncli,nxsd(8)
+
+   ! ace jxs parameters for thermal data
+   integer::itie,itix,itxe,itce,itcx,itca,itcei,itcxi,itcai,jxsd(23)
+
+   ! body of the ace data
+   integer::nei
+   real(kr),dimension(5000)::wt
+   integer,dimension(5000)::ndp
+
+contains
+
+   subroutine acesix(nin,nace,ndir,matd,tempd,tname,suff,&
+     hk,izn,awn,&
+     mti,nbin,mte,ielas,nmix,emax,iwt,iprint,mcnpx)
+   !-------------------------------------------------------------------
+   ! Convert thermal matrices in njoy MF6 format to various ACE
+   ! thermal formats.
+   !-------------------------------------------------------------------
+   use mainio ! provides nsyso
+   use util ! provides openz,repoz,mess,error,closz
+   use endf ! provides endf routines and variables
+   ! externals
+   integer::nin,nace,ndir,matd
+   integer::mti,nbin,mte,mtec,mtei,ielas,nmix,iwt,iprint,mcnpx
+   real(kr)::tempd,suff,emax
+   integer::izn(16)
+   real(kr)::awn(16)
+   character(70)::hk
+   character(6)::tname
+   ! internals

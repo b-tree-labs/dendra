@@ -1,0 +1,50 @@
+module dtfm
+   ! Module to provide dtfr for NJOY2016
+   use locale
+   implicit none
+   private
+   public dtfr
+
+   ! global variables for dtfr
+
+   ! units
+   integer::nout,npend,nin,nplot
+
+   ! neutron group structure
+   real(kr)::egn(2501)
+   integer::ngn
+
+   ! gamma group structure
+   real(kr)::egg(400)
+   integer::ngp
+
+   ! dtfr parameters
+   integer::iprint,ifilm,iedit,nlmax,ng,iptotl,ipingp
+   integer::itabl,ned,nptabl,jgthrm
+   integer,parameter::nedmax=50
+   character(6)::hednam(3+nedmax)
+   integer::jped(3+nedmax),mted(3+nedmax)
+   integer::multed(3+nedmax),ids(3+nedmax)
+   character(6)::hisnam
+   integer::matd,jz
+   real(kr)::dtemp
+   integer::kpos,ked,lpos,led,iphph
+   integer::mti,mtc,nlc
+   real(kr)::bot,axl,axd,top
+   integer::ixo,iyo
+   integer::nplt
+   real(kr)::xmin,xmax,ymin,ymax
+
+   ! sigma-zero storage
+   real(kr)::sigz(10)
+   integer::nsigz
+
+   ! storage arrays
+   integer,parameter::ndim=7000
+   real(kr)::x(ndim),y(ndim),z(ndim)
+   integer,parameter::nwamax=40000
+   real(kr)::a(nwamax)
+   integer,parameter::nwsmax=500000
+   real(kr)::sig(nwsmax)
+
+contains

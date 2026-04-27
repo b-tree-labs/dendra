@@ -1,0 +1,50 @@
+/*
+ * Copyright 2010-2021 JetBrains s.r.o. and Kotlin Programming Language contributors.
+ * Use of this source code is governed by the Apache 2.0 license that can be found in the license/LICENSE.txt file.
+ */
+
+package org.jetbrains.kotlin.resolve
+
+import org.jetbrains.kotlin.config.LanguageFeature
+import org.jetbrains.kotlin.config.LanguageVersionSettings
+import org.jetbrains.kotlin.container.DefaultImplementation
+import org.jetbrains.kotlin.descriptors.ClassifierDescriptor
+import org.jetbrains.kotlin.descriptors.TypeParameterDescriptor
+import org.jetbrains.kotlin.diagnostics.DiagnosticFactory2
+import org.jetbrains.kotlin.diagnostics.DiagnosticFactory3
+import org.jetbrains.kotlin.diagnostics.Errors.*
+import org.jetbrains.kotlin.diagnostics.reportDiagnosticOnce
+import org.jetbrains.kotlin.psi.KtElement
+import org.jetbrains.kotlin.psi.KtExpression
+import org.jetbrains.kotlin.psi.KtTypeReference
+import org.jetbrains.kotlin.psi.psiUtil.getElementTextWithContext
+import org.jetbrains.kotlin.types.*
+import org.jetbrains.kotlin.types.checker.KotlinTypeChecker
+import org.jetbrains.kotlin.types.typeUtil.containsTypeAliasParameters
+
+@DefaultImplementation(impl = UpperBoundChecker::class)
+open class UpperBoundChecker(
+    private val typeChecker: KotlinTypeChecker,
+) {
+    open fun checkBoundsOfExpandedTypeAlias(type: KotlinType, expression: KtExpression, trace: BindingTrace) {
+        // do nothing in the strict mode as the errors are already reported in the type inference if necessary
+    }
+
+    open fun checkBounds(
+        argumentReference: KtTypeReference?,
+        argumentType: KotlinType,
+        typeParameterDescriptor: TypeParameterDescriptor,
+        substitutor: TypeSubstitutor,
+        trace: BindingTrace,
+        typeAliasUsageElement: KtElement? = null,
+        diagnosticForTypeAliases: DiagnosticFactory3<KtElement, KotlinType, KotlinType, ClassifierDescriptor> = UPPER_BOUND_VIOLATED_IN_TYPEALIAS_EXPANSION
+    ) {
+        if (typeParameterDescriptor.upperBounds.isEmpty()) return
+
+        val diagnosticsReporter =
+            UpperBoundViolatedReporter(trace, argumentType, typeParameterDescriptor, diagnosticForTypeAliases = diagnosticForTypeAliases)
+
+        for (bound in typeParameterDescriptor.upperBounds) {
+            checkBound(bound, argumentType, argumentReference, substitutor, typeAliasUsageElement, diagnosticsReporter)
+        }
+    }

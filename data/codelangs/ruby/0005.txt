@@ -1,0 +1,49 @@
+# frozen_string_literal: true
+
+require_relative "plugin/api"
+
+module Bundler
+  module Plugin
+    autoload :DSL,        File.expand_path("plugin/dsl", __dir__)
+    autoload :Events,     File.expand_path("plugin/events", __dir__)
+    autoload :Index,      File.expand_path("plugin/index", __dir__)
+    autoload :Installer,  File.expand_path("plugin/installer", __dir__)
+    autoload :SourceList, File.expand_path("plugin/source_list", __dir__)
+
+    class MalformattedPlugin < PluginError; end
+    class UndefinedCommandError < PluginError; end
+    class UnknownSourceError < PluginError; end
+    class PluginInstallError < PluginError; end
+
+    PLUGIN_FILE_NAME = "plugins.rb"
+
+    module_function
+
+    def reset!
+      instance_variables.each {|i| remove_instance_variable(i) }
+
+      @sources = {}
+      @commands = {}
+      @hooks_by_event = Hash.new {|h, k| h[k] = [] }
+      @loaded_plugin_names = []
+    end
+
+    reset!
+
+    # Installs a new plugin by the given name
+    #
+    # @param [Array<String>] names the name of plugin to be installed
+    # @param [Hash] options various parameters as described in description.
+    #               Refer to cli/plugin for available options
+    def install(names, options)
+      raise InvalidOption, "You cannot specify `--branch` and `--ref` at the same time." if options["branch"] && options["ref"]
+
+      specs = Installer.new.install(names, options)
+
+      save_plugins names, specs
+    rescue PluginError
+      specs_to_delete = specs.select {|k, _v| names.include?(k) && !index.commands.values.include?(k) }
+      specs_to_delete.each_value {|spec| Bundler.rm_rf(spec.full_gem_path) }
+
+      raise
+    end

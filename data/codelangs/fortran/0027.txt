@@ -1,0 +1,50 @@
+module powm
+   ! provides subroutine powr for NJOY2016
+   use locale
+   implicit none
+   private
+   public powr
+
+   ! i/o units
+   integer::ngendf,nout,nscr,kscr,mscr
+
+   ! powr global variables
+   integer::lib,ngnf,ngn,ngnd
+   real(kr)::cflux(140)
+
+   ! scratch area for reading endf files
+   integer::nwscr=5000
+   real(kr)::scr(5000)
+
+   ! epri-cell library global variables
+   real(kr)::tmpr(10),sigz(10)
+   integer::ntp,nsigz,jwf
+   integer::iwr,izref
+   real(kr)::rtemp
+   integer::matd,nid,nff,iwa,iwf,nfs
+   real(kr)::xla(3),xld(3),xlol(3)
+
+   ! epri-cpm library global variables
+   integer::nfg,nrg,nfsg,ngref,newmat,iprint
+   integer::nzmax,mode
+   integer::if5,ntis,nfis,if4
+   integer::nnina,nres
+   integer::iu235,iu,ipu239,ipu,nfiss(2)
+   real(kr)::rleth(19),reflth
+   integer,dimension(:),allocatable::mat
+   real(kr),dimension(:),allocatable::flux
+
+   integer,dimension(:),allocatable::idnt
+   integer,dimension(:),allocatable::ninat
+   integer,dimension(:),allocatable::irest
+   real(kr),dimension(:),allocatable::s0rf
+   integer,dimension(:),allocatable::ip1tab
+   integer,dimension(:),allocatable::norft
+   integer,dimension(:),allocatable::mtit
+   integer,dimension(:),allocatable::mtct
+   real(kr),dimension(:),allocatable::awrt
+   integer,dimension(:),allocatable::indf
+   integer,dimension(:),allocatable::ntmp
+   integer,dimension(:),allocatable::nszt
+   real(kr),dimension(:),allocatable::glamt
+   integer,dimension(:),allocatable::ipost

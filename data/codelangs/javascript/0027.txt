@@ -1,0 +1,49 @@
+'use strict';
+
+const {
+  ArrayBuffer,
+  DataView,
+  DataViewPrototypeGetBigInt64,
+  DataViewPrototypeGetBigUint64,
+  DataViewPrototypeGetUint8,
+  DataViewPrototypeSetUint8,
+  JSONStringify,
+} = primordials;
+
+const {
+  getOptionValue,
+} = require('internal/options');
+
+if (!process.features.quic || !getOptionValue('--experimental-quic')) {
+  return;
+}
+
+const {
+  codes: {
+    ERR_ILLEGAL_CONSTRUCTOR,
+    ERR_INVALID_ARG_TYPE,
+  },
+} = require('internal/errors');
+
+const {
+  isArrayBuffer,
+} = require('util/types');
+
+const { inspect } = require('internal/util/inspect');
+const assert = require('internal/assert');
+
+const {
+  kFinishClose,
+  kInspect,
+  kPrivateConstructor,
+  kWantsHeaders,
+  kWantsTrailers,
+} = require('internal/quic/symbols');
+
+// This file defines the helper objects for accessing state for
+// various QUIC objects. Each of these wraps a DataView.
+// Some of the state properties are read only, others are mutable.
+// An ArrayBuffer is shared with the C++ level to allow for more
+// efficient communication of state across the C++/JS boundary.
+// When the state object is no longer needed, it is closed to
+// prevent further updates to the buffer.

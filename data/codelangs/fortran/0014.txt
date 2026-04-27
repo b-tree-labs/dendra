@@ -1,0 +1,50 @@
+module heatm
+   ! provides heatr for NJOY2016
+   use locale
+   implicit none
+   private
+   public heatr
+
+   ! global variables
+
+   ! units for heatr
+   integer::nendf,nin,nout,nplot
+
+   ! heatr global parameters
+   integer,parameter::nbuf=1000
+   integer,parameter::nqamax=30
+   integer,parameter::ilmax=200
+   integer,parameter::maxmf6=320
+
+   ! global variables
+   integer::matd,mgam,npk,mtp(28),nqa,mta(nqamax),mt303,mt19
+   integer::ne,kchk,iprint,lqs(nqamax)
+   real(kr),dimension(:),allocatable::qbar
+   real(kr)::qa(nqamax),efirst,elast,za,awr,elist(ilmax)
+   real(kr)::break
+   real(kr)::qdel,etabmax
+   integer::mt103,mt104,mt105,mt106,mt107,mt16
+   integer::miss4(250),nmiss4
+   integer::i6,mt6(maxmf6),i6g,mt6no(maxmf6)
+   integer::i6p,mt6yp(maxmf6)
+   integer::jp,jpn,jpp
+   real(kr)::q,zat,awrt,zap,awp
+   integer::lct
+   integer::idame
+   real(kr)::ebot,etop
+   integer::mt458,nply,lfc,ifc1,ifc2,ifc3,ifc4,ifc5,ifc6
+   real(kr),dimension(:),allocatable::c458,cpoly,hpoly,afr,anp,agp
+   real(kr)::emc2,tm,rtm
+
+   ! target
+   integer::izat
+
+   ! projectile
+   integer::izap
+
+contains
+
+   subroutine heatr
+   !-------------------------------------------------------------------
+   !
+   ! Compute heating kerma (kinetic energy release in material)

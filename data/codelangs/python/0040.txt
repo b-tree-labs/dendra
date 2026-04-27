@@ -1,0 +1,50 @@
+from test.test_importlib import util as test_util
+
+init = test_util.import_importlib('importlib')
+
+import sys
+import threading
+import unittest
+import weakref
+
+from test import support
+from test.support import threading_helper
+from test import lock_tests
+
+
+threading_helper.requires_working_threading(module=True)
+
+
+class ModuleLockAsRLockTests:
+    locktype = classmethod(lambda cls: cls.LockType("some_lock"))
+
+    # _is_owned() unsupported
+    test__is_owned = None
+    # acquire(blocking=False) unsupported
+    test_try_acquire = None
+    test_try_acquire_contended = None
+    # `with` unsupported
+    test_with = None
+    # acquire(timeout=...) unsupported
+    test_timeout = None
+    # _release_save() unsupported
+    test_release_save_unacquired = None
+    # _recursion_count() unsupported
+    test_recursion_count = None
+    # lock status in repr unsupported
+    test_repr = None
+    test_locked_repr = None
+    test_repr_count = None
+
+    def tearDown(self):
+        for splitinit in init.values():
+            splitinit._bootstrap._blocking_on.clear()
+
+
+LOCK_TYPES = {kind: splitinit._bootstrap._ModuleLock
+              for kind, splitinit in init.items()}
+
+(Frozen_ModuleLockAsRLockTests,
+ Source_ModuleLockAsRLockTests
+ ) = test_util.test_both(ModuleLockAsRLockTests, lock_tests.RLockTests,
+                         LockType=LOCK_TYPES)

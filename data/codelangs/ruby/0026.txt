@@ -1,0 +1,50 @@
+class Bundler::Thor
+  class Options < Arguments #:nodoc:
+    LONG_RE     = /^(--\w+(?:-\w+)*)$/
+    SHORT_RE    = /^(-[a-z])$/i
+    EQ_RE       = /^(--\w+(?:-\w+)*|-[a-z])=(.*)$/i
+    SHORT_SQ_RE = /^-([a-z]{2,})$/i # Allow either -x -v or -xv style for single char args
+    SHORT_NUM   = /^(-[a-z])#{NUMERIC}$/i
+    OPTS_END    = "--".freeze
+
+    # Receives a hash and makes it switches.
+    def self.to_switches(options)
+      options.map do |key, value|
+        case value
+        when true
+          "--#{key}"
+        when Array
+          "--#{key} #{value.map(&:inspect).join(' ')}"
+        when Hash
+          "--#{key} #{value.map { |k, v| "#{k}:#{v}" }.join(' ')}"
+        when nil, false
+          nil
+        else
+          "--#{key} #{value.inspect}"
+        end
+      end.compact.join(" ")
+    end
+
+    # Takes a hash of Bundler::Thor::Option and a hash with defaults.
+    #
+    # If +stop_on_unknown+ is true, #parse will stop as soon as it encounters
+    # an unknown option or a regular argument.
+    def initialize(hash_options = {}, defaults = {}, stop_on_unknown = false, disable_required_check = false, relations = {})
+      @stop_on_unknown = stop_on_unknown
+      @exclusives = (relations[:exclusive_option_names] || []).select{|array| !array.empty?}
+      @at_least_ones = (relations[:at_least_one_option_names] || []).select{|array| !array.empty?}
+      @disable_required_check = disable_required_check
+      options = hash_options.values
+      super(options)
+
+      # Add defaults
+      defaults.each do |key, value|
+        @assigns[key.to_s] = value
+        @non_assigned_required.delete(hash_options[key])
+      end
+
+      @shorts = {}
+      @switches = {}
+      @extra = []
+      @stopped_parsing_after_extra_index = nil
+      @is_treated_as_value = false

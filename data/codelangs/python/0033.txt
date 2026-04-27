@@ -1,0 +1,50 @@
+"""General tests for the io module.
+
+New tests should go in more specific modules; see test_io/__init__.py
+"""
+
+import abc
+import array
+import errno
+import os
+import pickle
+import sys
+import textwrap
+import threading
+import unittest
+import warnings
+import weakref
+from test import support
+from test.support.script_helper import (
+    assert_python_ok, assert_python_failure, run_python_until_end)
+from test.support import (
+    import_helper, is_apple, os_helper, threading_helper, warnings_helper,
+)
+from test.support.os_helper import FakePath
+from .utils import byteslike, CTestCase, PyTestCase
+
+import io  # C implementation of io
+import _pyio as pyio # Python implementation of io
+
+
+class IOTest:
+
+    def setUp(self):
+        os_helper.unlink(os_helper.TESTFN)
+
+    def tearDown(self):
+        os_helper.unlink(os_helper.TESTFN)
+
+    def write_ops(self, f):
+        self.assertEqual(f.write(b"blah."), 5)
+        f.truncate(0)
+        self.assertEqual(f.tell(), 5)
+        f.seek(0)
+
+        self.assertEqual(f.write(b"blah."), 5)
+        self.assertEqual(f.seek(0), 0)
+        self.assertEqual(f.write(b"Hello."), 6)
+        self.assertEqual(f.tell(), 6)
+        self.assertEqual(f.seek(-1, 1), 5)
+        self.assertEqual(f.tell(), 5)
+        buffer = bytearray(b" world\n\n\n")

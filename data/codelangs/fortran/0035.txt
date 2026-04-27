@@ -1,0 +1,50 @@
+module matxsm
+   ! provides subroutine matxsr for NJOY2016
+   use locale
+   implicit none
+   private
+   public matxsr
+   ! global variables
+
+   ! equivalenced arrays for CCCC input and output
+   integer::isiza=200000    ! container array size
+   real(k4)::a(200000)      ! reals are 4-byte
+   integer(k4)::ia(200000)  ! integers are 4-byte
+   real(k8)::ha(100000)     ! Hollerith data are 8-byte
+   character(8)::ta(100000) ! text equivalent to Hollerith
+   integer::mult=2          ! used for counting 8-byte entries
+   equivalence(a(1),ia(1),ha(1),ta(1))
+
+   ! unit numbers
+   integer::ngen1,ngen2,nmatx,nscrt1,nscrt2,nscrt3,nscrt4,&
+     nscrt5,nscrt6,nscrt7,nscrt8,ngen3,ngen4,ngen5,ngen6,ngen7,ngen8
+
+   ! pointers
+   integer::next,icont,iholl,ifild,igrup
+
+   ! file identification
+   real(kr)::huse(2)
+   character(8)::tuse(2)
+   equivalence(huse(1),tuse(1))
+   integer::ivers
+
+   ! file control
+   integer::ntype,npart,nholl,nmat,maxw,length
+
+   ! file data
+   character(8)::hprt(10),htype(10),hmatn(250)
+   integer::ngrp(10),jinp(10),joutp(10),matno(250),matgg(250)
+
+   ! group structure sizes
+   integer::ning,noutg
+
+   ! reaction names
+   character(8)::hvps(3000),hmtx(3000)
+
+   ! self-shielding parameters
+   integer::iz,iglt
+
+   ! matrix parameters
+   integer::imcon,icdat,ijgll,imdat,ng2z,lord1,jconst
+   integer::maxord,nsubmx
+   integer::nritev,nritem

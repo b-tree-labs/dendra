@@ -1,0 +1,50 @@
+module mixm
+   ! provides subroutine mixr for NJOY2016
+   use locale
+   implicit none
+   private
+   public mixr
+
+   ! global variables
+   integer::ntape
+   integer,parameter::nninmx=10
+   integer,parameter::nmtmx=20
+   integer,parameter::nmatmx=nninmx
+   integer,dimension(nninmx)::jtape,nrt,npt,irt,ipt,ip1t,ip2t,nbt,nwt
+
+contains
+
+   subroutine mixr
+   !-------------------------------------------------------------------
+   !
+   !  mixr
+   !
+   !  Construct a new pendf tape with a specified set of
+   !  reactions that are specified linear combinations of the
+   !  cross sections from the input tapes.  Mixr can also be
+   !  used for endf tapes, but the input interpolation laws
+   !  are ignored.  This module can be used to construct mixed
+   !  reactions for plotting (for example, elemental cross
+   !  sections).  The output file contains files 1 and 3 only.
+   !  Linear-linear interpolation is assumed.
+   !
+   !  user input --
+   !
+   !  card 1  --  units
+   !     nout      output unit for mixed cross sections
+   !     nin1      first input unit (endf or pendf)
+   !     nin2      second input unit
+   !      ...      continue for nnin<=nninmx (=10) input units
+   !
+   !  card 2  --  reaction list
+   !      mtn      list of nmt<=nmtmx (=20) mt numbers for
+   !               the output reactions
+   !
+   !  card 3  --  material list
+   !     matn,     list of nmat<=nmatmx (=nninmx=10) pairs (matn,wtn)
+   !      wtn      of material numbers and associated weighting factors
+   !
+   !  card 4  --  temperature
+   !     temp      temperature (use zero except for pendf tapes)
+   !
+   !  card 5  --  output material

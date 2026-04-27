@@ -1,0 +1,49 @@
+// This file is a modified version of the rimraf module on npm. It has been
+// modified in the following ways:
+// - Use of the assert module has been replaced with core's error system.
+// - All code related to the glob dependency has been removed.
+// - Bring your own custom fs module is not currently supported.
+// - Some basic code cleanup.
+'use strict';
+
+const {
+  Promise,
+  SafeSet,
+} = primordials;
+
+const { Buffer } = require('buffer');
+const fs = require('fs');
+const {
+  chmod,
+  lstat,
+  readdir,
+  rmdir,
+  stat,
+  unlink,
+} = fs;
+const { sep } = require('path');
+const { setTimeout } = require('timers');
+const { isWindows } = require('internal/util');
+const notEmptyErrorCodes = new SafeSet(['ENOTEMPTY', 'EEXIST', 'EPERM']);
+const retryErrorCodes = new SafeSet(
+  ['EBUSY', 'EMFILE', 'ENFILE', 'ENOTEMPTY', 'EPERM']);
+const epermHandler = isWindows ? fixWinEPERM : _rmdir;
+const readdirEncoding = 'buffer';
+const separator = Buffer.from(sep);
+
+
+function rimraf(path, options, callback) {
+  let retries = 0;
+
+  _rimraf(path, options, function CB(err) {
+    if (err) {
+      if (retryErrorCodes.has(err.code) && retries < options.maxRetries) {
+        retries++;
+        const delay = retries * options.retryDelay;
+        return setTimeout(_rimraf, delay, path, options, CB);
+      }
+
+      // The file is already gone.
+      if (err.code === 'ENOENT')
+        err = null;
+    }

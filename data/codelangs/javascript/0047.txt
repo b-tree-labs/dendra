@@ -1,0 +1,50 @@
+'use strict';
+
+const {
+  AtomicsNotify,
+  AtomicsStore,
+  AtomicsWaitAsync,
+  Int32Array,
+  SafeMap,
+} = primordials;
+
+const {
+  isMainThread,
+  threadId: currentThreadId,
+} = internalBinding('worker');
+
+const {
+  constructSharedArrayBuffer,
+} = require('internal/util');
+
+const {
+  codes: {
+    ERR_WORKER_MESSAGING_ERRORED,
+    ERR_WORKER_MESSAGING_FAILED,
+    ERR_WORKER_MESSAGING_SAME_THREAD,
+    ERR_WORKER_MESSAGING_TIMEOUT,
+  },
+} = require('internal/errors');
+
+const { MessageChannel } = require('internal/worker/io');
+
+const { validateNumber } = require('internal/validators');
+
+const messageTypes = {
+  REGISTER_MAIN_THREAD_PORT: 'registerMainThreadPort',
+  UNREGISTER_MAIN_THREAD_PORT: 'unregisterMainThreadPort',
+  SEND_MESSAGE_TO_WORKER: 'sendMessageToWorker',
+  RECEIVE_MESSAGE_FROM_WORKER: 'receiveMessageFromWorker',
+};
+
+// This is only populated by main thread and always empty in other threads
+const threadsPorts = new SafeMap();
+
+// This is only populated in child threads and always undefined in main thread
+let mainThreadPort;
+
+// SharedArrayBuffer must always be Int32, so it's * 4.
+// We need one for the operation status (performing / performed) and one for the result (success / failure).
+const WORKER_MESSAGING_SHARED_DATA = 2 * 4;
+const WORKER_MESSAGING_STATUS_INDEX = 0;
+const WORKER_MESSAGING_RESULT_INDEX = 1;

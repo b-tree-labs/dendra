@@ -1,0 +1,50 @@
+// Copyright 2019 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+package runtime
+
+import (
+	"internal/runtime/sys"
+)
+
+// pageBits is a bitmap representing one bit per page in a palloc chunk.
+type pageBits [pallocChunkPages / 64]uint64
+
+// get returns the value of the i'th bit in the bitmap.
+func (b *pageBits) get(i uint) uint {
+	return uint((b[i/64] >> (i % 64)) & 1)
+}
+
+// block64 returns the 64-bit aligned block of bits containing the i'th bit.
+func (b *pageBits) block64(i uint) uint64 {
+	return b[i/64]
+}
+
+// set sets bit i of pageBits.
+func (b *pageBits) set(i uint) {
+	b[i/64] |= 1 << (i % 64)
+}
+
+// setRange sets bits in the range [i, i+n).
+func (b *pageBits) setRange(i, n uint) {
+	_ = b[i/64]
+	if n == 1 {
+		// Fast path for the n == 1 case.
+		b.set(i)
+		return
+	}
+	// Set bits [i, j].
+	j := i + n - 1
+	if i/64 == j/64 {
+		b[i/64] |= ((uint64(1) << n) - 1) << (i % 64)
+		return
+	}
+	_ = b[j/64]
+	// Set leading bits.
+	b[i/64] |= ^uint64(0) << (i % 64)
+	for k := i/64 + 1; k < j/64; k++ {
+		b[k] = ^uint64(0)
+	}
+	// Set trailing bits.
+	b[j/64] |= (uint64(1) << (j%64 + 1)) - 1

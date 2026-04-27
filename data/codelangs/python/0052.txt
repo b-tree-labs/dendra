@@ -1,0 +1,49 @@
+"""Test suite for the cProfile module."""
+
+import sys
+import unittest
+
+# rip off all interesting stuff from test_profile
+import profiling.tracing as cProfile
+import tempfile
+import textwrap
+from test.test_profile import ProfileTest, regenerate_expected_output
+from test.support.script_helper import assert_python_failure, assert_python_ok
+from test import support
+
+
+class CProfileTest(ProfileTest):
+    profilerclass = cProfile.Profile
+    profilermodule = cProfile
+    expected_max_output = "{built-in method builtins.max}"
+
+    def get_expected_output(self):
+        return _ProfileOutput
+
+    def test_bad_counter_during_dealloc(self):
+        # bpo-3895
+        import _lsprof
+
+        with support.catch_unraisable_exception() as cm:
+            obj = _lsprof.Profiler(lambda: int)
+            obj.enable()
+            obj.disable()
+            obj.clear()
+
+            self.assertEqual(cm.unraisable.exc_type, TypeError)
+
+    def test_crash_with_not_enough_args(self):
+        # gh-126220
+        import _lsprof
+
+        for profile in [_lsprof.Profiler(), cProfile.Profile()]:
+            for method in [
+                "_pystart_callback",
+                "_pyreturn_callback",
+                "_ccall_callback",
+                "_creturn_callback",
+            ]:
+                with self.subTest(profile=profile, method=method):
+                    method_obj = getattr(profile, method)
+                    with self.assertRaises(TypeError):
+                        method_obj()  # should not crash

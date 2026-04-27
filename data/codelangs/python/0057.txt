@@ -1,0 +1,50 @@
+import io
+import sys
+
+import unittest
+
+
+def resultFactory(*_):
+    return unittest.TestResult()
+
+
+class TestSetups(unittest.TestCase):
+
+    def getRunner(self):
+        return unittest.TextTestRunner(resultclass=resultFactory,
+                                          stream=io.StringIO())
+    def runTests(self, *cases):
+        suite = unittest.TestSuite()
+        for case in cases:
+            tests = unittest.defaultTestLoader.loadTestsFromTestCase(case)
+            suite.addTests(tests)
+
+        runner = self.getRunner()
+
+        # creating a nested suite exposes some potential bugs
+        realSuite = unittest.TestSuite()
+        realSuite.addTest(suite)
+        # adding empty suites to the end exposes potential bugs
+        suite.addTest(unittest.TestSuite())
+        realSuite.addTest(unittest.TestSuite())
+        return runner.run(realSuite)
+
+    def test_setup_class(self):
+        class Test(unittest.TestCase):
+            setUpCalled = 0
+            @classmethod
+            def setUpClass(cls):
+                Test.setUpCalled += 1
+                unittest.TestCase.setUpClass()
+            def test_one(self):
+                pass
+            def test_two(self):
+                pass
+
+        result = self.runTests(Test)
+
+        self.assertEqual(Test.setUpCalled, 1)
+        self.assertEqual(result.testsRun, 2)
+        self.assertEqual(len(result.errors), 0)
+
+    def test_teardown_class(self):

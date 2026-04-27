@@ -1,0 +1,50 @@
+'use strict';
+
+const {
+  SafeSet,
+  StringPrototypeToLowerCase,
+  TypedArrayPrototypeGetBuffer,
+} = primordials;
+
+const {
+  SignJob,
+  kCryptoJobAsync,
+  kKeyFormatDER,
+  kKeyFormatRawPublic,
+  kSignJobModeSign,
+  kSignJobModeVerify,
+  kWebCryptoKeyFormatPKCS8,
+  kWebCryptoKeyFormatRaw,
+  kWebCryptoKeyFormatSPKI,
+} = internalBinding('crypto');
+
+const {
+  getUsagesUnion,
+  hasAnyNotIn,
+  jobPromise,
+  kHandle,
+  kKeyObject,
+} = require('internal/crypto/util');
+
+const {
+  lazyDOMException,
+  promisify,
+} = require('internal/util');
+
+const {
+  generateKeyPair: _generateKeyPair,
+} = require('internal/crypto/keygen');
+
+const {
+  InternalCryptoKey,
+  kKeyType,
+} = require('internal/crypto/keys');
+
+const {
+  importDerKey,
+  importJwkKey,
+  importRawKey,
+  validateJwk,
+} = require('internal/crypto/webcrypto_util');
+
+const generateKeyPair = promisify(_generateKeyPair);

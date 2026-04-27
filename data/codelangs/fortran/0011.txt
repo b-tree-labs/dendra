@@ -1,0 +1,50 @@
+module acem
+   ! provides acer for NJOY2016
+     use locale
+     implicit none
+
+contains
+
+   subroutine acer
+   !--------------------------------------------------------------------
+   !
+   ! Prepare a data library for MCNP,
+   ! the Los Alamos continuous energy Monte Carlo code.
+   !
+   !    --- continuous (fast) data ---
+   !
+   ! Reaction cross sections are reconstructed on the grid of the
+   ! total cross section from the input pendf tape (assumed to be
+   ! linearized and unionized).  Redundant reactions (except for
+   ! MT1, MT452, and reactions needed for photon yields) are
+   ! removed.  MT18 is considered redundant if MT19 is present.
+   ! Angular distributions are converted into either 32 equally
+   ! probable bins, or into cummulative probability distributions.
+   ! Tabulated energy distributions are converted into "law 4"
+   ! probability distributions.  Analytic secondary-energy
+   ! distributions are converted into their ACE formats.
+   ! Coupled energy-angle distributions (File 6) are converted
+   ! into ACE laws.  The old format supports law44 for tabulated
+   ! data with Kalbach systematics, law67 for angle-energy data,
+   ! and law66 for phase space.  The newer format adds law61 with
+   ! with cummulative angle distributions for Legendre or tabulated
+   ! distributions (see newfor).  All photon production cross
+   ! sections are combined on the cross section energy grid.
+   ! If provided, multigroup photon production data is summed
+   ! and converted into a set of equally probable emission
+   ! energies for each input group.  Detailed photon production
+   ! data can be generated directly from Files 12, 13, 14, 15,
+   ! and 16 from the input ENDF tapes and written out using the
+   ! "law 4" cummulative energy distribution format.
+   !
+   !    --- thermal data ---
+   !
+   ! The data from the pendf tape as prepared by the thermr
+   ! module is read in.  Inelastic and incoherent elastic cross
+   ! sections are stored directly.  Coherent elastic cross
+   ! sections are converted to a cummulative "stair step" form
+   ! and stored.  The angular representation for incoherent
+   ! elastic is stored directly.  None is needed for coherent
+   ! elastic.  The incoherent inelastic energy distributions
+   ! are converted into probability bins with the equally
+   ! probable angles left unchanged.  The bins can have equal

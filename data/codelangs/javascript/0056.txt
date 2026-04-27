@@ -1,0 +1,50 @@
+'use strict';
+
+const {
+  BigUint64Array,
+  JSONStringify,
+} = primordials;
+
+const {
+  getOptionValue,
+} = require('internal/options');
+
+if (!process.features.quic || !getOptionValue('--experimental-quic')) {
+  return;
+}
+
+const {
+  isArrayBuffer,
+} = require('util/types');
+
+const {
+  codes: {
+    ERR_ILLEGAL_CONSTRUCTOR,
+    ERR_INVALID_ARG_TYPE,
+  },
+} = require('internal/errors');
+
+const { inspect } = require('internal/util/inspect');
+const assert = require('internal/assert');
+
+const {
+  kFinishClose,
+  kInspect,
+  kPrivateConstructor,
+} = require('internal/quic/symbols');
+
+// This file defines the helper objects for accessing statistics collected
+// by various QUIC objects. Each of these wraps a BigUint64Array. Every
+// stats object is read-only via the API, and the underlying buffer is
+// only updated by the QUIC internals. When the stats object is no longer
+// needed, it is closed to prevent further updates to the buffer.
+
+const {
+  // All of the IDX_STATS_* constants are the index positions of the stats
+  // fields in the relevant BigUint64Array's that underlie the *Stats objects.
+  // These are not exposed to end users.
+  IDX_STATS_ENDPOINT_CREATED_AT,
+  IDX_STATS_ENDPOINT_DESTROYED_AT,
+  IDX_STATS_ENDPOINT_BYTES_RECEIVED,
+  IDX_STATS_ENDPOINT_BYTES_SENT,
+  IDX_STATS_ENDPOINT_PACKETS_RECEIVED,

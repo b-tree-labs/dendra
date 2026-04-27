@@ -1,0 +1,50 @@
+'use strict';
+
+const {
+  FunctionPrototypeCall,
+} = primordials;
+
+const {
+  codes: {
+    ERR_CRYPTO_KEM_NOT_SUPPORTED,
+  },
+} = require('internal/errors');
+
+const {
+  validateFunction,
+} = require('internal/validators');
+
+const {
+  kCryptoJobAsync,
+  kCryptoJobSync,
+  KEMDecapsulateJob,
+  KEMEncapsulateJob,
+} = internalBinding('crypto');
+
+const {
+  preparePrivateKey,
+  preparePublicOrPrivateKey,
+} = require('internal/crypto/keys');
+
+const {
+  getArrayBufferOrView,
+} = require('internal/crypto/util');
+
+function encapsulate(key, callback) {
+  if (!KEMEncapsulateJob)
+    throw new ERR_CRYPTO_KEM_NOT_SUPPORTED();
+
+  if (callback !== undefined)
+    validateFunction(callback, 'callback');
+
+  const {
+    data: keyData,
+    format: keyFormat,
+    type: keyType,
+    passphrase: keyPassphrase,
+    namedCurve: keyNamedCurve,
+  } = preparePublicOrPrivateKey(key);
+
+  const job = new KEMEncapsulateJob(
+    callback ? kCryptoJobAsync : kCryptoJobSync,
+    keyData,

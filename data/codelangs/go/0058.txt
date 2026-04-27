@@ -1,0 +1,50 @@
+// Copyright 2015 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+package ssa
+
+import (
+	"cmd/compile/internal/types"
+	"cmd/internal/obj/x86"
+	"fmt"
+	"testing"
+)
+
+func TestLiveControlOps(t *testing.T) {
+	c := testConfig(t)
+	f := c.Fun("entry",
+		Bloc("entry",
+			Valu("mem", OpInitMem, types.TypeMem, 0, nil),
+			Valu("x", OpAMD64MOVLconst, c.config.Types.Int8, 1, nil),
+			Valu("y", OpAMD64MOVLconst, c.config.Types.Int8, 2, nil),
+			Valu("a", OpAMD64TESTB, types.TypeFlags, 0, nil, "x", "y"),
+			Valu("b", OpAMD64TESTB, types.TypeFlags, 0, nil, "y", "x"),
+			Eq("a", "if", "exit"),
+		),
+		Bloc("if",
+			Eq("b", "plain", "exit"),
+		),
+		Bloc("plain",
+			Goto("exit"),
+		),
+		Bloc("exit",
+			Exit("mem"),
+		),
+	)
+	flagalloc(f.f)
+	regalloc(f.f)
+	checkFunc(f.f)
+}
+
+// Test to make sure G register is never reloaded from spill (spill of G is okay)
+// See #25504
+func TestNoGetgLoadReg(t *testing.T) {
+	/*
+		Original:
+		func fff3(i int) *g {
+			gee := getg()
+			if i == 0 {
+				fff()
+			}
+			return gee // here

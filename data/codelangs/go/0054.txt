@@ -1,0 +1,50 @@
+// Copyright 2024 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+package main
+
+import (
+	"os"
+	"strings"
+
+	. "github.com/mmcloughlin/avo/build"
+	"github.com/mmcloughlin/avo/ir"
+	. "github.com/mmcloughlin/avo/operand"
+	. "github.com/mmcloughlin/avo/reg"
+)
+
+//go:generate go run . -out ../../aes_amd64.s
+
+func main() {
+	Package("crypto/aes")
+	ConstraintExpr("!purego")
+	encryptBlockAsm()
+	decryptBlockAsm()
+	expandKeyAsm()
+	_expand_key_128()
+	_expand_key_192a()
+	_expand_key_192b()
+	_expand_key_256a()
+	_expand_key_256b()
+	Generate()
+
+	var internalFunctions []string = []string{
+		"·_expand_key_128<>",
+		"·_expand_key_192a<>",
+		"·_expand_key_192b<>",
+		"·_expand_key_256a<>",
+		"·_expand_key_256b<>",
+	}
+	removePeskyUnicodeDot(internalFunctions, "../../asm_amd64.s")
+}
+
+func encryptBlockAsm() {
+	Implement("encryptBlockAsm")
+	Attributes(NOSPLIT)
+	AllocLocal(0)
+
+	Load(Param("nr"), RCX)
+	Load(Param("xk"), RAX)
+	Load(Param("dst"), RDX)
+	Load(Param("src"), RBX)

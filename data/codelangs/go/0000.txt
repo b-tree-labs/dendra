@@ -1,0 +1,50 @@
+// Copyright 2014 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+package profile
+
+import (
+	"errors"
+	"fmt"
+	"sort"
+)
+
+func (p *Profile) decoder() []decoder {
+	return profileDecoder
+}
+
+// preEncode populates the unexported fields to be used by encode
+// (with suffix X) from the corresponding exported fields. The
+// exported fields are cleared up to facilitate testing.
+func (p *Profile) preEncode() {
+	strings := make(map[string]int)
+	addString(strings, "")
+
+	for _, st := range p.SampleType {
+		st.typeX = addString(strings, st.Type)
+		st.unitX = addString(strings, st.Unit)
+	}
+
+	for _, s := range p.Sample {
+		s.labelX = nil
+		var keys []string
+		for k := range s.Label {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			vs := s.Label[k]
+			for _, v := range vs {
+				s.labelX = append(s.labelX,
+					Label{
+						keyX: addString(strings, k),
+						strX: addString(strings, v),
+					},
+				)
+			}
+		}
+		var numKeys []string
+		for k := range s.NumLabel {
+			numKeys = append(numKeys, k)
+		}

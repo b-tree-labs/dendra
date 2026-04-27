@@ -1,0 +1,50 @@
+# frozen_string_literal: true
+
+require_relative "local_remote_options"
+require_relative "spec_fetcher"
+require_relative "version_option"
+require_relative "text"
+
+module Gem::QueryUtils
+  include Gem::Text
+  include Gem::LocalRemoteOptions
+  include Gem::VersionOption
+
+  def add_query_options
+    add_option("-i", "--[no-]installed",
+               "Check for installed gem") do |value, options|
+      options[:installed] = value
+    end
+
+    add_option("-I", "Equivalent to --no-installed") do |_value, options|
+      options[:installed] = false
+    end
+
+    add_version_option command, "for use with --installed"
+
+    add_option("-d", "--[no-]details",
+               "Display detailed information of gem(s)") do |value, options|
+      options[:details] = value
+    end
+
+    add_option("--[no-]versions",
+               "Display only gem names") do |value, options|
+      options[:versions] = value
+      options[:details] = false unless value
+    end
+
+    add_option("-a", "--all",
+               "Display all gem versions") do |value, options|
+      options[:all] = value
+    end
+
+    add_option("-e", "--exact",
+               "Name of gem(s) to query on matches the",
+               "provided STRING") do |value, options|
+      options[:exact] = value
+    end
+
+    add_option("--[no-]prerelease",
+               "Display prerelease versions") do |value, options|
+      options[:prerelease] = value
+    end

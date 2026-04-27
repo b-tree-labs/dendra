@@ -1,0 +1,50 @@
+# ===----------------------------------------------------------------------=== #
+# Copyright (c) 2026, Modular Inc. All rights reserved.
+#
+# Licensed under the Apache License v2.0 with LLVM Exceptions:
+# https://llvm.org/LICENSE.txt
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ===----------------------------------------------------------------------=== #
+
+"""
+Tiled Matrix Multiplication GPU Kernel Example.
+
+This example demonstrates a basic tiled matrix multiplication GPU kernel
+implementation in Mojo, with a specific focus on using gpu.sync.barrier()
+for block-level synchronization. It serves as an educational example for
+developers learning GPU programming in Mojo.
+
+The implementation shows:
+- Basic tiling techniques for improved memory bandwidth utilization
+- Proper usage of gpu.sync.barrier() for thread synchronization
+- LayoutTensor usage for matrix representation
+- Shared memory optimization patterns
+
+This example uses only open source Mojo standard library and layout package.
+"""
+
+from std.math import ceildiv
+from std.sys import exit, has_accelerator
+
+# GPU programming imports from open source stdlib
+from std.gpu.sync import barrier
+from std.gpu.host import DeviceContext
+from std.gpu import thread_idx, block_idx
+from std.gpu.memory import AddressSpace
+
+# Layout tensor support from open source layout package
+from layout import Layout, LayoutTensor
+
+# Data type selection: float32 provides good balance of precision and performance
+comptime float_dtype = DType.float32
+
+# Matrix dimensions: chosen to be small enough for easy understanding
+# while still demonstrating tiling concepts effectively
+comptime MATRIX_SIZE = 64  # 64x64 matrices
+comptime MATRIX_M = MATRIX_SIZE  # Number of rows in matrices A and C
+comptime MATRIX_N = MATRIX_SIZE  # Number of columns in matrices B and C

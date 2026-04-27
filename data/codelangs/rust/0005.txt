@@ -1,0 +1,50 @@
+use crate::deprecated::allow_deprecated;
+use crate::fragment::{Expr, Fragment, Stmts};
+use crate::internals::ast::{Container, Data, Field, Style, Variant};
+use crate::internals::name::Name;
+use crate::internals::{attr, replace_receiver, ungroup, Ctxt, Derive};
+use crate::{bound, dummy, pretend, private, this};
+use proc_macro2::{Span, TokenStream};
+use quote::{quote, quote_spanned, ToTokens};
+use std::collections::BTreeSet;
+use std::ptr;
+use syn::punctuated::Punctuated;
+use syn::spanned::Spanned;
+use syn::{parse_quote, Ident, Index, Member};
+
+mod enum_;
+mod enum_adjacently;
+mod enum_externally;
+mod enum_internally;
+mod enum_untagged;
+mod identifier;
+mod struct_;
+mod tuple;
+mod unit;
+
+pub fn expand_derive_deserialize(input: &mut syn::DeriveInput) -> syn::Result<TokenStream> {
+    replace_receiver(input);
+
+    let ctxt = Ctxt::new();
+    let Some(cont) = Container::from_ast(&ctxt, input, Derive::Deserialize, &private.ident())
+    else {
+        return Err(ctxt.check().unwrap_err());
+    };
+    precondition(&ctxt, &cont);
+    ctxt.check()?;
+
+    let ident = &cont.ident;
+    let params = Parameters::new(&cont);
+    let (de_impl_generics, _, ty_generics, where_clause) = params.generics_with_de_lifetime();
+    let body = Stmts(deserialize_body(&cont, &params));
+    let delife = params.borrowed.de_lifetime();
+    let allow_deprecated = allow_deprecated(input);
+
+    let impl_block = if let Some(remote) = cont.attrs.remote() {
+        let vis = &input.vis;
+        let used = pretend::pretend_used(&cont, params.is_packed);
+        quote! {
+            #[automatically_derived]
+            #allow_deprecated
+            impl #de_impl_generics #ident #ty_generics #where_clause {
+                #vis fn deserialize<__D>(__deserializer: __D) -> _serde::#private::Result<#remote #ty_generics, __D::Error>

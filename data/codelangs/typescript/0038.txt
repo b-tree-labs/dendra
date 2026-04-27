@@ -1,0 +1,50 @@
+import {
+    BaseNodeFactory,
+    CreateSourceFileOptions,
+    EmitHelperFactory,
+    GetCanonicalFileName,
+    MapLike,
+    ModeAwareCache,
+    ModeAwareCacheKey,
+    ModuleResolutionCache,
+    MultiMap,
+    NodeFactoryFlags,
+    OptionsNameMap,
+    PackageJsonInfo,
+    PackageJsonInfoCache,
+    Pattern,
+    ProgramDiagnostics,
+    SymlinkCache,
+    ThisContainer,
+} from "./_namespaces/ts.js";
+
+// branded string type used to store absolute, normalized and canonicalized paths
+// arbitrary file name can be converted to Path via toPath function
+export type Path = string & { __pathBrand: any; };
+
+/** @internal */
+export type MatchingKeys<TRecord, TMatch, K extends keyof TRecord = keyof TRecord> = K extends (TRecord[K] extends TMatch ? K : never) ? K : never;
+
+export interface TextRange {
+    pos: number;
+    end: number;
+}
+
+export interface ReadonlyTextRange {
+    readonly pos: number;
+    readonly end: number;
+}
+
+// token > SyntaxKind.Identifier => token is a keyword
+// Also, If you add a new SyntaxKind be sure to keep the `Markers` section at the bottom in sync
+export const enum SyntaxKind {
+    Unknown,
+    EndOfFileToken,
+    SingleLineCommentTrivia,
+    MultiLineCommentTrivia,
+    NewLineTrivia,
+    WhitespaceTrivia,
+    // We detect and preserve #! on the first line
+    ShebangTrivia,
+    // We detect and provide better error recovery when we encounter a git merge marker.  This
+    // allows us to edit files with git-conflict markers in them in a much more pleasant manner.

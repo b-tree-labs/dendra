@@ -1,0 +1,50 @@
+# ===----------------------------------------------------------------------=== #
+# Copyright (c) 2026, Modular Inc. All rights reserved.
+#
+# Licensed under the Apache License v2.0 with LLVM Exceptions:
+# https://llvm.org/LICENSE.txt
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ===----------------------------------------------------------------------=== #
+
+from std.gpu.host import DeviceContext
+from layout import (
+    Layout,
+    LayoutTensor,
+    RuntimeLayout,
+    UNKNOWN_VALUE,
+    lt_to_tt,
+)
+from layout._fillers import random
+from linalg.fp4_quantization import (
+    quantize_dynamic_scaled_fp4fp8,
+)
+from std.math import ceildiv
+from linalg.fp4_utils import (
+    SF_ATOM_M,
+    SF_ATOM_K,
+    SF_MN_GROUP_SIZE,
+    MXFP8_SF_VECTOR_SIZE,
+    MXFP8_SF_DTYPE,
+    get_scale_factor,
+)
+from std.utils import IndexList
+from std.math import isnan
+
+
+def test_dynamic_mxfp8_quant[
+    in_dtype: DType,
+    scales_dtype: DType,
+    SF_VECTOR_SIZE: Int,
+    M: Optional[Int],
+    N: Optional[Int],
+](ctx: DeviceContext, m: Int, n: Int, tensor_scale: Float32 = 1.0) raises:
+    if N.or_else(n) % (SF_VECTOR_SIZE) != 0:
+        raise Error(
+            "n must be a multiple of (SF_VECTOR_SIZE // 2) due to kernel"
+            " constraints"
+        )

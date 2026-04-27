@@ -1,0 +1,50 @@
+# Test various flavors of legal and illegal future statements
+
+import __future__
+import ast
+import unittest
+from test.support import import_helper
+from test.support.script_helper import spawn_python, kill_python
+from textwrap import dedent
+import os
+import re
+import sys
+
+TOP_LEVEL_MSG = 'from __future__ imports must occur at the beginning of the file'
+
+rx = re.compile(r'\((\S+).py, line (\d+)')
+
+def get_error_location(msg):
+    mo = rx.search(str(msg))
+    return mo.group(1, 2)
+
+class FutureTest(unittest.TestCase):
+
+    def check_syntax_error(self, err, basename,
+                           *,
+                           lineno,
+                           message=TOP_LEVEL_MSG, offset=1):
+        if basename != '<string>':
+            basename += '.py'
+
+        self.assertEqual(f'{message} ({basename}, line {lineno})', str(err))
+        self.assertEqual(os.path.basename(err.filename), basename)
+        self.assertEqual(err.lineno, lineno)
+        self.assertEqual(err.offset, offset)
+
+    def assertSyntaxError(self, code,
+                          *,
+                          lineno=1,
+                          message=TOP_LEVEL_MSG, offset=1,
+                          parametrize_docstring=True):
+        code = dedent(code.lstrip('\n'))
+        for add_docstring in ([False, True] if parametrize_docstring else [False]):
+            with self.subTest(code=code, add_docstring=add_docstring):
+                if add_docstring:
+                    code = '"""Docstring"""\n' + code
+                    lineno += 1
+                with self.assertRaises(SyntaxError) as cm:
+                    exec(code)
+                self.check_syntax_error(cm.exception, "<string>",
+                                        lineno=lineno,
+                                        message=message,

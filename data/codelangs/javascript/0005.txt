@@ -1,0 +1,50 @@
+'use strict';
+
+const {
+  ObjectDefineProperties,
+  String,
+  StringPrototypeCharCodeAt,
+  Uint8Array,
+} = primordials;
+
+const {
+  TextDecoder,
+  TextEncoder,
+} = require('internal/encoding');
+
+const {
+  TransformStream,
+} = require('internal/webstreams/transformstream');
+
+const { customInspect } = require('internal/webstreams/util');
+
+const {
+  codes: {
+    ERR_INVALID_ARG_TYPE,
+    ERR_INVALID_THIS,
+  },
+} = require('internal/errors');
+
+const {
+  customInspectSymbol: kInspect,
+  kEmptyObject,
+  kEnumerableProperty,
+} = require('internal/util');
+
+/**
+ * @typedef {import('./readablestream').ReadableStream} ReadableStream
+ * @typedef {import('./writablestream').WritableStream} WritableStream
+ */
+
+class TextEncoderStream {
+  #pendingHighSurrogate = null;
+  #handle;
+  #transform;
+
+  constructor() {
+    this.#handle = new TextEncoder();
+    this.#transform = new TransformStream({
+      transform: (chunk, controller) => {
+        // https://encoding.spec.whatwg.org/#encode-and-enqueue-a-chunk
+        chunk = String(chunk);
+        let finalChunk = '';

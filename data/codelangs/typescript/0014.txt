@@ -1,0 +1,50 @@
+import {
+    combinePaths,
+    Extension,
+    fileExtensionIs,
+    Path,
+    ResolvedConfigFileName,
+} from "./_namespaces/ts.js";
+
+/** @internal */
+export enum UpToDateStatusType {
+    Unbuildable,
+    UpToDate,
+    /**
+     * The project appears out of date because its upstream inputs are newer than its outputs,
+     * but all of its outputs are actually newer than the previous identical outputs of its (.d.ts) inputs.
+     * This means we can Pseudo-build (just touch timestamps), as if we had actually built this project.
+     */
+    UpToDateWithUpstreamTypes,
+    OutputMissing,
+    ErrorReadingFile,
+    OutOfDateWithSelf,
+    OutOfDateWithUpstream,
+    OutOfDateBuildInfoWithPendingEmit,
+    OutOfDateBuildInfoWithErrors,
+    OutOfDateOptions,
+    OutOfDateRoots,
+    UpstreamOutOfDate,
+    UpstreamBlocked,
+    ComputingUpstream,
+    TsVersionOutputOfDate,
+    UpToDateWithInputFileText,
+
+    /**
+     * Projects with no outputs (i.e. "solution" files)
+     */
+    ContainerOnly,
+    ForceBuild,
+}
+
+/** @internal */
+export type UpToDateStatus =
+    | Status.Unbuildable
+    | Status.UpToDate
+    | Status.OutputMissing
+    | Status.ErrorReadingFile
+    | Status.OutOfDateWithSelf
+    | Status.OutOfDateWithUpstream
+    | Status.OutOfDateBuildInfo
+    | Status.OutOfDateRoots
+    | Status.UpstreamOutOfDate

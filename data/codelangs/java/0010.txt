@@ -1,0 +1,50 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.commons.lang3;
+
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.StringJoiner;
+import java.util.function.Supplier;
+
+import org.apache.commons.lang3.exception.UncheckedException;
+import org.apache.commons.lang3.function.FailableBiConsumer;
+
+/**
+ * Joins an array or {@link Iterable} into an existing {@link Appendable} like a {@link StringBuilder}; with the goal for call sites to avoid creating
+ * intermediary Strings. This is like {@link String#join(CharSequence, CharSequence...)}, {@link String#join(CharSequence, Iterable)}, and {@link StringJoiner}.
+ * <p>
+ * Keep an instance in a (static) variable for efficient joining into an {@link Appendable} or {@link StringBuilder} without creating temporary Strings.
+ * </p>
+ * <p>
+ * Use the builder and instance methods to reuse the same kind of joining prefix, suffix, delimiter, and string conversion.
+ * </p>
+ * <p>
+ * For example:
+ * </p>
+ *
+ * <pre>{@code
+ * // A reuseable instance
+ * private static final AppendableJoiner<Object> JOINER = AppendableJoiner.builder()
+ *     .setPrefix("[")
+ *     .setSuffix("]")
+ *     .setDelimiter(", ")
+ *     .get();
+ * }
+ * ...
+ * // Builds straight into a StringBuilder:

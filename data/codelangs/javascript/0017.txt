@@ -1,0 +1,50 @@
+'use strict';
+
+const {
+  ArrayPrototypeAt,
+  ArrayPrototypeIndexOf,
+  ArrayPrototypePush,
+  ArrayPrototypePushApply,
+  ArrayPrototypeSlice,
+  ArrayPrototypeSplice,
+  ObjectDefineProperty,
+  ObjectGetPrototypeOf,
+  ObjectSetPrototypeOf,
+  PromisePrototypeThen,
+  PromiseReject,
+  ReflectApply,
+  SafeFinalizationRegistry,
+  SafeMap,
+  SymbolDispose,
+  SymbolHasInstance,
+} = primordials;
+
+const {
+  codes: {
+    ERR_INVALID_ARG_TYPE,
+  },
+} = require('internal/errors');
+const {
+  validateFunction,
+} = require('internal/validators');
+
+const { triggerUncaughtException } = internalBinding('errors');
+
+const dc_binding = internalBinding('diagnostics_channel');
+const { subscribers: subscriberCounts } = dc_binding;
+
+const { WeakReference } = require('internal/util');
+const { isPromise } = require('internal/util/types');
+
+// Can't delete when weakref count reaches 0 as it could increment again.
+// Only GC can be used as a valid time to clean up the channels map.
+class WeakRefMap extends SafeMap {
+  #finalizers = new SafeFinalizationRegistry((key) => {
+    // Check that the key doesn't have any value before deleting, as the WeakRef for the key
+    // may have been replaced since finalization callbacks aren't synchronous with GC.
+    if (!this.has(key)) this.delete(key);
+  });
+
+  set(key, value) {
+    this.#finalizers.register(value, key);
+    return super.set(key, new WeakReference(value));

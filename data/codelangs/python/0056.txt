@@ -1,0 +1,49 @@
+# Rename to stackbrowser or possibly consolidate with browser.
+
+import linecache
+import os
+
+import tkinter as tk
+
+from idlelib.debugobj import ObjectTreeItem, make_objecttreeitem
+from idlelib.tree import TreeNode, TreeItem, ScrolledCanvas
+
+def StackBrowser(root, exc, flist=None, top=None):
+    global sc, item, node  # For testing.
+    if top is None:
+        top = tk.Toplevel(root)
+    sc = ScrolledCanvas(top, bg="white", highlightthickness=0)
+    sc.frame.pack(expand=1, fill="both")
+    item = StackTreeItem(exc, flist)
+    node = TreeNode(sc.canvas, None, item)
+    node.expand()
+
+
+class StackTreeItem(TreeItem):
+
+    def __init__(self, exc, flist=None):
+        self.flist = flist
+        self.stack = self.get_stack(None if exc is None else exc.__traceback__)
+        self.text = f"{type(exc).__name__}: {str(exc)}"
+
+    def get_stack(self, tb):
+        stack = []
+        if tb and tb.tb_frame is None:
+            tb = tb.tb_next
+        while tb is not None:
+            stack.append((tb.tb_frame, tb.tb_lineno))
+            tb = tb.tb_next
+        return stack
+
+    def GetText(self):  # Titlecase names are overrides.
+        return self.text
+
+    def GetSubList(self):
+        sublist = []
+        for info in self.stack:
+            item = FrameTreeItem(info, self.flist)
+            sublist.append(item)
+        return sublist
+
+
+class FrameTreeItem(TreeItem):

@@ -1,0 +1,49 @@
+module acefc
+   ! provides fast continuous options for acer
+   use locale
+   use acecm, only: xss,nxss
+   implicit none
+   private
+
+   !--Public routines
+   public acetop,acefix
+
+   !--Private global variables
+
+   ! header parameters for ace continuous format
+   character(13)::hz
+   character(10)::hd
+   character(10)::hm
+   real(kr)::aw0,tz
+
+   ! parameters for continuous nxs block
+   integer::len2,izaid,nes,ntr,nr,ntrp,ntype,ndnf,is,iz,ia,nxsd(5)
+
+   ! parameters for continuous jxs block
+   integer::esz,nu,mtr,lqr,tyr,lsig,sig,land,and,ldlw,dlw,&
+     gpd,mtrp,lsigp,sigp,landp,andp,ldlwp,dlwp,yp,fis,end,&
+     iurpt,nud,dndat,ldnd,dnd,jxsd(2),ptype,ntro,ploct
+
+   ! index of sections
+   integer,parameter::nxcmax=1000
+   integer::nxc,mfs(nxcmax),mts(nxcmax),ncs(nxcmax)
+
+   ! scratch units
+   integer::mscr,iold,inew,nscr
+
+   ! various bin sizes
+   integer::nbina,nbinp,negn
+
+   ! parameters obtained from the input files
+   real(kr)::za,awr
+   integer::mt19,mf1x(3)
+   real(kr)::elast
+   real(kr)::elim
+   integer::ngmt,nned
+   integer::mt16,mt455
+   integer::mt5n,mt5p,mt5d,mt5t,mt5he3,mt5a
+   integer::mt103,mt104,mt105,mt106,mt107
+   integer::mpmin,mpmax,mdmin,mdmax,mtmin,mtmax,m3min,m3max,m4min,m4max
+
+   !-- adding variables to hold the library and version
+   integer::nlib,lrel,nver

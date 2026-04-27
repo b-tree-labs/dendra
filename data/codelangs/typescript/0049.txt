@@ -1,0 +1,50 @@
+import {
+    codeFixAll,
+    createCodeFixActionMaybeFixAll,
+    registerCodeFix,
+} from "../_namespaces/ts.codefix.js";
+import {
+    CodeFixAllContext,
+    CodeFixContext,
+    ConstructorDeclaration,
+    Debug,
+    DiagnosticMessage,
+    Diagnostics,
+    emptyArray,
+    factory,
+    find,
+    findAncestor,
+    findLast,
+    GetAccessorDeclaration,
+    getTokenAtPosition,
+    isAbstractModifier,
+    isAccessibilityModifier,
+    isClassLike,
+    isDecorator,
+    isJSDocOverrideTag,
+    isOverrideModifier,
+    isParameterPropertyDeclaration,
+    isSourceFileJS,
+    isStaticModifier,
+    MethodDeclaration,
+    Node,
+    not,
+    ParameterPropertyDeclaration,
+    PropertyDeclaration,
+    SetAccessorDeclaration,
+    skipTrivia,
+    SourceFile,
+    SyntaxKind,
+    textChanges,
+} from "../_namespaces/ts.js";
+
+const fixName = "fixOverrideModifier";
+const fixAddOverrideId = "fixAddOverrideModifier";
+const fixRemoveOverrideId = "fixRemoveOverrideModifier";
+
+type ClassElementLikeHasJSDoc =
+    | ConstructorDeclaration
+    | PropertyDeclaration
+    | MethodDeclaration
+    | GetAccessorDeclaration
+    | SetAccessorDeclaration

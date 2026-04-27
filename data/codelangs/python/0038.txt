@@ -1,0 +1,50 @@
+"""This module includes tests for syntax errors that occur when a name
+declared as `global` is used in ways that violate the language
+specification, such as after assignment, usage, or annotation. The tests
+verify that syntax errors are correctly raised for improper `global`
+statements following variable use or assignment within functions.
+Additionally, it tests various name-binding scenarios for global
+variables to ensure correct behavior.
+
+See `test_scope.py` for additional related behavioral tests covering
+variable scoping and usage in different contexts.
+"""
+
+import contextlib
+from test.support import check_syntax_error
+from test.support.warnings_helper import check_warnings
+from types import SimpleNamespace
+import unittest
+import warnings
+
+
+class GlobalTests(unittest.TestCase):
+
+    def setUp(self):
+        self.enterContext(check_warnings())
+        warnings.filterwarnings("error", module="<test string>")
+
+    ######################################################
+    ### Syntax error cases as covered in Python/symtable.c
+    ######################################################
+
+    def test_name_param(self):
+        prog_text = """\
+def fn(name_param):
+    global name_param
+"""
+        check_syntax_error(self, prog_text, lineno=2, offset=5)
+
+    def test_name_after_assign(self):
+        prog_text = """\
+def fn():
+    name_assign = 1
+    global name_assign
+"""
+        check_syntax_error(self, prog_text, lineno=3, offset=5)
+
+    def test_name_after_use(self):
+        prog_text = """\
+def fn():
+    print(name_use)
+    global name_use

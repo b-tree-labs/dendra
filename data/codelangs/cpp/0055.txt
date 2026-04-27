@@ -1,0 +1,50 @@
+/* 
+   Copyright (c) Marshall Clow 2010-2012.
+
+   Distributed under the Boost Software License, Version 1.0. (See accompanying
+   file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    For more information, see http://www.boost.org
+*/
+
+#ifndef BOOST_ALGORITHM_BOYER_MOORE_SEARCH_HPP
+#define BOOST_ALGORITHM_BOYER_MOORE_SEARCH_HPP
+
+#include <algorithm>    // for std::reverse_copy
+#include <iterator>     // for std::iterator_traits
+
+#include <boost/config.hpp>
+#include <boost/assert.hpp>
+#include <boost/static_assert.hpp>
+
+#include <boost/range/begin.hpp>
+#include <boost/range/end.hpp>
+
+#include <boost/core/enable_if.hpp>
+#include <boost/type_traits/is_same.hpp>
+
+#include <boost/algorithm/searching/detail/bm_traits.hpp>
+#include <boost/algorithm/searching/detail/debugging.hpp>
+
+namespace boost { namespace algorithm {
+
+/*
+    A templated version of the boyer-moore searching algorithm.
+    
+References:
+    http://www.cs.utexas.edu/users/moore/best-ideas/string-searching/
+    http://www.cs.utexas.edu/~moore/publications/fstrpos.pdf
+    
+Explanations:
+    http://en.wikipedia.org/wiki/Boyer%E2%80%93Moore_string_search_algorithm
+    http://www.movsd.com/bm.htm
+    http://www.cs.ucdavis.edu/~gusfield/cs224f09/bnotes.pdf
+
+The Boyer-Moore search algorithm uses two tables, a "bad character" table
+to tell how far to skip ahead when it hits a character that is not in the pattern,
+and a "good character" table to tell how far to skip ahead when it hits a
+mismatch on a character that _is_ in the pattern.
+
+Requirements:
+        * Random access iterators
+        * The two iterator types (patIter and corpusIter) must 

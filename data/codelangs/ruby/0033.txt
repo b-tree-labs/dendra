@@ -1,0 +1,50 @@
+# frozen_string_literal: true
+
+require_relative 'add_edge_no_circular'
+require_relative 'add_vertex'
+require_relative 'delete_edge'
+require_relative 'detach_vertex_named'
+require_relative 'set_payload'
+require_relative 'tag'
+
+module Gem::Molinillo
+  class DependencyGraph
+    # A log for dependency graph actions
+    class Log
+      # Initializes an empty log
+      def initialize
+        @current_action = @first_action = nil
+      end
+
+      # @!macro [new] action
+      #   {include:DependencyGraph#$0}
+      #   @param [Graph] graph the graph to perform the action on
+      #   @param (see DependencyGraph#$0)
+      #   @return (see DependencyGraph#$0)
+
+      # @macro action
+      def tag(graph, tag)
+        push_action(graph, Tag.new(tag))
+      end
+
+      # @macro action
+      def add_vertex(graph, name, payload, root)
+        push_action(graph, AddVertex.new(name, payload, root))
+      end
+
+      # @macro action
+      def detach_vertex_named(graph, name)
+        push_action(graph, DetachVertexNamed.new(name))
+      end
+
+      # @macro action
+      def add_edge_no_circular(graph, origin, destination, requirement)
+        push_action(graph, AddEdgeNoCircular.new(origin, destination, requirement))
+      end
+
+      # {include:DependencyGraph#delete_edge}
+      # @param [Graph] graph the graph to perform the action on
+      # @param [String] origin_name
+      # @param [String] destination_name
+      # @param [Object] requirement
+      # @return (see DependencyGraph#delete_edge)

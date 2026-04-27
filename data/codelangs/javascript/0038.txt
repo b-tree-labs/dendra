@@ -1,0 +1,50 @@
+'use strict';
+
+const {
+  ArrayPrototypePush,
+  ArrayPrototypePushApply,
+  AtomicsLoad,
+  AtomicsWait,
+  AtomicsWaitAsync,
+  Int32Array,
+  ObjectAssign,
+  ObjectDefineProperty,
+  ObjectSetPrototypeOf,
+  Promise,
+  ReflectSet,
+  SafeSet,
+  StringPrototypeSlice,
+  StringPrototypeToUpperCase,
+} = primordials;
+
+const {
+  ERR_ASYNC_LOADER_REQUEST_NEVER_SETTLED,
+  ERR_INTERNAL_ASSERTION,
+  ERR_INVALID_ARG_TYPE,
+  ERR_INVALID_ARG_VALUE,
+  ERR_INVALID_RETURN_PROPERTY_VALUE,
+  ERR_INVALID_RETURN_VALUE,
+  ERR_LOADER_CHAIN_INCOMPLETE,
+  ERR_WORKER_UNSERIALIZABLE_ERROR,
+} = require('internal/errors').codes;
+const { URLParse } = require('internal/url');
+const { canParse: URLCanParse } = internalBinding('url');
+const { receiveMessageOnPort } = require('worker_threads');
+const {
+  isAnyArrayBuffer,
+  isArrayBufferView,
+} = require('internal/util/types');
+const {
+  validateObject,
+  validateString,
+} = require('internal/validators');
+const {
+  constructSharedArrayBuffer,
+  kEmptyObject,
+} = require('internal/util');
+
+const {
+  defaultResolve,
+  throwIfInvalidParentURL,
+} = require('internal/modules/esm/resolve');
+const {

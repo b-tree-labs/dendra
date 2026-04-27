@@ -1,0 +1,50 @@
+# ===----------------------------------------------------------------------=== #
+# Copyright (c) 2026, Modular Inc. All rights reserved.
+#
+# Licensed under the Apache License v2.0 with LLVM Exceptions:
+# https://llvm.org/LICENSE.txt
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ===----------------------------------------------------------------------=== #
+
+from std.os import remove
+from std.pathlib import Path, _dir_of_current_file
+from std.stat import S_ISFIFO
+from std.subprocess import run
+from std.tempfile import gettempdir
+from std.time import sleep
+
+from std.testing import assert_equal, assert_raises, assert_true, TestSuite
+
+comptime DUMMY_FILE_SIZE: UInt = 954
+
+
+def test_file_read() raises:
+    var path = _dir_of_current_file() / "test_file_dummy_input.txt"
+    with open(path, "r") as f:
+        assert_true(
+            f.read().startswith(
+                "Lorem ipsum dolor sit amet, consectetur adipiscing elit."
+            )
+        )
+
+
+def test_file_read_multi() raises:
+    with open(
+        _dir_of_current_file() / "test_file_dummy_input.txt",
+        "r",
+    ) as f:
+        assert_equal(f.read(12), "Lorem ipsum ")
+        assert_equal(f.read(6), "dolor ")
+        assert_true(
+            f.read().startswith("sit amet, consectetur adipiscing elit.")
+        )
+
+
+def test_file_read_bytes_multi() raises:
+    with open(
+        _dir_of_current_file() / "test_file_dummy_input.txt",

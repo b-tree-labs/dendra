@@ -1,0 +1,50 @@
+//  Boost string_algo library predicate.hpp header file  ---------------------------//
+
+//  Copyright Pavol Droba 2002-2003.
+//
+// Distributed under the Boost Software License, Version 1.0.
+//    (See accompanying file LICENSE_1_0.txt or copy at
+//          http://www.boost.org/LICENSE_1_0.txt)
+
+//  See http://www.boost.org/ for updates, documentation, and revision history.
+
+#ifndef BOOST_STRING_PREDICATE_HPP
+#define BOOST_STRING_PREDICATE_HPP
+
+#include <iterator>
+#include <boost/algorithm/string/config.hpp>
+#include <boost/range/begin.hpp>
+#include <boost/range/end.hpp>
+#include <boost/range/iterator.hpp>
+#include <boost/range/const_iterator.hpp>
+#include <boost/range/as_literal.hpp>
+#include <boost/range/iterator_range_core.hpp>
+
+#include <boost/algorithm/string/compare.hpp>
+#include <boost/algorithm/string/find.hpp>
+#include <boost/algorithm/string/detail/predicate.hpp>
+
+/*! \file boost/algorithm/string/predicate.hpp
+    Defines string-related predicates. 
+    The predicates determine whether a substring is contained in the input string 
+    under various conditions: a string starts with the substring, ends with the 
+    substring, simply contains the substring or if both strings are equal.
+    Additionaly the algorithm \c all() checks all elements of a container to satisfy a 
+    condition.
+
+    All predicates provide the strong exception guarantee.
+*/
+
+namespace boost {
+    namespace algorithm {
+
+//  starts_with predicate  -----------------------------------------------//
+
+        //! 'Starts with' predicate
+        /*!
+            This predicate holds when the test string is a prefix of the Input.
+            In other words, if the input starts with the test.
+            When the optional predicate is specified, it is used for character-wise
+            comparison.
+
+            \param Input An input sequence

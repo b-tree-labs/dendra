@@ -1,0 +1,50 @@
+'use strict';
+
+// TODO(@jasnell) Temporarily ignoring c8 covrerage for this file while tests
+// are still being developed.
+/* c8 ignore start */
+
+const {
+  ArrayBufferPrototypeTransfer,
+  ArrayIsArray,
+  ArrayPrototypePush,
+  BigInt,
+  ObjectDefineProperties,
+  ObjectKeys,
+  SafeSet,
+  SymbolAsyncDispose,
+  Uint8Array,
+} = primordials;
+
+const {
+  getOptionValue,
+} = require('internal/options');
+
+// QUIC requires that Node.js be compiled with crypto support.
+if (!process.features.quic || !getOptionValue('--experimental-quic')) {
+  return;
+}
+
+const { inspect } = require('internal/util/inspect');
+
+let debug = require('internal/util/debuglog').debuglog('quic', (fn) => {
+  debug = fn;
+});
+
+const {
+  Endpoint: Endpoint_,
+  setCallbacks,
+
+  // The constants to be exposed to end users for various options.
+  CC_ALGO_RENO_STR: CC_ALGO_RENO,
+  CC_ALGO_CUBIC_STR: CC_ALGO_CUBIC,
+  CC_ALGO_BBR_STR: CC_ALGO_BBR,
+  DEFAULT_CIPHERS,
+  DEFAULT_GROUPS,
+
+  // Internal constants for use by the implementation.
+  // These are not exposed to end users.
+  PREFERRED_ADDRESS_IGNORE: kPreferredAddressIgnore,
+  PREFERRED_ADDRESS_USE: kPreferredAddressUse,
+  DEFAULT_PREFERRED_ADDRESS_POLICY: kPreferredAddressDefault,
+  STREAM_DIRECTION_BIDIRECTIONAL: kStreamDirectionBidirectional,

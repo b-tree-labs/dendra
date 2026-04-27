@@ -1,0 +1,50 @@
+require_relative "column_printer"
+require_relative "table_printer"
+require_relative "wrapped_printer"
+
+class Bundler::Thor
+  module Shell
+    class Basic
+      attr_accessor :base
+      attr_reader   :padding
+
+      # Initialize base, mute and padding to nil.
+      #
+      def initialize #:nodoc:
+        @base = nil
+        @mute = false
+        @padding = 0
+        @always_force = false
+      end
+
+      # Mute everything that's inside given block
+      #
+      def mute
+        @mute = true
+        yield
+      ensure
+        @mute = false
+      end
+
+      # Check if base is muted
+      #
+      def mute?
+        @mute
+      end
+
+      # Sets the output padding, not allowing less than zero values.
+      #
+      def padding=(value)
+        @padding = [0, value].max
+      end
+
+      # Sets the output padding while executing a block and resets it.
+      #
+      def indent(count = 1)
+        orig_padding = padding
+        self.padding = padding + count
+        yield
+        self.padding = orig_padding
+      end
+
+      # Asks something to the user and receives a response.

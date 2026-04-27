@@ -1,0 +1,50 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.commons.lang3.concurrent;
+
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+
+/**
+ * A specialized {@link BackgroundInitializer} implementation that can deal with
+ * multiple background initialization tasks.
+ *
+ * <p>
+ * This class has a similar purpose as {@link BackgroundInitializer}. However,
+ * it is not limited to a single background initialization task. Rather it
+ * manages an arbitrary number of {@link BackgroundInitializer} objects,
+ * executes them, and waits until they are completely initialized. This is
+ * useful for applications that have to perform multiple initialization tasks
+ * that can run in parallel (i.e. that do not depend on each other). This class
+ * takes care about the management of an {@link ExecutorService} and shares it
+ * with the {@link BackgroundInitializer} objects it is responsible for; so the
+ * using application need not bother with these details.
+ * </p>
+ * <p>
+ * The typical usage scenario for {@link MultiBackgroundInitializer} is as
+ * follows:
+ * </p>
+ * <ul>
+ * <li>Create a new instance of the class. Optionally pass in a pre-configured
+ * {@link ExecutorService}. Alternatively {@link MultiBackgroundInitializer} can
+ * create a temporary {@link ExecutorService} and delete it after initialization
+ * is complete.</li>

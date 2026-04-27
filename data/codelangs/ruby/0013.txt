@@ -1,0 +1,49 @@
+# frozen_string_literal: true
+
+class Gem::RequestSet::Lockfile::Parser
+  ###
+  # Parses lockfiles
+
+  def initialize(tokenizer, set, platforms, filename = nil)
+    @tokens    = tokenizer
+    @filename  = filename
+    @set       = set
+    @platforms = platforms
+  end
+
+  def parse
+    until @tokens.empty? do
+      token = get
+
+      case token.type
+      when :section then
+        @tokens.skip :newline
+
+        case token.value
+        when "DEPENDENCIES" then
+          parse_DEPENDENCIES
+        when "GIT" then
+          parse_GIT
+        when "GEM" then
+          parse_GEM
+        when "PATH" then
+          parse_PATH
+        when "PLATFORMS" then
+          parse_PLATFORMS
+        else
+          token = get until @tokens.empty? || peek.first == :section
+        end
+      else
+        raise "BUG: unhandled token #{token.type} (#{token.value.inspect}) at line #{token.line} column #{token.column}"
+      end
+    end
+  end
+
+  ##
+  # Gets the next token for a Lockfile
+
+  def get(expected_types = nil, expected_value = nil) # :nodoc:
+    token = @tokens.shift
+
+    if expected_types && !Array(expected_types).include?(token.type)
+      unget token

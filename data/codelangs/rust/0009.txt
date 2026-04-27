@@ -1,0 +1,50 @@
+use crate::de::field_i;
+use crate::deprecated::allow_deprecated;
+use crate::fragment::{Fragment, Match, Stmts};
+use crate::internals::ast::{Container, Data, Field, Style, Variant};
+use crate::internals::name::Name;
+use crate::internals::{attr, replace_receiver, Ctxt, Derive};
+use crate::{bound, dummy, pretend, private, this};
+use proc_macro2::{Span, TokenStream};
+use quote::{quote, quote_spanned};
+use syn::spanned::Spanned;
+use syn::{parse_quote, Ident, Index, Member};
+
+pub fn expand_derive_serialize(input: &mut syn::DeriveInput) -> syn::Result<TokenStream> {
+    replace_receiver(input);
+
+    let ctxt = Ctxt::new();
+    let Some(cont) = Container::from_ast(&ctxt, input, Derive::Serialize, &private.ident()) else {
+        return Err(ctxt.check().unwrap_err());
+    };
+    precondition(&ctxt, &cont);
+    ctxt.check()?;
+
+    let ident = &cont.ident;
+    let params = Parameters::new(&cont);
+    let (impl_generics, ty_generics, where_clause) = params.generics.split_for_impl();
+    let body = Stmts(serialize_body(&cont, &params));
+    let allow_deprecated = allow_deprecated(input);
+
+    let impl_block = if let Some(remote) = cont.attrs.remote() {
+        let vis = &input.vis;
+        let used = pretend::pretend_used(&cont, params.is_packed);
+        quote! {
+            #[automatically_derived]
+            #allow_deprecated
+            impl #impl_generics #ident #ty_generics #where_clause {
+                #vis fn serialize<__S>(__self: &#remote #ty_generics, __serializer: __S) -> _serde::#private::Result<__S::Ok, __S::Error>
+                where
+                    __S: _serde::Serializer,
+                {
+                    #used
+                    #body
+                }
+            }
+        }
+    } else {
+        quote! {
+            #[automatically_derived]
+            #allow_deprecated
+            impl #impl_generics _serde::Serialize for #ident #ty_generics #where_clause {
+                fn serialize<__S>(&self, __serializer: __S) -> _serde::#private::Result<__S::Ok, __S::Error>

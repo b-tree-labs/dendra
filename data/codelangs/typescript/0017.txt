@@ -1,0 +1,50 @@
+import {
+    arrayFrom,
+    binarySearchKey,
+    CharacterCodes,
+    combinePaths,
+    compareValues,
+    Debug,
+    DocumentPosition,
+    DocumentPositionMapper,
+    DocumentPositionMapperHost,
+    EmitHost,
+    emptyArray,
+    every,
+    getDirectoryPath,
+    getNormalizedAbsolutePath,
+    getPositionOfLineAndCharacter,
+    getRelativePathToDirectoryOrUrl,
+    identity,
+    isArray,
+    isString,
+    LineAndCharacter,
+    RawSourceMap,
+    some,
+    sortAndDeduplicate,
+    SortedReadonlyArray,
+    SourceMapGenerator,
+} from "./_namespaces/ts.js";
+import * as performance from "./_namespaces/ts.performance.js";
+
+/** @internal */
+export interface SourceMapGeneratorOptions {
+    extendedDiagnostics?: boolean;
+}
+
+/** @internal */
+export function createSourceMapGenerator(host: EmitHost, file: string, sourceRoot: string, sourcesDirectoryPath: string, generatorOptions: SourceMapGeneratorOptions): SourceMapGenerator {
+    // Why var? It avoids TDZ checks in the runtime which can be costly.
+    // See: https://github.com/microsoft/TypeScript/issues/52924
+    /* eslint-disable no-var */
+    var { enter, exit } = generatorOptions.extendedDiagnostics
+        ? performance.createTimer("Source Map", "beforeSourcemap", "afterSourcemap")
+        : performance.nullTimer;
+
+    // Current source map file and its index in the sources list
+    var rawSources: string[] = [];
+    var sources: string[] = [];
+    var sourceToSourceIndexMap = new Map<string, number>();
+    var sourcesContent: (string | null)[] | undefined; // eslint-disable-line no-restricted-syntax
+
+    var names: string[] = [];

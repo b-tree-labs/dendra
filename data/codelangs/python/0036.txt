@@ -1,0 +1,50 @@
+# test interactions between int, float, Decimal and Fraction
+
+import unittest
+import random
+import math
+import sys
+import operator
+
+from decimal import Decimal as D
+from fractions import Fraction as F
+
+# Constants related to the hash implementation;  hash(x) is based
+# on the reduction of x modulo the prime _PyHASH_MODULUS.
+_PyHASH_MODULUS = sys.hash_info.modulus
+_PyHASH_INF = sys.hash_info.inf
+
+
+class DummyIntegral(int):
+    """Dummy Integral class to test conversion of the Rational to float."""
+
+    def __mul__(self, other):
+        return DummyIntegral(super().__mul__(other))
+    __rmul__ = __mul__
+
+    def __truediv__(self, other):
+        return NotImplemented
+    __rtruediv__ = __truediv__
+
+    @property
+    def numerator(self):
+        return DummyIntegral(self)
+
+    @property
+    def denominator(self):
+        return DummyIntegral(1)
+
+
+class HashTest(unittest.TestCase):
+    def check_equal_hash(self, x, y):
+        # check both that x and y are equal and that their hashes are equal
+        self.assertEqual(hash(x), hash(y),
+                         "got different hashes for {!r} and {!r}".format(x, y))
+        self.assertEqual(x, y)
+
+    def test_bools(self):
+        self.check_equal_hash(False, 0)
+        self.check_equal_hash(True, 1)
+
+    def test_integers(self):
+        # check that equal values hash equal

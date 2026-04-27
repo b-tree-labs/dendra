@@ -1,0 +1,49 @@
+use crate::internals::respan::respan;
+use proc_macro2::Span;
+use quote::ToTokens;
+use std::mem;
+use syn::{
+    parse_quote, Data, DeriveInput, Expr, ExprPath, GenericArgument, GenericParam, Generics, Macro,
+    Path, PathArguments, QSelf, ReturnType, Token, Type, TypeParamBound, TypePath, WherePredicate,
+};
+
+pub fn replace_receiver(input: &mut DeriveInput) {
+    let self_ty = {
+        let ident = &input.ident;
+        let ty_generics = input.generics.split_for_impl().1;
+        parse_quote!(#ident #ty_generics)
+    };
+    let mut visitor = ReplaceReceiver(&self_ty);
+    visitor.visit_generics_mut(&mut input.generics);
+    visitor.visit_data_mut(&mut input.data);
+}
+
+struct ReplaceReceiver<'a>(&'a TypePath);
+
+impl ReplaceReceiver<'_> {
+    fn self_ty(&self, span: Span) -> TypePath {
+        let tokens = self.0.to_token_stream();
+        let respanned = respan(tokens, span);
+        syn::parse2(respanned).unwrap()
+    }
+
+    fn self_to_qself(&self, qself: &mut Option<QSelf>, path: &mut Path) {
+        if path.leading_colon.is_some() || path.segments[0].ident != "Self" {
+            return;
+        }
+
+        if path.segments.len() == 1 {
+            self.self_to_expr_path(path);
+            return;
+        }
+
+        let span = path.segments[0].ident.span();
+        *qself = Some(QSelf {
+            lt_token: Token![<](span),
+            ty: Box::new(Type::Path(self.self_ty(span))),
+            position: 0,
+            as_token: None,
+            gt_token: Token![>](span),
+        });
+
+        path.leading_colon = Some(**path.segments.pairs().next().unwrap().punct().unwrap());

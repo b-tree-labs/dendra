@@ -1,0 +1,50 @@
+/***************************************************************************
+ *                                  _   _ ____  _
+ *  Project                     ___| | | |  _ \| |
+ *                             / __| | | | |_) | |
+ *                            | (__| |_| |  _ <| |___
+ *                             \___|\___/|_| \_\_____|
+ *
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
+ *
+ * This software is licensed as described in the file COPYING, which
+ * you should have received as part of this distribution. The terms
+ * are also available at https://curl.se/docs/copyright.html.
+ *
+ * You may opt to use, copy, modify, merge, publish, distribute and/or sell
+ * copies of the Software, and permit persons to whom the Software is
+ * furnished to do so, under the terms of the COPYING file.
+ *
+ * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
+ * KIND, either express or implied.
+ *
+ * SPDX-License-Identifier: curl
+ *
+ ***************************************************************************/
+#include "tool_setup.h"
+
+#include "tool_cfgable.h"
+#include "tool_msgs.h"
+#include "tool_paramhlp.h"
+#include "tool_formparse.h"
+#include "tool_parsecfg.h"
+
+/* tool_mime functions. */
+static struct tool_mime *tool_mime_new(struct tool_mime *parent,
+                                       toolmimekind kind)
+{
+  struct tool_mime *m = (struct tool_mime *)curlx_calloc(1, sizeof(*m));
+
+  if(m) {
+    m->kind = kind;
+    m->parent = parent;
+    if(parent) {
+      m->prev = parent->subparts;
+      parent->subparts = m;
+    }
+  }
+  return m;
+}
+
+static struct tool_mime *tool_mime_new_parts(struct tool_mime *parent)
+{

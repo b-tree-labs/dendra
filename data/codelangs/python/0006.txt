@@ -1,0 +1,50 @@
+#
+# Test suite for Optik.  Supplied by Johannes Gijsbers
+# (taradino@softhome.net) -- translated from the original Optik
+# test suite to this PyUnit-based version.
+#
+# $Id$
+#
+
+import sys
+import os
+import re
+import copy
+import unittest
+
+from io import StringIO
+from test import support
+from test.support import cpython_only, os_helper
+from test.support.i18n_helper import TestTranslationsBase, update_translation_snapshots
+from test.support.import_helper import ensure_lazy_imports
+
+import optparse
+from optparse import make_option, Option, \
+     TitledHelpFormatter, OptionParser, OptionGroup, \
+     SUPPRESS_USAGE, OptionError, OptionConflictError, \
+     BadOptionError, OptionValueError, Values
+from optparse import _match_abbrev
+from optparse import _parse_num
+
+class InterceptedError(Exception):
+    def __init__(self,
+                 error_message=None,
+                 exit_status=None,
+                 exit_message=None):
+        self.error_message = error_message
+        self.exit_status = exit_status
+        self.exit_message = exit_message
+
+    def __str__(self):
+        return self.error_message or self.exit_message or "intercepted error"
+
+class InterceptingOptionParser(OptionParser):
+    def exit(self, status=0, msg=None):
+        raise InterceptedError(exit_status=status, exit_message=msg)
+
+    def error(self, msg):
+        raise InterceptedError(error_message=msg)
+
+
+class BaseTest(unittest.TestCase):
+    def assertParseOK(self, args, expected_opts, expected_positional_args):

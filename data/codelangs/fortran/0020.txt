@@ -1,0 +1,50 @@
+module covm
+   ! provides subroutine covr for NJOY2016
+   use locale
+   implicit none
+   private
+   public covr
+
+   ! global variables
+
+   ! user's input
+   integer::nin,nout
+   integer::nplot
+   integer::icolor
+   real(kr)::epmin
+   real(kr)::einc
+   integer::irelco
+   integer::ncase
+   integer::noleg
+   integer::nstart
+   integer::ndiv
+   integer::matype
+   character(12)::hlibid
+   character(21)::hdescr
+   integer::mat,mt,mat1,mt1
+   integer::mfflg,mf3,mf5,mf35
+
+   ! other common variables
+
+   integer,parameter::ncasemx=100
+   integer::nscr,nscr1,nscr2
+   integer::nrow,ncol,itype,nvf,ncf
+   integer::ixmin,ixmax
+   integer::izero,ismall
+   integer::ishade
+   integer::nlev
+   integer::nexp
+   integer::iza,iza1,izap
+   integer::nwscr,max,nwcf,nwig
+   real(kr),dimension(:),allocatable::scr
+   real(kr),dimension(:),allocatable::xlev
+   real(kr),dimension(:),allocatable::cf
+   real(kr),dimension(:),allocatable::x,y
+   real(kr),dimension(:),allocatable::xx,xy
+   real(kr),dimension(:),allocatable::rsdx,rsdy
+   integer,dimension(:),allocatable::imtx,imtx1,imatx1
+
+contains
+
+   subroutine covr
+   !--------------------------------------------------------------------

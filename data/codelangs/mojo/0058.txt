@@ -1,0 +1,49 @@
+# ===----------------------------------------------------------------------=== #
+# Copyright (c) 2026, Modular Inc. All rights reserved.
+#
+# Licensed under the Apache License v2.0 with LLVM Exceptions:
+# https://llvm.org/LICENSE.txt
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ===----------------------------------------------------------------------=== #
+
+import compiler_internal as compiler
+from std.gpu.host.device_context import DeviceExternalFunction
+from std.os import abort, getenv
+from tensor import (
+    foreach,
+    DynamicTensor,
+    VariadicTensors,
+    InputTensor,
+    OutputTensor,
+    InputVariadicTensors,
+)
+from tensor import OutputVariadicTensors
+from tensor.managed_tensor_slice import (
+    _MutableInputTensor as MutableInputTensor,
+)
+from std.utils.index import IndexList
+from std.runtime.asyncrt import DeviceContextPtr
+
+
+@compiler.register("my_add")
+struct MyAdd:
+    @staticmethod
+    def execute(
+        output: OutputTensor,
+        x: InputTensor[dtype=output.dtype, rank=output.rank, ...],
+        y: InputTensor[dtype=output.dtype, rank=output.rank, ...],
+    ):
+        output[0] = x[0] + y[0]
+
+    @staticmethod
+    def shape(
+        x: InputTensor,
+        y: InputTensor,
+    ) raises -> IndexList[x.rank]:
+        raise "NotImplemented"
+

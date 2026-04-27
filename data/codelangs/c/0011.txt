@@ -1,0 +1,50 @@
+/*
+ * Copyright (C) 1996-2022  Internet Software Consortium.
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND INTERNET SOFTWARE CONSORTIUM
+ * DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL
+ * INTERNET SOFTWARE CONSORTIUM BE LIABLE FOR ANY SPECIAL, DIRECT,
+ * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING
+ * FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT,
+ * NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION
+ * WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * SPDX-License-Identifier: ISC
+ */
+#include "curl_setup.h"
+
+#ifndef HAVE_INET_NTOP
+
+#ifdef HAVE_SYS_PARAM_H
+#include <sys/param.h>
+#endif
+#ifdef HAVE_NETINET_IN_H
+#include <netinet/in.h>
+#endif
+#ifdef HAVE_ARPA_INET_H
+#include <arpa/inet.h>
+#endif
+
+#include "curlx/inet_ntop.h"
+#include "curlx/snprintf.h"
+#include "curlx/strcopy.h"
+
+#define IN6ADDRSZ       16
+/* #define INADDRSZ         4 */
+#define INT16SZ          2
+
+/*
+ * If USE_IPV6 is disabled, we still want to parse IPv6 addresses, so make
+ * sure we have _some_ value for AF_INET6 without polluting our fake value
+ * everywhere.
+ */
+#if !defined(USE_IPV6) && !defined(AF_INET6)
+#define AF_INET6 (AF_INET + 1)
+#endif
+
+/*

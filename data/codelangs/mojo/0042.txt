@@ -1,0 +1,50 @@
+# ===----------------------------------------------------------------------=== #
+# Copyright (c) 2026, Modular Inc. All rights reserved.
+#
+# Licensed under the Apache License v2.0 with LLVM Exceptions:
+# https://llvm.org/LICENSE.txt
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ===----------------------------------------------------------------------=== #
+
+from std.math import ceildiv
+from std.atomic import Atomic
+
+from std.gpu import global_idx
+from std.gpu.host import DeviceContext
+from std.testing import assert_equal, TestSuite
+from std.sys import is_apple_gpu, has_apple_gpu_accelerator
+
+
+@fieldwise_init
+struct FillStrategy(Equatable, ImplicitlyCopyable):
+    var value: Int
+
+    comptime LINSPACE = Self(0)
+    comptime NEG_LINSPACE = Self(1)
+    comptime SYMMETRIC_LINSPACE = Self(2)
+    comptime ZEROS = Self(3)
+    comptime ONES = Self(4)
+
+    def __eq__(self, other: Self) -> Bool:
+        return self.value == other.value
+
+
+def reduce_add(
+    res_add: UnsafePointer[Float32, MutAnyOrigin],
+    vec: UnsafePointer[Float32, MutAnyOrigin],
+    len: Int,
+):
+    var tid = global_idx.x
+
+    if tid >= len:
+        return
+
+    _ = Atomic.fetch_add(res_add, vec[tid])
+
+
+def reduce_min_max(

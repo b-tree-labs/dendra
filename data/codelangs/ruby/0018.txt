@@ -1,0 +1,50 @@
+# frozen_string_literal: true
+# shareable_constant_value: literal
+
+require 'date'
+
+# :stopdoc:
+
+# = time.rb
+#
+# When 'time' is required, Time is extended with additional methods for parsing
+# and converting Times.
+#
+# == Features
+#
+# This library extends the Time class with the following conversions between
+# date strings and Time objects:
+#
+# * date-time defined by {RFC 2822}[http://www.ietf.org/rfc/rfc2822.txt]
+# * HTTP-date defined by {RFC 2616}[http://www.ietf.org/rfc/rfc2616.txt]
+# * dateTime defined by XML Schema Part 2: Datatypes ({ISO
+#   8601}[http://www.iso.org/iso/date_and_time_format])
+# * various formats handled by Date._parse
+# * custom formats handled by Date._strptime
+
+# :startdoc:
+
+# #
+class Time
+
+  VERSION = "0.4.2"             # :nodoc:
+
+  class << Time
+
+    #
+    # A hash of timezones mapped to hour differences from UTC. The
+    # set of time zones corresponds to the ones specified by RFC 2822
+    # and ISO 8601.
+    #
+    ZoneOffset = { # :nodoc:
+      'UTC' => 0,
+      # ISO 8601
+      'Z' => 0,
+      # RFC 822
+      'UT' => 0, 'GMT' => 0,
+      'EST' => -5, 'EDT' => -4,
+      'CST' => -6, 'CDT' => -5,
+      'MST' => -7, 'MDT' => -6,
+      'PST' => -8, 'PDT' => -7,
+      # Following definition of military zones is original one.
+      # See RFC 1123 and RFC 2822 for the error in RFC 822.

@@ -1,0 +1,49 @@
+# frozen_string_literal: true
+
+# This class is used by rubygems to build Rust extensions. It is a thin-wrapper
+# over the `cargo rustc` command which takes care of building Rust code in a way
+# that Ruby can use.
+class Gem::Ext::CargoBuilder < Gem::Ext::Builder
+  attr_accessor :spec, :runner, :profile
+
+  def initialize
+    require_relative "../command"
+    require_relative "cargo_builder/link_flag_converter"
+
+    @runner = self.class.method(:run)
+    @profile = :release
+  end
+
+  def build(extension, dest_path, results, args = [], lib_dir = nil, cargo_dir = Dir.pwd,
+    target_rbconfig = Gem.target_rbconfig, n_jobs: nil)
+    require "tempfile"
+    require "fileutils"
+
+    if target_rbconfig.path
+      warn "--target-rbconfig is not yet supported for Rust extensions. Ignoring"
+    end
+
+    # Where's the Cargo.toml of the crate we're building
+    cargo_toml = File.join(cargo_dir, "Cargo.toml")
+    # What's the crate's name
+    crate_name = cargo_crate_name(cargo_dir, cargo_toml, results)
+
+    begin
+      # Create a tmp dir to do the build in
+      tmp_dest = Dir.mktmpdir(".gem.", cargo_dir)
+
+      # Run the build
+      cmd = cargo_command(cargo_toml, tmp_dest, args, crate_name)
+      runner.call(cmd, results, "cargo", cargo_dir, build_env)
+
+      # Where do we expect Cargo to write the compiled library
+      dylib_path = cargo_dylib_path(tmp_dest, crate_name)
+
+      # Helpful error if we didn't find the compiled library
+      raise DylibNotFoundError, tmp_dest unless File.exist?(dylib_path)
+
+      # Cargo and Ruby differ on how the library should be named, rename from
+      # what Cargo outputs to what Ruby expects
+      dlext_name = "#{crate_name}.#{makefile_config("DLEXT")}"
+      dlext_path = File.join(File.dirname(dylib_path), dlext_name)
+      FileUtils.cp(dylib_path, dlext_path)

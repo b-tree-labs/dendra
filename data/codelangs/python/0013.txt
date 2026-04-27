@@ -1,0 +1,50 @@
+#
+# Secret Labs' Regular Expression Engine
+#
+# convert template to internal format
+#
+# Copyright (c) 1997-2001 by Secret Labs AB.  All rights reserved.
+#
+# See the __init__.py file for information on usage and redistribution.
+#
+
+"""Internal support module for sre"""
+
+import _sre
+from . import _parser
+from ._constants import *
+from ._casefix import _EXTRA_CASES
+
+assert _sre.MAGIC == MAGIC, "SRE module mismatch"
+
+_LITERAL_CODES = {LITERAL, NOT_LITERAL}
+_SUCCESS_CODES = {SUCCESS, FAILURE}
+_ASSERT_CODES = {ASSERT, ASSERT_NOT}
+_UNIT_CODES = _LITERAL_CODES | {ANY, IN}
+
+_REPEATING_CODES = {
+    MIN_REPEAT: (REPEAT, MIN_UNTIL, MIN_REPEAT_ONE),
+    MAX_REPEAT: (REPEAT, MAX_UNTIL, REPEAT_ONE),
+    POSSESSIVE_REPEAT: (POSSESSIVE_REPEAT, SUCCESS, POSSESSIVE_REPEAT_ONE),
+}
+
+_CHARSET_ALL = [(NEGATE, None)]
+
+def _combine_flags(flags, add_flags, del_flags,
+                   TYPE_FLAGS=_parser.TYPE_FLAGS):
+    if add_flags & TYPE_FLAGS:
+        flags &= ~TYPE_FLAGS
+    return (flags | add_flags) & ~del_flags
+
+def _compile(code, pattern, flags):
+    # internal: compile a (sub)pattern
+    emit = code.append
+    _len = len
+    LITERAL_CODES = _LITERAL_CODES
+    REPEATING_CODES = _REPEATING_CODES
+    SUCCESS_CODES = _SUCCESS_CODES
+    ASSERT_CODES = _ASSERT_CODES
+    iscased = None
+    tolower = None
+    fixes = None
+    if flags & SRE_FLAG_IGNORECASE and not flags & SRE_FLAG_LOCALE:

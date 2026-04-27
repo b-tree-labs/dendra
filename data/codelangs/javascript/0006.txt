@@ -1,0 +1,49 @@
+'use strict';
+
+const {
+  DateNow,
+  FunctionPrototypeCall,
+  NumberIsNaN,
+  ObjectDefineProperties,
+  ObjectSetPrototypeOf,
+  StringPrototypeToWellFormed,
+  Symbol,
+  SymbolToStringTag,
+} = primordials;
+
+const {
+  Blob,
+  TransferableBlob,
+} = require('internal/blob');
+
+const {
+  customInspectSymbol: kInspect,
+  kEnumerableProperty,
+  kEmptyObject,
+} = require('internal/util');
+
+const {
+  codes: {
+    ERR_INVALID_THIS,
+    ERR_MISSING_ARGS,
+  },
+} = require('internal/errors');
+
+const {
+  inspect,
+} = require('internal/util/inspect');
+
+const {
+  kClone,
+  kDeserialize,
+} = require('internal/worker/js_transferable');
+
+const kState = Symbol('state');
+
+function isFile(object) {
+  return object?.[kState] !== undefined;
+}
+
+class FileState {
+  name;
+  lastModified;

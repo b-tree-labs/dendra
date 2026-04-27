@@ -1,0 +1,50 @@
+//  Boost string_algo library iter_find.hpp header file  ---------------------------//
+
+//  Copyright Pavol Droba 2002-2003.
+//
+// Distributed under the Boost Software License, Version 1.0.
+//    (See accompanying file LICENSE_1_0.txt or copy at
+//          http://www.boost.org/LICENSE_1_0.txt)
+
+//  See http://www.boost.org/ for updates, documentation, and revision history.
+
+#ifndef BOOST_STRING_ITER_FIND_HPP
+#define BOOST_STRING_ITER_FIND_HPP
+
+#include <boost/algorithm/string/config.hpp>
+#include <algorithm>
+#include <iterator>
+#include <boost/iterator/transform_iterator.hpp>
+
+#include <boost/range/iterator_range_core.hpp>
+#include <boost/range/begin.hpp>
+#include <boost/range/end.hpp>
+#include <boost/range/iterator.hpp>
+#include <boost/range/value_type.hpp>
+#include <boost/range/as_literal.hpp>
+
+#include <boost/algorithm/string/concept.hpp>
+#include <boost/algorithm/string/find_iterator.hpp>
+#include <boost/algorithm/string/detail/util.hpp>
+
+/*! \file
+    Defines generic split algorithms. Split algorithms can be 
+    used to divide a sequence into several part according 
+    to a given criteria. Result is given as a 'container 
+    of containers' where elements are copies or references 
+    to extracted parts.
+
+    There are two algorithms provided. One iterates over matching
+    substrings, the other one over the gaps between these matches.
+*/
+
+namespace boost {
+    namespace algorithm {
+
+//  iterate find ---------------------------------------------------//
+
+        //! Iter find algorithm
+        /*!
+            This algorithm executes a given finder in iteration on the input,
+            until the end of input is reached, or no match is found.
+            Iteration is done using built-in find_iterator, so the real 

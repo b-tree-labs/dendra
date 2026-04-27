@@ -1,0 +1,50 @@
+module plotm
+   ! provides subroutine plotr for NJOY2016
+   use locale
+   implicit none
+   private
+   public plotr
+
+contains
+
+   subroutine plotr
+   !--------------------------------------------------------------------
+   !
+   ! plot cross sections
+   !
+   ! Handles ENDF data, PENDF or GENDF data at specified temper-
+   ! atures, or experimental input data.  Several plots can be
+   ! given on each set of axes, with both left and right scales.
+   ! Also, several graphs can be given on each page or display.
+   ! Error bars may be included for input data.  Flexible titles
+   ! and legend blocks are allowed.  All standard combinations of
+   ! log and linear axes are supported, either grids or tick marks
+   ! can be requested, and scales can be chosen automatically
+   ! or set by the user.  In some cases, the x axis is thinned.
+   ! In other cases, extra points are added so that, for example,
+   ! linear-linear data plots correctly on a log-log graph.
+   ! A limited capability for 3-d plots of angle and energy
+   ! is included, and the ENDF-6 File 6 format is supported.
+   ! Percent difference and ratio plots can be requested.
+   !
+   ! Plotr writes plot commands on an output file for later use
+   ! by the viewr module or an external graphics program.
+   !
+   !---input--------------------------------------------------------
+   !
+   !  card 0
+   !     nplt          unit for output plot commands
+   !     nplt0         unit for input plot commands
+   !                     default=0=none
+   !                     output plot commands are appended
+   !                     to the input plot commands, if any.
+   !  card 1
+   !     lori          page orientation (def=1)
+   !                    0  portrait (7.5x10in)
+   !                    1  landscape (10x7.5in)
+   !     istyle        character style (def=2)
+   !                     1 = roman
+   !                     2 = swiss
+   !     size          character size option
+   !                     pos = height in page units
+   !                     neg = height as fraction of subplot size

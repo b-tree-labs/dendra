@@ -1,0 +1,50 @@
+from test.test_importlib import abc, util
+
+machinery = util.import_importlib('importlib.machinery')
+
+import os.path
+import unittest
+
+from test.support import import_helper, REPO_ROOT, STDLIB_DIR
+
+
+def resolve_stdlib_file(name, ispkg=False):
+    assert name
+    if ispkg:
+        return os.path.join(STDLIB_DIR, *name.split('.'), '__init__.py')
+    else:
+        return os.path.join(STDLIB_DIR, *name.split('.')) + '.py'
+
+
+class FindSpecTests(abc.FinderTests):
+
+    """Test finding frozen modules."""
+
+    def find(self, name, **kwargs):
+        finder = self.machinery.FrozenImporter
+        with import_helper.frozen_modules():
+            return finder.find_spec(name, **kwargs)
+
+    def check_basic(self, spec, name, ispkg=False):
+        self.assertEqual(spec.name, name)
+        self.assertIs(spec.loader, self.machinery.FrozenImporter)
+        self.assertEqual(spec.origin, 'frozen')
+        self.assertFalse(spec.has_location)
+        if ispkg:
+            self.assertIsNotNone(spec.submodule_search_locations)
+        else:
+            self.assertIsNone(spec.submodule_search_locations)
+        self.assertIsNotNone(spec.loader_state)
+
+    def check_loader_state(self, spec, origname=None, filename=None):
+        if not filename:
+            if not origname:
+                origname = spec.name
+            filename = resolve_stdlib_file(origname)
+
+        actual = dict(vars(spec.loader_state))
+
+        # Check the rest of spec.loader_state.
+        expected = dict(
+            origname=origname,
+            filename=filename if origname else None,

@@ -1,0 +1,49 @@
+"""
+Test suite for _osx_support: shared OS X support functions.
+"""
+
+import os
+import platform
+import stat
+import sys
+import unittest
+
+from test.support import os_helper
+
+import _osx_support
+
+@unittest.skipUnless(sys.platform.startswith("darwin"), "requires OS X")
+class Test_OSXSupport(unittest.TestCase):
+
+    def setUp(self):
+        self.maxDiff = None
+        self.prog_name = 'bogus_program_xxxx'
+        self.temp_path_dir = os.path.abspath(os.getcwd())
+        self.env = self.enterContext(os_helper.EnvironmentVarGuard())
+
+        self.env.unset(
+            'CFLAGS', 'LDFLAGS', 'CPPFLAGS',
+            'BASECFLAGS', 'BLDSHARED', 'LDSHARED', 'CC',
+            'CXX', 'PY_CFLAGS', 'PY_LDFLAGS', 'PY_CPPFLAGS',
+            'PY_CORE_CFLAGS', 'PY_CORE_LDFLAGS', 'PY_CORE_EXE_LDFLAGS'
+        )
+
+    def add_expected_saved_initial_values(self, config_vars, expected_vars):
+        # Ensure that the initial values for all modified config vars
+        # are also saved with modified keys.
+        expected_vars.update(('_OSX_SUPPORT_INITIAL_'+ k,
+                config_vars[k]) for k in config_vars
+                    if config_vars[k] != expected_vars[k])
+
+    def test__find_executable(self):
+        if self.env['PATH']:
+            self.env['PATH'] = self.env['PATH'] + ':'
+        self.env['PATH'] = self.env['PATH'] + os.path.abspath(self.temp_path_dir)
+        os_helper.unlink(self.prog_name)
+        self.assertIsNone(_osx_support._find_executable(self.prog_name))
+        self.addCleanup(os_helper.unlink, self.prog_name)
+        with open(self.prog_name, 'w') as f:
+            f.write("#!/bin/sh\n/bin/echo OK\n")
+        os.chmod(self.prog_name, stat.S_IRWXU)
+        self.assertEqual(self.prog_name,
+                            _osx_support._find_executable(self.prog_name))

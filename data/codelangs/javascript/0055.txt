@@ -1,0 +1,49 @@
+'use strict';
+
+const {
+  ArrayIsArray,
+  ArrayPrototypeForEach,
+  Boolean,
+  SafeMap,
+  SafeSet,
+  SafeWeakMap,
+  StringPrototypeEndsWith,
+  StringPrototypeStartsWith,
+} = primordials;
+
+const { validateNumber, validateOneOf } = require('internal/validators');
+const { kEmptyObject } = require('internal/util');
+const { TIMEOUT_MAX } = require('internal/timers');
+
+const EventEmitter = require('events');
+const { addAbortListener } = require('internal/events/abort_listener');
+const { watch } = require('fs');
+const { fileURLToPath } = require('internal/url');
+const { resolve, dirname, sep } = require('path');
+const { setTimeout, clearTimeout } = require('timers');
+
+const supportsRecursiveWatching = process.platform === 'win32' ||
+  process.platform === 'darwin';
+
+const isParentPath = (parentCandidate, childCandidate) => {
+  const parent = resolve(parentCandidate);
+  const child = resolve(childCandidate);
+  const normalizedParent = StringPrototypeEndsWith(parent, sep) ? parent : parent + sep;
+  return StringPrototypeStartsWith(child, normalizedParent);
+};
+
+class FilesWatcher extends EventEmitter {
+  #watchers = new SafeMap();
+  #filteredFiles = new SafeSet();
+  #dependencyOwners = new SafeMap();
+  #ownerDependencies = new SafeMap();
+  #debounceOwners = new SafeSet();
+  #debounceTimer;
+  #debounce;
+  #mode;
+  #signal;
+  #passthroughIPC = false;
+  #ipcHandlers = new SafeWeakMap();
+
+  constructor({ debounce = 200, mode = 'filter', signal } = kEmptyObject) {
+    super({ __proto__: null, captureRejections: true });

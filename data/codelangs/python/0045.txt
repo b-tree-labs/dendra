@@ -1,0 +1,49 @@
+"""turtledemo/sorting_animation.py
+
+A minimal sorting algorithm animation:
+Sorts a shelf of 10 blocks using insertion
+sort, selection sort and quicksort.
+
+Shelves are implemented using builtin lists.
+
+Blocks are turtles with shape "square", but
+stretched to rectangles by shapesize()
+"""
+from turtle import *
+import random
+
+
+class Block(Turtle):
+
+    def __init__(self, size):
+        self.size = size
+        Turtle.__init__(self, shape="square", visible=False)
+        self.pu()
+        self.shapesize(size * 1.5, 1.5, 2) # square-->rectangle
+        self.fillcolor("black")
+        self.st()
+
+    def glow(self):
+        self.fillcolor("red")
+
+    def unglow(self):
+        self.fillcolor("black")
+
+    def __repr__(self):
+        return "Block size: {0}".format(self.size)
+
+
+class Shelf(list):
+
+    def __init__(self, y):
+        "create a shelf. y is y-position of first block"
+        self.y = y
+        self.x = -150
+
+    def push(self, d):
+        width, _, _ = d.shapesize()
+        # align blocks by the bottom edge
+        y_offset = width / 2 * 20
+        d.sety(self.y + y_offset)
+        d.setx(self.x + 34 * len(self))
+        self.append(d)

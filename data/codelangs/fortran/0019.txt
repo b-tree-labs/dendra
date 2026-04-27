@@ -1,0 +1,50 @@
+module errorm
+   ! provides error for NJOY2016
+   use locale
+   implicit none
+   private
+   public errorr
+
+   ! global variables
+
+   ! user input quantities
+   integer::nendf,npend,nout,nin,ngout,nstan
+   integer::ngoutu,nscr5
+   integer::matd
+   integer::ign
+   integer::iprint
+   integer::irelco
+   integer::iread
+   integer::mfcov
+   integer::irespr
+   integer::legord
+   integer::ifissp
+
+   real(kr)::tempin
+
+   integer::nitape,notape
+
+   integer::mfd,mtd
+
+   ! scratch files
+   integer::nscr1,nscr2,nscr3
+
+   ! group structure
+   integer::ngn
+   real(kr),dimension(:),allocatable::egn
+
+   ! weight function
+   integer::iwt
+   integer::mwtf
+   real(kr) eb,tb,ab,ec,tc,ac
+   real(kr),dimension(:),allocatable::wght
+
+   real(kr)::za,awr
+   integer::imode
+   integer::mf32,mf33
+   integer::nunion
+   integer::nresg
+   integer::nga
+   integer::lct4,lct34,ltt4,ltt34
+   real(kr)::ety1,ety2
+   real(kr)::emaxx,eltt4

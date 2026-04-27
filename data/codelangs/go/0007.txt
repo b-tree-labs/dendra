@@ -1,0 +1,50 @@
+// Copyright 2011 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+package norm
+
+import "encoding/binary"
+
+// This file contains Form-specific logic and wrappers for data in tables.go.
+
+// Rune info is stored in a separate trie per composing form. A composing form
+// and its corresponding decomposing form share the same trie.  Each trie maps
+// a rune to a uint16. The values take two forms.  For v >= 0x8000:
+//   bits
+//   15:    1 (inverse of NFD_QC bit of qcInfo)
+//   12..7: qcInfo (see below). isYesD is always true (no decomposition).
+//    6..0: ccc (compressed CCC value).
+// For v < 0x8000, the respective rune has a decomposition and v is an index
+// into a byte array of UTF-8 decomposition sequences and additional info and
+// has the form:
+//    <header> <decomp_byte>* [<tccc> [<lccc>]]
+// The header contains the number of bytes in the decomposition (excluding this
+// length byte), with 33 mapped to 31 to fit in 5 bits.
+// (If any 31- or 32-byte decompositions come along, we could switch to using
+// use a general lookup table as long as there are at most 32 distinct lengths.)
+// The three most significant bits of this length byte correspond
+// to bit 5, 4, and 3 of qcInfo (see below).  The byte sequence itself starts at v+1.
+// The byte sequence is followed by a trailing and leading CCC if the values
+// for these are not zero.  The value of v determines which ccc are appended
+// to the sequences.  For v < firstCCC, there are none, for v >= firstCCC,
+// the sequence is followed by a trailing ccc, and for v >= firstLeadingCC
+// there is an additional leading ccc. The value of tccc itself is the
+// trailing CCC shifted left 2 bits. The two least-significant bits of tccc
+// are the number of trailing non-starters.
+
+const (
+	qcInfoMask      = 0x3F // to clear all but the relevant bits in a qcInfo
+	headerLenMask   = 0x1F // extract the length value from the header byte (31 => 33)
+	headerFlagsMask = 0xE0 // extract the qcInfo bits from the header byte
+)
+
+// Properties provides access to normalization properties of a rune.
+type Properties struct {
+	pos   uint8  // start position in reorderBuffer; used in composition.go
+	size  uint8  // length of UTF-8 encoding of this rune
+	ccc   uint8  // leading canonical combining class (ccc if not decomposition)
+	tccc  uint8  // trailing canonical combining class (ccc if not decomposition)
+	nLead uint8  // number of leading non-starters.
+	flags qcInfo // quick check flags
+	index uint16

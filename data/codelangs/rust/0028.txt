@@ -1,0 +1,50 @@
+//! Deserialization of struct field identifiers and enum variant identifiers by
+//! way of a Rust enum.
+
+use crate::de::{FieldWithAliases, Parameters};
+use crate::fragment::{Fragment, Stmts};
+use crate::internals::ast::{Style, Variant};
+use crate::internals::attr;
+use crate::private;
+use proc_macro2::{Literal, TokenStream};
+use quote::{quote, ToTokens};
+
+// Generates `Deserialize::deserialize` body for an enum with
+// `serde(field_identifier)` or `serde(variant_identifier)` attribute.
+pub(super) fn deserialize_custom(
+    params: &Parameters,
+    variants: &[Variant],
+    cattrs: &attr::Container,
+) -> Fragment {
+    let is_variant = match cattrs.identifier() {
+        attr::Identifier::Variant => true,
+        attr::Identifier::Field => false,
+        attr::Identifier::No => unreachable!(),
+    };
+
+    let this_type = params.this_type.to_token_stream();
+    let this_value = params.this_value.to_token_stream();
+
+    let (ordinary, fallthrough, fallthrough_borrowed) = if let Some(last) = variants.last() {
+        let last_ident = &last.ident;
+        if last.attrs.other() {
+            // Process `serde(other)` attribute. It would always be found on the
+            // last variant (checked in `check_identifier`), so all preceding
+            // are ordinary variants.
+            let ordinary = &variants[..variants.len() - 1];
+            let fallthrough = quote!(_serde::#private::Ok(#this_value::#last_ident));
+            (ordinary, Some(fallthrough), None)
+        } else if let Style::Newtype = last.style {
+            let ordinary = &variants[..variants.len() - 1];
+            let fallthrough = |value| {
+                quote! {
+                    _serde::#private::Result::map(
+                        _serde::Deserialize::deserialize(
+                            _serde::#private::de::IdentifierDeserializer::from(#value)
+                        ),
+                        #this_value::#last_ident)
+                }
+            };
+            (
+                ordinary,
+                Some(fallthrough(quote!(__value))),

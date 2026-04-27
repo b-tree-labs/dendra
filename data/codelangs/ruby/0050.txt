@@ -1,0 +1,49 @@
+# frozen_string_literal: true
+
+require_relative "../command"
+require_relative "../local_remote_options"
+require_relative "../version_option"
+
+class Gem::Commands::FetchCommand < Gem::Command
+  include Gem::LocalRemoteOptions
+  include Gem::VersionOption
+
+  def initialize
+    defaults = {
+      suggest_alternate: true,
+      version: Gem::Requirement.default,
+    }
+
+    super "fetch", "Download a gem and place it in the current directory", defaults
+
+    add_bulk_threshold_option
+    add_proxy_option
+    add_source_option
+    add_clear_sources_option
+
+    add_version_option
+    add_platform_option
+    add_prerelease_option
+
+    add_option "--[no-]suggestions", "Suggest alternates when gems are not found" do |value, options|
+      options[:suggest_alternate] = value
+    end
+  end
+
+  def arguments # :nodoc:
+    "GEMNAME       name of gem to download"
+  end
+
+  def defaults_str # :nodoc:
+    "--version '#{Gem::Requirement.default}'"
+  end
+
+  def description # :nodoc:
+    <<-EOF
+The fetch command fetches gem files that can be stored for later use or
+unpacked to examine their contents.
+
+See the build command help for an example of unpacking a gem, modifying it,
+then repackaging it.
+    EOF
+  end

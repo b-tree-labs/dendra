@@ -1,0 +1,50 @@
+"""
+   Test cases for codeop.py
+   Nick Mathewson
+"""
+import unittest
+import warnings
+from test.support import warnings_helper
+from textwrap import dedent
+
+from codeop import compile_command, PyCF_DONT_IMPLY_DEDENT
+
+class CodeopTests(unittest.TestCase):
+
+    def assertValid(self, str, symbol='single'):
+        '''succeed iff str is a valid piece of code'''
+        expected = compile(str, "<input>", symbol, PyCF_DONT_IMPLY_DEDENT)
+        self.assertEqual(compile_command(str, "<input>", symbol), expected)
+
+    def assertIncomplete(self, str, symbol='single'):
+        '''succeed iff str is the start of a valid piece of code'''
+        self.assertEqual(compile_command(str, symbol=symbol), None)
+
+    def assertInvalid(self, str, symbol='single', is_syntax=1):
+        '''succeed iff str is the start of an invalid piece of code'''
+        try:
+            compile_command(str,symbol=symbol)
+            self.fail("No exception raised for invalid code")
+        except SyntaxError:
+            self.assertTrue(is_syntax)
+        except OverflowError:
+            self.assertTrue(not is_syntax)
+
+    def test_valid(self):
+        av = self.assertValid
+
+        # special case
+        self.assertEqual(compile_command(""),
+                            compile("pass", "<input>", 'single',
+                                    PyCF_DONT_IMPLY_DEDENT))
+        self.assertEqual(compile_command("\n"),
+                            compile("pass", "<input>", 'single',
+                                    PyCF_DONT_IMPLY_DEDENT))
+
+        av("a = 1")
+        av("\na = 1")
+        av("a = 1\n")
+        av("a = 1\n\n")
+        av("\n\na = 1\n\n")
+
+        av("def x():\n  pass\n")

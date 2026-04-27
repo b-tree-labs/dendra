@@ -1,0 +1,50 @@
+module thermm
+   ! provides thermr for NJOY2016
+   use locale
+   implicit none
+   private
+   public thermr
+
+   ! global variables
+   integer::nendf,nin,nout,nscr,nscr2
+   integer::matde,nbin,iprint,ncds,matdp,natom,ntemp,&
+     iinc,iform,ncdse
+   real(kr)::za,awr,tol,emax
+   real(kr)::sb,az,tevz,teff,sb2,az2,teff2
+   real(kr)::cliq
+   integer::lasym
+   integer::lat
+   real(kr),dimension(:),allocatable::scr
+   real(kr),dimension(:),allocatable::bufo,bufn
+
+   ! array for user temperatures
+   real(kr),dimension(:),allocatable::tempr
+
+   ! array for thermal elastic data
+   real(kr),dimension(:),allocatable::fl
+
+   ! arrays for thermal inelastic cross section
+   real(kr),dimension(:),allocatable::esi,xsi
+
+   integer,parameter::nbuf=1000
+   integer,parameter::nwscr=500000
+
+contains
+
+   subroutine thermr
+   !-------------------------------------------------------------------
+   !
+   !  Generate neutron scattering cross sections and point-to-point
+   !  scattering kernels in the thermal range.  The coding can
+   !  generate incoherent inelastic cross sections and distributions
+   !  for a free gas, incoherent inelastic cross sections and
+   !  distributions from read-in S(alpha,beta,T) data, coherent
+   !  elastic scattering cross sections for crystalline materials,
+   !  and incoherent elastic cross sections and angular distributions
+   !  for hydrogenous solids.
+   !
+   !  The pointwise scattering cross sections and distributions are
+   !  added to an existing PENDF tape.  Cross sections are added in
+   !  MF3 and distributions are written in MF6, both using mtref for
+   !  inelastic and mtref+1 for elastic (if any).
+   !

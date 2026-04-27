@@ -1,0 +1,49 @@
+import {
+    ApplicableRefactorInfo,
+    ArrowFunction,
+    Diagnostics,
+    emptyArray,
+    factory,
+    findAncestor,
+    findChildOfKind,
+    first,
+    FunctionDeclaration,
+    FunctionExpression,
+    getLocaleSpecificMessage,
+    getTouchingPropertyName,
+    InternalNodeBuilderFlags,
+    isArrowFunction,
+    isBlock,
+    isInJSFile,
+    mapDefined,
+    MethodDeclaration,
+    Node,
+    NodeBuilderFlags,
+    RefactorContext,
+    RefactorEditInfo,
+    SourceFile,
+    SyntaxKind,
+    textChanges,
+    Type,
+    TypeNode,
+} from "../_namespaces/ts.js";
+import {
+    isRefactorErrorInfo,
+    RefactorErrorInfo,
+    refactorKindBeginsWith,
+    registerRefactor,
+} from "../_namespaces/ts.refactor.js";
+
+const refactorName = "Infer function return type";
+const refactorDescription = getLocaleSpecificMessage(Diagnostics.Infer_function_return_type);
+
+const inferReturnTypeAction = {
+    name: refactorName,
+    description: refactorDescription,
+    kind: "refactor.rewrite.function.returnType",
+};
+registerRefactor(refactorName, {
+    kinds: [inferReturnTypeAction.kind],
+    getEditsForAction: getRefactorEditsToInferReturnType,
+    getAvailableActions: getRefactorActionsToInferReturnType,
+});

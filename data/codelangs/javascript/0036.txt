@@ -1,0 +1,50 @@
+'use strict';
+
+const {
+  ArrayFrom,
+  ArrayPrototypeSlice,
+  ObjectDefineProperties,
+  ObjectDefineProperty,
+  ObjectSetPrototypeOf,
+  SafeSet,
+  Symbol,
+  SymbolToStringTag,
+  Uint8Array,
+} = primordials;
+
+const {
+  KeyObjectHandle,
+  createNativeKeyObjectClass,
+  kKeyTypeSecret,
+  kKeyTypePublic,
+  kKeyTypePrivate,
+  kKeyFormatPEM,
+  kKeyFormatDER,
+  kKeyFormatJWK,
+  kKeyFormatRawPublic,
+  kKeyFormatRawPrivate,
+  kKeyFormatRawSeed,
+  kKeyEncodingPKCS1,
+  kKeyEncodingPKCS8,
+  kKeyEncodingSPKI,
+  kKeyEncodingSEC1,
+} = internalBinding('crypto');
+
+const {
+  crypto: {
+    POINT_CONVERSION_COMPRESSED,
+    POINT_CONVERSION_UNCOMPRESSED,
+  },
+} = internalBinding('constants');
+
+const {
+  validateObject,
+  validateOneOf,
+  validateString,
+} = require('internal/validators');
+
+const {
+  codes: {
+    ERR_CRYPTO_INCOMPATIBLE_KEY_OPTIONS,
+    ERR_CRYPTO_INVALID_KEY_OBJECT_TYPE,
+    ERR_ILLEGAL_CONSTRUCTOR,

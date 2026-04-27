@@ -1,0 +1,50 @@
+import {
+    codeFixAll,
+    createCodeFixAction,
+    registerCodeFix,
+} from "../_namespaces/ts.codefix.js";
+import {
+    Diagnostics,
+    factory,
+    flatMap,
+    getNewLineOrDefaultFromHost,
+    getSynthesizedDeepClone,
+    getTokenAtPosition,
+    hasJSDocNodes,
+    InterfaceDeclaration,
+    isJSDocTypedefTag,
+    isJSDocTypeLiteral,
+    JSDoc,
+    JSDocPropertyLikeTag,
+    JSDocTag,
+    JSDocTypedefTag,
+    JSDocTypeExpression,
+    JSDocTypeLiteral,
+    mapDefined,
+    Node,
+    PropertySignature,
+    some,
+    SourceFile,
+    SyntaxKind,
+    textChanges,
+    TypeAliasDeclaration,
+} from "../_namespaces/ts.js";
+
+const fixId = "convertTypedefToType";
+const errorCodes = [Diagnostics.JSDoc_typedef_may_be_converted_to_TypeScript_type.code];
+registerCodeFix({
+    fixIds: [fixId],
+    errorCodes,
+    getCodeActions(context) {
+        const newLineCharacter = getNewLineOrDefaultFromHost(context.host, context.formatContext.options);
+        const node = getTokenAtPosition(
+            context.sourceFile,
+            context.span.start,
+        );
+        if (!node) return;
+
+        const changes = textChanges.ChangeTracker.with(context, t => doChange(t, node, context.sourceFile, newLineCharacter));
+
+        if (changes.length > 0) {
+            return [
+                createCodeFixAction(

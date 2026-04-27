@@ -1,0 +1,50 @@
+'use strict';
+
+const {
+  ArrayPrototypeIncludes,
+  ArrayPrototypeIndexOf,
+  ArrayPrototypePush,
+  ArrayPrototypeSplice,
+  ArrayPrototypeUnshift,
+  FunctionPrototypeBind,
+  NumberIsSafeInteger,
+  ObjectDefineProperties,
+  ObjectFreeze,
+  ReflectApply,
+  Symbol,
+} = primordials;
+
+const {
+  ERR_ASYNC_CALLBACK,
+  ERR_ASYNC_TYPE,
+  ERR_INVALID_ASYNC_ID,
+  ERR_INVALID_ARG_TYPE,
+  ERR_INVALID_ARG_VALUE,
+} = require('internal/errors').codes;
+const {
+  kEmptyObject,
+} = require('internal/util');
+const {
+  validateFunction,
+  validateString,
+} = require('internal/validators');
+const internal_async_hooks = require('internal/async_hooks');
+
+const AsyncContextFrame = require('internal/async_context_frame');
+
+// Get functions
+// For userland AsyncResources, make sure to emit a destroy event when the
+// resource gets gced.
+const { registerDestroyHook, kNoPromiseHook } = internal_async_hooks;
+const {
+  asyncWrap,
+  executionAsyncId,
+  triggerAsyncId,
+  // Private API
+  hasAsyncIdStack,
+  getHookArrays,
+  enableHooks,
+  disableHooks,
+  updatePromiseHookMode,
+  executionAsyncResource,
+  // Internal Embedder API

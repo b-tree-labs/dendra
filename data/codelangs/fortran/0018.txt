@@ -1,0 +1,50 @@
+module purm
+   ! provides subroutine purr for NJOY2016
+   use locale
+   implicit none
+   private
+   public purr
+
+   ! units
+   integer::nendf,nin,nout
+
+   ! control parameters
+   integer::init
+   integer::nunr,lssf,iinel,iabso
+   integer::iprint,nermax,nladr,nmode
+
+   ! arrays for the w function
+   real(kr)::tr(41,27),ti(41,27),trs(41,27),tis(41,27)
+
+   ! arrays for unresolved resonance parameter sections
+   integer::nsect
+   integer::isot(20),modet(20),ibaset(20)
+   real(kr)::abnt(20),elt(20),eht(20)
+
+   ! resonance data
+   integer::nseq0,nro,naps,intunr
+   integer,parameter::mxns0=100
+   real(kr)::e,cth(mxns0),csz(mxns0),cc2p(mxns0),cs2p(mxns0),&
+     cgn(mxns0),cgg(mxns0),cgf(mxns0),cgx(mxns0),cgt(mxns0),&
+     dbar(mxns0),spot,dbarin,sigi(4)
+   integer::ndfn(mxns0),ndff(mxns0),ndfx(mxns0)
+
+   ! array for unresolved energy grid
+   integer,parameter::meunr=150
+   real(kr)::eunr(meunr)
+
+   ! array for background cross sections
+   real(kr),dimension(:),allocatable::sb
+
+   ! probability table globals
+   real(kr),dimension(:,:,:),allocatable::bval
+   real(kr),dimension(:),allocatable::tmin,tmax,tsum
+
+   ! storage array for unresolved resonance parameters
+   integer,parameter::jx=10000
+   real(kr),dimension(:),allocatable::arry
+
+   ! optional plots
+   integer ipl
+   real(kr)::epl(200)
+   real(kr),dimension(:,:,:),allocatable::sigpl

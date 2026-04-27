@@ -1,0 +1,50 @@
+# frozen_string_literal: true
+
+require_relative "elements"
+
+module Gem
+  module SafeMarshal
+    class Reader
+      class Error < StandardError
+      end
+
+      class UnsupportedVersionError < Error
+      end
+
+      class UnconsumedBytesError < Error
+      end
+
+      class NotImplementedError < Error
+      end
+
+      class EOFError < Error
+      end
+
+      class DataTooShortError < Error
+      end
+
+      class NegativeLengthError < Error
+      end
+
+      def initialize(io)
+        @io = io
+      end
+
+      def read!
+        read_header
+        root = read_element
+        raise UnconsumedBytesError, "expected EOF, got #{@io.read(10).inspect}... after top-level element #{root.class}" unless @io.eof?
+        root
+      end
+
+      private
+
+      MARSHAL_VERSION = [Marshal::MAJOR_VERSION, Marshal::MINOR_VERSION].map(&:chr).join.freeze
+      private_constant :MARSHAL_VERSION
+
+      def read_header
+        v = @io.read(2)
+        raise UnsupportedVersionError, "Unsupported marshal version #{v.bytes.map(&:ord).join(".")}, expected #{Marshal::MAJOR_VERSION}.#{Marshal::MINOR_VERSION}" unless v == MARSHAL_VERSION
+      end
+
+      def read_bytes(n)

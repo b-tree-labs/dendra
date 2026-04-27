@@ -1,0 +1,50 @@
+import {
+    CharacterCodes,
+    compareBooleans,
+    compareValues,
+    Comparison,
+    createTextSpan,
+    isUnicodeIdentifierStart,
+    last,
+    min,
+    ScriptTarget,
+    startsWith,
+    TextSpan,
+} from "./_namespaces/ts.js";
+
+// Note(cyrusn): this enum is ordered from strongest match type to weakest match type.
+/** @internal */
+export enum PatternMatchKind {
+    exact,
+    prefix,
+    substring,
+    camelCase,
+}
+
+// Information about a match made by the pattern matcher between a candidate and the
+// search pattern.
+/** @internal */
+export interface PatternMatch {
+    // What kind of match this was.  Exact matches are better than prefix matches which are
+    // better than substring matches which are better than CamelCase matches.
+    kind: PatternMatchKind;
+
+    // If this was a match where all constituent parts of the candidate and search pattern
+    // matched case sensitively or case insensitively.  Case sensitive matches of the kind
+    // are better matches than insensitive matches.
+    isCaseSensitive: boolean;
+}
+
+// The pattern matcher maintains an internal cache of information as it is used.  Therefore,
+// you should not keep it around forever and should get and release the matcher appropriately
+// once you no longer need it.
+/** @internal */
+export interface PatternMatcher {
+    // Used to match a candidate against the last segment of a possibly dotted pattern.  This
+    // is useful as a quick check to prevent having to compute a container before calling
+    // "getMatches".
+    //
+    // For example, if the search pattern is "ts.c.SK" and the candidate is "SyntaxKind", then
+    // this will return a successful match, having only tested "SK" against "SyntaxKind".  At
+    // that point a call can be made to 'getMatches("SyntaxKind", "ts.compiler")', with the
+    // work to create 'ts.compiler' only being done once the first match succeeded.

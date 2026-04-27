@@ -1,0 +1,50 @@
+'use strict';
+
+const {
+  ObjectDefineProperties,
+  ObjectDefineProperty,
+  SymbolToStringTag,
+} = primordials;
+
+const {
+  codes: {
+    ERR_MISSING_OPTION,
+  },
+} = require('internal/errors');
+
+const {
+  customInspectSymbol: kInspect,
+  kEnumerableProperty,
+} = require('internal/util');
+
+const {
+  customInspect,
+} = require('internal/webstreams/util');
+
+const {
+  validateObject,
+} = require('internal/validators');
+
+/**
+ * @callback QueuingStrategySize
+ * @param {any} chunk
+ * @returns {number}
+ */
+
+/**
+ * @typedef {{
+ *   highWaterMark : number,
+ *   size? : QueuingStrategySize,
+ * }} QueuingStrategy
+ */
+
+const nameDescriptor = { __proto__: null, value: 'size' };
+const byteSizeFunction = ObjectDefineProperty(
+  (chunk) => chunk.byteLength,
+  'name',
+  nameDescriptor,
+);
+const countSizeFunction = ObjectDefineProperty(() => 1, 'name', nameDescriptor);
+
+const getNonWritablePropertyDescriptor = (value) => {
+  return {

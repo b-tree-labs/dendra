@@ -1,0 +1,50 @@
+# ===----------------------------------------------------------------------=== #
+# Copyright (c) 2026, Modular Inc. All rights reserved.
+#
+# Licensed under the Apache License v2.0 with LLVM Exceptions:
+# https://llvm.org/LICENSE.txt
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ===----------------------------------------------------------------------=== #
+
+from std.sys import argv, size_of
+
+import linalg.matmul.vendor.blas as vendor_blas
+from std.gpu.host import DeviceContext
+from std.gpu.host.nvidia.tma import TensorMapSwizzle
+from std.memory import alloc
+from internal_utils import assert_almost_equal
+from std.random import rand
+from layout import (
+    Coord,
+    CoordLike,
+    Idx,
+    TileTensor,
+    row_major,
+)
+from linalg.matmul.gpu.sm100_structured.default.matmul import (
+    blackwell_batched_matmul_tma_umma_warp_specialized,
+)
+from linalg.matmul.gpu.sm100_structured.structured_kernels.config import (
+    MatmulConfig,
+    GEMMKind,
+)
+
+from std.utils.index import Index, IndexList
+from std.utils.static_tuple import StaticTuple
+
+
+def simple_init() -> Bool:
+    for arg in argv():
+        if arg == "--simple-init":
+            return True
+    return False
+
+
+def test_blackwell_batched_matmul_tma_umma_warp_specialized[
+    BatchType: CoordLike,
+    MType: CoordLike,

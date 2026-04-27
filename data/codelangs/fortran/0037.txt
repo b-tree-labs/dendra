@@ -1,0 +1,50 @@
+module acedo
+   ! provides ace dosimetry formats for acer
+   use locale
+   use acecm, only: xss,nxss
+   implicit none
+   private
+
+   !--Public routines
+   public acedos,dosfix
+
+   !--Private global variables
+
+   ! incident particle
+   real(kr)::awi
+   integer::izai
+
+   ! header info for dosimetry format
+   character(13)::hz
+   character(10)::hd
+   character(10)::hm
+   real(kr)::aw0,tz
+
+   ! parameters for dosimetry nxs block
+   integer::len2,za,nxs3,ntr,nxsd(12)
+
+   ! parameters for dosimetry jxs block
+   integer::lone,jxs2,mtr,jxs4,jxs5,lsig,sigd,jxsd(14),end,jxsd2(10)
+
+contains
+
+   subroutine acedos(matd,tempd,nin,nace,ndir,itype,iprint,mcnpx,&
+     suff,hk,izn,awn)
+   !-------------------------------------------------------------------
+   ! Load dosimetry data in ACE format.
+   !-------------------------------------------------------------------
+   use mainio ! provides nsyso
+   use util ! provides openz,closz,dater
+   use endf ! provides endf routines and variables
+   use physics ! provides bk
+   ! externals
+   integer::matd,nin,nace,ndir,itype,iprint,mcnpx
+   real(kr)::tempd,suff
+   integer::izn(16)
+   real(kr)::awn(16)
+   character(70)::hk
+   ! internals
+   integer::nwscr,nb,nw,j,l,nr,i,ne,k,nmax,jscr,intr
+   integer::l1,nn,n,is,ns,lfs
+   real(kr)::temp,awr,zaid
+   character(8)::hdt

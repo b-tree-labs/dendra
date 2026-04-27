@@ -1,0 +1,50 @@
+# frozen_string_literal: true
+
+require_relative "openssl"
+require_relative "user_interaction"
+
+##
+# S3URISigner implements AWS SigV4 for S3 Source to avoid a dependency on the aws-sdk-* gems
+# More on AWS SigV4: https://docs.aws.amazon.com/AmazonS3/latest/API/sig-v4-authenticating-requests.html
+class Gem::S3URISigner
+  include Gem::UserInteraction
+
+  class ConfigurationError < Gem::Exception
+    def initialize(message)
+      super message
+    end
+
+    def to_s # :nodoc:
+      super.to_s
+    end
+  end
+
+  class InstanceProfileError < Gem::Exception
+    def initialize(message)
+      super message
+    end
+
+    def to_s # :nodoc:
+      super.to_s
+    end
+  end
+
+  attr_accessor :uri
+  attr_accessor :method
+
+  def initialize(uri, method)
+    @uri = uri
+    @method = method
+  end
+
+  ##
+  # Signs S3 URI using query-params according to the reference: https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html
+  def sign(expiration = 86_400)
+    s3_config = fetch_s3_config
+
+    current_time = Time.now.utc
+    date_time = current_time.strftime("%Y%m%dT%H%M%SZ")
+    date = date_time[0,8]
+
+    credential_info = "#{date}/#{s3_config.region}/s3/aws4_request"
+    canonical_host = "#{uri.host}.s3.#{s3_config.region}.amazonaws.com"

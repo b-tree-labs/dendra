@@ -1,0 +1,49 @@
+module endf
+   ! Routines for handling ENDF formats.
+   use locale
+   implicit none
+   private
+
+   !--Public routines
+   public contio,listio,tab1io,tab2io,moreio
+   public tpidio,hdatio,dictio,intgio
+   public tosend,tofend,tomend,totend
+   public asend,afend,amend,atend
+   public skip6,findf
+   public terp1,terpa,intega
+   public gety1,gety2
+   public gral
+   public a11
+
+   !--Public variables
+   integer,public::npage=306
+   integer,public::iverf=-1
+   real(kr),public::c1h,c2h
+   integer,public::l1h,l2h,n1h,n2h,math,mfh,mth,nsh,nsp,nsc
+   real(kr),public::thr6
+
+   !--Private global variables
+   integer::nah
+   real(kr)::ah(6)
+   integer::ihol
+   character(4)::hol(17)
+   real(kr)::rhol(17)
+   equivalence(hol(1),rhol(1))
+   integer::nr
+   integer::nbt(20),jnt(20)
+
+contains
+
+   subroutine contio(nin,nout,nscr,a,nb,nw)
+   !--------------------------------------------------------------------
+   ! Utility routine for ENDF coded and blocked binary tapes.
+   ! Read, write, and/or convert one control record.
+   ! Positive units are coded, negative ones are blocked binary.
+   ! If any unit is zero, it is not used.
+   !--------------------------------------------------------------------
+   ! externals
+   integer::nin,nout,nscr,nb,nw
+   real(kr)::a(*)
+   ! internals
+   integer::inin,inout,inscr,i
+   character(11)::field(2)

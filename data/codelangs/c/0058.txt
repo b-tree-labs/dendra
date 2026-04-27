@@ -1,0 +1,50 @@
+/***************************************************************************
+ *                                  _   _ ____  _
+ *  Project                     ___| | | |  _ \| |
+ *                             / __| | | | |_) | |
+ *                            | (__| |_| |  _ <| |___
+ *                             \___|\___/|_| \_\_____|
+ *
+ * Copyright (C) Linus Nielsen Feltzing, <linus@haxx.se>
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
+ *
+ * This software is licensed as described in the file COPYING, which
+ * you should have received as part of this distribution. The terms
+ * are also available at https://curl.se/docs/copyright.html.
+ *
+ * You may opt to use, copy, modify, merge, publish, distribute and/or sell
+ * copies of the Software, and permit persons to whom the Software is
+ * furnished to do so, under the terms of the COPYING file.
+ *
+ * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
+ * KIND, either express or implied.
+ *
+ * SPDX-License-Identifier: curl
+ *
+ ***************************************************************************/
+#include "curl_setup.h"
+
+#include "urldata.h"
+#include "url.h"
+#include "cfilters.h"
+#include "progress.h"
+#include "multiif.h"
+#include "curl_trc.h"
+#include "cshutdn.h"
+#include "conncache.h"
+#include "curl_share.h"
+#include "sigpipe.h"
+
+
+#define CPOOL_IS_LOCKED(c)    ((c) && (c)->locked)
+
+#define CPOOL_LOCK(c, d)                                                \
+  do {                                                                  \
+    if(c) {                                                             \
+      if(CURL_SHARE_KEEP_CONNECT((c)->share))                           \
+        Curl_share_lock((d), CURL_LOCK_DATA_CONNECT,                    \
+                        CURL_LOCK_ACCESS_SINGLE);                       \
+      DEBUGASSERT(!(c)->locked);                                        \
+      (c)->locked = TRUE;                                               \
+    }                                                                   \
+  } while(0)

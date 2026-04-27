@@ -1,0 +1,50 @@
+# ===----------------------------------------------------------------------=== #
+# Copyright (c) 2026, Modular Inc. All rights reserved.
+#
+# Licensed under the Apache License v2.0 with LLVM Exceptions:
+# https://llvm.org/LICENSE.txt
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ===----------------------------------------------------------------------=== #
+from std.math import align_down, align_up
+from std.sys import align_of, simd_width_of
+from std.sys.info import CompilationTarget
+from std.sys.intrinsics import PrefetchOptions
+
+from std.algorithm import unswitch
+from linalg.utils import partial_simd_load
+from layout import Coord, Idx, TileTensor
+from layout.tile_tensor import stack_allocation as tt_stack_allocation
+from std.sys import prefetch
+from layout.tile_layout import TensorLayout, row_major
+from std.memory import (
+    memcpy,
+    memset_zero,
+    stack_allocation,
+)
+
+from std.utils.index import Index, IndexList
+
+from .matmul.cpu.apple_accelerate import use_apple_accelerate_lib
+from .transpose import transpose, transpose_inplace
+from .utils import (
+    GemmShape,
+    KernelConfig,
+    _get_tile_n_k,
+    dispatch_get_kernel_type,
+    get_kernel_config,
+    get_matmul_arch_factor,
+    get_pack_data_size,
+    get_packB_unroll_factor,
+    use_i8mm_fn,
+    use_vnni_fn,
+)
+
+
+@fieldwise_init
+struct PackMatrixRows[
+    original_mut: Bool,

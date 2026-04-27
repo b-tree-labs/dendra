@@ -1,0 +1,50 @@
+# ===----------------------------------------------------------------------=== #
+# Copyright (c) 2026, Modular Inc. All rights reserved.
+#
+# Licensed under the Apache License v2.0 with LLVM Exceptions:
+# https://llvm.org/LICENSE.txt
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ===----------------------------------------------------------------------=== #
+
+from std.math import ceildiv
+from std.sys import simd_width_of
+
+from std.gpu import barrier
+from std.gpu.host import DeviceContext
+from std.gpu import block_idx, thread_idx
+from std.gpu.memory import (
+    AddressSpace,
+    async_copy_commit_group,
+    async_copy_wait_all,
+)
+from layout import *
+from layout._fillers import arange
+from layout._utils import ManagedLayoutTensor
+from layout.layout_tensor import (
+    binary_op_type,
+    copy_dram_to_local,
+    copy_dram_to_sram,
+    copy_dram_to_sram_async,
+    copy_local_to_dram,
+    copy_local_to_local,
+    copy_local_to_shared,
+    copy_sram_to_dram,
+)
+
+from std.utils import IndexList
+
+
+@always_inline
+def add_op[
+    dtype: DType, width: Int
+](lhs: SIMD[dtype, width], rhs: SIMD[dtype, width]) -> SIMD[dtype, width]:
+    return lhs + rhs
+
+
+# ----------------------------------------------------------------------
+# async copy tests

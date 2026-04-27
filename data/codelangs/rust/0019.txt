@@ -1,0 +1,49 @@
+//! Deserialization for untagged enums:
+//!
+//! ```ignore
+//! #[serde(untagged)]
+//! enum Enum {}
+//! ```
+
+use crate::de::struct_;
+use crate::de::tuple;
+use crate::de::{
+    effective_style, expr_is_missing, unwrap_to_variant_closure, Parameters, StructForm, TupleForm,
+};
+use crate::fragment::{Expr, Fragment};
+use crate::internals::ast::{Field, Style, Variant};
+use crate::internals::attr;
+use crate::private;
+use proc_macro2::TokenStream;
+use quote::{quote, quote_spanned};
+use syn::spanned::Spanned;
+
+/// Generates `Deserialize::deserialize` body for an `enum Enum {...}` with `#[serde(untagged)]` attribute
+pub(super) fn deserialize(
+    params: &Parameters,
+    variants: &[Variant],
+    cattrs: &attr::Container,
+    first_attempt: Option<TokenStream>,
+) -> Fragment {
+    let attempts = variants
+        .iter()
+        .filter(|variant| !variant.attrs.skip_deserializing())
+        .map(|variant| Expr(deserialize_variant(params, variant, cattrs)));
+    // TODO this message could be better by saving the errors from the failed
+    // attempts. The heuristic used by TOML was to count the number of fields
+    // processed before an error, and use the error that happened after the
+    // largest number of fields. I'm not sure I like that. Maybe it would be
+    // better to save all the errors and combine them into one message that
+    // explains why none of the variants matched.
+    let fallthrough_msg = format!(
+        "data did not match any variant of untagged enum {}",
+        params.type_name()
+    );
+    let fallthrough_msg = cattrs.expecting().unwrap_or(&fallthrough_msg);
+
+    let private2 = private;
+    quote_block! {
+        let __content = _serde::de::DeserializeSeed::deserialize(_serde::#private::de::ContentVisitor::new(), __deserializer)?;
+        let __deserializer = _serde::#private::de::ContentRefDeserializer::<__D::Error>::new(&__content);
+
+        #first_attempt

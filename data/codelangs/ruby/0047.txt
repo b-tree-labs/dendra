@@ -1,0 +1,50 @@
+# frozen_string_literal: true
+
+require_relative "vendored_net_http"
+require_relative "user_interaction"
+require_relative "uri_formatter"
+
+class Gem::Request
+  extend Gem::UserInteraction
+  include Gem::UserInteraction
+
+  ###
+  # Legacy.  This is used in tests.
+  def self.create_with_proxy(uri, request_class, last_modified, proxy) # :nodoc:
+    cert_files = get_cert_files
+    proxy ||= get_proxy_from_env(uri.scheme)
+    pool = ConnectionPools.new proxy_uri(proxy), cert_files
+
+    new(uri, request_class, last_modified, pool.pool_for(uri))
+  end
+
+  def self.proxy_uri(proxy) # :nodoc:
+    require_relative "vendor/uri/lib/uri"
+    case proxy
+    when :no_proxy then nil
+    when Gem::URI::HTTP then proxy
+    else Gem::URI.parse(proxy)
+    end
+  end
+
+  def initialize(uri, request_class, last_modified, pool)
+    @uri = uri
+    @request_class = request_class
+    @last_modified = last_modified
+    @requests = Hash.new(0).compare_by_identity
+    @user_agent = user_agent
+
+    @connection_pool = pool
+  end
+
+  def proxy_uri
+    @connection_pool.proxy_uri
+  end
+
+  def cert_files
+    @connection_pool.cert_files
+  end
+
+  def self.get_cert_files
+    pattern = File.expand_path("./ssl_certs/*/*.pem", __dir__)
+    Dir.glob(pattern)

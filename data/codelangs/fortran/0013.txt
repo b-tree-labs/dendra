@@ -1,0 +1,50 @@
+module gaminm
+   ! provides subroutine gaminr for NJOY2016
+   use locale
+   implicit none
+   private
+   public gaminr
+
+   ! global variables
+   integer::igg,ngg
+   integer,parameter::ngmax=400
+   real(kr)::egg(ngmax)
+   integer::iwt
+   integer,parameter::iwmax=200
+   real(kr)::wght(iwmax)
+   integer::matb,lord
+   integer::nendf,npend
+   integer::ngam1,ngam2,ntw
+   character(17)::title(17)
+   integer::matd,mfd,mtd
+   integer::ig2pp
+   integer::iprint
+
+contains
+
+   subroutine gaminr
+   !------------------------------------------------------------------
+   !
+   ! compute multigroup photon cross sections
+   !
+   ! Produce multigroup photon interaction cross sections
+   ! and heating kerma factors using ENDF cross sections
+   ! and coherent and incoherent form factors.  Initial energy
+   ! quadrature techiques are identical to those used in groupr.
+   ! Secondary energy-angle quadrature is performed using Gaussian
+   ! integration.
+   !
+   !---input specifications (free format)---------------------------
+   !
+   ! card1
+   !    nendf   unit for endf tape
+   !    npend   unit for pendf tape
+   !    ngam1   unit for input ngam tape (default=0)
+   !    ngam2   unit for output ngam tape (default=0)
+   ! card2
+   !    matb    material to be processed
+   !            input materials in ascending order
+   !    igg     gamma group structure option
+   !    iwt     weight function option
+   !    lord    legendre order
+   !    iprint  print option (0/1=minimum/maximum) (default=1)

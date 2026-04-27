@@ -1,0 +1,50 @@
+/*
+   Copyright (c) Marshall Clow 2011-2012.
+
+   Distributed under the Boost Software License, Version 1.0. (See accompanying
+   file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+   Thanks to Nevin for his comments/help.
+*/
+
+/*
+    General problem - turn a sequence of integral types into a sequence of hexadecimal characters.
+    - and back.
+*/
+
+/// \file  hex.hpp
+/// \brief Convert sequence of integral types into a sequence of hexadecimal
+///     characters and back. Based on the MySQL functions HEX and UNHEX
+/// \author Marshall Clow
+
+#ifndef BOOST_ALGORITHM_HEXHPP
+#define BOOST_ALGORITHM_HEXHPP
+
+#include <iterator>     // for std::iterator_traits
+#include <stdexcept>
+
+#include <boost/config.hpp>
+#include <boost/range/begin.hpp>
+#include <boost/range/end.hpp>
+#include <boost/exception/exception.hpp>
+#include <boost/exception/info.hpp>
+#include <boost/throw_exception.hpp>
+
+#include <boost/core/enable_if.hpp>
+#include <boost/type_traits/is_integral.hpp>
+
+
+namespace boost { namespace algorithm {
+
+/*!
+    \struct hex_decode_error
+    \brief  Base exception class for all hex decoding errors
+*/ /*!
+    \struct non_hex_input
+    \brief  Thrown when a non-hex value (0-9, A-F) encountered when decoding.
+                Contains the offending character
+*/ /*!
+    \struct not_enough_input
+    \brief  Thrown when the input sequence unexpectedly ends
+
+*/

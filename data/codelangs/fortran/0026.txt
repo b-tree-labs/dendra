@@ -1,0 +1,49 @@
+module reconm
+   ! Module to provide reconr for NJOY2016
+   use locale
+   implicit none
+   private
+   public reconr
+
+   ! global variables for reconr
+
+   integer::nin,nout
+   real(kr)::zain,awin
+   real(kr)::zai,el,eh,err,errmax,errint,za,awr,tempr,q18
+   real(kr)::tempi
+   real(kr)::elis,sta,efmax
+   integer::lis,lis0,nfor,lrel,nver
+   integer::lfw,mata,itype,lrp,lfi,lssf,lrx
+   integer,parameter::nmtmax=10
+   integer::mtr4,mtr18,mtr(nmtmax),mtrt(nmtmax),nmtr
+   integer::mt103,mt104,mt105,mt106,mt107
+   integer::mpmin,mpmax,mdmin,mdmax,mtmin,mtmax,m3min,m3max,m4min,m4max
+   integer::nxc,ngo,mtr522,ncards
+   integer::isot(20),modet(20),ibaset(20),isect,nsect
+   real(kr)::abnt(20),elt(20),eht(20)
+   real(kr)::eresl,eresr,eresh,eresu,eresm
+   integer::nodes,nunr,maxres
+   real(kr)::elst(20),slst(20,4),enxt(20),snxt(20,4)
+   integer::ilast(20)
+   integer::mmtres(10),mcards(10)
+   integer::nmtres,ncoef,nsig,nresp
+   real(kr)::spin,ascat,thr6
+   character(4),dimension(:),allocatable::card
+   real(kr),dimension(:),allocatable::enode
+   real(kr),dimension(:),allocatable::eunr
+   real(kr),dimension(:),allocatable::res
+   real(kr),dimension(:,:),allocatable::tr,ti
+   real(kr),dimension(:),allocatable::dict
+   integer,dimension(:),allocatable::mfs,mts,ncs
+   real(kr),dimension(:),allocatable::sunr
+
+   integer,parameter::maxunr=500
+   integer,parameter::nodmax=800000
+   integer,parameter::nbufg=2000
+   integer,parameter::nbufr=2000
+   integer,parameter::nbuf=2000
+   integer,parameter::nbufl=2000
+
+   !--option for sammy method
+   !integer::isammy=0  ! no sammy calculation
+   integer::isammy=1  ! sammy calculation

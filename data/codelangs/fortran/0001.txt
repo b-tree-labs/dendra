@@ -1,0 +1,50 @@
+module unresm
+   ! module to provide unresr for NJOY2016
+   use locale
+   implicit none
+   private
+   public unresr
+
+   !global variables for unresr
+   integer::nendf,nin,nout,nscr
+   integer,parameter::nmtx=5
+   integer::nunr,matd,nsigz,mtx(nmtx),npnts(nmtx)
+   integer::intunr,lssf,nro,naps
+   integer::isot(20),modet(20),ibaset(20),nsect
+   real(kr)::abnt(20),elt(20),eht(20)
+   real(kr)::tr(62,62),ti(62,62)
+   real(kr),dimension(:),allocatable::tempu
+
+contains
+
+   subroutine unresr
+   !--------------------------------------------------------------------
+   !
+   ! compute unresolved resonance cross-sections
+   !
+   ! The method of ETOX is used to compute self-shielded
+   ! unresolved resonance cross-sections on the energy grid of
+   ! the unresolved parameters.  Subsequent interpolation is
+   ! to be on the cross-sections and not on the parameters.
+   ! Additional energy grid points are added at quarter lethargy
+   ! intervals if only three or fewer grid points are found.
+   ! The accurate Hwang quadrature set is used for the integrals.
+   !
+   !---input specifications (free format)---------------------------
+   !
+   ! card 1
+   !   nendf   unit for endf tape
+   !   nin     unit for input pendf tape
+   !   nout    unit for output pendf tape
+   ! card 2
+   !   matd    material to be processed
+   !   ntemp   no. of temperatures (default=1)
+   !   nsigz   no. of sigma zeroes (default=1)
+   !   iprint  print option (0=min, 1=max) (default=0)
+   ! card 3
+   !   temp    temperatures in Kelvin (including zero)
+   ! card 4
+   !   sigz    sigma zero values (including infinity)
+   !       cards 2, 3, 4 must be input for each material desired
+   !       matd=0/ terminates execution of unresr.
+   !

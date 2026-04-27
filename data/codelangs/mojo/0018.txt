@@ -1,0 +1,49 @@
+# ===----------------------------------------------------------------------=== #
+# Copyright (c) 2026, Modular Inc. All rights reserved.
+#
+# Licensed under the Apache License v2.0 with LLVM Exceptions:
+# https://llvm.org/LICENSE.txt
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ===----------------------------------------------------------------------=== #
+
+from layout import (
+    IntTuple,
+    Layout,
+    LayoutTensor,
+    RuntimeLayout,
+    RuntimeTuple,
+    UNKNOWN_VALUE,
+)
+from layout.layout import coalesce as coalesce_layout
+from layout.layout import crd2idx
+from layout.runtime_layout import coalesce, make_layout
+from std.testing import assert_equal
+
+
+def test_runtime_layout_const() raises:
+    print("== test_runtime_layout_const")
+
+    comptime shape = IntTuple(UNKNOWN_VALUE, 8)
+    comptime stride = IntTuple(8, 1)
+
+    comptime layout = Layout(shape, stride)
+
+    var shape_runtime = RuntimeTuple[layout.shape, element_type=DType.uint32](
+        16, 8
+    )
+    var stride_runtime = RuntimeTuple[
+        layout.stride, element_type=DType.uint32
+    ]()
+
+    var layout_r = RuntimeLayout[
+        layout, element_type=DType.uint32, linear_idx_type=DType.uint32
+    ](shape_runtime, stride_runtime)
+
+    assert_equal(String(materialize[layout_r.layout]()), "((-1, 8):(8, 1))")
+    assert_equal(String(layout_r), "((16, 8):(8, 1))")
+

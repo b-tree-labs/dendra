@@ -1,0 +1,50 @@
+# ===----------------------------------------------------------------------=== #
+# Copyright (c) 2026, Modular Inc. All rights reserved.
+#
+# Licensed under the Apache License v2.0 with LLVM Exceptions:
+# https://llvm.org/LICENSE.txt
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ===----------------------------------------------------------------------=== #
+"""Benchmarks for grapheme cluster segmentation.
+
+Compares `count_graphemes()` against `count_codepoints()` across different
+text profiles (English, Spanish, Arabic, Russian, Chinese) and lengths.
+"""
+
+from std.os import abort
+from std.pathlib import _dir_of_current_file
+from std.sys import stderr
+
+from std.benchmark import Bench, BenchConfig, Bencher, BenchId, black_box, keep
+
+
+# ===-----------------------------------------------------------------------===#
+# Benchmark Data
+# ===-----------------------------------------------------------------------===#
+# TODO: duplicated from `bench_string.mojo`. Consolidate into a shared
+# benchmark utility module once one exists.
+def make_string[
+    length: Int = 0
+](filename: String = "UN_charter_EN.txt") -> String:
+    """Make a `String` from the `./data` directory.
+
+    Parameters:
+        length: The length in bytes. If == 0 -> the whole file.
+
+    Args:
+        filename: The name of the file inside the `./data` directory.
+    """
+    try:
+        directory = _dir_of_current_file() / "data"
+        var f = open(directory / filename, "r")
+
+        comptime if length == 0:
+            return String(unsafe_from_utf8=f.read_bytes())
+
+        # Repeat the file content until we have at least `length` bytes, then
+        # truncate back to the nearest UTF-8 codepoint boundary <= length so

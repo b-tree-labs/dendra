@@ -1,0 +1,50 @@
+//! A Serde ast, parsed from the Syn ast and ready to generate Rust code.
+
+use crate::internals::{attr, check, Ctxt, Derive};
+use proc_macro2::Ident;
+use syn::punctuated::Punctuated;
+use syn::Token;
+
+/// A source data structure annotated with `#[derive(Serialize)]` and/or `#[derive(Deserialize)]`,
+/// parsed into an internal representation.
+pub struct Container<'a> {
+    /// The struct or enum name (without generics).
+    pub ident: syn::Ident,
+    /// Attributes on the structure, parsed for Serde.
+    pub attrs: attr::Container,
+    /// The contents of the struct or enum.
+    pub data: Data<'a>,
+    /// Any generics on the struct or enum.
+    pub generics: &'a syn::Generics,
+    /// Original input.
+    pub original: &'a syn::DeriveInput,
+}
+
+/// The fields of a struct or enum.
+///
+/// Analogous to `syn::Data`.
+pub enum Data<'a> {
+    Enum(Vec<Variant<'a>>),
+    Struct(Style, Vec<Field<'a>>),
+}
+
+/// A variant of an enum.
+pub struct Variant<'a> {
+    pub ident: syn::Ident,
+    pub attrs: attr::Variant,
+    pub style: Style,
+    pub fields: Vec<Field<'a>>,
+    pub original: &'a syn::Variant,
+}
+
+/// A field of a struct.
+pub struct Field<'a> {
+    pub member: syn::Member,
+    pub attrs: attr::Field,
+    pub ty: &'a syn::Type,
+    pub original: &'a syn::Field,
+}
+
+#[derive(Copy, Clone)]
+pub enum Style {
+    /// Named fields.

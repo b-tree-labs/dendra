@@ -1,0 +1,50 @@
+/***************************************************************************
+ *                                  _   _ ____  _
+ *  Project                     ___| | | |  _ \| |
+ *                             / __| | | | |_) | |
+ *                            | (__| |_| |  _ <| |___
+ *                             \___|\___/|_| \_\_____|
+ *
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
+ *
+ * This software is licensed as described in the file COPYING, which
+ * you should have received as part of this distribution. The terms
+ * are also available at https://curl.se/docs/copyright.html.
+ *
+ * You may opt to use, copy, modify, merge, publish, distribute and/or sell
+ * copies of the Software, and permit persons to whom the Software is
+ * furnished to do so, under the terms of the COPYING file.
+ *
+ * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
+ * KIND, either express or implied.
+ *
+ * SPDX-License-Identifier: curl
+ *
+ ***************************************************************************/
+#include "tool_setup.h"
+
+#ifndef CURL_DISABLE_IPFS
+
+#include "tool_cfgable.h"
+#include "tool_msgs.h"
+#include "tool_ipfs.h"
+
+/* input string ends in slash? */
+static bool has_trailing_slash(const char *input)
+{
+  size_t len = strlen(input);
+  return len && input[len - 1] == '/';
+}
+
+static char *ipfs_gateway(void)
+{
+  char *ipfs_path_c = NULL;
+  char *gateway_composed_c = NULL;
+  FILE *gfile = NULL;
+  char *gateway_env = getenv("IPFS_GATEWAY");
+
+  if(gateway_env)
+    return curlx_strdup(gateway_env);
+
+  /* Try to find the gateway in the IPFS data folder. */
+  ipfs_path_c = curl_getenv("IPFS_PATH");

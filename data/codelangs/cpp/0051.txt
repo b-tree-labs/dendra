@@ -1,0 +1,50 @@
+/*
+   Copyright (c) Marshall Clow 2011-2012.
+
+   Distributed under the Boost Software License, Version 1.0. (See accompanying
+   file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+*/
+
+/// \file  is_permutation.hpp
+/// \brief Is a sequence a permutation of another sequence
+/// \author Marshall Clow
+
+#ifndef BOOST_ALGORITHM_IS_PERMUTATION11_HPP
+#define BOOST_ALGORITHM_IS_PERMUTATION11_HPP
+
+#include <algorithm>    // for std::find_if, count_if, mismatch
+#include <utility>      // for std::pair
+#include <functional>   // for std::equal_to
+#include <iterator>
+
+#include <boost/config.hpp>
+#include <boost/range/begin.hpp>
+#include <boost/range/end.hpp>
+#include <boost/core/enable_if.hpp>
+#include <boost/type_traits/is_same.hpp>
+
+namespace boost { namespace algorithm {
+
+/// \cond DOXYGEN_HIDE
+namespace detail {
+    template <typename Predicate, typename Iterator>
+    struct value_predicate {
+        value_predicate ( Predicate p, Iterator it ) : p_ ( p ), it_ ( it ) {}
+
+        template <typename T1>
+        bool operator () ( const T1 &t1 ) const { return p_ ( *it_, t1 ); }
+    private:
+        Predicate p_;
+        Iterator it_;
+        };
+        
+//  Preconditions:
+//  1. The sequences are the same length
+//  2. Any common elements on the front have been removed (not necessary for correctness, just for performance)
+    template< class ForwardIterator1, class ForwardIterator2, class BinaryPredicate >
+    bool is_permutation_inner ( ForwardIterator1 first1, ForwardIterator1 last1,
+                                ForwardIterator2 first2, ForwardIterator2 last2,
+                                BinaryPredicate p ) {
+        //  for each unique value in the sequence [first1,last1), count how many times
+        //  it occurs, and make sure it occurs the same number of times in [first2, last2)
+            for ( ForwardIterator1 iter = first1; iter != last1; ++iter ) {

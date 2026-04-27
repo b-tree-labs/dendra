@@ -1,0 +1,50 @@
+# frozen_string_literal: true
+
+#--
+# Copyright 2006 by Chad Fowler, Rich Kilmer, Jim Weirich and others.
+# All rights reserved.
+# See LICENSE.txt for permissions.
+#++
+
+require "monitor"
+
+module Kernel
+  RUBYGEMS_ACTIVATION_MONITOR = Monitor.new # :nodoc:
+
+  # Make sure we have a reference to Ruby's original Kernel#require
+  unless defined?(gem_original_require)
+    # :stopdoc:
+    alias_method :gem_original_require, :require
+    private :gem_original_require
+    # :startdoc:
+  end
+
+  ##
+  # When RubyGems is required, Kernel#require is replaced with our own which
+  # is capable of loading gems on demand.
+  #
+  # When you call <tt>require 'x'</tt>, this is what happens:
+  # * If the file can be loaded from the existing Ruby loadpath, it
+  #   is.
+  # * Otherwise, installed gems are searched for a file that matches.
+  #   If it's found in gem 'y', that gem is activated (added to the
+  #   loadpath).
+  #
+  # The normal <tt>require</tt> functionality of returning false if
+  # that file has already been loaded is preserved.
+
+  def require(path) # :doc:
+    return gem_original_require(path) unless Gem.discover_gems_on_require
+
+    RUBYGEMS_ACTIVATION_MONITOR.synchronize do
+      path = File.path(path)
+
+      # If +path+ belongs to a default gem, we activate it and then go straight
+      # to normal require
+
+      if spec = Gem.find_default_spec(path)
+        name = spec.name
+
+        next if Gem.loaded_specs[name]
+
+        # Ensure -I beats a default gem

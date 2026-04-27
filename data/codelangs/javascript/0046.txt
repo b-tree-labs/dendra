@@ -1,0 +1,50 @@
+'use strict';
+
+const {
+  ArrayFrom,
+  ArrayIsArray,
+  ArrayPrototypeAt,
+  ArrayPrototypeFlatMap,
+  ArrayPrototypeMap,
+  ArrayPrototypePop,
+  ArrayPrototypePush,
+  ArrayPrototypeSome,
+  Promise,
+  PromisePrototypeThen,
+  SafeMap,
+  SafeSet,
+  StringPrototypeEndsWith,
+} = primordials;
+
+const {
+  lstatSync,
+  readdirSync,
+  realpathSync,
+  statSync,
+} = require('fs');
+const {
+  lstat,
+  readdir,
+  realpath,
+  stat,
+} = require('fs/promises');
+const { join, resolve, basename, isAbsolute, dirname } = require('path');
+
+const {
+  kEmptyObject,
+  isWindows,
+  isMacOS,
+} = require('internal/util');
+const {
+  validateBoolean,
+  validateObject,
+  validateString,
+  validateStringArray,
+} = require('internal/validators');
+const { DirentFromStats } = require('internal/fs/utils');
+const {
+  codes: {
+    ERR_INVALID_ARG_TYPE,
+  },
+  hideStackFrames,
+} = require('internal/errors');

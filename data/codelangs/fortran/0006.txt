@@ -1,0 +1,50 @@
+module mathm
+   ! Math routines for NJOY2016.
+   use locale
+   implicit none
+   private
+
+   !--Public routines
+   public legndr,e1,gami,erfc
+
+contains
+
+   subroutine legndr(x,p,np)
+   !--------------------------------------------------------------------
+   ! Generate Legendre polynomials at x by recursion.
+   ! Place p(subl) in p(l+1).
+   !--------------------------------------------------------------------
+   ! externals
+   real(kr)::x
+   real(kr)::p(*)
+   integer::np
+   ! internals
+   integer::m1,i
+   real(kr)::g,h
+
+   p(1)=1
+   p(2)=x
+   if (np.lt.2) return
+   m1=np-1
+   do i=1,m1
+      g=x*p(i+1)
+      h=g-p(i)
+      p(i+2)=h+g-h/(i+1)
+   enddo
+   return
+   end subroutine legndr
+
+   real(kr) function e1(x)
+   !--------------------------------------------------------------------
+   ! Compute the exponential integral e1(x).
+   ! Taken from the SLATEC library fnlib de1.
+   !--------------------------------------------------------------------
+   use util ! provides error
+   ! externals
+   real(kr)::x
+   ! internals
+   real(kr)::eta,xx,xmax,xmaxt
+   integer::ntae10,ntae11,ntae12,nte11,nte12,ntae13,ntae14
+   real(kr),dimension(50)::ae10cs=(/&
+     +.3284394579616699087873844201881e-1_kr,&
+     -.1669920452031362851476184343387e-1_kr,&

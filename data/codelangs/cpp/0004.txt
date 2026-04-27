@@ -1,0 +1,49 @@
+//  Copyright (c) 2010 Nuovation System Designs, LLC
+//    Grant Erickson <gerickson@nuovations.com>
+//
+//  Reworked somewhat by Marshall Clow; August 2010
+//  
+//  Distributed under the Boost Software License, Version 1.0. (See
+//  accompanying file LICENSE_1_0.txt or copy at
+//  http://www.boost.org/LICENSE_1_0.txt)
+//
+//  See http://www.boost.org/ for latest version.
+//
+
+#ifndef BOOST_ALGORITHM_ORDERED_HPP
+#define BOOST_ALGORITHM_ORDERED_HPP
+
+#include <functional>
+#include <iterator>
+
+#include <boost/config.hpp>
+#include <boost/range/begin.hpp>
+#include <boost/range/end.hpp>
+
+#include <boost/core/enable_if.hpp>
+#include <boost/type_traits/is_same.hpp>
+#include <boost/type_traits/type_identity.hpp> // for boost::type_identity
+
+namespace boost { namespace algorithm {
+
+/// \fn is_sorted_until ( ForwardIterator first, ForwardIterator last, Pred p )
+/// \return the point in the sequence [first, last) where the elements are unordered
+///     (according to the comparison predicate 'p').
+/// 
+/// \param first The start of the sequence to be tested.
+/// \param last  One past the end of the sequence
+/// \param p     A binary predicate that returns true if two elements are ordered.
+///
+    template <typename ForwardIterator, typename Pred>
+    BOOST_CXX14_CONSTEXPR ForwardIterator is_sorted_until ( ForwardIterator first, ForwardIterator last, Pred p )
+    {
+        if ( first == last ) return last;  // the empty sequence is ordered
+        ForwardIterator next = first;
+        while ( ++next != last )
+        {
+            if ( p ( *next, *first ))
+                return next;
+            first = next;
+        }
+        return last;    
+    }

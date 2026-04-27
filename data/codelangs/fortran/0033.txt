@@ -1,0 +1,50 @@
+module acepa
+   ! provides ACE photo-atomic routines for acer
+   use locale
+   use acecm, only: xss,nxss
+   implicit none
+   private
+
+   !--Public routines
+   public acepho,phofix
+
+   !--Private global variables
+
+   ! ace header data for photoatomic format
+   character(13)::hz
+   character(10)::hd
+   character(10)::hm
+   real(kr)::aw0,tz
+
+   ! parameters for photoatomic nsx block
+   integer::len2,z,nes,nflo,nxsd(12)
+
+   ! parameters for photoatomic jxs block
+   integer::eszg,jinc,jcoh,jflo,lhnm,jxsd(27)
+
+   ! parameter for scratch array
+   integer,parameter::nwscr=50000
+
+contains
+
+   subroutine acepho(nin,nlax,nace,ndir,matd,mcnpx,iprint,itype,&
+     suff,hk,izn,awn)
+   !-------------------------------------------------------------------
+   ! Prepare ACE photo-atomic files.
+   !-------------------------------------------------------------------
+   use mainio ! provides nsyso
+   use util ! provides openz,mess,closz,dater
+   use endf ! provides endf routines and variables
+   ! externals
+   integer::nin,nlax,nace,ndir,matd,mcnpx,iprint,itype
+   real(kr)::suff
+   integer::izn(16)
+   real(kr)::awn(16)
+   character(70)::hk
+   ! internals
+   integer::nb,nw,l,iza,idis,iinc,icoh,iabs,ipair,next
+   integer::i,ip,ir,nr,np,iz
+   real(kr)::e,enext,s,v,vnext,v2,en,heat,siginc,zaid,tot
+   character(8)::hdt
+   real(kr),dimension(:),allocatable::scr
+   real(kr),dimension(21),parameter::vi=(/0.e0_kr,.005e0_kr,&

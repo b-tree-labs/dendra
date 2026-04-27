@@ -1,0 +1,49 @@
+'''Test runner and result class for the regression test suite.
+
+'''
+
+import functools
+import io
+import sys
+import time
+import traceback
+import unittest
+from test import support
+from test.libregrtest.utils import sanitize_xml
+
+class RegressionTestResult(unittest.TextTestResult):
+    USE_XML = False
+
+    def __init__(self, stream, descriptions, verbosity):
+        super().__init__(stream=stream, descriptions=descriptions,
+                         verbosity=2 if verbosity else 0)
+        self.buffer = True
+        if self.USE_XML:
+            from xml.etree import ElementTree as ET
+            from datetime import datetime, UTC
+            self.__ET = ET
+            self.__suite = ET.Element('testsuite')
+            self.__suite.set('start',
+                             datetime.now(UTC)
+                                     .replace(tzinfo=None)
+                                     .isoformat(' '))
+            self.__e = None
+        self.__start_time = None
+
+    @classmethod
+    def __getId(cls, test):
+        try:
+            test_id = test.id
+        except AttributeError:
+            return str(test)
+        try:
+            return test_id()
+        except TypeError:
+            return str(test_id)
+        return repr(test)
+
+    def startTest(self, test):
+        super().startTest(test)
+        if self.USE_XML:
+            self.__e = e = self.__ET.SubElement(self.__suite, 'testcase')
+        self.__start_time = time.perf_counter()

@@ -1,0 +1,50 @@
+module ccccm
+   ! provides subroutine ccccr for NJOY2016
+   use locale
+   implicit none
+   private
+   public ccccr
+
+   ! equivalenced arrays for CCCC input and output
+   integer,parameter:: isiza4=100000, isiza8=isiza4/2
+   real(k4)::a(isiza4)      ! reals are 4-byte
+   integer(k4)::ia(isiza4)  ! integers are 4-byte
+   real(k8)::ha(isiza8)     ! Hollerith data are 8-byte
+   character(8)::ta(isiza8) ! text equivalent to Hollerith
+   integer::mult=2         ! used for counting 8-byte entries
+   equivalence(a(1),ia(1),ha(1),ta(1))
+
+   ! i/o units
+   integer::nin,nisot,nbrks,ndlay,nscrt1,nscrt2,nscrt3
+
+   ! common variables
+   real(8)::huse(2)
+   character(8)::tuse(2)
+   equivalence(huse(1),tuse(1))
+   integer::ivers
+
+   ! cccc user and version values
+
+   ! array for reading gendf data
+   integer,parameter::maxe=8000
+   real(kr),dimension(:),allocatable::e
+
+   ! hollerith set id record
+   character(6)::hsetid(12)
+
+   ! common parameters
+   integer::ngps,nggrup,niso,maxord,ifopt,nsblk,nscmax,ichix
+
+   ! isotxs material identity and classification arrays
+   integer::imat(200),kbr(200)
+   character(6)::hisonm(200),habsid(200),hident(200),hmat(200)
+
+   ! isotxs isotope data
+   real(kr)::amass(200),efiss(200),ecapt(200),temp(200),&
+     sigpot(200),adens(200)
+
+   integer::iflags(15)
+   integer::ltot,ltrn
+
+   ! isotxs matrix parameters
+   integer::irsize,ng2z,jlz,ieof,lord1,nsiza

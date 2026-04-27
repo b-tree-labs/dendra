@@ -1,0 +1,50 @@
+# frozen_string_literal: true
+
+#--
+# Copyright 2006 by Chad Fowler, Rich Kilmer, Jim Weirich and others.
+# All rights reserved.
+# See LICENSE.txt for permissions.
+#++
+
+require "rbconfig"
+
+module Gem
+  VERSION = "4.1.0.dev"
+end
+
+require_relative "rubygems/defaults"
+require_relative "rubygems/deprecate"
+require_relative "rubygems/errors"
+require_relative "rubygems/target_rbconfig"
+require_relative "rubygems/win_platform"
+require_relative "rubygems/util/atomic_file_writer"
+
+##
+# RubyGems is the Ruby standard for publishing and managing third party
+# libraries.
+#
+# For user documentation, see:
+#
+# * <tt>gem help</tt> and <tt>gem help [command]</tt>
+# * {RubyGems User Guide}[https://guides.rubygems.org/]
+# * {Frequently Asked Questions}[https://guides.rubygems.org/faqs]
+#
+# For gem developer documentation see:
+#
+# * {Creating Gems}[https://guides.rubygems.org/make-your-own-gem]
+# * Gem::Specification
+# * Gem::Version for version dependency notes
+#
+# Further RubyGems documentation can be found at:
+#
+# * {RubyGems Guides}[https://guides.rubygems.org]
+# * {RubyGems API}[https://guides.rubygems.org/rubygems-org-api/] (also available from
+#   <tt>gem server</tt>)
+#
+# == RubyGems Plugins
+#
+# RubyGems will load plugins in the latest version of each installed gem or
+# $LOAD_PATH.  Plugins must be named 'rubygems_plugin' (.rb, .so, etc) and
+# placed at the root of your gem's #require_path.  Plugins are installed at a
+# special location and loaded on boot.
+#

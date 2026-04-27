@@ -1,0 +1,50 @@
+module broadm
+   ! Module to provide broadr for NJOY2016
+   use locale
+   implicit none
+   private
+   public broadr
+
+   ! global variables for broadr
+   integer::nunr,intunr,nsig0,ncyc
+   real(kr)::e1,eumax
+   real(kr)::alpha,tempk,tempef,errthn,errmax,errint,thnmax
+   integer::klow,khigh,mlow,mhigh,nlow,nhigh,n2in,&
+     n2out,n2left,mpage,nreac,ntx
+   real(kr)::f(5),aa,x,y,oy,xx,yy ! variables for funk
+   real(kr)::h(5),alast,s1,s2 ! variables for hunk
+
+   integer,parameter::ntt=160
+   integer,parameter::nbuf=1000
+   real(kr),dimension(ntt)::qmtr,emtr
+
+contains
+
+   subroutine broadr
+   !-------------------------------------------------------------------
+   !
+   ! Doppler broaden and thin neutron point cross sections
+   !
+   ! A modified version of the kernel broadening method developed
+   ! for SIGMA1 (D.E.Cullen, LLNL) is used.  Cross sections for low
+   ! threshold reactions are unionized on the grid of the total
+   ! cross section, then broadened and thinned in parallel.
+   ! High threshold reactions are not broadened.  the total and
+   ! nonelastic are reconstructed to equal the sum of parts.
+   !
+   ! The output energy grid for broadened cross sections is
+   ! constructed adaptively (as in reconr) so that the results
+   ! represent the true function within the given tolerance.
+   ! Energy values are either removed from the original grid, or
+   ! new values are added between the original points.  Thus, a
+   ! given energy range can have more or fewer points than the
+   ! original energy grid.
+   !
+   ! For high temperatures and low energies where the original
+   ! SIGMA1 breaks down, a new direct expansion of the Doppler
+   ! integral is used.
+   !
+   ! If the temperature is close to 293.6 K (.0253 eV), broadr
+   ! computes and displays thermal cross sections, Maxwellian
+   ! integrals (one-group thermal cross sections), g-factors,
+   ! integral ratios (eta, alpha), the K1 integral and the

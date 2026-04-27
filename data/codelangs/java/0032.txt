@@ -1,0 +1,50 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.commons.lang3.concurrent;
+
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
+
+import org.apache.commons.lang3.Validate;
+
+/**
+ * A specialized <em>semaphore</em> implementation that provides a number of permits in a given time frame.
+ *
+ * <p>
+ * This class is similar to the {@link java.util.concurrent.Semaphore} class provided by the JDK in that it manages a configurable number of permits. Using the
+ * {@link #acquire()} method a permit can be requested by a thread. However, there is an additional timing dimension: there is no {@code
+ * release()} method for freeing a permit, but all permits are automatically released at the end of a configurable time frame. If a thread calls
+ * {@link #acquire()} and the available permits are already exhausted for this time frame, the thread is blocked. When the time frame ends all permits requested
+ * so far are restored, and blocking threads are waked up again, so that they can try to acquire a new permit. This basically means that in the specified time
+ * frame only the given number of operations is possible.
+ * </p>
+ * <p>
+ * A use case for this class is to artificially limit the load produced by a process. As an example consider an application that issues database queries on a
+ * production system in a background process to gather statistical information. This background processing should not produce so much database load that the
+ * functionality and the performance of the production system are impacted. Here a {@link TimedSemaphore} could be installed to guarantee that only a given
+ * number of database queries are issued per second.
+ * </p>
+ * <p>
+ * A thread class for performing database queries could look as follows:
+ * </p>
+ *
+ * <pre>
+ * public class StatisticsThread extends Thread {

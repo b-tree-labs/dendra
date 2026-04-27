@@ -1,0 +1,49 @@
+# frozen_string_literal: true
+
+##
+# A git gem for use in a gem dependencies file.
+#
+# Example:
+#
+#   source =
+#     Gem::Source::Git.new 'rake', 'git@example:rake.git', 'rake-10.1.0', false
+#
+#   source.specs
+
+class Gem::Source::Git < Gem::Source
+  ##
+  # The name of the gem created by this git gem.
+
+  attr_reader :name
+
+  ##
+  # The commit reference used for checking out this git gem.
+
+  attr_reader :reference
+
+  ##
+  # When false the cache for this repository will not be updated.
+
+  attr_accessor :remote
+
+  ##
+  # The git repository this gem is sourced from.
+
+  attr_reader :repository
+
+  ##
+  # The directory for cache and git gem installation
+
+  attr_accessor :root_dir
+
+  ##
+  # Does this repository need submodules checked out too?
+
+  attr_reader :need_submodules
+
+  ##
+  # Creates a new git gem source for a gems from loaded from +repository+ at
+  # the given +reference+.  The +name+ is only used to track the repository
+  # back to a gem dependencies file, it has no real significance as a git
+  # repository may contain multiple gems.  If +submodules+ is true, submodules
+  # will be checked out when the gem is installed.

@@ -1,0 +1,50 @@
+class Bundler::Thor
+  module CoreExt #:nodoc:
+    # A hash with indifferent access and magic predicates.
+    #
+    #   hash = Bundler::Thor::CoreExt::HashWithIndifferentAccess.new 'foo' => 'bar', 'baz' => 'bee', 'force' => true
+    #
+    #   hash[:foo]  #=> 'bar'
+    #   hash['foo'] #=> 'bar'
+    #   hash.foo?   #=> true
+    #
+    class HashWithIndifferentAccess < ::Hash #:nodoc:
+      def initialize(hash = {})
+        super()
+        hash.each do |key, value|
+          self[convert_key(key)] = value
+        end
+      end
+
+      def [](key)
+        super(convert_key(key))
+      end
+
+      def []=(key, value)
+        super(convert_key(key), value)
+      end
+
+      def delete(key)
+        super(convert_key(key))
+      end
+
+      def except(*keys)
+        dup.tap do |hash|
+          keys.each { |key| hash.delete(convert_key(key)) }
+        end
+      end
+
+      def fetch(key, *args)
+        super(convert_key(key), *args)
+      end
+
+      def slice(*keys)
+        super(*keys.map{ |key| convert_key(key) })
+      end
+
+      def key?(key)
+        super(convert_key(key))
+      end
+
+      def values_at(*indices)
+        indices.map { |key| self[convert_key(key)] }

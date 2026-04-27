@@ -1,0 +1,50 @@
+'use strict';
+
+// Compression / Decompression Transforms
+//
+// Creates bare native zlib handles via internalBinding('zlib'), bypassing
+// the stream.Transform / ZlibBase / EventEmitter machinery entirely.
+// Compression runs on the libuv threadpool via handle.write() (async) so
+// I/O and upstream transforms can overlap with compression work.
+// Each factory returns a transform descriptor that can be passed to pull().
+
+const {
+  ArrayPrototypeMap,
+  ArrayPrototypePush,
+  ArrayPrototypeShift,
+  MathMax,
+  NumberIsNaN,
+  ObjectEntries,
+  ObjectKeys,
+  PromiseWithResolvers,
+  StringPrototypeStartsWith,
+  SymbolAsyncIterator,
+  TypedArrayPrototypeFill,
+  TypedArrayPrototypeGetByteLength,
+  TypedArrayPrototypeSlice,
+  Uint32Array,
+} = primordials;
+
+const { Buffer } = require('buffer');
+const {
+  codes: {
+    ERR_BROTLI_INVALID_PARAM,
+    ERR_INVALID_ARG_TYPE,
+    ERR_OUT_OF_RANGE,
+    ERR_ZSTD_INVALID_PARAM,
+  },
+  genericNodeError,
+} = require('internal/errors');
+const { lazyDOMException } = require('internal/util');
+const { isArrayBufferView, isAnyArrayBuffer } = require('internal/util/types');
+const { kValidatedTransform } = require('internal/streams/iter/types');
+const {
+  checkRangesOrGetDefault,
+  validateFiniteNumber,
+  validateObject,
+} = require('internal/validators');
+const binding = internalBinding('zlib');
+const constants = internalBinding('constants').zlib;
+
+const {
+  // Zlib modes

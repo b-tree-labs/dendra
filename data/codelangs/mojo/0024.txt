@@ -1,0 +1,50 @@
+# ===----------------------------------------------------------------------=== #
+# Copyright (c) 2026, Modular Inc. All rights reserved.
+#
+# Licensed under the Apache License v2.0 with LLVM Exceptions:
+# https://llvm.org/LICENSE.txt
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ===----------------------------------------------------------------------=== #
+"""Grid Dependent Control primitives for NVIDIA Hopper (SM90+) GPUs.
+
+This module provides low-level primitives for managing grid dependencies on NVIDIA
+Hopper architecture and newer GPUs. It enables efficient orchestration of multi-grid
+workloads by allowing grids to launch dependent grids and synchronize with them.
+
+The module includes functions that map directly to CUDA grid dependency control
+instructions, providing fine-grained control over grid execution order:
+
+- `launch_dependent_grids()`: Triggers execution of grids that depend on the
+  current grid
+- `wait_on_dependent_grids()`: Blocks until all dependent grids complete execution
+
+These primitives are essential for implementing complex GPU execution pipelines where
+multiple kernels need to execute in a specific order with minimal overhead. They
+eliminate the need for host-side synchronization when orchestrating dependent GPU work.
+"""
+from std.sys import has_nvidia_gpu_accelerator
+
+from ..host.info import H100, GPUInfo, _accelerator_arch
+from ..host.launch_attribute import (
+    LaunchAttribute,
+    LaunchAttributeID,
+    LaunchAttributeValue,
+)
+
+comptime _SUPPORT_PDL_LAUNCH = _support_pdl_launch()
+
+
+@doc_hidden
+@always_inline("nodebug")
+def _support_pdl_launch() -> Bool:
+    """Determines if programmatic dependency launch (PDL) is supported.
+
+    Checks if the current GPU supports PDL (Hopper SM90+ architecture).
+    Returns False for unsupported GPUs
+
+    Returns:

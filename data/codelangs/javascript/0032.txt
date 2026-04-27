@@ -1,0 +1,50 @@
+'use strict';
+
+const {
+  ArrayIsArray,
+  Boolean,
+  JSONParse,
+  NumberParseInt,
+  ObjectSetPrototypeOf,
+  Symbol,
+} = primordials;
+
+const {
+  BlockList: BlockListHandle,
+} = internalBinding('block_list');
+
+const {
+  customInspectSymbol: kInspect,
+} = require('internal/util');
+
+const {
+  SocketAddress,
+  kHandle: kSocketAddressHandle,
+} = require('internal/socketaddress');
+
+const {
+  markTransferMode,
+  kClone,
+  kDeserialize,
+} = require('internal/worker/js_transferable');
+
+const { inspect } = require('internal/util/inspect');
+
+const kHandle = Symbol('kHandle');
+const { owner_symbol } = internalBinding('symbols');
+
+const {
+  ERR_INVALID_ARG_VALUE,
+  ERR_INVALID_ARG_TYPE,
+} = require('internal/errors').codes;
+
+const { validateInt32, validateString } = require('internal/validators');
+
+class BlockList {
+  constructor() {
+    markTransferMode(this, true, false);
+    this[kHandle] = new BlockListHandle();
+    this[kHandle][owner_symbol] = this;
+  }
+
+  /**

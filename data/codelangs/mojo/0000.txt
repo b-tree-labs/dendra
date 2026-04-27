@@ -1,0 +1,50 @@
+# ===----------------------------------------------------------------------=== #
+# Copyright (c) 2026, Modular Inc. All rights reserved.
+#
+# Licensed under the Apache License v2.0 with LLVM Exceptions:
+# https://llvm.org/LICENSE.txt
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ===----------------------------------------------------------------------=== #
+
+from std.math import iota
+from std.random import random_float64
+
+from std.algorithm.functional import parallelize_over_rows
+from std.benchmark import Bench, Bencher, BenchId
+from layout import Coord, Idx, TileTensor, row_major
+from nn.toppminp import min_p_sampling, top_p_sampling
+from std.testing import assert_equal
+
+from std.utils import IndexList
+
+comptime DEBUG_BENCH = False
+comptime PRINT_OUTPUT = False
+
+
+struct TestCase[_dtype: DType, _out_idx_type: DType, _is_top_p: Bool](
+    ImplicitlyCopyable
+):
+    comptime is_top_p = Self._is_top_p
+    comptime dtype = Self._dtype
+    comptime out_idx_type = Self._out_idx_type
+    var batch_size: Int
+    var vocab_size: Int
+    var temperature: Scalar[Self.dtype]
+    var p_threshold: Scalar[Self.dtype]
+
+    def __init__(
+        out self,
+        batch_size: Int,
+        vocab_size: Int,
+        temperature: Scalar[Self.dtype] = Scalar[Self.dtype](1.0),
+        p_threshold: Scalar[Self.dtype] = Scalar[Self.dtype](0.9),
+    ):
+        self.batch_size = batch_size
+        self.vocab_size = vocab_size
+        self.temperature = temperature
+        self.p_threshold = p_threshold

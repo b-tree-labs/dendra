@@ -1,0 +1,49 @@
+'use strict';
+
+const {
+  ArrayFrom,
+  ArrayIsArray,
+  ArrayPrototypeFilter,
+  ArrayPrototypeIncludes,
+  ArrayPrototypePush,
+  ArrayPrototypeSlice,
+  ArrayPrototypeSort,
+  Error,
+  MathMax,
+  MathMin,
+  ObjectDefineProperties,
+  ObjectFreeze,
+  SafeArrayPrototypePushApply,
+  SafeMap,
+  SafeSet,
+  Symbol,
+  SymbolToStringTag,
+} = primordials;
+
+const {
+  constants: {
+    NODE_PERFORMANCE_ENTRY_TYPE_GC,
+    NODE_PERFORMANCE_ENTRY_TYPE_HTTP2,
+    NODE_PERFORMANCE_ENTRY_TYPE_HTTP,
+    NODE_PERFORMANCE_ENTRY_TYPE_NET,
+    NODE_PERFORMANCE_ENTRY_TYPE_DNS,
+  },
+  installGarbageCollectionTracking,
+  observerCounts,
+  removeGarbageCollectionTracking,
+  setupObservers,
+} = internalBinding('performance');
+
+const {
+  isPerformanceEntry,
+  createPerformanceNodeEntry,
+} = require('internal/perf/performance_entry');
+
+const {
+  codes: {
+    ERR_ILLEGAL_CONSTRUCTOR,
+    ERR_INVALID_ARG_TYPE,
+    ERR_INVALID_ARG_VALUE,
+    ERR_MISSING_ARGS,
+  },
+} = require('internal/errors');

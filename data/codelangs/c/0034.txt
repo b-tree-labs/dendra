@@ -1,0 +1,50 @@
+/***************************************************************************
+ *                                  _   _ ____  _
+ *  Project                     ___| | | |  _ \| |
+ *                             / __| | | | |_) | |
+ *                            | (__| |_| |  _ <| |___
+ *                             \___|\___/|_| \_\_____|
+ *
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
+ *
+ * This software is licensed as described in the file COPYING, which
+ * you should have received as part of this distribution. The terms
+ * are also available at https://curl.se/docs/copyright.html.
+ *
+ * You may opt to use, copy, modify, merge, publish, distribute and/or sell
+ * copies of the Software, and permit persons to whom the Software is
+ * furnished to do so, under the terms of the COPYING file.
+ *
+ * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
+ * KIND, either express or implied.
+ *
+ * SPDX-License-Identifier: curl
+ *
+ ***************************************************************************/
+#include "curl_setup.h"
+
+#include "urldata.h"
+#include "bufq.h"
+#include "cfilters.h"
+#include "sendf.h"
+#include "curl_trc.h"
+#include "cw-pause.h"
+
+
+/* body dynbuf sizes */
+#define CW_PAUSE_BUF_CHUNK         (16 * 1024)
+/* when content decoding, write data in chunks */
+#define CW_PAUSE_DEC_WRITE_CHUNK   4096
+
+struct cw_pause_buf {
+  struct cw_pause_buf *next;
+  struct bufq b;
+  int type;
+};
+
+static struct cw_pause_buf *cw_pause_buf_create(int type, size_t buflen)
+{
+  struct cw_pause_buf *cwbuf = curlx_calloc(1, sizeof(*cwbuf));
+  if(cwbuf) {
+    cwbuf->type = type;
+    if(type & CLIENTWRITE_BODY)

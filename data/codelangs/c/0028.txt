@@ -1,0 +1,50 @@
+/***************************************************************************
+ *                                  _   _ ____  _
+ *  Project                     ___| | | |  _ \| |
+ *                             / __| | | | |_) | |
+ *                            | (__| |_| |  _ <| |___
+ *                             \___|\___/|_| \_\_____|
+ *
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
+ *
+ * This software is licensed as described in the file COPYING, which
+ * you should have received as part of this distribution. The terms
+ * are also available at https://curl.se/docs/copyright.html.
+ *
+ * You may opt to use, copy, modify, merge, publish, distribute and/or sell
+ * copies of the Software, and permit persons to whom the Software is
+ * furnished to do so, under the terms of the COPYING file.
+ *
+ * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
+ * KIND, either express or implied.
+ *
+ * SPDX-License-Identifier: curl
+ *
+ ***************************************************************************/
+#include "tool_setup.h"
+
+#ifdef HAVE_SYS_IOCTL_H
+#include <sys/ioctl.h>
+#endif
+
+#include "terminal.h"
+
+#ifdef HAVE_TERMIOS_H
+#  include <termios.h>
+#elif defined(HAVE_TERMIO_H)
+#  include <termio.h>
+#endif
+
+/*
+ * get_terminal_columns() returns the number of columns in the current
+ * terminal. It returns 79 on failure. Also, the number can be big.
+ */
+unsigned int get_terminal_columns(void)
+{
+  unsigned int width = 0;
+  char *colp = curl_getenv("COLUMNS");
+  if(colp) {
+    curl_off_t num;
+    const char *p = colp;
+    if(!curlx_str_number(&p, &num, 10000) && (num > 20))
+      width = (unsigned int)num;

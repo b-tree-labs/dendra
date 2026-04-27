@@ -1,0 +1,49 @@
+// Copyright 2021 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+package types2
+
+import (
+	"strings"
+	"testing"
+)
+
+var myInt = func() Type {
+	tname := NewTypeName(nopos, nil, "myInt", nil)
+	return NewNamed(tname, Typ[Int], nil)
+}()
+
+var testTerms = map[string]*term{
+	"∅":       nil,
+	"𝓤":       {},
+	"int":     {false, Typ[Int]},
+	"~int":    {true, Typ[Int]},
+	"string":  {false, Typ[String]},
+	"~string": {true, Typ[String]},
+	"myInt":   {false, myInt},
+}
+
+func TestTermString(t *testing.T) {
+	for want, x := range testTerms {
+		if got := x.String(); got != want {
+			t.Errorf("%v.String() == %v; want %v", x, got, want)
+		}
+	}
+}
+
+func split(s string, n int) []string {
+	r := strings.Split(s, " ")
+	if len(r) != n {
+		panic("invalid test case: " + s)
+	}
+	return r
+}
+
+func testTerm(name string) *term {
+	r, ok := testTerms[name]
+	if !ok {
+		panic("invalid test argument: " + name)
+	}
+	return r
+}

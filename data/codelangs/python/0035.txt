@@ -1,0 +1,50 @@
+__all__ = 'create_subprocess_exec', 'create_subprocess_shell'
+
+import subprocess
+
+from . import events
+from . import protocols
+from . import streams
+from . import tasks
+from .log import logger
+
+
+PIPE = subprocess.PIPE
+STDOUT = subprocess.STDOUT
+DEVNULL = subprocess.DEVNULL
+
+
+class SubprocessStreamProtocol(streams.FlowControlMixin,
+                               protocols.SubprocessProtocol):
+    """Like StreamReaderProtocol, but for a subprocess."""
+
+    def __init__(self, limit, loop):
+        super().__init__(loop=loop)
+        self._limit = limit
+        self.stdin = self.stdout = self.stderr = None
+        self._transport = None
+        self._process_exited = False
+        self._pipe_fds = []
+        self._stdin_closed = self._loop.create_future()
+
+    def __repr__(self):
+        info = [self.__class__.__name__]
+        if self.stdin is not None:
+            info.append(f'stdin={self.stdin!r}')
+        if self.stdout is not None:
+            info.append(f'stdout={self.stdout!r}')
+        if self.stderr is not None:
+            info.append(f'stderr={self.stderr!r}')
+        return '<{}>'.format(' '.join(info))
+
+    def connection_made(self, transport):
+        self._transport = transport
+
+        stdout_transport = transport.get_pipe_transport(1)
+        if stdout_transport is not None:
+            self.stdout = streams.StreamReader(limit=self._limit,
+                                               loop=self._loop)
+            self.stdout.set_transport(stdout_transport)
+            self._pipe_fds.append(1)
+
+        stderr_transport = transport.get_pipe_transport(2)

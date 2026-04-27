@@ -1,0 +1,50 @@
+module acecm
+   ! provides some routines that are common to more than one
+   ! of the submodules of acer; mtname, ptleg2, pttab2, bachaa,
+   ! newsuff.
+   use locale
+   implicit none
+   private
+
+   ! main ace container array
+   integer,parameter,public::nxss=50000000
+   real(kr),dimension(:),allocatable,public::xss
+
+   !--Public routines
+   public mtname,ptleg2,pttab2,bachaa,eavl,newsuff
+   public advance_to_locator
+   public write_integer,write_real,write_integer_list,write_real_list
+   public typen
+
+contains
+
+   subroutine mtname(mt,name,izai)
+   !-------------------------------------------------------------------
+   ! Return the reaction name for an ENDF MT number.
+   !-------------------------------------------------------------------
+   use endf ! provides iverf
+   ! externals
+   integer::mt,izai
+   character(10)::name
+   ! internals
+   integer::i
+   character(10),dimension(500),parameter::hndf=(/&
+     'total     ','elastic   ','nonelastic','inelastic ','(n,x)     ',&
+     '(n,1/2*1) ','(n,1/2*2) ','(n,1/2*3) ','(n,1/2*4) ','(n,x)     ',&
+     '(n,2nd)   ','(n,x)     ','(n,x)     ','(n,x)     ','(n,x)     ',&
+     '(n,2n)    ','(n,3n)    ','fission   ','(n,f)     ','(n,n*f)   ',&
+     '(n,2nf)   ','(n,n*)a   ','(n,n*)3a  ','(n,2n)a   ','(n,3n)a   ',&
+     '(n,2n)iso ','(n,abs)   ','(n,n*)p   ','(n,n*)2a  ','(n,2n)2a  ',&
+     '(n,x)     ','(n,n*)d   ','(n,n*)t   ','(n,n*)he3 ','(n,n*)d2a ',&
+     '(n,n*)t2a ','(n,4n)    ','(n,3nf)   ','(n,x)     ','(n,x)     ',&
+     '(n,2np)   ','(n,3np)   ','(n,x)     ','(n,n2p)   ','(n,npa)   ',&
+     '(n,2/2*1) ','(n,2/2*2) ','(n,2/2*3) ','(n,2/2*4) ','(n,n*0)   ',& !50
+     '(n,n*1)   ','(n,n*2)   ','(n,n*3)   ','(n,n*4)   ','(n,n*5)   ',&
+     '(n,n*6)   ','(n,n*7)   ','(n,n*8)   ','(n,n*9)   ','(n,n*10)  ',&
+     '(n,n*11)  ','(n,n*12)  ','(n,n*13)  ','(n,n*14)  ','(n,n*15)  ',&
+     '(n,n*16)  ','(n,n*17)  ','(n,n*18)  ','(n,n*19)  ','(n,n*20)  ',&
+     '(n,n*21)  ','(n,n*22)  ','(n,n*23)  ','(n,n*24)  ','(n,n*25)  ',&
+     '(n,n*26)  ','(n,n*27)  ','(n,n*28)  ','(n,n*29)  ','(n,n*30)  ',&
+     '(n,n*31)  ','(n,n*32)  ','(n,n*33)  ','(n,n*34)  ','(n,n*35)  ',&
+     '(n,n*36)  ','(n,n*37)  ','(n,n*38)  ','(n,n*39)  ','(n,n*40)  ',&
+     '(n,n*c)   ','(n,x)     ','(n,x)     ','(n,x)     ','(n,x)     ',&

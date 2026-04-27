@@ -1,0 +1,50 @@
+/*
+ * Copyright 2000-2018 JetBrains s.r.o. and Kotlin Programming Language contributors.
+ * Use of this source code is governed by the Apache 2.0 license that can be found in the license/LICENSE.txt file.
+ */
+
+package org.jetbrains.kotlin.resolve
+
+import com.intellij.psi.PsiElement
+import org.jetbrains.kotlin.config.LanguageFeature
+import org.jetbrains.kotlin.config.LanguageVersionSettings
+import org.jetbrains.kotlin.descriptors.ConstructorDescriptor
+import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
+import org.jetbrains.kotlin.descriptors.PropertyDescriptor
+import org.jetbrains.kotlin.descriptors.annotations.AnnotationUseSiteTarget
+import org.jetbrains.kotlin.diagnostics.DiagnosticFactory1
+import org.jetbrains.kotlin.diagnostics.Errors.*
+import org.jetbrains.kotlin.diagnostics.reportDiagnosticOnce
+import org.jetbrains.kotlin.psi.*
+
+object AnnotationUseSiteTargetChecker {
+
+    fun check(
+        annotated: KtAnnotated,
+        descriptor: DeclarationDescriptor,
+        trace: BindingTrace,
+        languageVersionSettings: LanguageVersionSettings
+    ) {
+        trace.checkDeclaration(annotated, languageVersionSettings, descriptor)
+
+        if (annotated is KtCallableDeclaration) {
+            annotated.receiverTypeReference?.let { trace.checkTypeReference(it, languageVersionSettings, isReceiver = true) }
+            annotated.typeReference?.let { trace.checkTypeReference(it, languageVersionSettings, isReceiver = false) }
+        }
+
+        if (annotated is KtFunction) {
+            for (parameter in annotated.valueParameters) {
+                if (parameter.hasValOrVar()) continue
+                val parameterDescriptor = trace.bindingContext[BindingContext.VALUE_PARAMETER, parameter] ?: continue
+
+                trace.checkDeclaration(parameter, languageVersionSettings, parameterDescriptor)
+                parameter.typeReference?.let { trace.checkTypeReference(it, languageVersionSettings, isReceiver = false) }
+            }
+        }
+    }
+
+    private fun BindingTrace.checkTypeReference(
+        topLevelTypeReference: KtTypeReference,
+        languageVersionSettings: LanguageVersionSettings,
+        isReceiver: Boolean
+    ) {

@@ -1,0 +1,50 @@
+//! Deserialization for adjacently tagged enums:
+//!
+//! ```ignore
+//! #[serde(tag = "...", content = "...")]
+//! enum Enum {}
+//! ```
+
+use crate::de::enum_;
+use crate::de::enum_untagged;
+use crate::de::{field_i, Parameters};
+use crate::fragment::{Fragment, Match};
+use crate::internals::ast::{Style, Variant};
+use crate::internals::attr;
+use crate::private;
+use quote::{quote, quote_spanned};
+use syn::spanned::Spanned;
+
+/// Generates `Deserialize::deserialize` body for an `enum Enum {...}` with `#[serde(tag, content)]` attributes
+pub(super) fn deserialize(
+    params: &Parameters,
+    variants: &[Variant],
+    cattrs: &attr::Container,
+    tag: &str,
+    content: &str,
+) -> Fragment {
+    let this_type = &params.this_type;
+    let this_value = &params.this_value;
+    let (de_impl_generics, de_ty_generics, ty_generics, where_clause) =
+        params.generics_with_de_lifetime();
+    let delife = params.borrowed.de_lifetime();
+
+    let (variants_stmt, variant_visitor) = enum_::prepare_enum_variant_enum(variants);
+
+    let mut variant_arms = Vec::new();
+    for (i, variant) in variants.iter().enumerate() {
+        if variant.attrs.skip_deserializing() {
+            continue;
+        }
+        let variant_index = field_i(i);
+
+        let block = Match(enum_untagged::deserialize_variant(params, variant, cattrs));
+
+        variant_arms.push(quote! {
+            __Field::#variant_index => #block
+        });
+    }
+
+    let rust_name = params.type_name();
+    let expecting = format!("adjacently tagged enum {}", rust_name);
+    let expecting = cattrs.expecting().unwrap_or(&expecting);

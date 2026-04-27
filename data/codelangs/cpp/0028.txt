@@ -1,0 +1,50 @@
+//  Boost string_algo library classification.hpp header file  ---------------------------//
+
+//  Copyright Pavol Droba 2002-2003.
+// 
+// Distributed under the Boost Software License, Version 1.0.
+//    (See accompanying file LICENSE_1_0.txt or copy at
+//          http://www.boost.org/LICENSE_1_0.txt)
+
+//  See http://www.boost.org/ for updates, documentation, and revision history.
+
+#ifndef BOOST_STRING_CLASSIFICATION_DETAIL_HPP
+#define BOOST_STRING_CLASSIFICATION_DETAIL_HPP
+
+#include <boost/algorithm/string/config.hpp>
+#include <algorithm>
+#include <cstring>
+#include <functional>
+#include <locale>
+
+#include <boost/range/begin.hpp>
+#include <boost/range/distance.hpp>
+#include <boost/range/end.hpp>
+
+#include <boost/algorithm/string/predicate_facade.hpp>
+#include <boost/type_traits/remove_const.hpp>
+
+namespace boost {
+    namespace algorithm {
+        namespace detail {
+
+//  classification functors -----------------------------------------------//
+
+   // is_classified functor
+            struct is_classifiedF :
+                public predicate_facade<is_classifiedF>
+            {
+                // Boost.ResultOf support
+                typedef bool result_type;
+
+                // Constructor from a locale
+                is_classifiedF(std::ctype_base::mask Type, std::locale const & Loc = std::locale()) :
+                    m_Type(Type), m_Locale(Loc) {}
+                // Operation
+                template<typename CharT>
+                bool operator()( CharT Ch ) const
+                {
+                    return std::use_facet< std::ctype<CharT> >(m_Locale).is( m_Type, Ch );
+                }
+
+                #if defined(BOOST_BORLANDC) && (BOOST_BORLANDC >= 0x560) && (BOOST_BORLANDC <= 0x582) && !defined(_USE_OLD_RW_STL)

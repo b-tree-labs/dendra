@@ -1,0 +1,50 @@
+'use strict';
+
+const {
+  ArrayIsArray,
+  Boolean,
+  SafeMap,
+} = primordials;
+
+const assert = require('internal/assert');
+const net = require('net');
+const { sendHelper } = require('internal/cluster/utils');
+const { append, init, isEmpty, peek, remove } = require('internal/linkedlist');
+const { constants } = internalBinding('tcp_wrap');
+
+module.exports = RoundRobinHandle;
+
+function RoundRobinHandle(key, address, { port, fd, flags, backlog, readableAll, writableAll }) {
+  this.key = key;
+  this.all = new SafeMap();
+  this.free = new SafeMap();
+  this.handles = init({ __proto__: null });
+  this.handle = null;
+  this.server = net.createServer(assert.fail);
+
+  if (fd >= 0)
+    this.server.listen({ fd, backlog });
+  else if (port >= 0) {
+    this.server.listen({
+      port,
+      host: address,
+      // Currently, net module only supports `ipv6Only` option in `flags`.
+      ipv6Only: Boolean(flags & constants.UV_TCP_IPV6ONLY),
+      backlog,
+    });
+  } else
+    this.server.listen({
+      path: address,
+      backlog,
+      readableAll,
+      writableAll,
+    });  // UNIX socket path.
+  this.server.once('listening', () => {
+    this.handle = this.server._handle;
+    this.handle.onconnection = (err, handle) => this.distribute(err, handle);
+    this.server._handle = null;
+    this.server = null;
+  });
+}
+
+RoundRobinHandle.prototype.add = function(worker, send) {

@@ -1,0 +1,50 @@
+'use strict';
+
+const {
+  ArrayPrototypePush,
+  SafeSet,
+} = primordials;
+
+const {
+  AESCipherJob,
+  KeyObjectHandle,
+  kCryptoJobAsync,
+  kKeyFormatJWK,
+  kKeyTypeSecret,
+  kKeyVariantAES_CTR_128,
+  kKeyVariantAES_CBC_128,
+  kKeyVariantAES_GCM_128,
+  kKeyVariantAES_KW_128,
+  kKeyVariantAES_OCB_128,
+  kKeyVariantAES_CTR_192,
+  kKeyVariantAES_CBC_192,
+  kKeyVariantAES_GCM_192,
+  kKeyVariantAES_KW_192,
+  kKeyVariantAES_OCB_192,
+  kKeyVariantAES_CTR_256,
+  kKeyVariantAES_CBC_256,
+  kKeyVariantAES_GCM_256,
+  kKeyVariantAES_KW_256,
+  kKeyVariantAES_OCB_256,
+} = internalBinding('crypto');
+
+const {
+  hasAnyNotIn,
+  jobPromise,
+  kHandle,
+  kKeyObject,
+} = require('internal/crypto/util');
+
+const {
+  lazyDOMException,
+  promisify,
+} = require('internal/util');
+
+const {
+  InternalCryptoKey,
+  SecretKeyObject,
+  createSecretKey,
+  kAlgorithm,
+} = require('internal/crypto/keys');
+
+const {

@@ -1,0 +1,50 @@
+use crate::internals::name::{MultiName, Name};
+use crate::internals::symbol::*;
+use crate::internals::{ungroup, Ctxt};
+use proc_macro2::{Spacing, Span, TokenStream, TokenTree};
+use quote::ToTokens;
+use std::collections::BTreeSet;
+use std::iter::FromIterator;
+use syn::meta::ParseNestedMeta;
+use syn::parse::ParseStream;
+use syn::punctuated::Punctuated;
+use syn::spanned::Spanned;
+use syn::{token, Ident, Lifetime, Token};
+
+// This module handles parsing of `#[serde(...)]` attributes. The entrypoints
+// are `attr::Container::from_ast`, `attr::Variant::from_ast`, and
+// `attr::Field::from_ast`. Each returns an instance of the corresponding
+// struct. Note that none of them return a Result. Unrecognized, malformed, or
+// duplicated attributes result in a span_err but otherwise are ignored. The
+// user will see errors simultaneously for all bad attributes in the crate
+// rather than just the first.
+
+pub use crate::internals::case::RenameRule;
+
+pub(crate) struct Attr<'c, T> {
+    cx: &'c Ctxt,
+    name: Symbol,
+    tokens: TokenStream,
+    value: Option<T>,
+}
+
+impl<'c, T> Attr<'c, T> {
+    fn none(cx: &'c Ctxt, name: Symbol) -> Self {
+        Attr {
+            cx,
+            name,
+            tokens: TokenStream::new(),
+            value: None,
+        }
+    }
+
+    fn set<A: ToTokens>(&mut self, obj: A, value: T) {
+        let tokens = obj.into_token_stream();
+
+        if self.value.is_some() {
+            let msg = format!("duplicate serde attribute `{}`", self.name);
+            self.cx.error_spanned_by(tokens, msg);
+        } else {
+            self.tokens = tokens;
+            self.value = Some(value);
+        }

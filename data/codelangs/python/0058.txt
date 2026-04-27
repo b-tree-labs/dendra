@@ -1,0 +1,50 @@
+import faulthandler
+import gc
+import importlib
+import io
+import sys
+import time
+import traceback
+import unittest
+
+from _colorize import get_colors  # type: ignore[import-not-found]
+from test import support
+from test.support import threading_helper
+
+from .filter import match_test
+from .result import State, TestResult, TestStats
+from .runtests import RunTests
+from .save_env import saved_test_environment
+from .setup import setup_tests
+from .testresult import get_test_runner
+from .parallel_case import ParallelTestCase
+from .utils import (
+    TestName,
+    clear_caches, remove_testfn, abs_module_name, print_warning)
+
+
+# Minimum duration of a test to display its duration or to mention that
+# the test is running in background
+PROGRESS_MIN_TIME = 30.0   # seconds
+
+
+def run_unittest(test_mod, runtests: RunTests):
+    loader = unittest.TestLoader()
+    tests = loader.loadTestsFromModule(test_mod)
+
+    for error in loader.errors:
+        print(error, file=sys.stderr)
+    if loader.errors:
+        raise Exception("errors while loading tests")
+    _filter_suite(tests, match_test)
+    if runtests.parallel_threads:
+        _parallelize_tests(tests, runtests.parallel_threads)
+    return _run_suite(tests)
+
+def _filter_suite(suite, pred):
+    """Recursively filter test cases in a suite based on a predicate."""
+    newtests = []
+    for test in suite._tests:
+        if isinstance(test, unittest.TestSuite):
+            _filter_suite(test, pred)
+            newtests.append(test)

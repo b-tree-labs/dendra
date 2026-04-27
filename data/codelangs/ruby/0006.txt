@@ -1,0 +1,49 @@
+# frozen_string_literal: true
+# :markup: markdown
+#--
+# rbs_inline: enabled
+
+#--
+# Here we are reopening the prism module to provide methods on nodes that aren't
+# templated and are meant as convenience methods.
+#++
+module Prism
+  class Node
+    #: (*String replacements) -> void
+    def deprecated(*replacements) # :nodoc:
+      location = caller_locations(1, 1)&.[](0)&.label
+      suggest = replacements.map { |replacement| "#{self.class}##{replacement}" }
+
+      warn(<<~MSG, uplevel: 1, category: :deprecated)
+        [deprecation]: #{self.class}##{location} is deprecated and will be \
+        removed in the next major version. Use #{suggest.join("/")} instead.
+        #{(caller(1, 3) || []).join("\n")}
+      MSG
+    end
+  end
+
+  module RegularExpressionOptions # :nodoc:
+    # Returns a numeric value that represents the flags that were used to create
+    # the regular expression.
+    #--
+    #: (Integer flags) -> Integer
+    def self.options(flags)
+      o = 0
+      o |= Regexp::IGNORECASE if flags.anybits?(RegularExpressionFlags::IGNORE_CASE)
+      o |= Regexp::EXTENDED if flags.anybits?(RegularExpressionFlags::EXTENDED)
+      o |= Regexp::MULTILINE if flags.anybits?(RegularExpressionFlags::MULTI_LINE)
+      o |= Regexp::FIXEDENCODING if flags.anybits?(RegularExpressionFlags::EUC_JP | RegularExpressionFlags::WINDOWS_31J | RegularExpressionFlags::UTF_8)
+      o |= Regexp::NOENCODING if flags.anybits?(RegularExpressionFlags::ASCII_8BIT)
+      o
+    end
+  end
+
+  class InterpolatedMatchLastLineNode < Node
+    # Returns a numeric value that represents the flags that were used to create
+    # the regular expression.
+    #--
+    #: () -> Integer
+    def options
+      RegularExpressionOptions.options(flags)
+    end
+  end

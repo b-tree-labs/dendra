@@ -1,0 +1,50 @@
+module util
+   ! Utility routines for NJOY2016.
+   use locale
+   implicit none
+   private
+
+   !--Public routines
+   public error,mess
+   public timer,dater,wclock
+   public repoz,skiprz,openz,closz
+   public loada,finda,scana
+   public sigfig
+   public a10
+
+contains
+
+   subroutine error(from,mess1,mess2)
+   !--------------------------------------------------------------------
+   ! Machine dependent error exit routine.
+   ! Use system fatal error exit if available.
+   !--------------------------------------------------------------------
+   use mainio ! provides nsyso,nsyse
+   ! externals
+   character::from*(*),mess1*(*),mess2*(*)
+
+   write(nsyso,'(/'' ***error in '',a,''***'',a)') from,trim(mess1)
+   if (len_trim(mess2).gt.0) write(nsyso,'(22x,a)') trim(mess2)
+   write(nsyso,'('' '')')
+   if (nsyse.ne.nsyso) then
+      write(nsyse,'(/'' ***error in '',a,''***'',a)') from,trim(mess1)
+      if (len_trim(mess2).gt.0) write(nsyse,'(22x,a)') trim(mess2)
+      write(nsyse,'('' '')')
+   endif
+   stop 77
+   end subroutine error
+
+   subroutine mess(from,mess1,mess2)
+   !--------------------------------------------------------------------
+   ! Message routine (not fatal).
+   !--------------------------------------------------------------------
+   use mainio ! provides nsyso,nsyse
+   ! externals
+   character::from*(*),mess1*(*),mess2*(*)
+
+   write(nsyso,'(/'' ---message from '',a,''---'',a)') from,trim(mess1)
+   if (len_trim(mess2).gt.0) write(nsyso,'(26x,a)') trim(mess2)
+   if (nsyse.ne.nsyso) then
+      write(nsyse,'(/'' ---message from '',a,''---'',a)') &
+        from,trim(mess1)
+      if (len_trim(mess2).gt.0) write(nsyse,'(26x,a)') trim(mess2)

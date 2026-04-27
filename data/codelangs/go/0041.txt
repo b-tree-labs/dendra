@@ -1,0 +1,50 @@
+// Copyright 2011 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+package gcimporter_test
+
+import (
+	"bytes"
+	"fmt"
+	"internal/testenv"
+	"os"
+	"os/exec"
+	"path"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"go/ast"
+	"go/build"
+	"go/importer"
+	"go/parser"
+	"go/token"
+	"go/types"
+
+	. "go/internal/gcimporter"
+)
+
+func TestMain(m *testing.M) {
+	build.Default.GOROOT = testenv.GOROOT(nil)
+	os.Exit(m.Run())
+}
+
+// compile runs the compiler on filename, with dirname as the working directory,
+// and writes the output file to outdirname.
+// compile gives the resulting package a packagepath of testdata/<filebasename>.
+func compile(t *testing.T, dirname, filename, outdirname string, packageFiles map[string]string, pkgImports ...string) string {
+	// filename must end with ".go"
+	basename, ok := strings.CutSuffix(filepath.Base(filename), ".go")
+	if !ok {
+		t.Fatalf("filename doesn't end in .go: %s", filename)
+	}
+	objname := basename + ".o"
+	outname := filepath.Join(outdirname, objname)
+
+	importcfgfile := os.DevNull
+	if len(packageFiles) > 0 || len(pkgImports) > 0 {
+		importcfgfile = filepath.Join(outdirname, basename) + ".importcfg"

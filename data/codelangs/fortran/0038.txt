@@ -1,0 +1,50 @@
+module leapm
+   ! Provides leapr for NJOY2016.
+   use locale
+   implicit none
+   private
+   public leapr
+
+   ! global variables
+
+   ! user's input
+   integer::nout
+   integer::iprint
+   integer::nphon
+   integer::mat
+   real(kr)::smin
+   real(kr)::za
+   real(kr)::awr
+   real(kr)::spr
+   integer::npr
+   integer::iel
+   integer::nss
+   integer::ncold,nsk
+   real(kr)::b7
+   real(kr)::aws
+   real(kr)::sps
+   integer::mss
+   integer::nalpha,nbeta,lat
+   real(kr),dimension(:),allocatable::alpha,beta
+   real(kr)::twt,c,tbeta
+   real(kr),dimension(:),allocatable::tempr
+   integer::np1
+   real(kr)::delta1
+   real(kr),dimension(:),allocatable::p1
+   integer::nd
+   real(kr),dimension(:),allocatable::bdel,adel
+   integer::nka
+   real(kr)::dka
+   real(kr),dimension(:),allocatable::ska
+   real(kr)::cfrac
+
+   ! other global variables for module
+   integer::naint,nbint
+   real(kr)::f0,tbar
+   real(kr)::arat
+   real(kr)::tev,deltab
+   real(kr),dimension(:,:,:),allocatable::ssm,ssp
+   real(kr),dimension(:),allocatable::dwpix,dwp1
+   real(kr),dimension(:),allocatable::tempf,tempf1
+
+   ! min phonon expansion for time warning message

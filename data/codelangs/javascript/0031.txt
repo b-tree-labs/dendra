@@ -1,0 +1,50 @@
+'use strict';
+
+const {
+  ArrayPrototypePush,
+  ArrayPrototypeSlice,
+  ArrayPrototypeSome,
+  ObjectKeys,
+  ObjectValues,
+  SafeMap,
+  StringPrototypeStartsWith,
+} = primordials;
+const {
+  codes: {
+    ERR_SOCKET_BAD_PORT,
+  },
+} = require('internal/errors');
+
+const assert = require('internal/assert');
+const { fork } = require('child_process');
+const path = require('path');
+const EventEmitter = require('events');
+const RoundRobinHandle = require('internal/cluster/round_robin_handle');
+const SharedHandle = require('internal/cluster/shared_handle');
+const Worker = require('internal/cluster/worker');
+const { getInspectPort, isUsingInspector } = require('internal/util/inspector');
+const { internal, sendHelper } = require('internal/cluster/utils');
+const cluster = new EventEmitter();
+const intercom = new EventEmitter();
+const SCHED_NONE = 1;
+const SCHED_RR = 2;
+
+module.exports = cluster;
+
+const handles = new SafeMap();
+cluster.isWorker = false;
+cluster.isMaster = true; // Deprecated alias. Must be same as isPrimary.
+cluster.isPrimary = true;
+cluster.Worker = Worker;
+cluster.workers = {};
+cluster.settings = {};
+cluster.SCHED_NONE = SCHED_NONE;  // Leave it to the operating system.
+cluster.SCHED_RR = SCHED_RR;      // Primary distributes connections.
+
+let ids = 0;
+let initialized = false;
+
+// XXX(bnoordhuis) Fold cluster.schedulingPolicy into cluster.settings?
+let schedulingPolicy = process.env.NODE_CLUSTER_SCHED_POLICY;
+if (schedulingPolicy === 'rr')
+  schedulingPolicy = SCHED_RR;

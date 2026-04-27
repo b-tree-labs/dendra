@@ -1,0 +1,50 @@
+# ===----------------------------------------------------------------------=== #
+# Copyright (c) 2026, Modular Inc. All rights reserved.
+#
+# Licensed under the Apache License v2.0 with LLVM Exceptions:
+# https://llvm.org/LICENSE.txt
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ===----------------------------------------------------------------------=== #
+"""Tests for the _memchr, _memmem, _memrchr, and _memrmem functions."""
+
+from std.collections.string.string_slice import (
+    _memchr,
+    _memmem,
+    _memrchr,
+    _memrmem,
+)
+
+from std.testing import assert_equal, assert_false, assert_true
+from std.testing import TestSuite
+
+# ===----------------------------------------------------------------------=== #
+# _memchr
+# ===----------------------------------------------------------------------=== #
+
+
+def test_memchr_found() raises:
+    var s = String("abcdef")
+    var span = s.as_bytes()
+    var base = span.unsafe_ptr()
+
+    var r1 = _memchr(span, Byte(ord("a")))
+    assert_equal(Int(r1[]) - Int(base), 0)
+
+    var r2 = _memchr(span, Byte(ord("c")))
+    assert_equal(Int(r2[]) - Int(base), 2)
+
+    var r3 = _memchr(span, Byte(ord("f")))
+    assert_equal(Int(r3[]) - Int(base), 5)
+
+
+def test_memchr_not_found() raises:
+    var s = String("abcdef")
+    assert_false(_memchr(s.as_bytes(), Byte(ord("z"))))
+
+
+def test_memchr_empty_source() raises:

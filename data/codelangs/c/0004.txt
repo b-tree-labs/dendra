@@ -1,0 +1,50 @@
+/***************************************************************************
+ *                                  _   _ ____  _
+ *  Project                     ___| | | |  _ \| |
+ *                             / __| | | | |_) | |
+ *                            | (__| |_| |  _ <| |___
+ *                             \___|\___/|_| \_\_____|
+ *
+ * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
+ *
+ * This software is licensed as described in the file COPYING, which
+ * you should have received as part of this distribution. The terms
+ * are also available at https://curl.se/docs/copyright.html.
+ *
+ * You may opt to use, copy, modify, merge, publish, distribute and/or sell
+ * copies of the Software, and permit persons to whom the Software is
+ * furnished to do so, under the terms of the COPYING file.
+ *
+ * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
+ * KIND, either express or implied.
+ *
+ * SPDX-License-Identifier: curl
+ *
+ ***************************************************************************/
+#include "curl_setup.h"
+
+#include "fake_addrinfo.h"
+
+#ifdef USE_FAKE_GETADDRINFO
+
+#include <ares.h>
+
+void r_freeaddrinfo(struct addrinfo *cahead)
+{
+  struct addrinfo *canext;
+  struct addrinfo *ca;
+
+  for(ca = cahead; ca; ca = canext) {
+    canext = ca->ai_next;
+    curlx_free(ca);
+  }
+}
+
+struct context {
+  struct ares_addrinfo *addr;
+};
+
+static void async_addrinfo_cb(void *userp, int status, int timeouts,
+                              struct ares_addrinfo *addr)
+{
+  struct context *ctx = (struct context *)userp;

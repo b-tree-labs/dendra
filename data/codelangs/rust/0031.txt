@@ -1,0 +1,50 @@
+//! Deserialization for internally tagged enums:
+//!
+//! ```ignore
+//! #[serde(tag = "...")]
+//! enum Enum {}
+//! ```
+
+use crate::de::enum_;
+use crate::de::enum_untagged;
+use crate::de::struct_;
+use crate::de::{
+    effective_style, expr_is_missing, field_i, unwrap_to_variant_closure, Parameters, StructForm,
+};
+use crate::fragment::{Expr, Fragment, Match};
+use crate::internals::ast::{Style, Variant};
+use crate::internals::attr;
+use crate::private;
+use quote::quote;
+
+/// Generates `Deserialize::deserialize` body for an `enum Enum {...}` with `#[serde(tag)]` attribute
+pub(super) fn deserialize(
+    params: &Parameters,
+    variants: &[Variant],
+    cattrs: &attr::Container,
+    tag: &str,
+) -> Fragment {
+    let (variants_stmt, variant_visitor) = enum_::prepare_enum_variant_enum(variants);
+
+    // Match arms to extract a variant from a string
+    let variant_arms = variants
+        .iter()
+        .enumerate()
+        .filter(|&(_, variant)| !variant.attrs.skip_deserializing())
+        .map(|(i, variant)| {
+            let variant_name = field_i(i);
+
+            let block = Match(deserialize_internally_tagged_variant(
+                params, variant, cattrs,
+            ));
+
+            quote! {
+                __Field::#variant_name => #block
+            }
+        });
+
+    let expecting = format!("internally tagged enum {}", params.type_name());
+    let expecting = cattrs.expecting().unwrap_or(&expecting);
+
+    quote_block! {
+        #variant_visitor

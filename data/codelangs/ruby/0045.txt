@@ -1,0 +1,50 @@
+# frozen_string_literal: true
+
+module Bundler
+  class BundlerError < StandardError
+    def self.status_code(code)
+      define_method(:status_code) { code }
+      if match = BundlerError.all_errors.find {|_k, v| v == code }
+        error, _ = match
+        raise ArgumentError,
+          "Trying to register #{self} for status code #{code} but #{error} is already registered"
+      end
+      BundlerError.all_errors[self] = code
+    end
+
+    def self.all_errors
+      @all_errors ||= {}
+    end
+  end
+
+  class GemfileError < BundlerError; status_code(4); end
+  class InstallError < BundlerError; status_code(5); end
+
+  # Internal error, should be rescued
+  class SolveFailure < BundlerError; status_code(6); end
+
+  class GemNotFound < BundlerError; status_code(7); end
+  class InstallHookError < BundlerError; status_code(8); end
+  class RemovedError < BundlerError; status_code(9); end
+  class GemfileNotFound < BundlerError; status_code(10); end
+  class GitError < BundlerError; status_code(11); end
+  class DeprecatedError < BundlerError; status_code(12); end
+  class PathError < BundlerError; status_code(13); end
+  class GemspecError < BundlerError; status_code(14); end
+  class InvalidOption < BundlerError; status_code(15); end
+  class ProductionError < BundlerError; status_code(16); end
+
+  class HTTPError < BundlerError
+    status_code(17)
+    def filter_uri(uri)
+      URICredentialsFilter.credential_filtered_uri(uri)
+    end
+  end
+
+  class RubyVersionMismatch < BundlerError; status_code(18); end
+  class SecurityError < BundlerError; status_code(19); end
+  class LockfileError < BundlerError; status_code(20); end
+  class CyclicDependencyError < BundlerError; status_code(21); end
+  class GemfileLockNotFound < BundlerError; status_code(22); end
+  class PluginError < BundlerError; status_code(29); end
+  class ThreadCreationError < BundlerError; status_code(33); end

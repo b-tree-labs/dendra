@@ -1,0 +1,50 @@
+module resxsm
+   ! provides subroutine resxsr for NJOY2016
+   use locale
+   implicit none
+   private
+   public resxsr
+
+contains
+
+   subroutine resxsr
+   !-------------------------------------------------------------------
+   !
+   !  Construct a RESXS resonance cross section
+   !  file from NJOY pendf cross sections.
+   !
+   !  User input:
+   !
+   !   card 1   units
+   !      nout     output unit
+   !
+   !   card 2   control
+   !      nmat     number of materials
+   !      maxt     max. number of temperatures
+   !      nholl    number of lines of descriptive comments
+   !      efirst   lower energy limit (ev)
+   !      elast    upper energy limit
+   !      eps      thinning tolerance
+   !
+   !   card 3   user id
+   !      huse     hollerith user identification (up to 16 chars)
+   !      ivers    file version number
+   !
+   !   card 4   descriptive data (repeat nholl times)
+   !      holl     line of hollerith data (72 chars max)
+   !
+   !   card 5   material specifications (repeat nmat times)
+   !      hmat     hollerith name for material (up to 8 chars)
+   !      mat      endf mat number for material
+   !      unit     njoy unit number for pendf data
+   !
+   !  The RESXS format specification follows:
+   !
+!***********************************************************************
+!               proposed 09/24/90                                      -
+!                                                                      -
+!f           resxs                                                     -
+!e           resonance cross section file                              -
+!                                                                      -
+!n                       this file contains pointwise cross            -
+!n                       sections for the epithermal resonance         -

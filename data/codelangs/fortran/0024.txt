@@ -1,0 +1,50 @@
+module wimsm
+   ! provides subroutine wimsr for NJOY2016
+   use locale
+   implicit none
+   private
+   public wimsr
+   ! global wimsr variables
+   integer::iprint
+   integer::iverw
+   integer::ngnd,nfg,nrg,igref
+   integer::mat
+   integer::nfid
+   real(kr)::rdfid
+   integer::iburn
+   integer::ntemp
+   integer,parameter::ntmax=10
+   real(kr)::tempr(ntmax)
+   integer::nsigz
+   real(kr)::sgref
+   integer::ires
+   real(kr)::sigp
+   integer::mti,mtc
+   integer::ip1opt
+   integer::inorf
+   integer::isof
+   integer::ifprod
+   integer::ngendf,nout,nscr0,nscr1,nscr2,nscr3,nscr4
+   real(kr)::awr
+   integer::iznum
+   integer,parameter::nymax=100
+   real(kr)::yield(nymax)
+   integer::ifisp(nymax)
+   integer::ifiss,nfiss
+   integer::isg
+   integer::ixs
+   real(kr),dimension(:),allocatable::snu
+   real(kr),dimension(:),allocatable::spot
+   real(kr),dimension(:),allocatable::abs2
+   real(kr),dimension(:),allocatable::uff
+   real(kr),dimension(:),allocatable::glam
+   real(kr),dimension(:),allocatable::p1flx
+   real(kr),dimension(:),allocatable::flux
+   real(kr),dimension(:),allocatable::egb
+   integer,parameter::nwscr=30000
+   real(kr),dimension(:),allocatable::scr
+contains
+
+   subroutine wimsr
+   !--------------------------------------------------------------------
+   !

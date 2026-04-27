@@ -1,0 +1,50 @@
+module samm
+   !-------------------------------------------------------------------
+   ! Routines for the SAMMY method of calculating resonance cross
+   ! sections, derivatives, and angular distributions.  These
+   ! routines are used in RECONR and ERRORR.  Converted to NJOY
+   ! style and Fortran-90 format from coding provided by Nancy
+   ! Larson (ORNL).
+   !-------------------------------------------------------------------
+   use locale
+   implicit none
+   private
+
+   !--Public routines
+   public cssammy,s2sammy,ppsammy,rdsammy,desammy
+
+   !--Public variables
+   logical,public::Want_Partial_Derivs
+   logical,public::Want_Angular_Dist
+   logical,public::Want_SAMRML_RM
+   logical,public::Want_SAMRML_BW
+
+   !--Global variables
+
+   !--flags to control options
+   logical::Want_Partial_U=.false.
+
+   !--variables
+   integer::ngroup,mchan,nres,npp,ntriag,npar,lllmax,kkxlmn,nback
+   integer::nrext,nparr,nerm
+   integer,dimension(12)::ngroupm,nppm,nresm
+   integer,parameter::lllmaxx=10
+   real(kr)::awr,su
+
+   integer,dimension(:,:),allocatable::nchan
+   real(kr),dimension(:,:),allocatable::ema,emb,spina,spinb,qqq
+   integer,dimension(:,:),allocatable::kza,kzb,ishift,lpent,mt
+   real(kr),dimension(:,:),allocatable::pa,pb,sspin,parity
+   integer,dimension(:,:),allocatable::nresg
+   integer,dimension(:,:,:),allocatable::ipp,lspin,backgr
+   real(kr),dimension(:,:,:,:),allocatable::backgrdata
+   real(kr),dimension(:,:,:),allocatable::chspin,bound,rdeff,rdtru
+   real(kr),dimension(:,:),allocatable::eres,gamgam
+   real(kr),dimension(:,:,:),allocatable::gamma
+   integer,dimension(:,:),allocatable::nent,next
+   real(kr),dimension(:,:),allocatable::goj
+   real(kr),dimension(:,:,:),allocatable::zke,zkfe,zkte,zeta,echan
+   real(kr),dimension(:,:,:),allocatable::betapr,gbetpr
+   real(kr),dimension(:,:,:),allocatable::beta
+   real(kr),dimension(:,:),allocatable::uuuu,duuu
+   integer,dimension(:,:),allocatable::iduu

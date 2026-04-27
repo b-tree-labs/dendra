@@ -1,0 +1,49 @@
+# ===----------------------------------------------------------------------=== #
+# Copyright (c) 2026, Modular Inc. All rights reserved.
+#
+# Licensed under the Apache License v2.0 with LLVM Exceptions:
+# https://llvm.org/LICENSE.txt
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ===----------------------------------------------------------------------=== #
+# test_inline_mlir.mojo
+# Tests for inline-mlir.mdx code examples.
+from std.testing import assert_equal
+
+
+# --- Your first inline MLIR ---
+
+
+def test_hello_mlir() raises:
+    """Three builtins working together: type, attr, op."""
+    var a: __mlir_type.index = __mlir_attr.`42 : index`
+    var b: __mlir_type.index = __mlir_attr.`8 : index`
+    var c = __mlir_op.`index.add`(a, b)
+    assert_equal(Int(mlir_value=c), 50)
+
+
+# --- __mlir_type ---
+
+
+def test_mlir_type_dot_syntax() raises:
+    """Dot syntax for simple MLIR type names."""
+    var x: __mlir_type.i1 = __mlir_attr.true
+    var y: __mlir_type.index = __mlir_attr.`0 : index`
+    assert_equal(Bool(x), True)
+    assert_equal(Int(mlir_value=y), 0)
+
+
+def test_mlir_type_backtick_syntax() raises:
+    """Backtick syntax for dialect types with special characters."""
+    var s: __mlir_type.`!pop.scalar<index>` = __mlir_op.`pop.cast_from_builtin`[
+        _type=__mlir_type.`!pop.scalar<index>`
+    ](__mlir_attr.`7 : index`)
+    var result = __mlir_op.`pop.cast_to_builtin`[_type=__mlir_type.index](s)
+    assert_equal(Int(mlir_value=result), 7)
+
+
+# --- __mlir_attr ---

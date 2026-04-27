@@ -1,0 +1,50 @@
+# frozen_string_literal: true
+
+require "rubygems" unless defined?(Gem)
+
+module Bundler
+  class RubygemsIntegration
+    require "monitor"
+
+    EXT_LOCK = Monitor.new
+
+    def initialize
+      @replaced_methods = {}
+    end
+
+    def version
+      @version ||= Gem.rubygems_version
+    end
+
+    def provides?(req_str)
+      Gem::Requirement.new(req_str).satisfied_by?(version)
+    end
+
+    def build_args
+      require "rubygems/command"
+      Gem::Command.build_args
+    end
+
+    def build_args=(args)
+      require "rubygems/command"
+      Gem::Command.build_args = args
+    end
+
+    def set_target_rbconfig(path)
+      Gem.set_target_rbconfig(path)
+    end
+
+    def loaded_specs(name)
+      Gem.loaded_specs[name]
+    end
+
+    def mark_loaded(spec)
+      if spec.respond_to?(:activated=)
+        current = Gem.loaded_specs[spec.name]
+        current.activated = false if current
+        spec.activated = true
+      end
+      Gem.loaded_specs[spec.name] = spec
+    end
+
+    def validate(spec)
