@@ -46,12 +46,14 @@ from dendra.decorator import ml_switch
 from dendra.gates import (
     AccuracyMarginGate,
     CompositeGate,
+    DriftGate,
     Gate,
     GateDecision,
     ManualGate,
     McNemarGate,
     MinVolumeGate,
     next_phase,
+    prev_phase,
 )
 from dendra.ml import MLHead, MLPrediction, SklearnTextHead
 from dendra.models import (
@@ -153,6 +155,8 @@ __all__ = [
     "deserialize_record",
     "flock_supported",
     "ml_switch",
+    "DriftGate",
     "next_phase",
+    "prev_phase",
     "serialize_record",
 ]
