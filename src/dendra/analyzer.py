@@ -36,8 +36,9 @@ Zero external dependencies. Runs on any repo via
 from __future__ import annotations
 
 import ast
+import enum as _enum
 import json
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
@@ -64,7 +65,7 @@ class ClassificationSite:
     # hazards + AUTO_LIFTABLE means `dendra init --auto-lift` would
     # succeed cleanly. Populated by analyze() when run with hazard
     # detection enabled.
-    hazards: list["Hazard"] = field(default_factory=list)
+    hazards: list[Hazard] = field(default_factory=list)
     lift_status: str = "auto_liftable"  # str for json-serializable round-trip
 
 
@@ -742,9 +743,6 @@ __all__ = [
 # ===========================================================================
 
 
-import enum as _enum
-
-
 class LiftStatus(_enum.Enum):
     """Whether `dendra init --auto-lift` would succeed on this site."""
 
@@ -815,7 +813,11 @@ def _detect_eval_exec(fn: ast.FunctionDef) -> list[Hazard]:
     """eval/exec block static evidence detection."""
     out: list[Hazard] = []
     for node in ast.walk(fn):
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in ("eval", "exec"):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id in ("eval", "exec")
+        ):
             out.append(
                 Hazard(
                     category="eval_exec",

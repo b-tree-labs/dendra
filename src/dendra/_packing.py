@@ -24,9 +24,9 @@ from __future__ import annotations
 
 import inspect
 import typing
+from collections.abc import Callable
 from dataclasses import dataclass, field, is_dataclass, make_dataclass
-from typing import Any, Callable
-
+from typing import Any
 
 # Sentinel used in dataclass fields that have no default.
 _NO_DEFAULT = object()
@@ -64,12 +64,11 @@ class PackedSignature:
         unchanged so existing single-positional callers see no behavior
         difference.
         """
-        if self.is_single_passthrough:
+        if self.is_single_passthrough and args:
             # Pure passthrough; do not wrap a single positional arg.
-            if args:
-                return args[0]
-            # Single named param supplied via kwargs — fall through to
-            # general path below using the packed dataclass.
+            return args[0]
+        # Single named param supplied via kwargs — fall through to
+        # general path below using the packed dataclass.
 
         kwargs_in = dict(kwargs)
         bound: dict[str, Any] = {}
@@ -86,7 +85,7 @@ class PackedSignature:
             try:
                 bound[name] = next(positional_iter)
                 consumed += 1
-            except StopIteration:
+            except StopIteration as exc:
                 if name in kwargs_in:
                     bound[name] = kwargs_in.pop(name)
                 elif name in self.defaults:
@@ -94,7 +93,7 @@ class PackedSignature:
                 else:
                     raise TypeError(
                         f"missing required positional argument: {name!r}"
-                    )
+                    ) from exc
 
         # Capture any remaining positional args under *args field.
         remaining_positional = tuple(positional_iter)
@@ -256,7 +255,7 @@ def introspect_signature(
     packed_cls = make_dataclass(
         f"{cls_prefix}_PackedInput",
         # make_dataclass takes either (name, type) or (name, type, field)
-        [spec for spec in field_specs],
+        list(field_specs),
     )
 
     return PackedSignature(

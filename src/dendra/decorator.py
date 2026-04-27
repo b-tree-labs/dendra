@@ -182,6 +182,7 @@ def ml_switch(
             inner_rule = fn
             wrapped_labels = labels
         else:
+
             def inner_rule(packed: Any) -> Any:
                 a, kw = packed_sig.unpack(packed)
                 return fn(*a, **kw)
@@ -254,9 +255,7 @@ def _wrap_on_callables(labels: LabelsArg | None, packed_sig: Any) -> LabelsArg |
     return labels
 
 
-def _make_unpacking_on(
-    on_callable: Callable[..., Any], packed_sig: Any
-) -> Callable[[Any], Any]:
+def _make_unpacking_on(on_callable: Callable[..., Any], packed_sig: Any) -> Callable[[Any], Any]:
     """Return a single-arg adapter that unpacks the packed input back to
     the user-callable's original ``(*args, **kwargs)``.
     """

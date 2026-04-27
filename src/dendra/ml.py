@@ -356,7 +356,7 @@ class ImagePixelLogRegHead:
         self._classes = list(clf.classes_)
         self._version = f"ImagePixelLogRegHead-{len(records)}"
 
-    def predict(self, input: Any, labels: Iterable[str]) -> "MLPrediction":
+    def predict(self, input: Any, labels: Iterable[str]) -> MLPrediction:
         import numpy as np
 
         if self._classifier is None or not isinstance(input, np.ndarray):
@@ -436,7 +436,7 @@ class MLHeadFactory(Protocol):
     autoresearch tables) consume factories rather than class names.
     """
 
-    def __call__(self) -> "MLHead": ...
+    def __call__(self) -> MLHead: ...
 
 
 _HEAD_REGISTRY: dict[str, MLHeadFactory] = {}
@@ -461,7 +461,7 @@ def register_ml_head(name: str, factory: MLHeadFactory) -> None:
     _HEAD_REGISTRY[name] = factory
 
 
-def make_ml_head(name: str) -> "MLHead":
+def make_ml_head(name: str) -> MLHead:
     """Instantiate the registered head with the given name.
 
     Raises ``ValueError`` with the available names if ``name`` is

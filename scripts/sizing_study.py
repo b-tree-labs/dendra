@@ -26,7 +26,6 @@ from __future__ import annotations
 import ast
 import json
 import sys
-import traceback
 from collections import Counter
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -37,15 +36,11 @@ sys.path.insert(0, str(_REPO_ROOT / "src"))
 
 from dendra.analyzer import (  # noqa: E402
     AnalyzerReport,
-    ClassificationSite,
-    HazardAnalysis,
     LiftStatus,
     analyze,
-    analyze_function_source,
 )
 from dendra.lifters.branch import LiftRefused, lift_branches  # noqa: E402
 from dendra.lifters.evidence import lift_evidence  # noqa: E402
-
 
 # ---------------------------------------------------------------------------
 # Corpus discovery
@@ -149,7 +144,11 @@ def _categorize_refusal(reason: str) -> str:
         return "computed_return"
     if "try/except" in r:
         return "try_except_in_branch"
-    if "multiple top-level if" in r or "not a simple default return" in r or "unexpected statements" in r:
+    if (
+        "multiple top-level if" in r
+        or "not a simple default return" in r
+        or "unexpected statements" in r
+    ):
         return "non_canonical_chain"
     if "match case with guard" in r:
         return "guarded_match"
@@ -426,9 +425,14 @@ def render_markdown(
     lines.append("")
     lines.append(f"- both succeed: **{dis['both_success']}** ({_pct(dis['both_success'], total)})")
     lines.append(f"- both refuse: **{dis['both_refused']}** ({_pct(dis['both_refused'], total)})")
-    lines.append(f"- branch only succeeds: **{dis['branch_only_success']}** ({_pct(dis['branch_only_success'], total)})")
-    lines.append(f"- evidence only succeeds: **{dis['evidence_only_success']}** ({_pct(dis['evidence_only_success'], total)})")
-    lines.append(f"- mixed (one error, one not): **{dis['other']}** ({_pct(dis['other'], total)})")
+    bo = dis["branch_only_success"]
+    eo = dis["evidence_only_success"]
+    lines.append(f"- branch only succeeds: **{bo}** ({_pct(bo, total)})")
+    lines.append(f"- evidence only succeeds: **{eo}** ({_pct(eo, total)})")
+    lines.append(
+        f"- mixed (one error, one not): **{dis['other']}** "
+        f"({_pct(dis['other'], total)})"
+    )
     lines.append("")
 
     # Refusal histogram.
@@ -448,7 +452,10 @@ def render_markdown(
     refused_sites.sort(key=lambda r: r.fit_score, reverse=True)
     lines.append("## Top 20 refused sites by fit_score")
     lines.append("")
-    lines.append("| Corpus | File:Line | Function | Pattern | Fit | Branch | Evidence | First refusal |")
+    lines.append(
+        "| Corpus | File:Line | Function | Pattern | Fit | Branch "
+        "| Evidence | First refusal |"
+    )
     lines.append("|---|---|---|---|---:|---|---|---|")
     for r in refused_sites[:20]:
         first_reason = r.branch_lift_reason or r.evidence_lift_reason or ""

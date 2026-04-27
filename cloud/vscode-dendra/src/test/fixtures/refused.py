@@ -1,3 +1,6 @@
+# Copyright (c) 2026 B-Tree Ventures, LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Fixture: side_effect_evidence pattern (REFUSED).
 
 Mirrors the inline source in tests/test_analyzer_hazards.py

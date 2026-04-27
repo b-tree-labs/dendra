@@ -43,7 +43,6 @@ from dendra.core import (
     Verdict,
 )
 from dendra.decorator import ml_switch
-from dendra.switch_class import Switch
 from dendra.gates import (
     AccuracyMarginGate,
     CompositeGate,
@@ -98,6 +97,7 @@ from dendra.storage import (
     flock_supported,
     serialize_record,
 )
+from dendra.switch_class import Switch
 from dendra.telemetry import (
     ListEmitter,
     NullEmitter,
@@ -132,6 +132,7 @@ __all__ = [
     "FixedMLHeadStrategy",
     "Gate",
     "GateDecision",
+    "ImagePixelLogRegHead",
     "InMemoryStorage",
     "Label",
     "LearnedSwitch",
@@ -139,6 +140,7 @@ __all__ = [
     "LlamafileAdapter",
     "LlamafileAsyncAdapter",
     "MLHead",
+    "MLHeadFactory",
     "MLHeadStrategy",
     "MLPrediction",
     "ManualGate",
@@ -156,6 +158,7 @@ __all__ = [
     "SklearnTextHead",
     "SqliteStorage",
     "TfidfGradientBoostingHead",
+    "TfidfHeadBase",
     "TfidfLinearSVCHead",
     "TfidfMultinomialNBHead",
     "StdoutEmitter",
@@ -176,11 +179,14 @@ __all__ = [
     "NoVerifierAvailableError",
     "WebhookVerdictSource",
     "__version__",
+    "available_ml_heads",
     "default_verifier",
     "deserialize_record",
     "flock_supported",
+    "make_ml_head",
     "ml_switch",
     "next_phase",
     "prev_phase",
+    "register_ml_head",
     "serialize_record",
 ]

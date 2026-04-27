@@ -1,3 +1,6 @@
+# Copyright (c) 2026 B-Tree Ventures, LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Autoresearch loop: pick the best MLHead empirically on Dendra's own benchmarks.
 
 Uses the same paired-McNemar gate the paper publishes about. Four
@@ -19,9 +22,10 @@ from __future__ import annotations
 
 import json
 import sys
-from dataclasses import asdict, dataclass, field
+from collections.abc import Iterable
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from dendra.ml import (
     SklearnTextHead,
@@ -29,7 +33,6 @@ from dendra.ml import (
     TfidfLinearSVCHead,
     TfidfMultinomialNBHead,
 )
-
 
 RESULTS_DIR = (
     Path(__file__).resolve().parents[1]
@@ -156,8 +159,8 @@ def select_best_head(
                 correct_count=sum(correct),
             )
             continue
-        b = sum(1 for ci, cc in zip(incumbent_correct, correct) if cc and not ci)
-        c = sum(1 for ci, cc in zip(incumbent_correct, correct) if ci and not cc)
+        b = sum(1 for ci, cc in zip(incumbent_correct, correct, strict=False) if cc and not ci)
+        c = sum(1 for ci, cc in zip(incumbent_correct, correct, strict=False) if ci and not cc)
         reports[name] = CandidateReport(
             name=name,
             accuracy=sum(correct) / n_test if n_test else 0.0,
@@ -234,7 +237,8 @@ def main(argv: list[str] | None = None) -> int:
                 f"    {mark} {name:24s} acc={report.accuracy:.4f} "
                 f"p={report.mcnemar_p:.2e}  b={report.discordant_b:5d} c={report.discordant_c:5d}"
             )
-        print(f"    saved -> {out.relative_to(Path.cwd()) if out.is_relative_to(Path.cwd()) else out}")
+        rel = out.relative_to(Path.cwd()) if out.is_relative_to(Path.cwd()) else out
+        print(f"    saved -> {rel}")
     return 0
 
 

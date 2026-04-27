@@ -343,7 +343,7 @@ def ${fn}(...): ...
       {
         comment: "# Day 14 — final graduation to ML_PRIMARY (sub-millisecond, ~$0/call).",
         record: {
-          id: "01J6YBNKM7T3V8AGRP5HDQ2C9L",
+          id: "01J6YBNKM7T3V8AGRP5HDQ2C9L",  // pragma: allowlist secret
           ts: "2026-05-11T13:14:48.211Z",
           switch: fn,
           phase: "ML_PRIMARY",

@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 B-Tree Ventures, LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Drive a headless Chromium against localhost:8000 and capture
 landing-page screenshots for visual review.
 
@@ -14,6 +17,7 @@ Run from repo root:
 from __future__ import annotations
 
 import sys
+
 from playwright.sync_api import sync_playwright
 
 URL = "http://localhost:8000/"

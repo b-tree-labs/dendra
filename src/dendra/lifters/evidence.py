@@ -65,7 +65,6 @@ from dataclasses import dataclass
 from dendra.analyzer import LiftStatus, analyze_function_source
 from dendra.lifters.branch import LiftRefused
 
-
 # ----------------------------------------------------------------------
 # Public API
 # ----------------------------------------------------------------------
@@ -130,9 +129,12 @@ def lift_evidence(source: str, function_name: str) -> str:
                     continue
                 # Annotation overrides: the user has explicitly declared
                 # a safe lift for this hazard category.
-                if hz.category == "dynamic_dispatch" and inputs_overrides:
-                    if _all_getattrs_covered(func, inputs_overrides):
-                        continue
+                if (
+                    hz.category == "dynamic_dispatch"
+                    and inputs_overrides
+                    and _all_getattrs_covered(func, inputs_overrides)
+                ):
+                    continue
                 raise LiftRefused(
                     reason=f"{hz.category}: {hz.reason}", line=hz.line
                 )
@@ -186,7 +188,7 @@ class _Extraction:
     # name and stores (gather_body, prior_field_names, op_kind) where
     # op_kind is "or" or "and" so the gather can short-circuit
     # consistently.
-    short_circuit_chains: list["_ShortCircuitChain"]
+    short_circuit_chains: list[_ShortCircuitChain]
 
 
 @dataclass
@@ -317,9 +319,8 @@ def _all_getattrs_covered(
             isinstance(node, ast.Call)
             and isinstance(node.func, ast.Name)
             and node.func.id == "getattr"
-        ):
-            if not any(_ast_contains(cov, node) for cov in covered_exprs):
-                return False
+        ) and not any(_ast_contains(cov, node) for cov in covered_exprs):
+            return False
     return True
 
 
@@ -328,10 +329,7 @@ def _ast_contains(haystack: ast.AST, needle: ast.AST) -> bool:
     inside ``haystack`` (or equals it).
     """
     needle_dump = ast.dump(needle)
-    for sub in ast.walk(haystack):
-        if ast.dump(sub) == needle_dump:
-            return True
-    return False
+    return any(ast.dump(sub) == needle_dump for sub in ast.walk(haystack))
 
 
 # ----------------------------------------------------------------------
@@ -415,12 +413,14 @@ def _annotation_is_frozen(ann: ast.expr | None) -> bool:
     # Plain `Final` or `Final[...]`.
     if isinstance(ann, ast.Name) and ann.id == "Final":
         return True
-    if isinstance(ann, ast.Subscript) and isinstance(ann.value, ast.Name) and ann.value.id == "Final":
+    if (
+        isinstance(ann, ast.Subscript)
+        and isinstance(ann.value, ast.Name)
+        and ann.value.id == "Final"
+    ):
         return True
     # Bare frozen-type names.
-    if isinstance(ann, ast.Name) and ann.id in _FROZEN_TYPE_NAMES:
-        return True
-    return False
+    return bool(isinstance(ann, ast.Name) and ann.id in _FROZEN_TYPE_NAMES)
 
 
 # ----------------------------------------------------------------------
@@ -454,7 +454,12 @@ def _extract_evidence(
 
     body = list(func.body)
     # Strip a leading docstring if present.
-    if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant) and isinstance(body[0].value.value, str):
+    if (
+        body
+        and isinstance(body[0], ast.Expr)
+        and isinstance(body[0].value, ast.Constant)
+        and isinstance(body[0].value.value, str)
+    ):
         body = body[1:]
 
     arg_passthroughs = [
@@ -725,8 +730,7 @@ def _match_ast_equals(target: ast.expr):
 
 def _walk_rule_nodes(stmts: list[ast.stmt]):
     for stmt in stmts:
-        for node in ast.walk(stmt):
-            yield node
+        yield from ast.walk(stmt)
 
 
 def _parent_map(stmts: list[ast.stmt]) -> dict[int, ast.AST]:
@@ -886,9 +890,11 @@ def _any_branch_body_has_side_effects(rule_body: list[ast.stmt]) -> bool:
     """
     for stmt in rule_body:
         for sub in ast.walk(stmt):
-            if isinstance(sub, ast.If):
-                if _branch_body_has_side_effects(sub.body) or _branch_body_has_side_effects(sub.orelse):
-                    return True
+            if isinstance(sub, ast.If) and (
+                _branch_body_has_side_effects(sub.body)
+                or _branch_body_has_side_effects(sub.orelse)
+            ):
+                return True
     return False
 
 

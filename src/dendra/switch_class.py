@@ -1,3 +1,6 @@
+# Copyright (c) 2026 B-Tree Ventures, LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Native authoring pattern: subclass :class:`Switch` instead of decorating
 a function with :func:`ml_switch`.
 
@@ -25,12 +28,12 @@ from __future__ import annotations
 
 import inspect
 import typing
+from collections.abc import Callable
 from dataclasses import make_dataclass
-from typing import Any, Callable
+from typing import Any
 
 from dendra._packing import PackedSignature, introspect_signature, signatures_match
 from dendra.core import Label, LearnedSwitch
-
 
 # Sentinel marker on the abstract base class so __init_subclass__ skips
 # its own introspection. Subclasses go through the full pipeline.

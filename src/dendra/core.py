@@ -1380,7 +1380,11 @@ class LearnedSwitch:
             # failed H, route through the predecessor phase's logic
             # (MODEL_PRIMARY: M then R) rather than collapsing to R. The H
             # tier sits *on top of* the cascade we earned at P2.
-            if ml_failed or ml_confidence is None or ml_confidence < self.config.confidence_threshold:
+            if (
+                ml_failed
+                or ml_confidence is None
+                or ml_confidence < self.config.confidence_threshold
+            ):
                 cascaded = self._phase_primary_decision(input, rule_output, phase)
                 cascaded._ml_output = ml_output
                 cascaded._ml_confidence = ml_confidence

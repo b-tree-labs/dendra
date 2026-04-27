@@ -26,7 +26,6 @@ from __future__ import annotations
 import ast
 from dataclasses import dataclass
 
-
 # ----------------------------------------------------------------------
 # Public exception
 # ----------------------------------------------------------------------
@@ -221,7 +220,12 @@ def _extract_branches(func: ast.FunctionDef) -> _ExtractionResult:
     # Skip a leading docstring if present.
     leading_stmts: list[ast.stmt] = []
     idx = 0
-    if body and isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Constant) and isinstance(body[0].value.value, str):
+    if (
+        body
+        and isinstance(body[0], ast.Expr)
+        and isinstance(body[0].value, ast.Constant)
+        and isinstance(body[0].value.value, str)
+    ):
         idx = 1
 
     # Collect statements before the chain.
@@ -378,7 +382,10 @@ def _validate_branch_body(stmts: list[ast.stmt]) -> None:
         for sub in ast.walk(stmt):
             if isinstance(sub, (ast.Try,)):
                 raise LiftRefused(
-                    reason="try/except inside a branch body couples exception flow to label selection",
+                    reason=(
+                        "try/except inside a branch body couples "
+                        "exception flow to label selection"
+                    ),
                     line=sub.lineno,
                 )
 
@@ -469,9 +476,10 @@ def _check_no_shared_state(
                 for target in sub.targets:
                     for name_node in _names_assigned(target):
                         assigned_names.add(name_node)
-            elif isinstance(sub, (ast.AnnAssign, ast.AugAssign)):
-                if isinstance(sub.target, ast.Name):
-                    assigned_names.add(sub.target.id)
+            elif isinstance(sub, (ast.AnnAssign, ast.AugAssign)) and isinstance(
+                sub.target, ast.Name
+            ):
+                assigned_names.add(sub.target.id)
 
     if not assigned_names:
         return

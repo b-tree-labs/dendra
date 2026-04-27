@@ -28,6 +28,7 @@ Each signal needs a contract test: the script is called from the
 landing-page CI, so a regression silently re-introduces low-quality
 demo content.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -36,9 +37,7 @@ from pathlib import Path
 
 import pytest
 
-_SCRIPT_PATH = (
-    Path(__file__).resolve().parent.parent / "scripts" / "enrich_landing_corpus.py"
-)
+_SCRIPT_PATH = Path(__file__).resolve().parent.parent / "scripts" / "enrich_landing_corpus.py"
 
 
 @pytest.fixture(scope="module")
@@ -144,9 +143,7 @@ class TestZeroArgNoReturn:
     def test_function_with_args_passes(self, enrich_mod, tmp_path):
         src = tmp_path / "classify.py"
         src.write_text(
-            "def classify(x):\n"
-            "    if x:\n"
-            "        print('a')\n",
+            "def classify(x):\n    if x:\n        print('a')\n",
             encoding="utf-8",
         )
         site = {
@@ -159,10 +156,7 @@ class TestZeroArgNoReturn:
     def test_function_with_return_passes(self, enrich_mod, tmp_path):
         src = tmp_path / "classify.py"
         src.write_text(
-            "def classify():\n"
-            "    if True:\n"
-            "        return 'a'\n"
-            "    return 'b'\n",
+            "def classify():\n    if True:\n        return 'a'\n    return 'b'\n",
             encoding="utf-8",
         )
         site = {
@@ -175,8 +169,7 @@ class TestZeroArgNoReturn:
     def test_starargs_count_as_args(self, enrich_mod, tmp_path):
         src = tmp_path / "wrap.py"
         src.write_text(
-            "def runner(*args, **kwargs):\n"
-            "    print(args, kwargs)\n",
+            "def runner(*args, **kwargs):\n    print(args, kwargs)\n",
             encoding="utf-8",
         )
         site = {

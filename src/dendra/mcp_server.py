@@ -395,7 +395,10 @@ _SUGGESTIONS = {
     "source_drift": "run `dendra refresh` to regenerate",
     "user_edited": "run `dendra refresh --force` to overwrite manual edits, or revert them",
     "missing": "run `dendra refresh` to regenerate the missing file",
-    "orphaned": "delete the generated file; the source function is gone (or run `dendra refresh --prune`)",
+    "orphaned": (
+        "delete the generated file; the source function is gone "
+        "(or run `dendra refresh --prune`)"
+    ),
     "malformed": "delete the generated file and re-run `dendra init` for the source function",
 }
 
@@ -482,7 +485,6 @@ def _dendra_version() -> str:
 def serve_stdio() -> None:
     """Run the MCP server over stdio. Blocks until the client disconnects."""
     import anyio
-
     from mcp.server.stdio import stdio_server
 
     server = build_server()

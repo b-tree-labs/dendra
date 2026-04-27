@@ -29,7 +29,8 @@ inspects the wrapped function's decorator list at the AST level, so the
 decorators carry no runtime cost beyond a single attribute set.
 """
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from dendra.lifters.branch import LiftRefused, lift_branches
 from dendra.lifters.evidence import lift_evidence
@@ -67,7 +68,9 @@ def evidence_via_probe(**fields: str) -> Callable[[Callable[..., Any]], Callable
     return wrapper
 
 
-def evidence_inputs(**fields: Callable[..., Any]) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+def evidence_inputs(
+    **fields: Callable[..., Any],
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Declare evidence inputs explicitly when static lift cannot infer
     them (dynamic dispatch, ``getattr``, etc.).
 

@@ -44,14 +44,14 @@ class TestLoadCredentials:
         auth.save_credentials("dndra_abc123", email="user@example.com")
         creds = auth.load_credentials()
         assert creds is not None
-        assert creds["api_key"] == "dndra_abc123"
+        assert creds["api_key"] == "dndra_abc123"  # pragma: allowlist secret
         assert creds["email"] == "user@example.com"
 
     def test_env_var_fallback(self, fake_home, monkeypatch):
         monkeypatch.setenv("DENDRA_API_KEY", "dndra_envkey")
         creds = auth.load_credentials()
         assert creds is not None
-        assert creds["api_key"] == "dndra_envkey"
+        assert creds["api_key"] == "dndra_envkey"  # pragma: allowlist secret
         # Email is unknown when only the env var is set.
         assert creds.get("email") is None
 
@@ -59,14 +59,14 @@ class TestLoadCredentials:
         auth.save_credentials("dndra_filekey", email="u@x.com")
         monkeypatch.setenv("DENDRA_API_KEY", "dndra_envkey")
         creds = auth.load_credentials()
-        assert creds["api_key"] == "dndra_filekey"
+        assert creds["api_key"] == "dndra_filekey"  # pragma: allowlist secret
 
 
 class TestSaveCredentials:
     def test_round_trip(self, fake_home):
         auth.save_credentials("dndra_token", email="a@b.com")
         creds = auth.load_credentials()
-        assert creds == {"api_key": "dndra_token", "email": "a@b.com"}
+        assert creds == {"api_key": "dndra_token", "email": "a@b.com"}  # pragma: allowlist secret
 
     def test_file_permissions_are_0600(self, fake_home):
         auth.save_credentials("dndra_token", email="a@b.com")
@@ -83,13 +83,13 @@ class TestSaveCredentials:
         # JSON is a subset of TOML for plain key/value, but the canonical
         # on-disk format we ship is JSON. Make sure it parses.
         payload = json.loads(cred_path.read_text(encoding="utf-8"))
-        assert payload["api_key"] == "dndra_token"
+        assert payload["api_key"] == "dndra_token"  # pragma: allowlist secret
 
     def test_overwrites_existing_credentials(self, fake_home):
         auth.save_credentials("dndra_old", email="old@x.com")
         auth.save_credentials("dndra_new", email="new@x.com")
         creds = auth.load_credentials()
-        assert creds["api_key"] == "dndra_new"
+        assert creds["api_key"] == "dndra_new"  # pragma: allowlist secret
         assert creds["email"] == "new@x.com"
 
 

@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   // approved by an authenticated Clerk session, mint an API key,
   // store it in Supabase, return it once.
   return NextResponse.json({
-    api_key: `dndra_${code.slice(0, 16)}`,
+    api_key: `dndra_${code.slice(0, 16)}`,  // pragma: allowlist secret
     email: "user@example.com",
   });
 }

@@ -291,8 +291,8 @@ def load_codelangs() -> BenchmarkDataset:
     data_dir = repo_root / "data" / "codelangs"
     if not data_dir.exists():
         raise FileNotFoundError(
-            f"data/codelangs/ not found. Run scripts/fetch_codelangs.py "
-            f"to populate it."
+            "data/codelangs/ not found. Run scripts/fetch_codelangs.py "
+            "to populate it."
         )
     pairs: list[tuple[str, str]] = []
     for lang_dir in sorted(p for p in data_dir.iterdir() if p.is_dir()):
@@ -305,19 +305,19 @@ def load_codelangs() -> BenchmarkDataset:
                 pairs.append((text, lang_dir.name))
     if not pairs:
         raise RuntimeError(
-            f"data/codelangs/ exists but contains no samples; "
-            f"re-run scripts/fetch_codelangs.py"
+            "data/codelangs/ exists but contains no samples; "
+            "re-run scripts/fetch_codelangs.py"
         )
     # Deterministic shuffle + 80/20 split per language to keep test
     # set roughly balanced across languages.
     rng = Random(20260427)
     rng.shuffle(pairs)
     by_lang: dict[str, list[tuple[str, str]]] = {}
-    for t, l in pairs:
-        by_lang.setdefault(l, []).append((t, l))
+    for t, lbl in pairs:
+        by_lang.setdefault(lbl, []).append((t, lbl))
     train: list[tuple[str, str]] = []
     test: list[tuple[str, str]] = []
-    for lang, items in by_lang.items():
+    for _lang, items in by_lang.items():
         split = max(1, int(0.8 * len(items)))
         train.extend(items[:split])
         test.extend(items[split:])

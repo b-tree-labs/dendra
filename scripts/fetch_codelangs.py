@@ -1,3 +1,6 @@
+# Copyright (c) 2026 B-Tree Ventures, LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Fetch and vendor the codelangs benchmark dataset.
 
 Clones each license-vetted upstream source (shallow), samples N files
@@ -13,14 +16,11 @@ Run from the repo root:
 from __future__ import annotations
 
 import hashlib
-import random
-import shutil
 import subprocess
-import sys
 import tempfile
-from dataclasses import dataclass, field
+from collections.abc import Iterable
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = REPO_ROOT / "data" / "codelangs"
@@ -48,7 +48,11 @@ SOURCES: list[Source] = [
         license="BSD-3 (LANL contributor variant)",
         globs=["src/**/*.f90", "src/**/*.F90", "src/**/*.f"],
         n_samples=40,
-        notes="NJOY2016 is the FORTRAN nuclear data processing code (LANL). NJOY21 is the C++ rewrite, so we pull from NJOY2016 for authentic NE FORTRAN.",
+        notes=(
+            "NJOY2016 is the FORTRAN nuclear data processing code (LANL). "
+            "NJOY21 is the C++ rewrite, so we pull from NJOY2016 for "
+            "authentic NE FORTRAN."
+        ),
     ),
     Source(
         lang="fortran",
@@ -87,7 +91,10 @@ SOURCES: list[Source] = [
         license="curl-license (MIT-compatible)",
         globs=["lib/**/*.c", "src/**/*.c"],
         n_samples=60,
-        notes="cURL — widely-deployed C with permissive license; chosen over GPL alternatives like glibc.",
+        notes=(
+            "cURL — widely-deployed C with permissive license; "
+            "chosen over GPL alternatives like glibc."
+        ),
     ),
     Source(
         lang="cpp",
@@ -279,7 +286,8 @@ def main(argv: list[str] | None = None) -> int:
         lines.extend(["", "## Notes", ""])
         for src, _ in sha_log:
             if src.notes:
-                lines.append(f"- **{src.lang}** ({src.repo.split('/')[-1].replace('.git', '')}): {src.notes}")
+                repo_name = src.repo.split("/")[-1].replace(".git", "")
+                lines.append(f"- **{src.lang}** ({repo_name}): {src.notes}")
     sources_md.write_text("\n".join(lines) + "\n")
     print(f"\nWrote {sources_md.relative_to(REPO_ROOT)}")
     return 0

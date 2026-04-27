@@ -23,7 +23,8 @@ ML head trained on the autoresearch trajectory) in v1.x.
 from __future__ import annotations
 
 from collections import Counter
-from typing import Any, Iterable, Protocol, runtime_checkable
+from collections.abc import Iterable
+from typing import Any, Protocol, runtime_checkable
 
 from dendra.ml import (
     MLHead,

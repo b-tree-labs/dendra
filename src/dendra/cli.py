@@ -148,9 +148,9 @@ def _try_emit_benchmarks(
     path). Failures here print to stderr and do not abort the wrap.
     """
     try:
+        from dendra import __version__ as _dendra_version
         from dendra import refresh as refresh_mod
         from dendra.benchmarks import generate_benchmark_module
-        from dendra import __version__ as _dendra_version
     except ImportError as e:
         print(f"--with-benchmarks: harness unavailable ({e})", file=sys.stderr)
         return
@@ -201,10 +201,12 @@ def _try_auto_lift(
     lifting can't be done automatically.
     """
     try:
-        from dendra import refresh as refresh_mod
-        from dendra.lifters.branch import lift_branches, LiftRefused as BranchRefused
-        from dendra.lifters.evidence import lift_evidence, LiftRefused as EvidenceRefused
         from dendra import __version__ as _dendra_version
+        from dendra import refresh as refresh_mod
+        from dendra.lifters.branch import LiftRefused as BranchRefused
+        from dendra.lifters.branch import lift_branches
+        from dendra.lifters.evidence import LiftRefused as EvidenceRefused
+        from dendra.lifters.evidence import lift_evidence
     except ImportError as e:
         print(f"--auto-lift: lifter modules unavailable ({e})", file=sys.stderr)
         return
@@ -548,15 +550,18 @@ def cmd_init(args: argparse.Namespace) -> int:
     state = _load_state()
     # The first successful `init` is a teachable moment — show the nudge
     # once even if the analyze threshold has not been reached.
-    if int(state.get("init_count", 0)) == 1 and not auth.is_logged_in():
-        if not state.get("nudge_shown"):
-            print(
-                "\nLoving Dendra? Sign up for a free account to enable shared "
-                "team analysis: dendra login",
-                file=sys.stderr,
-            )
-            state["nudge_shown"] = True
-            _save_state(state)
+    if (
+        int(state.get("init_count", 0)) == 1
+        and not auth.is_logged_in()
+        and not state.get("nudge_shown")
+    ):
+        print(
+            "\nLoving Dendra? Sign up for a free account to enable shared "
+            "team analysis: dendra login",
+            file=sys.stderr,
+        )
+        state["nudge_shown"] = True
+        _save_state(state)
     return 0
 
 
@@ -771,8 +776,15 @@ def cmd_refresh(args: argparse.Namespace) -> int:
         for gen_path, status, fn_name in drifted:
             print(f"  [{status.value}] {gen_path.relative_to(root)} (function {fn_name!r})")
 
-    needs_regen = counts[refresh_mod.DriftStatus.SOURCE_DRIFT] + counts[refresh_mod.DriftStatus.MISSING_GENERATED]
-    needs_attention = needs_regen + counts[refresh_mod.DriftStatus.USER_EDITED] + counts[refresh_mod.DriftStatus.ORPHANED]
+    needs_regen = (
+        counts[refresh_mod.DriftStatus.SOURCE_DRIFT]
+        + counts[refresh_mod.DriftStatus.MISSING_GENERATED]
+    )
+    needs_attention = (
+        needs_regen
+        + counts[refresh_mod.DriftStatus.USER_EDITED]
+        + counts[refresh_mod.DriftStatus.ORPHANED]
+    )
 
     if args.check:
         return 0 if needs_attention == 0 else 1
@@ -884,7 +896,7 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
     or ``first run`` when no prior file exists). Exit code 0 on parity
     within tolerance; non-zero on regression.
     """
-    from dendra.benchmarks import run_benchmark_pytest, aggregate_report
+    from dendra.benchmarks import aggregate_report, run_benchmark_pytest
 
     try:
         file_path, function_name = args.target.rsplit(":", 1)

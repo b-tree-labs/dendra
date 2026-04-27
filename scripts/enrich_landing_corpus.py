@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 B-Tree Ventures, LLC
+# SPDX-License-Identifier: Apache-2.0
+
 """Enrich landing/data/analyze-*.json with source snippets per site.
 
 For each detected classification site (top N by fit_score), reads the
@@ -80,9 +83,7 @@ def _path_looks_like_test(file_path: str) -> bool:
 def _name_looks_like_test(function_name: str) -> bool:
     if _TEST_NAME_RE.match(function_name):
         return True
-    if function_name in _UNITTEST_FIXTURE_NAMES:
-        return True
-    return False
+    return function_name in _UNITTEST_FIXTURE_NAMES
 
 
 def _is_zero_arg_no_return(repo_root: Path, site: dict) -> bool:
@@ -122,10 +123,7 @@ def _is_zero_arg_no_return(repo_root: Path, site: dict) -> bool:
         )
         if total_args != 0:
             return False
-        for inner in ast.walk(node):
-            if isinstance(inner, ast.Return):
-                return False
-        return True
+        return all(not isinstance(inner, ast.Return) for inner in ast.walk(node))
     return False
 
 

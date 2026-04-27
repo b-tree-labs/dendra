@@ -47,7 +47,6 @@ from pathlib import Path
 from dendra.refresh import write_generated_file
 from dendra.roi import ROIAssumptions
 
-
 # ---------------------------------------------------------------------------
 # Codegen
 # ---------------------------------------------------------------------------
@@ -293,7 +292,7 @@ def run_benchmark(
                 other = [sw.classify(x) for x in inputs]
             except Exception:
                 continue
-            agree = sum(1 for a, b in zip(rule_labels, other) if a == b)
+            agree = sum(1 for a, b in zip(rule_labels, other, strict=False) if a == b)
             parity_values.append(agree / max(1, len(inputs)))
     parity = min(parity_values) if parity_values else 1.0
 
@@ -544,14 +543,8 @@ def _aggregate_one(name: str, records: list[dict]) -> SwitchTimeseries:
 
     pct_low: float | None
     pct_high: float | None
-    if base_low > 0:
-        pct_low = (latest_low - base_low) / base_low * 100.0
-    else:
-        pct_low = None
-    if base_high > 0:
-        pct_high = (latest_high - base_high) / base_high * 100.0
-    else:
-        pct_high = None
+    pct_low = (latest_low - base_low) / base_low * 100.0 if base_low > 0 else None
+    pct_high = (latest_high - base_high) / base_high * 100.0 if base_high > 0 else None
 
     timestamps = _record_timestamps(records)
     if timestamps:
@@ -599,13 +592,10 @@ def format_report(report: Report) -> str:
             ev = sw.graduation_event
             ts_short = ev.timestamp.split("T")[0] if ev.timestamp else "n/a"
             pct_low = sw.cost_pct_change_low
-            if pct_low is None:
-                pct_label = "n/a"
-            else:
-                # Truncate toward zero so -92.6% reads "-92%" rather
-                # than rounding up to "-93%". Reads as a conservative
-                # claim (we under-report savings by < 1pp).
-                pct_label = f"{int(pct_low):+d}%"
+            # Truncate toward zero so -92.6% reads "-92%" rather
+            # than rounding up to "-93%". Reads as a conservative
+            # claim (we under-report savings by < 1pp).
+            pct_label = "n/a" if pct_low is None else f"{int(pct_low):+d}%"
             lines.append(
                 f"{sw.switch_name}  {ev.from_phase} -> {ev.to_phase} "
                 f"{ts_short} (after {ev.after_n_inputs} verdicts)"
