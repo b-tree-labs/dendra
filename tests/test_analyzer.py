@@ -358,3 +358,142 @@ class TestSavingsProjection:
         assert "Projected annual value by site" in md
         assert "Portfolio projected value" in md
         assert "$" in md
+
+
+# ---------------------------------------------------------------------------
+# Regime classification (paper §6 alignment)
+# ---------------------------------------------------------------------------
+
+
+class TestRegimeClassification:
+    """``_classify_regime`` thresholds align with paper §6:
+    cardinality < 30 → narrow (Regime A); 30..60 → medium;
+    > 60 → high (Regime B); 0 → unknown.
+    """
+
+    def test_zero_cardinality_is_unknown(self):
+        from dendra.analyzer import _classify_regime
+
+        assert _classify_regime(0) == "unknown"
+
+    def test_just_below_narrow_threshold(self):
+        from dendra.analyzer import _classify_regime
+
+        assert _classify_regime(1) == "narrow"
+        assert _classify_regime(29) == "narrow"
+
+    def test_narrow_threshold_boundary(self):
+        """Cardinality 30 is the first medium; <30 is narrow."""
+        from dendra.analyzer import _classify_regime
+
+        assert _classify_regime(29) == "narrow"
+        assert _classify_regime(30) == "medium"
+
+    def test_medium_band(self):
+        from dendra.analyzer import _classify_regime
+
+        assert _classify_regime(30) == "medium"
+        assert _classify_regime(45) == "medium"
+        assert _classify_regime(60) == "medium"
+
+    def test_high_threshold_boundary(self):
+        """Cardinality 61 is the first high; ≤60 is medium."""
+        from dendra.analyzer import _classify_regime
+
+        assert _classify_regime(60) == "medium"
+        assert _classify_regime(61) == "high"
+
+    def test_far_above_high_threshold(self):
+        from dendra.analyzer import _classify_regime
+
+        assert _classify_regime(77) == "high"
+        assert _classify_regime(151) == "high"
+        assert _classify_regime(1000) == "high"
+
+    def test_paper_section_6_anchors(self):
+        """The paper's §6 heuristics use these boundary cases. Pin them."""
+        from dendra.analyzer import _classify_regime
+
+        # ATIS: 26 labels → narrow (Regime A)
+        assert _classify_regime(26) == "narrow"
+        # HWU64: 64 labels → high (Regime B)
+        assert _classify_regime(64) == "high"
+        # Banking77: 77 labels → high (Regime B)
+        assert _classify_regime(77) == "high"
+        # CLINC150: 151 labels → high (Regime B)
+        assert _classify_regime(151) == "high"
+
+
+class TestFitScoreBoundaries:
+    """``_compute_fit_score`` rewards the Regime A sweet spot (2..29)
+    plus narrow/medium regime plus P1/P4 patterns."""
+
+    def test_min_score_no_labels_no_p1p4(self):
+        from dendra.analyzer import _compute_fit_score
+
+        # Cardinality 0 → unknown regime, no sweet-spot bonus, P5 pattern.
+        assert _compute_fit_score([], "P5") == 2.0
+
+    def test_max_score_p1_narrow_sweet_spot(self):
+        from dendra.analyzer import _compute_fit_score
+
+        labels = ["bug", "feature", "question"]  # 3 labels, narrow, sweet spot
+        assert _compute_fit_score(labels, "P1") == 5.0
+
+    def test_max_score_p4_narrow_sweet_spot(self):
+        from dendra.analyzer import _compute_fit_score
+
+        labels = ["bug", "feature", "question"]
+        assert _compute_fit_score(labels, "P4") == 5.0
+
+    def test_high_cardinality_loses_sweet_spot_and_regime_bonus(self):
+        from dendra.analyzer import _compute_fit_score
+
+        labels = [f"label_{i}" for i in range(70)]  # high regime, outside sweet spot
+        # 2 base + 0 (not in sweet spot) + 0 (high regime) + 1 (P1) = 3.0
+        assert _compute_fit_score(labels, "P1") == 3.0
+
+    def test_medium_regime_loses_sweet_spot_keeps_regime_bonus(self):
+        from dendra.analyzer import _compute_fit_score
+
+        labels = [f"label_{i}" for i in range(40)]  # medium regime, outside sweet spot
+        # 2 base + 0 (not sweet spot, n>=30) + 1 (medium regime) + 1 (P4) = 4.0
+        assert _compute_fit_score(labels, "P4") == 4.0
+
+    def test_p2_pattern_no_pattern_bonus(self):
+        from dendra.analyzer import _compute_fit_score
+
+        labels = ["bug", "feature"]  # narrow, sweet spot, but P2 not P1/P4
+        # 2 base + 1 (sweet spot) + 1 (narrow) + 0 (P2) = 4.0
+        assert _compute_fit_score(labels, "P2") == 4.0
+
+
+class TestRegimeInJsonReport:
+    """Regime field round-trips correctly through render_json."""
+
+    def test_narrow_regime_in_json(self, tmp_path):
+        _write(
+            tmp_path / "triage.py",
+            "def triage(x):\n"
+            "    if 'a' in x: return 'bug'\n"
+            "    if 'b' in x: return 'feature'\n"
+            "    return 'question'\n",
+        )
+        report = analyze(tmp_path)
+        out = json.loads(render_json(report))
+        assert out["sites"][0]["regime"] == "narrow"
+        assert out["sites"][0]["label_cardinality"] == 3
+
+    def test_high_regime_appears_in_text_summary(self, tmp_path):
+        # Synthesize a 70-label classifier to trigger the high regime.
+        labels = [f'"label_{i}"' for i in range(70)]
+        body_lines = ["    if 'a' in x: return " + lbl for lbl in labels[:69]]
+        body_lines.append(f"    return {labels[69]}")
+        _write(
+            tmp_path / "many.py",
+            "def many(x):\n" + "\n".join(body_lines) + "\n",
+        )
+        report = analyze(tmp_path)
+        text = render_text(report)
+        # The text report's by-regime section should mention "high".
+        assert "high" in text.lower()

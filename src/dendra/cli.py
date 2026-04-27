@@ -65,7 +65,7 @@ def cmd_bench(args: argparse.Namespace) -> int:
     ).as_callable()
     head = SklearnTextHead(min_outcomes=args.min_train_for_ml)
 
-    model = _build_lm(args) if args.lm_kind else None
+    model = _build_lm(args) if args.lm else None
     checkpoints = run_benchmark_experiment(
         train=ds.train,
         test=ds.test,
@@ -105,7 +105,7 @@ def _build_lm(args: argparse.Namespace):
         OpenAIAdapter,
     )
 
-    kind = args.lm_kind
+    kind = args.lm
     if kind == "ollama":
         return OllamaAdapter(model=args.lm_id or "qwen2.5:7b")
     if kind == "llamafile":

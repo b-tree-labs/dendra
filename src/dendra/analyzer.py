@@ -245,11 +245,25 @@ _PATTERNS: list[tuple[str, Any]] = [
 
 
 def _classify_regime(cardinality: int) -> str:
+    """Bucket a classification site by label cardinality.
+
+    Aligned with paper §6 (category taxonomy):
+    - ``narrow`` (Regime A in the paper): cardinality < 30. Rule is a
+      usable day-zero baseline; graduation by ~250 outcomes per the
+      transition-curve analysis.
+    - ``medium``: cardinality 30..60. Between Regime A and B. Rule is
+      borderline-usable; graduation timeline depends on verdict rate.
+    - ``high`` (Regime B in the paper): cardinality > 60. Rule is
+      symbolic; production teams typically start at Phase 2 with a
+      zero-shot LLM and accumulate outcome data via Dendra's logging
+      substrate.
+    - ``unknown``: cardinality 0 (analyzer could not extract labels).
+    """
     if cardinality == 0:
         return "unknown"
-    if cardinality <= 10:
+    if cardinality < 30:
         return "narrow"
-    if cardinality <= 50:
+    if cardinality <= 60:
         return "medium"
     return "high"
 
@@ -258,14 +272,14 @@ def _compute_fit_score(labels: list[str], pattern: str) -> float:
     """Heuristic 0-5 score.
 
     - 2 base points for any matched pattern.
-    - +1 for having 2-50 labels (the sweet spot).
+    - +1 for having 2-30 labels (the Regime A sweet spot per paper §6).
     - +1 for narrow/medium regime.
     - +1 for pattern types with strong outcome observability
       (P1/P4 triage-like patterns score higher).
     """
     score = 2.0
     n = len(labels)
-    if 2 <= n <= 50:
+    if 2 <= n < 30:
         score += 1.0
     regime = _classify_regime(n)
     if regime in ("narrow", "medium"):
