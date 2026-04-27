@@ -54,7 +54,25 @@ from dendra.gates import (
     next_phase,
     prev_phase,
 )
-from dendra.ml import MLHead, MLPrediction, SklearnTextHead
+from dendra.ml import (
+    ImagePixelLogRegHead,
+    MLHead,
+    MLHeadFactory,
+    MLPrediction,
+    SklearnTextHead,
+    TfidfGradientBoostingHead,
+    TfidfHeadBase,
+    TfidfLinearSVCHead,
+    TfidfMultinomialNBHead,
+    available_ml_heads,
+    make_ml_head,
+    register_ml_head,
+)
+from dendra.ml_strategy import (
+    CardinalityMLHeadStrategy,
+    FixedMLHeadStrategy,
+    MLHeadStrategy,
+)
 from dendra.models import (
     AnthropicAdapter,
     AnthropicAsyncAdapter,
@@ -105,10 +123,12 @@ __all__ = [
     "BulkVerdictSummary",
     "CandidateHarness",
     "CandidateReport",
+    "CardinalityMLHeadStrategy",
     "CompositeGate",
     "ClassificationRecord",
     "ClassificationResult",
     "FileStorage",
+    "FixedMLHeadStrategy",
     "Gate",
     "GateDecision",
     "InMemoryStorage",
@@ -118,6 +138,7 @@ __all__ = [
     "LlamafileAdapter",
     "LlamafileAsyncAdapter",
     "MLHead",
+    "MLHeadStrategy",
     "MLPrediction",
     "ManualGate",
     "McNemarGate",
@@ -133,6 +154,9 @@ __all__ = [
     "ResilientStorage",
     "SklearnTextHead",
     "SqliteStorage",
+    "TfidfGradientBoostingHead",
+    "TfidfLinearSVCHead",
+    "TfidfMultinomialNBHead",
     "StdoutEmitter",
     "Storage",
     "StorageBase",

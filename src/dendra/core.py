@@ -668,8 +668,11 @@ class LearnedSwitch:
         "_storage",
         "_model",
         "_ml_head",
+        "_head_strategy",
         "_telemetry",
         "_lock",
+        "_head_lock",
+        "_head_loaded",
         "_circuit_tripped",
         "_records_since_advance_check",
         "_records_since_phase_change",
@@ -705,10 +708,16 @@ class LearnedSwitch:
         persist: bool = False,
         model: ModelClassifier | None = None,
         ml_head: MLHead | None = None,
+        head_strategy: Any | None = None,
         telemetry: TelemetryEmitter | None = None,
     ) -> None:
         if rule is None or not callable(rule):
             raise ValueError("rule must be a callable")
+        if ml_head is not None and head_strategy is not None:
+            raise ValueError(
+                "ml_head=... and head_strategy=... are mutually exclusive: "
+                "pass either an explicit head or a strategy that picks one."
+            )
 
         # ---- Name: autogen from rule.__name__ when absent -----------------
         name_was_autoderived = name is None
@@ -828,6 +837,7 @@ class LearnedSwitch:
 
         self._model = model
         self._ml_head = ml_head
+        self._head_strategy = head_strategy
         if telemetry is None:
             from dendra.telemetry import NullEmitter
 
@@ -863,8 +873,34 @@ class LearnedSwitch:
         # Rehydrate persisted breaker state (paper §7.1 promise must
         # survive a process restart when durable storage is configured).
         self._persist: bool = bool(persist)
+        # Head-mutation lock: serializes fit / state_bytes / load_state
+        # so concurrent callers can't tear the trained pipeline. Distinct
+        # from ``self._lock`` (the phase-mutation lock); classify()'s
+        # predict() path is intentionally lock-free against this lock so
+        # head persistence does NOT block hot-path classifications.
+        self._head_lock = threading.Lock()
+        # Set when the persisted head (if any) has finished loading.
+        # Always set on switches without ``persist=True`` or without a
+        # ``load_state``-capable head (nothing to wait for).
+        self._head_loaded = threading.Event()
         if self._persist:
             self._load_breaker_state()
+            # Restore the trained ML head on a background thread so
+            # constructing a switch never blocks on a multi-second
+            # pickle.loads (transformer-class heads can be hundreds of
+            # MB). Callers that need trained state before serving the
+            # first request use ``wait_until_head_loaded(timeout)``.
+            head = ml_head
+            if head is not None and hasattr(head, "load_state"):
+                threading.Thread(
+                    target=self._lazy_load_head_in_background,
+                    name=f"dendra-head-load-{self.name}",
+                    daemon=True,
+                ).start()
+            else:
+                self._head_loaded.set()
+        else:
+            self._head_loaded.set()
 
         # Refuse HumanReviewerSource on the inline classify hot path.
         # HumanReviewerSource.judge() blocks up to ``timeout`` seconds
@@ -1268,10 +1304,7 @@ class LearnedSwitch:
             )
 
         if phase is Phase.ML_SHADOW:
-            if self._ml_head is None:
-                raise ValueError(
-                    f"switch {self.name!r} is in phase {phase.value} but no ml_head was provided"
-                )
+            self._ensure_ml_head(phase)
             # Primary decision path at Phase 3 mirrors MODEL_PRIMARY when an
             # language model is configured, else falls to rule. ML runs only in shadow.
             primary = self._phase_primary_decision(input, rule_output, phase)
@@ -1290,37 +1323,52 @@ class LearnedSwitch:
             return primary
 
         if phase is Phase.ML_WITH_FALLBACK:
-            if self._ml_head is None:
-                raise ValueError(
-                    f"switch {self.name!r} is in phase {phase.value} but no ml_head was provided"
-                )
+            self._ensure_ml_head(phase)
+            ml_output: Any = None
+            ml_confidence: float | None = None
+            ml_failed = False
             try:
                 ml_pred = self._ml_head.predict(input, self._label_names())
+                ml_output = ml_pred.label
+                ml_confidence = float(ml_pred.confidence)
             except (KeyboardInterrupt, SystemExit):
                 raise
             except BaseException:
-                return _result(rule_output, "rule_fallback", 1.0)
-            if float(ml_pred.confidence) < self.config.confidence_threshold:
-                return _result(
-                    rule_output,
-                    "rule_fallback",
-                    1.0,
-                    ml_output=ml_pred.label,
-                    ml_confidence=float(ml_pred.confidence),
-                )
+                ml_failed = True
+
+            # Predecessor-cascade fallback (paper §3.1): on low-confidence or
+            # failed H, route through the predecessor phase's logic
+            # (MODEL_PRIMARY: M then R) rather than collapsing to R. The H
+            # tier sits *on top of* the cascade we earned at P2.
+            if ml_failed or ml_confidence is None or ml_confidence < self.config.confidence_threshold:
+                cascaded = self._phase_primary_decision(input, rule_output, phase)
+                cascaded._ml_output = ml_output
+                cascaded._ml_confidence = ml_confidence
+                # Cascade landed at R because the higher tier (H) was
+                # below threshold or failed; mark as rule_fallback even
+                # if M was absent (no M attempt was made, but the
+                # cascade still bottomed out due to upstream uncertainty).
+                if cascaded.source == "rule":
+                    cascaded = ClassificationResult(
+                        label=cascaded.label,
+                        source="rule_fallback",
+                        confidence=cascaded.confidence,
+                        phase=cascaded.phase,
+                    )
+                    cascaded._rule_output = rule_output
+                    cascaded._ml_output = ml_output
+                    cascaded._ml_confidence = ml_confidence
+                return cascaded
             return _result(
                 ml_pred.label,
                 "ml",
-                float(ml_pred.confidence),
-                ml_output=ml_pred.label,
-                ml_confidence=float(ml_pred.confidence),
+                ml_confidence,
+                ml_output=ml_output,
+                ml_confidence=ml_confidence,
             )
 
         if phase is Phase.ML_PRIMARY:
-            if self._ml_head is None:
-                raise ValueError(
-                    f"switch {self.name!r} is in phase {phase.value} but no ml_head was provided"
-                )
+            self._ensure_ml_head(phase)
             # Lock the breaker check-and-call sequence so the first
             # failure trips the circuit and subsequent callers
             # short-circuit to the rule rather than stampeding the
@@ -1665,7 +1713,26 @@ class LearnedSwitch:
             except BaseException:
                 pass
 
+        # Persist the ML head once it joins the routing graph so the
+        # switch survives restart in trained state. *Outside* the
+        # phase-mutation lock so a slow pickle.dumps + disk write does
+        # not stall concurrent classify() callers waiting for the
+        # lock. The head-state snapshot acquires its own (separate)
+        # head_lock; see ``_save_head_state``.
+        if decision.target_better:
+            self._save_head_state()
+
         return decision
+
+    def persist_head(self) -> None:
+        """Manually checkpoint the ML head to disk.
+
+        Call after fitting the head externally to ensure restart
+        survival. No-op when ``persist=False`` was passed at
+        construction or when the head doesn't implement
+        ``state_bytes`` / ``load_state``.
+        """
+        self._save_head_state()
 
     def demote(self, *, reason: str, _auto: bool = False, _decision: Any = None) -> Any:
         """Step the lifecycle phase one slot back toward the rule floor.
@@ -2079,6 +2146,161 @@ class LearnedSwitch:
             return
         if raw == "1":
             self._circuit_tripped = True
+
+    # --- ML head state persistence (avoids re-fit on every restart) ------
+
+    def _head_path(self) -> Path | None:
+        """Path to the ML-head state sidecar file, or ``None`` if unsupported.
+
+        Head persistence is enabled when ``persist=True`` AND the
+        configured ``ml_head`` implements both ``state_bytes`` and
+        ``load_state``. Heads without these methods fall back to
+        refit-from-log on first prediction.
+        """
+        if not getattr(self, "_persist", False):
+            return None
+        head = self._ml_head
+        if head is None:
+            return None
+        if not hasattr(head, "state_bytes") or not hasattr(head, "load_state"):
+            return None
+        return Path("runtime") / "dendra" / self.name / ".head"
+
+    def _save_head_state(self) -> None:
+        """Persist trained ML-head state to disk.
+
+        Thread safety: the snapshot (``state_bytes``) is taken under
+        ``self._head_lock`` to serialize against concurrent fits or
+        loads. The disk write happens *after* the lock is released so
+        a slow pickle.dumps + filesystem write does not block other
+        threads from fitting or saving. classify() / predict() are
+        unaffected — they read ``self._ml_head._pipeline`` directly
+        and do not touch the head lock.
+
+        Best-effort. A failure here never propagates: a head that
+        can't checkpoint is degraded but functional; a head that
+        crashes the classifier is broken. The next restart re-fits
+        from the verdict log if the sidecar is missing or unreadable.
+        """
+        path = self._head_path()
+        if path is None:
+            return
+        try:
+            with self._head_lock:
+                blob = self._ml_head.state_bytes()
+        except (NotImplementedError, AttributeError):
+            return
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except BaseException:
+            return
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = path.with_suffix(path.suffix + ".tmp")
+            tmp.write_bytes(blob)
+            tmp.replace(path)
+        except OSError:
+            pass
+
+    def _load_head_state(self) -> None:
+        """Rehydrate trained ML-head state from disk.
+
+        Acquires ``self._head_lock`` to serialize against concurrent
+        fits / saves. Reading the file from disk happens before the
+        lock is taken so multi-second filesystem reads do not block
+        other threads.
+
+        A missing or unreadable file leaves the head untrained (the
+        safe default; the next ``fit`` from the verdict log restores
+        readiness).
+        """
+        path = self._head_path()
+        if path is None:
+            return
+        try:
+            blob = path.read_bytes()
+        except (OSError, FileNotFoundError):
+            return
+        try:
+            with self._head_lock:
+                self._ml_head.load_state(blob)
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except BaseException:
+            # Corrupt blob, version mismatch, etc. — discard and let
+            # the head re-fit from the log.
+            return
+
+    def _ensure_ml_head(self, phase: Phase) -> None:
+        """Ensure ``self._ml_head`` is set, consulting head_strategy if needed.
+
+        Lazy: the strategy is consulted on first access from an
+        ML-using phase, never at construction. Cached afterward.
+        Thread-safe via ``self._head_lock``: concurrent classifies
+        call ``select`` at most once.
+
+        Raises ``ValueError`` if no head was provided AND no strategy
+        was configured (matches the pre-strategy behavior).
+        """
+        if self._ml_head is not None:
+            return
+        if self._head_strategy is None:
+            raise ValueError(
+                f"switch {self.name!r} is in phase {phase.value} but no "
+                f"ml_head was provided (and no head_strategy to pick one)"
+            )
+        with self._head_lock:
+            if self._ml_head is not None:
+                return  # another thread populated it while we waited
+            records = self._storage.load_records(self.name)
+            self._ml_head = self._head_strategy.select(records)
+
+    def _lazy_load_head_in_background(self) -> None:
+        """Load persisted head state on a background thread.
+
+        Started by ``__init__`` when ``persist=True`` and the head
+        supports ``load_state``. Construction returns immediately;
+        callers that need trained state before the first request use
+        ``wait_until_head_loaded(timeout)``.
+        """
+        try:
+            self._load_head_state()
+        finally:
+            self._head_loaded.set()
+
+    def wait_until_head_loaded(self, timeout: float | None = None) -> bool:
+        """Block until the persisted ML head has finished loading.
+
+        Useful right after construction when the next request must
+        see trained state. Returns ``True`` if loaded (or if there
+        was nothing to load), ``False`` if the timeout elapsed first.
+        Always returns ``True`` immediately on switches without
+        ``persist=True`` or without a ``load_state``-capable head.
+        """
+        return self._head_loaded.wait(timeout=timeout)
+
+    def refit(self, records: Iterable[Any]) -> None:
+        """Refit the ML head against an outcome stream, thread-safely.
+
+        Acquires the head lock for the duration of the fit so a
+        concurrent ``persist_head`` / ``advance`` cannot serialize a
+        torn pipeline. When ``persist=True``, the new state is
+        written to disk *after* the lock is released so the I/O does
+        not block other threads.
+
+        Prefer this over calling ``ml_head.fit(records)`` directly
+        when the same switch is being persisted concurrently.
+        """
+        if self._ml_head is None:
+            raise ValueError(
+                f"switch {self.name!r} has no ml_head; cannot refit"
+            )
+        with self._head_lock:
+            self._ml_head.fit(records)
+        # Save outside the head lock — the trained pipeline is the
+        # current ``self._ml_head._pipeline``; the next ``state_bytes``
+        # call will pickle it under the lock atomically.
+        self._save_head_state()
 
     # --- Async API -----------------------------------------------------------
     #
