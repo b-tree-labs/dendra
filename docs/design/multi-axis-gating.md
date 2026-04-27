@@ -311,7 +311,7 @@ arrives in v1.1 by adding sibling slots; no breaking changes needed.
 
 The two artifacts worth landing now:
 
-1. **`docs/working/multi-axis-gating.md`** (this file).
+1. **`docs/design/multi-axis-gating.md`** (this file).
 2. **A note in the paper §10.5 future work** that the lifecycle
    safety claim extends to n axes by union bound, and that latency /
    cost gates are the natural next axis.
@@ -319,7 +319,47 @@ The two artifacts worth landing now:
 The bigger thing this validated: we picked the right naming
 (`target_better`, single Gate protocol). If we'd kept `advance` /
 `demote` baked in, axis 2 would have demanded a refactor. We're
-already future-proof.
+already future-proof at the protocol level.
+
+---
+
+## 5. Vocabulary inventory: 1D bake-ins to fix in v1.x
+
+The Gate protocol is direction-agnostic, but the *prose* surrounding
+it still bakes in 1D up/down semantics. v1 ships the accuracy
+lifecycle, where "floor" / "ceiling" / "above" / "below" are
+intuitive. v1.x adds axes where these terms stop carrying the right
+meaning (the rule isn't "below" on the latency axis, it's the
+fastest; on cost, it's the cheapest; on privacy, it's the local
+default). Catalog of terms to migrate when multi-axis lands:
+
+| Today's term | 1D bias | Direction-agnostic alternative |
+|---|---|---|
+| "rule floor" | implies the rule is *below* | "rule anchor" or "rule reference" |
+| "safety floor" | same | "safety anchor" |
+| "phase ceiling" | implies higher = better | "phase bound" or "advancement bound" |
+| "above the floor" / "below the floor" | up/down framing | "outside the safe envelope" / "inside the safe envelope" |
+| "drifted below the rule" | down framing | "drifted away from the rule baseline" |
+| "promote" / "demote" | up/down on accuracy lifecycle | keep where the lifecycle is meant; otherwise "step toward target" |
+| "graduated autonomy" | implies linear progression | keep as-is for the accuracy lifecycle (it's accurate); add "directional autonomy" for the multi-axis framing |
+
+Approximate scope of a rename pass at the time of v1.x:
+
+- Code comments + docstrings: ~25 sites in `src/dendra/`.
+- Design + paper docs: ~50 sites across `docs/design/`,
+  `docs/papers/`, `docs/THREAT_MODEL.md`, plus `docs/working/` notes.
+- Customer-facing docs (README, FAQ, getting-started): currently
+  zero references; would only acquire them if v1 marketing leans into
+  the floor metaphor (it doesn't today).
+
+Approach for v1.x:
+1. Land the multi-axis library work first (LatencyGate, CostGate, sibling slots, ClassificationRecord extension).
+2. Pick the canonical term ("anchor" preferred for now, pending a working session on naming).
+3. Sweep all sites; one PR.
+4. Update the paper's §3.1 lifecycle table + §10 discussion to use the chosen term.
+
+**Not v1 work.** v1 substance is correct under the current vocabulary;
+the rename is a v1.x concern that arrives with the multi-axis API.
 
 ---
 
