@@ -27,9 +27,265 @@ from __future__ import annotations
 
 import argparse
 import json
+import secrets
 import sys
+import time
 from collections.abc import Sequence
 from dataclasses import asdict
+from pathlib import Path
+
+from dendra import auth
+
+# ---------------------------------------------------------------------------
+# Account / login flow
+#
+# v1 scaffolding for relationship-building, not hard DRM. OSS classification
+# works without an account; the bare ``dendra`` command is a soft entry
+# point that points new users at ``dendra login`` if they want cloud features.
+# ---------------------------------------------------------------------------
+
+_DASHBOARD_BASE = "https://app.dendra.ai"
+_CLI_AUTH_PATH = "/cli-auth"
+_STATE_FILE = Path.home() / ".dendra" / "state.toml"
+_NUDGE_THRESHOLD = 3
+
+
+def _truncate_key(api_key: str) -> str:
+    """Return a display-safe truncation of an API key."""
+    if len(api_key) <= 12:
+        return api_key
+    return f"{api_key[:8]}...{api_key[-4:]}"
+
+
+def _load_state() -> dict:
+    """Read ~/.dendra/state.toml as a flat key/value dict.
+
+    We hand-parse the small subset we write (int counts, bool flags) to
+    avoid a tomllib dependency on Python 3.10. Unknown lines are ignored.
+    """
+    if not _STATE_FILE.exists():
+        return {}
+    state: dict = {}
+    try:
+        for raw in _STATE_FILE.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            key = key.strip()
+            value = value.strip()
+            if value.lower() in ("true", "false"):
+                state[key] = value.lower() == "true"
+            else:
+                try:
+                    state[key] = int(value)
+                except ValueError:
+                    state[key] = value.strip('"')
+    except OSError:
+        return {}
+    return state
+
+
+def _save_state(state: dict) -> None:
+    _STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    lines = []
+    for key, value in sorted(state.items()):
+        if isinstance(value, bool):
+            lines.append(f"{key} = {'true' if value else 'false'}")
+        elif isinstance(value, int):
+            lines.append(f"{key} = {value}")
+        else:
+            lines.append(f'{key} = "{value}"')
+    _STATE_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _maybe_nudge_signup() -> None:
+    """One-time soft nudge after repeated unauthenticated use."""
+    if auth.is_logged_in():
+        return
+    state = _load_state()
+    if state.get("nudge_shown"):
+        return
+    count = int(state.get("analyze_count", 0))
+    if count < _NUDGE_THRESHOLD:
+        return
+    print(
+        "\nLoving Dendra? Sign up for a free account to enable shared team "
+        "analysis: dendra login",
+        file=sys.stderr,
+    )
+    state["nudge_shown"] = True
+    _save_state(state)
+
+
+def _bump_counter(key: str) -> None:
+    state = _load_state()
+    state[key] = int(state.get(key, 0)) + 1
+    _save_state(state)
+
+
+def _try_auto_lift(
+    *,
+    source_path: Path,
+    function_name: str,
+    original_source: str,
+) -> None:
+    """Run the branch + evidence lifters and emit a Switch subclass into
+    ``__dendra_generated__/<file_stem>__<func>.py`` next to the source.
+
+    On refusal: print the first hazard's reason + suggested fix to
+    stderr; do NOT raise. The basic decorator was already applied by
+    ``cmd_init`` so the user has a working classifier even when full
+    lifting can't be done automatically.
+    """
+    try:
+        from dendra import refresh as refresh_mod
+        from dendra.lifters.branch import lift_branches, LiftRefused as BranchRefused
+        from dendra.lifters.evidence import lift_evidence, LiftRefused as EvidenceRefused
+        from dendra import __version__ as _dendra_version
+    except ImportError as e:
+        print(f"--auto-lift: lifter modules unavailable ({e})", file=sys.stderr)
+        return
+
+    # Prefer the evidence lifter (richer output) when it accepts; fall
+    # back to the branch lifter for branches without hidden state. Both
+    # raise LiftRefused with a structured reason.
+    lifted_source: str | None = None
+    last_error: str | None = None
+    for lifter_name, lifter, refused_cls in (
+        ("evidence", lift_evidence, EvidenceRefused),
+        ("branch", lift_branches, BranchRefused),
+    ):
+        try:
+            lifted_source = lifter(original_source, function_name)
+            lifter_used = lifter_name
+            break
+        except refused_cls as e:
+            last_error = f"{lifter_name}: {e.reason} at line {e.line}"
+            continue
+        except Exception as e:  # noqa: BLE001 - defensive; lifters shouldn't crash
+            last_error = f"{lifter_name}: unexpected error: {e}"
+            continue
+
+    if lifted_source is None:
+        print(
+            "--auto-lift: refused. The basic decorator was applied. "
+            f"To extract per-branch handlers and hidden-state evidence, "
+            f"resolve the issue and re-run with --auto-lift.\n"
+            f"  Reason: {last_error}\n"
+            "  Run `dendra analyze --suggest-refactors` for the full diagnostic.",
+            file=sys.stderr,
+        )
+        return
+
+    # Write the generated file. Convention: __dendra_generated__/ sits
+    # next to the source file. The generated module is named
+    # <source_stem>__<function>.py.
+    gen_dir = source_path.parent / "__dendra_generated__"
+    gen_path = gen_dir / f"{source_path.stem}__{function_name}.py"
+    # Source module path: derive from the file's package position. For
+    # v1 simplicity, use the file stem; the lifter-doctor pair already
+    # tolerates this convention.
+    source_module = source_path.stem
+    refresh_mod.write_generated_file(
+        gen_path,
+        source_module=source_module,
+        source_function=function_name,
+        source_ast_hash=refresh_mod.ast_hash(original_source),
+        content=lifted_source,
+        dendra_version=_dendra_version,
+    )
+    # Ensure __dendra_generated__/__init__.py exists so the package is
+    # importable. (Empty file is enough.)
+    init_path = gen_dir / "__init__.py"
+    if not init_path.exists():
+        init_path.write_text("")
+    print(
+        f"--auto-lift: wrote {gen_path.relative_to(source_path.parent)} "
+        f"using the {lifter_used} lifter.",
+        file=sys.stderr,
+    )
+
+
+def cmd_status(args: argparse.Namespace) -> int:
+    """Bare ``dendra`` (no subcommand) — soft welcome / status."""
+    creds = auth.load_credentials()
+    if creds is None:
+        print(
+            "Dendra is the graduated-autonomy classification primitive. "
+            "OSS features work without an account."
+        )
+        print()
+        print("Run `dendra login` to create a free account and unlock cloud features:")
+        print("  - cloud-synced switch configurations")
+        print("  - shared team analyzer corpus")
+        print("  - opt-in registry contribution")
+        print()
+        print("See `dendra --help` for the full command list.")
+        return 0
+
+    email = creds.get("email") or "unknown"
+    print(f"Logged in as {email} ({_truncate_key(creds['api_key'])}).")
+    print("Run `dendra --help` for available commands.")
+    return 0
+
+
+def cmd_login(args: argparse.Namespace) -> int:
+    """Browser-based device flow.
+
+    v1 stub: prints the dashboard URL with a one-time code, polls a
+    stub endpoint, and saves the returned credentials. The real
+    polling endpoint is a TODO for the dashboard team; the CLI flow
+    works end-to-end against the local stub today.
+    """
+    code = secrets.token_urlsafe(24)
+    auth_url = f"{_DASHBOARD_BASE}{_CLI_AUTH_PATH}?code={code}"
+
+    print("To finish signing in, open this URL in your browser:")
+    print()
+    print(f"  {auth_url}")
+    print()
+    print("Waiting for confirmation (Ctrl+C to cancel)...", flush=True)
+
+    # TODO(dashboard): replace this stub with real long-poll against
+    # ``POST {API_BASE}/cli-auth/poll`` once the dashboard ships.
+    api_key, email = _stub_poll_for_token(code)
+
+    auth.save_credentials(api_key, email=email)
+    print()
+    print(f"Signed in as {email}.")
+    print(f"Credentials saved to {auth.credentials_path()} (mode 0600).")
+    return 0
+
+
+def _stub_poll_for_token(code: str) -> tuple[str, str]:
+    """v1 stub: sleep briefly, then mint a deterministic token.
+
+    Replaced by a real HTTP poll once the dashboard exists.
+    """
+    time.sleep(2)
+    return f"dndra_{code[:16]}", "user@example.com"
+
+
+def cmd_logout(args: argparse.Namespace) -> int:
+    """Clear local credentials."""
+    if not auth.is_logged_in():
+        print("Already signed out.")
+        return 0
+    auth.clear_credentials()
+    print("Signed out. Local credentials removed.")
+    return 0
+
+
+def cmd_whoami(args: argparse.Namespace) -> int:
+    """Print the logged-in email + truncated API key."""
+    creds = auth.load_credentials()
+    if creds is None:
+        print("not logged in")
+        return 1
+    email = creds.get("email") or "(email unknown)"
+    print(f"{email}  {_truncate_key(creds['api_key'])}")
+    return 0
 
 _BENCHMARKS = {
     "banking77": "load_banking77",
@@ -147,13 +403,13 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     if args.project_savings and report.sites:
         print()
         print("Run with --format markdown for the savings projection table.")
+    _bump_counter("analyze_count")
+    _maybe_nudge_signup()
     return 0
 
 
 def cmd_init(args: argparse.Namespace) -> int:
     """Wrap a target function with @ml_switch via AST injection."""
-    from pathlib import Path
-
     from dendra.wrap import WrapError, wrap_function
 
     try:
@@ -207,6 +463,31 @@ def cmd_init(args: argparse.Namespace) -> int:
         f"({'inferred' if result.inferred_labels else 'supplied'})",
         file=sys.stderr,
     )
+
+    # --auto-lift: run the lifters on the (now-wrapped) source and emit
+    # a Switch subclass into __dendra_generated__/. The basic decorator
+    # was already applied above so the user gets *something* even if
+    # the lifter refuses.
+    if getattr(args, "auto_lift", False):
+        _try_auto_lift(
+            source_path=path,
+            function_name=function_name,
+            original_source=source,
+        )
+
+    _bump_counter("init_count")
+    state = _load_state()
+    # The first successful `init` is a teachable moment — show the nudge
+    # once even if the analyze threshold has not been reached.
+    if int(state.get("init_count", 0)) == 1 and not auth.is_logged_in():
+        if not state.get("nudge_shown"):
+            print(
+                "\nLoving Dendra? Sign up for a free account to enable shared "
+                "team analysis: dendra login",
+                file=sys.stderr,
+            )
+            state["nudge_shown"] = True
+            _save_state(state)
     return 0
 
 
@@ -342,6 +623,186 @@ def cmd_quickstart(args: argparse.Namespace) -> int:
     return rc
 
 
+def cmd_refresh(args: argparse.Namespace) -> int:
+    """Walk a project for `__dendra_generated__/` files; check or
+    regenerate them against the current source.
+
+    Modes:
+      --check : exit non-zero if anything would be regenerated (CI gate).
+      (default): regenerate stale files; refuse user-edited ones unless
+                 --force is also passed.
+    """
+    from dendra import refresh as refresh_mod
+
+    root = Path(args.path).resolve() if args.path else Path.cwd()
+    if not root.exists():
+        sys.stderr.write(f"path does not exist: {root}\n")
+        return 2
+
+    # Find all generated files under root: any *.py in a directory named
+    # __dendra_generated__.
+    generated_files: list[Path] = []
+    for gen_dir in root.rglob("__dendra_generated__"):
+        if not gen_dir.is_dir():
+            continue
+        for f in gen_dir.glob("*.py"):
+            if f.name == "__init__.py":
+                continue
+            generated_files.append(f)
+
+    if not generated_files:
+        print(f"No Dendra-generated files found under {root}.")
+        return 0
+
+    counts = {
+        refresh_mod.DriftStatus.UP_TO_DATE: 0,
+        refresh_mod.DriftStatus.SOURCE_DRIFT: 0,
+        refresh_mod.DriftStatus.USER_EDITED: 0,
+        refresh_mod.DriftStatus.MISSING_GENERATED: 0,
+        refresh_mod.DriftStatus.ORPHANED: 0,
+    }
+    drifted: list[tuple[Path, refresh_mod.DriftStatus, str]] = []
+
+    for gen_path in generated_files:
+        try:
+            header = refresh_mod.parse_generated_header(gen_path.read_text())
+        except ValueError as e:
+            sys.stderr.write(f"{gen_path}: malformed header ({e})\n")
+            continue
+        # Resolve source path from module name. Convention: source lives
+        # one directory up (sibling of __dendra_generated__/). If the
+        # module's last segment matches a .py file in the parent dir,
+        # use that. Otherwise skip with a diagnostic.
+        parent = gen_path.parent.parent
+        last_segment = header.source_module.rsplit(".", 1)[-1]
+        candidate = parent / f"{last_segment}.py"
+        if not candidate.exists():
+            sys.stderr.write(
+                f"{gen_path}: cannot locate source file for "
+                f"{header.source_module}:{header.source_function}\n"
+            )
+            continue
+        status = refresh_mod.detect_drift(
+            candidate, header.source_function, gen_path
+        )
+        counts[status] += 1
+        if status is not refresh_mod.DriftStatus.UP_TO_DATE:
+            drifted.append((gen_path, status, header.source_function))
+
+    print(
+        f"Scanned {len(generated_files)} generated file(s) under {root}:\n"
+        f"  up_to_date:        {counts[refresh_mod.DriftStatus.UP_TO_DATE]}\n"
+        f"  source_drift:      {counts[refresh_mod.DriftStatus.SOURCE_DRIFT]}\n"
+        f"  user_edited:       {counts[refresh_mod.DriftStatus.USER_EDITED]}\n"
+        f"  orphaned:          {counts[refresh_mod.DriftStatus.ORPHANED]}\n"
+        f"  missing_generated: {counts[refresh_mod.DriftStatus.MISSING_GENERATED]}\n"
+    )
+    if drifted:
+        print("Drift details:")
+        for gen_path, status, fn_name in drifted:
+            print(f"  [{status.value}] {gen_path.relative_to(root)} (function {fn_name!r})")
+
+    needs_regen = counts[refresh_mod.DriftStatus.SOURCE_DRIFT] + counts[refresh_mod.DriftStatus.MISSING_GENERATED]
+    needs_attention = needs_regen + counts[refresh_mod.DriftStatus.USER_EDITED] + counts[refresh_mod.DriftStatus.ORPHANED]
+
+    if args.check:
+        return 0 if needs_attention == 0 else 1
+
+    # Default mode: actually regenerate. v1 cuts this scope: print what
+    # WOULD be regenerated and direct user to run the lifters explicitly.
+    # Auto-regeneration (re-invoking the lifter) lands once the lifter
+    # CLI surface is stable.
+    if needs_regen:
+        print(
+            f"\nWould regenerate {needs_regen} file(s). Re-run "
+            "`dendra init --auto-lift <file>:<func>` for each, or pass "
+            "--check to use this command as a CI gate only."
+        )
+    if counts[refresh_mod.DriftStatus.USER_EDITED] and not args.force:
+        print(
+            f"\nRefused to touch {counts[refresh_mod.DriftStatus.USER_EDITED]} "
+            "user-edited file(s). Pass --force to overwrite."
+        )
+        return 1
+    return 0
+
+
+def cmd_doctor(args: argparse.Namespace) -> int:
+    """Diagnostic walk: report missing, orphaned, and corrupted generated
+    files. Read-only; never modifies anything.
+    """
+    from dendra import refresh as refresh_mod
+
+    root = Path(args.path).resolve() if args.path else Path.cwd()
+    if not root.exists():
+        sys.stderr.write(f"path does not exist: {root}\n")
+        return 2
+
+    print(f"Dendra doctor: scanning {root}\n")
+    issues = 0
+
+    for gen_dir in root.rglob("__dendra_generated__"):
+        if not gen_dir.is_dir():
+            continue
+        for gen_path in gen_dir.glob("*.py"):
+            if gen_path.name == "__init__.py":
+                continue
+            try:
+                header = refresh_mod.parse_generated_header(gen_path.read_text())
+            except ValueError as e:
+                print(f"  [malformed] {gen_path.relative_to(root)}: {e}")
+                issues += 1
+                continue
+            parent = gen_path.parent.parent
+            last_segment = header.source_module.rsplit(".", 1)[-1]
+            candidate = parent / f"{last_segment}.py"
+            if not candidate.exists():
+                print(
+                    f"  [orphan-source] {gen_path.relative_to(root)}: "
+                    f"source file for {header.source_module} not found"
+                )
+                issues += 1
+                continue
+            status = refresh_mod.detect_drift(
+                candidate, header.source_function, gen_path
+            )
+            if status is refresh_mod.DriftStatus.UP_TO_DATE:
+                continue
+            print(
+                f"  [{status.value}] {gen_path.relative_to(root)} "
+                f"(function {header.source_function!r})"
+            )
+            issues += 1
+
+    if issues == 0:
+        print("All generated files are healthy.")
+        return 0
+    print(f"\n{issues} issue(s) found. Run `dendra refresh` to repair stale files.")
+    return 1
+
+
+def cmd_mcp(args: argparse.Namespace) -> int:
+    """Run the Dendra MCP server over stdio.
+
+    Exposes Dendra's CLI surface (analyze, init, refresh, doctor) as
+    Model Context Protocol tools so Claude Code (and other MCP-aware
+    agents) can drive Dendra inside an existing codebase.
+
+    The mcp Python package is an optional dependency; install it with
+    ``pip install dendra[mcp]`` if it is missing.
+    """
+    try:
+        from dendra.mcp_server import serve_stdio
+    except ImportError as e:
+        print(
+            f"dendra mcp: {e}\nHint: pip install 'dendra[mcp]'",
+            file=sys.stderr,
+        )
+        return 2
+    serve_stdio()
+    return 0
+
+
 def cmd_plot(args: argparse.Namespace) -> int:
     from dendra.viz import load_run, plot_transition_curves
 
@@ -357,7 +818,10 @@ def cmd_plot(args: argparse.Namespace) -> int:
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="dendra")
-    sub = parser.add_subparsers(dest="cmd", required=True)
+    # Bare `dendra` (no subcommand) routes to cmd_status — the soft entry
+    # point for new users. Subcommands are still discoverable via --help.
+    parser.set_defaults(fn=cmd_status, cmd=None)
+    sub = parser.add_subparsers(dest="cmd", required=False)
 
     p_bench = sub.add_parser(
         "bench",
@@ -478,6 +942,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help="Print unified diff instead of modifying the file.",
     )
+    p_init.add_argument(
+        "--auto-lift",
+        action="store_true",
+        help=(
+            "Also run the branch + evidence lifters and emit a Switch "
+            "subclass into __dendra_generated__/ next to the source. "
+            "On REFUSAL, prints a specific diagnostic and exits 0 with "
+            "the basic decorator still applied."
+        ),
+    )
     p_init.set_defaults(fn=cmd_init)
 
     p_quick = sub.add_parser(
@@ -549,6 +1023,69 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     p_plot.add_argument("--title", default="Dendra transition curves", help="Figure title.")
     p_plot.set_defaults(fn=cmd_plot)
+
+    p_login = sub.add_parser(
+        "login",
+        help="Sign in to Dendra (browser-based, free account).",
+    )
+    p_login.set_defaults(fn=cmd_login)
+
+    p_logout = sub.add_parser(
+        "logout",
+        help="Clear local Dendra credentials.",
+    )
+    p_logout.set_defaults(fn=cmd_logout)
+
+    p_whoami = sub.add_parser(
+        "whoami",
+        help="Show the signed-in account email and a truncated API key.",
+    )
+    p_whoami.set_defaults(fn=cmd_whoami)
+
+    p_mcp = sub.add_parser(
+        "mcp",
+        help=(
+            "Run the Dendra MCP server over stdio (for Claude Code et al.). "
+            "Requires the mcp extra: pip install 'dendra[mcp]'."
+        ),
+    )
+    p_mcp.set_defaults(fn=cmd_mcp)
+
+    p_refresh = sub.add_parser(
+        "refresh",
+        help=(
+            "Check or regenerate Dendra-generated files in __dendra_generated__/."
+        ),
+    )
+    p_refresh.add_argument(
+        "path",
+        nargs="?",
+        default=None,
+        help="Project root to scan (default: current directory).",
+    )
+    p_refresh.add_argument(
+        "--check",
+        action="store_true",
+        help="Don't regenerate; exit non-zero if any drift found (CI mode).",
+    )
+    p_refresh.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite user-edited generated files (default: refuse).",
+    )
+    p_refresh.set_defaults(fn=cmd_refresh)
+
+    p_doctor = sub.add_parser(
+        "doctor",
+        help="Diagnose missing/orphaned/corrupted Dendra-generated files (read-only).",
+    )
+    p_doctor.add_argument(
+        "path",
+        nargs="?",
+        default=None,
+        help="Project root to scan (default: current directory).",
+    )
+    p_doctor.set_defaults(fn=cmd_doctor)
 
     args = parser.parse_args(argv)
     return args.fn(args)

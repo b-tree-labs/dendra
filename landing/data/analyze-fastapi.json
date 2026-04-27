@@ -1,0 +1,12 @@
+{
+  "root": "/private/tmp/dendra-corpus/fastapi",
+  "files_scanned": 1119,
+  "total_sites": 0,
+  "sites": [],
+  "errors": [],
+  "repo_label": "fastapi",
+  "github_path": "tiangolo/fastapi",
+  "github_branch": "master",
+  "raw_url_prefix": "https://raw.githubusercontent.com/tiangolo/fastapi/master",
+  "github_blob_prefix": "https://github.com/tiangolo/fastapi/blob/master"
+}

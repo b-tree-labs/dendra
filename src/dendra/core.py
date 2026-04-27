@@ -168,6 +168,12 @@ class ClassificationResult:
     _model_confidence: float | None = field(default=None, repr=False, compare=False)
     _ml_output: Any = field(default=None, repr=False, compare=False)
     _ml_confidence: float | None = field(default=None, repr=False, compare=False)
+    # Sentinel: the live exception object captured by ``_maybe_dispatch``
+    # when an ``on=`` handler raised. ``dispatch`` consults this AFTER
+    # auto_log + telemetry to decide whether to re-raise (governed by
+    # ``SwitchConfig.propagate_action_exceptions``). Never serialized,
+    # never compared.
+    _action_exception: BaseException | None = field(default=None, repr=False, compare=False)
 
     def mark_correct(self) -> None:
         """Record that this classification matched ground truth."""
@@ -389,6 +395,24 @@ class SwitchConfig:
     # required for the gate's statistical power. Sampling is
     # uniform random per-call.
     verifier_sample_rate: float = 1.0
+    # When ``True``, ``dispatch`` / ``adispatch`` re-raise the original
+    # exception thrown by an ``on=`` handler AFTER ``action_raised`` and
+    # ``action_elapsed_ms`` have been recorded on the result and the
+    # auto-record / verifier / telemetry path has run to completion.
+    # The storage row with ``action_raised`` populated lands first, so
+    # the failure is observable in the outcome log even when the caller
+    # also catches it.
+    #
+    # Default ``False`` preserves the production-safe contract: a
+    # misbehaving handler never loses the classification decision (the
+    # exception is captured to ``action_raised`` and stringified, and
+    # ``dispatch`` returns normally). Postmortem happens via telemetry.
+    #
+    # Set ``True`` to restore pre-Dendra exception parity for callers
+    # that wrap their classify+act sites in ``try/except`` and expect
+    # handler exceptions to bubble. ``KeyboardInterrupt`` and
+    # ``SystemExit`` propagate regardless of this knob.
+    propagate_action_exceptions: bool = False
     # Deprecated alias for starting_phase. None means "not supplied"
     # and the dataclass falls back to starting_phase's default.
     phase: Phase | None = None
@@ -1059,6 +1083,14 @@ class LearnedSwitch:
             raise
         except BaseException:
             pass
+        # Opt-in: re-raise the original handler exception AFTER the
+        # outcome row + telemetry have landed, so the failure is visible
+        # in the log even when the caller's ``except`` block fires.
+        if (
+            self.config.propagate_action_exceptions
+            and result._action_exception is not None
+        ):
+            raise result._action_exception
         return result
 
     def _maybe_run_verifier(self, input: Any, result: ClassificationResult) -> bool:
@@ -1179,12 +1211,16 @@ class LearnedSwitch:
         start = time.perf_counter()
         action_result: Any = None
         action_raised: str | None = None
+        action_exception: BaseException | None = None
         try:
             action_result = label.on(input)
         except (KeyboardInterrupt, SystemExit):
+            # System-level exits propagate regardless of the
+            # ``propagate_action_exceptions`` knob.
             raise
         except BaseException as e:
             action_raised = f"{type(e).__name__}: {e}"
+            action_exception = e
         elapsed_ms = (time.perf_counter() - start) * 1000.0
 
         new_result = ClassificationResult(
@@ -1203,6 +1239,10 @@ class LearnedSwitch:
         new_result._model_confidence = result._model_confidence
         new_result._ml_output = result._ml_output
         new_result._ml_confidence = result._ml_confidence
+        # Stash the live exception for ``dispatch`` / ``adispatch`` to
+        # consult after telemetry + auto_log have run, so the storage
+        # row with ``action_raised`` populated lands BEFORE any re-raise.
+        new_result._action_exception = action_exception
         return new_result
 
     def _classify_impl(self, input: Any) -> ClassificationResult:

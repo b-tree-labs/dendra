@@ -27,8 +27,10 @@ import functools
 from collections.abc import Callable
 from typing import Any
 
+from dendra._packing import introspect_signature
 from dendra.core import (
     ClassificationResult,
+    Label,
     LabelsArg,
     LearnedSwitch,
     Phase,
@@ -43,9 +45,15 @@ class _MLSwitchWrapper:
     stable object with predictable attribute access.
     """
 
-    def __init__(self, fn: Callable[..., Any], switch: LearnedSwitch) -> None:
+    def __init__(
+        self,
+        fn: Callable[..., Any],
+        switch: LearnedSwitch,
+        packed_signature: Any | None = None,
+    ) -> None:
         self.switch = switch
         self._fn = fn
+        self._packed_signature = packed_signature
         # Preserve wrapped function metadata so reflection / help()
         # / docstrings work as if the user had called the bare fn.
         functools.update_wrapper(self, fn)
@@ -59,13 +67,26 @@ class _MLSwitchWrapper:
     def name(self) -> str:
         return self.switch.name
 
-    def classify(self, input: Any) -> ClassificationResult:
-        """Pure classification — no side effects. See :meth:`LearnedSwitch.classify`."""
-        return self.switch.classify(input)
+    def classify(self, *args: Any, **kwargs: Any) -> ClassificationResult:
+        """Pure classification, no side effects.
 
-    def dispatch(self, input: Any) -> ClassificationResult:
-        """Classify + fire the matched label's action. See :meth:`LearnedSwitch.dispatch`."""
-        return self.switch.dispatch(input)
+        Accepts the original function's positional + keyword args; the
+        wrapper packs them into the synthetic input dataclass before
+        calling :meth:`LearnedSwitch.classify`. Single-arg rules stay
+        on the fast path, so existing callers see no behavior change.
+        See :meth:`LearnedSwitch.classify`.
+        """
+        packed = self._packed_signature.pack(args, kwargs)
+        return self.switch.classify(packed)
+
+    def dispatch(self, *args: Any, **kwargs: Any) -> ClassificationResult:
+        """Classify + fire the matched label's action.
+
+        Accepts the original function's positional + keyword args (see
+        :meth:`classify`). See :meth:`LearnedSwitch.dispatch`.
+        """
+        packed = self._packed_signature.pack(args, kwargs)
+        return self.switch.dispatch(packed)
 
     def record_verdict(
         self,
@@ -147,11 +168,31 @@ def ml_switch(
 
     def decorate(fn: Callable[..., Any]) -> _MLSwitchWrapper:
         switch_name = name or fn.__name__
+
+        # Introspect the user's rule to learn its arg list and build
+        # the synthetic packed-input dataclass. Single-arg rules take
+        # the passthrough fast path (no packing); multi-arg rules
+        # require annotations on every parameter.
+        packed_sig = introspect_signature(fn, class_name=switch_name)
+
+        if packed_sig.is_single_passthrough:
+            # Preserve the existing single-positional behavior bit-for-
+            # bit: the rule LearnedSwitch holds is just ``fn``, and any
+            # user-provided ``on=`` callables are passed through.
+            inner_rule = fn
+            wrapped_labels = labels
+        else:
+            def inner_rule(packed: Any) -> Any:
+                a, kw = packed_sig.unpack(packed)
+                return fn(*a, **kw)
+
+            wrapped_labels = _wrap_on_callables(labels, packed_sig)
+
         switch = LearnedSwitch(
             name=switch_name,
-            rule=fn,
+            rule=inner_rule,
             author=author,
-            labels=labels,
+            labels=wrapped_labels,
             starting_phase=starting_phase,
             phase_limit=phase_limit,
             safety_critical=safety_critical,
@@ -170,6 +211,64 @@ def ml_switch(
             ml_head=ml_head,
             telemetry=telemetry,
         )
-        return _MLSwitchWrapper(fn, switch)
+        return _MLSwitchWrapper(fn, switch, packed_signature=packed_sig)
 
     return decorate
+
+
+def _wrap_on_callables(labels: LabelsArg | None, packed_sig: Any) -> LabelsArg | None:
+    """Wrap each user-provided ``on=`` callable so it sees the original
+    positional args (not the packed input). Required because
+    :meth:`LearnedSwitch._maybe_dispatch` calls ``label.on(input)`` with
+    the packed dataclass as its single argument.
+    """
+    if labels is None:
+        return None
+    if isinstance(labels, dict):
+        out: dict[str, Any] = {}
+        for label_name, on_callable in labels.items():
+            if on_callable is None:
+                out[label_name] = None
+            else:
+                out[label_name] = _make_unpacking_on(on_callable, packed_sig)
+        return out
+    if isinstance(labels, list):
+        new_list: list[Any] = []
+        for item in labels:
+            if isinstance(item, str):
+                new_list.append(item)
+                continue
+            if isinstance(item, Label):
+                if item.on is None:
+                    new_list.append(item)
+                else:
+                    new_list.append(
+                        Label(
+                            name=item.name,
+                            on=_make_unpacking_on(item.on, packed_sig),
+                        )
+                    )
+                continue
+            new_list.append(item)
+        return new_list
+    return labels
+
+
+def _make_unpacking_on(
+    on_callable: Callable[..., Any], packed_sig: Any
+) -> Callable[[Any], Any]:
+    """Return a single-arg adapter that unpacks the packed input back to
+    the user-callable's original ``(*args, **kwargs)``.
+    """
+
+    def _adapter(packed: Any) -> Any:
+        a, kw = packed_sig.unpack(packed)
+        return on_callable(*a, **kw)
+
+    # Preserve the original callable's name for telemetry / debugging.
+    try:
+        _adapter.__name__ = getattr(on_callable, "__name__", "on")
+        _adapter.__qualname__ = getattr(on_callable, "__qualname__", "on")
+    except Exception:
+        pass
+    return _adapter

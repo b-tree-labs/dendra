@@ -60,6 +60,12 @@ class ClassificationSite:
     label_cardinality: int = 0
     regime: str = "unknown"  # "narrow" | "medium" | "high" | "unknown"
     fit_score: float = 0.0  # 0-5
+    # Phase 5 prescriptive output: hazard list + lift status. Empty
+    # hazards + AUTO_LIFTABLE means `dendra init --auto-lift` would
+    # succeed cleanly. Populated by analyze() when run with hazard
+    # detection enabled.
+    hazards: list["Hazard"] = field(default_factory=list)
+    lift_status: str = "auto_liftable"  # str for json-serializable round-trip
 
 
 @dataclass
@@ -324,6 +330,21 @@ def _analyze_file(path: Path, root: Path) -> tuple[list[ClassificationSite], lis
             continue
 
         labels = _collect_return_strings(node)
+        # Run Phase 5 hazard detection for this site. Detector list lives
+        # at module bottom; each detector returns 0+ Hazard objects.
+        node_hazards: list[Hazard] = []
+        for detector in _HAZARD_DETECTORS:
+            try:
+                node_hazards.extend(detector(node))
+            except Exception:  # noqa: BLE001 - detector failures must not kill the run
+                continue
+        if any(h.severity == "error" for h in node_hazards):
+            lift_status = LiftStatus.REFUSED.value
+        elif node_hazards:
+            lift_status = LiftStatus.NEEDS_ANNOTATION.value
+        else:
+            lift_status = LiftStatus.AUTO_LIFTABLE.value
+
         site = ClassificationSite(
             file_path=str(path.relative_to(root)),
             function_name=node.name,
@@ -334,6 +355,8 @@ def _analyze_file(path: Path, root: Path) -> tuple[list[ClassificationSite], lis
             label_cardinality=len(labels),
             regime=_classify_regime(len(labels)),
             fit_score=_compute_fit_score(labels, matched_pattern),
+            hazards=node_hazards,
+            lift_status=lift_status,
         )
         sites.append(site)
 
@@ -693,10 +716,302 @@ def render_markdown(
 __all__ = [
     "AnalyzerReport",
     "ClassificationSite",
+    "Hazard",
+    "HazardAnalysis",
+    "LiftStatus",
     "SavingsProjection",
     "analyze",
+    "analyze_function_source",
     "project_savings",
     "render_json",
     "render_markdown",
     "render_text",
 ]
+
+
+# ===========================================================================
+# Phase 5: prescriptive hazard detection
+#
+# The analyzer's per-site fit score answers "is this worth wrapping?". Phase
+# 5 answers "what's blocking auto-lift, and what's the minimum diff to fix
+# it?". Each detected site can be paired with a HazardAnalysis whose
+# `lift_status` and `hazards` drive both the CLI's prescriptive output and
+# the lifters' refusal decisions. The analyzer never silently disagrees with
+# the lifters: the detection logic here MUST stay in lockstep with
+# `dendra.lifters.*` refusal reasons.
+# ===========================================================================
+
+
+import enum as _enum
+
+
+class LiftStatus(_enum.Enum):
+    """Whether `dendra init --auto-lift` would succeed on this site."""
+
+    AUTO_LIFTABLE = "auto_liftable"        # safe to lift today
+    NEEDS_ANNOTATION = "needs_annotation"  # liftable with explicit annotation
+    REFUSED = "refused"                    # cannot lift; structural issue
+
+
+@dataclass
+class Hazard:
+    """One reason a site is hard or unsafe to auto-lift.
+
+    Each hazard names a `category`, a 1-based source `line` where the
+    issue lives, a `reason` describing what was found, and a
+    `suggested_fix` describing the minimum diff that would unblock
+    auto-lifting. `severity` is "warn" for needs-annotation cases and
+    "error" for refusals.
+    """
+
+    category: str
+    line: int
+    reason: str
+    suggested_fix: str
+    severity: str = "warn"
+
+
+@dataclass
+class HazardAnalysis:
+    """Per-function hazard report. Returned by `analyze_function_source`."""
+
+    function_name: str
+    lift_status: LiftStatus
+    hazards: list[Hazard] = field(default_factory=list)
+
+
+# ----- Hazard detectors ------------------------------------------------------
+
+
+def _detect_zero_arg_no_return(fn: ast.FunctionDef) -> list[Hazard]:
+    """Pytest-style: zero args + no `return` = not a classifier."""
+    has_args = bool(fn.args.args) or fn.args.vararg or fn.args.kwarg or bool(fn.args.kwonlyargs)
+    has_return = any(
+        isinstance(node, ast.Return) and node.value is not None
+        for node in ast.walk(fn)
+    )
+    if not has_args and not has_return:
+        return [
+            Hazard(
+                category="not_a_classifier",
+                line=fn.lineno,
+                reason=(
+                    f"Function {fn.name!r} takes no inputs and produces no "
+                    "return value. Looks like a test or fixture, not a "
+                    "classifier."
+                ),
+                suggested_fix=(
+                    "Don't wrap this function. If you intend it as a "
+                    "classifier, add at least one input parameter and a "
+                    "string-returning branch."
+                ),
+                severity="error",
+            )
+        ]
+    return []
+
+
+def _detect_eval_exec(fn: ast.FunctionDef) -> list[Hazard]:
+    """eval/exec block static evidence detection."""
+    out: list[Hazard] = []
+    for node in ast.walk(fn):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in ("eval", "exec"):
+            out.append(
+                Hazard(
+                    category="eval_exec",
+                    line=node.lineno,
+                    reason=(
+                        f"Use of {node.func.id}() at line {node.lineno} "
+                        "makes the function's evidence non-static. The LLM "
+                        "and ML head can't see what was evaluated."
+                    ),
+                    suggested_fix=(
+                        f"Replace {node.func.id}() with an explicit "
+                        "expression so the inputs to the decision are "
+                        "visible to the lifter."
+                    ),
+                    severity="error",
+                )
+            )
+    return out
+
+
+def _detect_dynamic_dispatch(fn: ast.FunctionDef) -> list[Hazard]:
+    """getattr-based attribute access blocks the lifter from packing
+    evidence statically.
+    """
+    out: list[Hazard] = []
+    for node in ast.walk(fn):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "getattr"
+        ):
+            out.append(
+                Hazard(
+                    category="dynamic_dispatch",
+                    line=node.lineno,
+                    reason=(
+                        f"getattr(...) at line {node.lineno} reads an "
+                        "attribute by computed name. The lifter can't "
+                        "trace what's being read into the evidence schema."
+                    ),
+                    suggested_fix=(
+                        "Replace with explicit attribute access, or "
+                        "annotate the evidence input with "
+                        "@evidence_inputs(name=lambda ...: ...) so the "
+                        "lifter knows what to gather."
+                    ),
+                    severity="error",
+                )
+            )
+    return out
+
+
+def _detect_side_effect_evidence(fn: ast.FunctionDef) -> list[Hazard]:
+    """Detect `x = some_call(...); if x.attr: ...` where the bound call
+    has likely side effects (looks like an API/IO call).
+
+    Heuristic: an Assign whose value is a Call to an attribute on a
+    name (`module.method(...)` or `obj.method(...)`), AND the bound
+    name is later read in an If test. This is the common
+    `response = api.charge(...)` pattern.
+    """
+    # Indexed by bound-name -> (line, source-call-text) for matched binds.
+    binds: dict[str, tuple[int, str]] = {}
+    for stmt in fn.body:
+        if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1:
+            target = stmt.targets[0]
+            value = stmt.value
+            if (
+                isinstance(target, ast.Name)
+                and isinstance(value, ast.Call)
+                and isinstance(value.func, ast.Attribute)
+            ):
+                # Render call as `<name>.<method>` for the diagnostic.
+                func_repr = ast.unparse(value.func)
+                binds[target.id] = (stmt.lineno, func_repr)
+
+    if not binds:
+        return []
+
+    # Find any If anywhere in the body that reads a bound name.
+    out: list[Hazard] = []
+    flagged: set[str] = set()
+    for node in ast.walk(fn):
+        if not isinstance(node, ast.If):
+            continue
+        for sub in ast.walk(node.test):
+            if isinstance(sub, ast.Name) and sub.id in binds and sub.id not in flagged:
+                line, func_repr = binds[sub.id]
+                flagged.add(sub.id)
+                out.append(
+                    Hazard(
+                        category="side_effect_evidence",
+                        line=line,
+                        reason=(
+                            f"Line {line} binds {sub.id!r} from "
+                            f"{func_repr}(...) and a later branch reads it. "
+                            "If the call has side effects, lifting it into "
+                            "evidence-gathering would re-fire those side "
+                            "effects on every dispatch."
+                        ),
+                        suggested_fix=(
+                            f"If {func_repr} supports a dry-run mode, use "
+                            "it for the probe and move the real call into "
+                            "the chosen label's _on_ handler. If not, add "
+                            "@evidence_via_probe(field='...') to declare "
+                            "this as safe."
+                        ),
+                        severity="error",
+                    )
+                )
+    return out
+
+
+def _detect_multi_arg_no_annotation(fn: ast.FunctionDef) -> list[Hazard]:
+    """Multi-arg functions without type hints can't generate a typed
+    evidence dataclass. Liftable IF the user adds annotations.
+    """
+    args = list(fn.args.args)
+    # Strip self/cls so methods aren't penalized.
+    if args and args[0].arg in ("self", "cls"):
+        args = args[1:]
+    if len(args) < 2:
+        return []
+    missing = [a.arg for a in args if a.annotation is None]
+    if not missing:
+        return []
+    return [
+        Hazard(
+            category="multi_arg_no_annotation",
+            line=fn.lineno,
+            reason=(
+                f"Function {fn.name!r} takes {len(args)} args but "
+                f"{len(missing)} have no type annotation: "
+                f"{', '.join(missing)}. Multi-arg auto-packing needs "
+                "annotations to build the evidence dataclass schema."
+            ),
+            suggested_fix=(
+                "Add type hints to each parameter, e.g. "
+                f"`def {fn.name}({', '.join(a.arg + ': str' for a in args)}):`. "
+                "Single-arg functions are exempt for back-compat."
+            ),
+            severity="warn",
+        )
+    ]
+
+
+# ----- Public Phase 5 entrypoint --------------------------------------------
+
+
+_HAZARD_DETECTORS: list[Callable[[ast.FunctionDef], list[Hazard]]] = [
+    _detect_zero_arg_no_return,
+    _detect_eval_exec,
+    _detect_dynamic_dispatch,
+    _detect_side_effect_evidence,
+    _detect_multi_arg_no_annotation,
+]
+
+
+def analyze_function_source(
+    source: str, function_name: str
+) -> HazardAnalysis:
+    """Run hazard detection on a single function defined in ``source``.
+
+    Returns a :class:`HazardAnalysis` whose ``lift_status`` summarizes the
+    most-restrictive verdict across all detected hazards (REFUSED beats
+    NEEDS_ANNOTATION beats AUTO_LIFTABLE) and whose ``hazards`` is the
+    full list of findings.
+
+    Raises ``ValueError`` if the function name is not found at the top
+    level of ``source``.
+    """
+    tree = ast.parse(source)
+    target: ast.FunctionDef | None = None
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef) and node.name == function_name:
+            target = node
+            break
+    if target is None:
+        raise ValueError(
+            f"Function {function_name!r} not found at the top level of "
+            "the supplied source."
+        )
+
+    hazards: list[Hazard] = []
+    for detector in _HAZARD_DETECTORS:
+        hazards.extend(detector(target))
+
+    if any(h.severity == "error" for h in hazards):
+        status = LiftStatus.REFUSED
+    elif hazards:
+        status = LiftStatus.NEEDS_ANNOTATION
+    else:
+        status = LiftStatus.AUTO_LIFTABLE
+
+    return HazardAnalysis(
+        function_name=function_name,
+        lift_status=status,
+        hazards=hazards,
+    )

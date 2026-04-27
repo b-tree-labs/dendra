@@ -1,0 +1,104 @@
+{
+  "root": "/private/tmp/dendra-corpus/dvc",
+  "files_scanned": 554,
+  "total_sites": 6,
+  "sites": [
+    {
+      "file_path": "dvc/info.py",
+      "function_name": "_get_dvc_repo_info",
+      "line_start": 170,
+      "line_end": 177,
+      "pattern": "P1",
+      "labels": [
+        "dvc, git",
+        "dvc (no_scm)",
+        "dvc (subdir), git"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "snippet": "    path = pathlib.Path(path).resolve()\n\n    for parent in itertools.chain([path], path.parents):\n        if parent in partition:\n            return partition[parent]\n    return (\"unknown\", \"none\")\n\n\ndef _get_dvc_repo_info(repo):\n    if repo.config.get(\"core\", {}).get(\"no_scm\", False):\n        return \"dvc (no_scm)\"\n\n    if repo.root_dir != repo.scm.root_dir:\n        return \"dvc (subdir), git\"\n\n    return \"dvc, git\"",
+      "snippet_start_line": 162,
+      "snippet_end_line": 177
+    },
+    {
+      "file_path": "dvc/updater.py",
+      "function_name": "_get_update_instructions",
+      "line_start": 148,
+      "line_end": 170,
+      "pattern": "P1",
+      "labels": [
+        "To upgrade, uninstall dvc and reinstall from [blue]https://dvc.org[/].",
+        "Find the latest release at [blue]https://github.com/treeverse/dvc/releases/latest[/]."
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "snippet": "            f\"however, version [bold]{latest}[/] is available.\"\n        )\n        instruction = ui.rich_text.from_markup(self._get_update_instructions(pkg=pkg))\n        return ui.rich_text.assemble(\n            \"\\n\", update_message, \"\\n\", instruction, style=color\n        )\n\n    @staticmethod\n    def _get_update_instructions(pkg: Optional[str] = None) -> str:\n        if pkg in (\"osxpkg\", \"exe\", \"binary\"):\n            return (\n                \"To upgrade, uninstall dvc and reinstall from [blue]https://dvc.org[/].\"\n            )\n\n        instructions = {\n            \"pip\": \"pip install --upgrade dvc\",\n            \"rpm\": \"yum update dvc\",\n            \"brew\": \"brew upgrade dvc\",\n            \"deb\": \"apt-get install --only-upgrade dvc\",\n            \"conda\": \"conda update dvc\",\n            \"choco\": \"choco upgrade dvc\",\n        }\n\n        if pkg not in instructions:\n            return (\n                \"Find the latest release at \"\n                \"[blue]https://github.com/treeverse/dvc/releases/latest[/].\"\n            )\n\n        instruction = instructions[pkg]\n        return f\"To upgrade, run '{instruction}'.\"\n\n    def is_enabled(self):\n        from dvc.config import Config, to_bool\n\n        enabled = to_bool(\n            Config.from_cwd(validate=False).get(\"core\", {}).get(\"check_update\", \"true\")\n        )\n        logger.debug(\"Check for update is %sabled.\", \"en\" if enabled else \"dis\")\n        return enabled\n\n\ndef notify_updates():",
+      "snippet_start_line": 140,
+      "snippet_end_line": 182
+    },
+    {
+      "file_path": "dvc/commands/checkout.py",
+      "function_name": "log_changes",
+      "line_start": 8,
+      "line_end": 22,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "snippet": "from dvc.cli import completion, formatter\nfrom dvc.cli.command import CmdBase\nfrom dvc.cli.utils import append_doc_link\nfrom dvc.exceptions import CheckoutError\nfrom dvc.ui import ui\n\n\ndef log_changes(stats):\n    colors = {\n        \"modified\": \"yellow\",\n        \"added\": \"green\",\n        \"deleted\": \"red\",\n    }\n\n    for state, color in colors.items():\n        entries = stats.get(state)\n\n        if not entries:\n            continue\n\n        for entry in entries:\n            ui.write(f\"[{color}]{state[0].upper()}\", entry, styled=True, sep=\"\\t\")\n\n\nclass CmdCheckout(CmdBase):\n    def run(self):\n        from dvc.utils.humanize import get_summary\n\n        stats, exc = None, None\n        try:\n            result = self.repo.checkout(\n                targets=self.args.targets,\n                with_deps=self.args.with_deps,\n                force=self.args.force,",
+      "snippet_start_line": 1,
+      "snippet_end_line": 34
+    },
+    {
+      "file_path": "dvc/commands/diff.py",
+      "function_name": "_show_diff",
+      "line_start": 44,
+      "line_end": 116,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "snippet": "            else:\n                rows.append([status, path])\n\n    ui.table(rows, headers=headers, markdown=True)\n\n\nclass CmdDiff(CmdBase):\n    @staticmethod\n    def _show_diff(diff, hide_missing=False):\n        \"\"\"\n        Given a diff structure, generate a string of paths separated\n        by new lines and grouped together by their state.\n\n        A group's header is colored to enhance readability, for example:\n\n            Added:\n                another_file.txt\n                backup.tar\n                dir/\n                dir/1\n\n        An example of a diff formatted when entries contain hash:\n\n            Added:\n                d3b07384 foo\n\n            Modified:\n                c157a790..f98bf6f1 bar\n\n        If a group has no entries, it won't be included in the result.\n\n        At the bottom, include a summary with the number of files per state.\n        \"\"\"\n\n        colors = {\n            \"added\": \"green\",\n            \"modified\": \"yellow\",\n            \"deleted\": \"red\",\n            \"renamed\": \"green\",\n            \"not in cache\": \"yellow\",\n        }\n\n        summary = {}\n\n        states = [\"added\", \"deleted\", \"renamed\", \"modified\"]\n        if not hide_missing:\n            states.append(\"not in cache\")\n        for state in states:\n            summary[state] = 0\n            entries = diff[state]\n\n            if not entries:\n                continue\n\n            header = state.capitalize()\n            ui.write(f\"[{colors[state]}]{header}[/]:\", styled=True)\n\n            for entry in entries:\n                path = entry[\"path\"]\n                if isinstance(path, dict):\n                    path = f\"{path['old']} -> {path['new']}\"\n                checksum = entry.get(\"hash\")\n                summary[state] += 1 if not path.endswith(os.sep) else 0\n                ui.write(\n                    \"{space}{checksum}{separator}{path}\".format(\n                        space=\"    \",\n                        checksum=_digest(checksum) if checksum else \"\",\n                        separator=\"  \" if checksum else \"\",\n                        path=path,\n                    )\n                )\n\n            ui.write()\n\n        if not sum(summary.values()):\n            return\n\n        states_summary = \", \".join(\n            f\"{summary[state]} {state}\" for state in states if summary[state] > 0\n        )\n        ui.write(\"files summary:\", states_summary)\n\n    def run(self):\n        from dvc.exceptions import DvcException\n\n        try:\n            diff = self.repo.diff(self.args.a_rev, self.args.b_rev, self.args.targets)\n            show_hash = self.args.show_hash\n            hide_missing = self.args.b_rev or self.args.hide_missing\n            if hide_missing:\n                diff.pop(\"not in cache\", None)\n\n            for key, entries in diff.items():",
+      "snippet_start_line": 36,
+      "snippet_end_line": 128
+    },
+    {
+      "file_path": "dvc/commands/experiments/show.py",
+      "function_name": "show_experiments",
+      "line_start": 59,
+      "line_end": 125,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "snippet": "    pref = f\"{tree} \" if tree else \"\"\n    return ui.rich_text(pref) + text\n\n\ndef baseline_styler(typ):\n    return {\"style\": \"bold\"} if typ == \"baseline\" else {}\n\n\ndef show_experiments(\n    td: \"TabularData\",\n    headers: dict[str, Iterable[str]],\n    keep: Collection[str] = (),\n    drop: Collection[str] = (),\n    pager=True,\n    csv=False,\n    markdown=False,\n    **kwargs,\n):\n    if keep:\n        keep_re = re.compile(\"|\".join(keep))\n        td.protect(*(col for col in td.keys() if keep_re.match(col)))  # noqa: SIM118\n\n    for col in (\"State\", \"Executor\"):\n        if td.is_empty(col):\n            td.drop(col)\n\n    row_styles = lmap(baseline_styler, td.column(\"typ\"))\n\n    if not csv:\n        merge_headers = [\"Experiment\", \"rev\", \"typ\", \"parent\"]\n        td.column(\"Experiment\")[:] = map(prepare_exp_id, td.as_dict(merge_headers))\n        td.drop(*merge_headers[1:])\n\n    styles = {\n        \"Experiment\": {\"no_wrap\": True, \"header_style\": \"black on grey93\"},\n        \"Created\": {\"header_style\": \"black on grey93\"},\n        \"State\": {\"header_style\": \"black on grey93\"},\n        \"Executor\": {\"header_style\": \"black on grey93\"},\n    }\n    header_bg_colors = {\n        \"metrics\": \"cornsilk1\",\n        \"params\": \"light_cyan1\",\n        \"deps\": \"plum2\",\n    }\n    styles.update(\n        {\n            header: {\n                \"justify\": \"right\" if typ == \"metrics\" else \"left\",\n                \"header_style\": f\"black on {header_bg_colors[typ]}\",\n                \"collapse\": idx != 0,\n                \"no_wrap\": typ == \"metrics\",\n            }\n            for typ, hs in headers.items()\n            for idx, header in enumerate(hs)\n        }\n    )\n\n    if kwargs.get(\"only_changed\", False):\n        td.drop_duplicates(\"cols\", ignore_empty=False)\n\n    cols_to_drop = set()\n    if drop:\n        drop_re = re.compile(\"|\".join(drop))\n        cols_to_drop = {col for col in td.keys() if drop_re.match(col)}  # noqa: SIM118\n    td.drop(*cols_to_drop)\n\n    td.render(\n        pager=pager,\n        borders=\"horizontals\",\n        rich_table=True,\n        header_styles=styles,\n        row_styles=row_styles,\n        csv=csv,\n        markdown=markdown,\n    )\n\n\ndef _normalize_headers(names, count):\n    return [\n        name if count[name] == 1 else f\"{path}:{name}\"\n        for path in names\n        for name in names[path]\n    ]\n\n\ndef _format_json(item):\n    if isinstance(item, (date, datetime)):",
+      "snippet_start_line": 51,
+      "snippet_end_line": 137
+    },
+    {
+      "file_path": "dvc/utils/__init__.py",
+      "function_name": "boxify",
+      "line_start": 161,
+      "line_end": 203,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "snippet": "    return \"{style}{color}{message}{reset}\".format(\n        style=styles.get(style, \"\"),\n        color=colors.get(color, \"\"),\n        message=message,\n        reset=colorama.Style.RESET_ALL,\n    )\n\n\ndef boxify(message, border_color=None):\n    \"\"\"Put a message inside a box.\n\n    Args:\n        message (unicode): message to decorate.\n        border_color (unicode): name of the color to outline the box with.\n    \"\"\"\n    lines = message.split(\"\\n\")\n    max_width = max(_visual_width(line) for line in lines)\n\n    padding_horizontal = 5\n    padding_vertical = 1\n\n    box_size_horizontal = max_width + (padding_horizontal * 2)\n\n    chars = {\"corner\": \"+\", \"horizontal\": \"-\", \"vertical\": \"|\", \"empty\": \" \"}\n\n    margin = \"{corner}{line}{corner}\\n\".format(\n        corner=chars[\"corner\"], line=chars[\"horizontal\"] * box_size_horizontal\n    )\n\n    padding_lines = [\n        \"{border}{space}{border}\\n\".format(\n            border=colorize(chars[\"vertical\"], color=border_color),\n            space=chars[\"empty\"] * box_size_horizontal,\n        )\n        * padding_vertical\n    ]\n\n    content_lines = [\n        \"{border}{space}{content}{space}{border}\\n\".format(\n            border=colorize(chars[\"vertical\"], color=border_color),\n            space=chars[\"empty\"] * padding_horizontal,\n            content=_visual_center(line, max_width),\n        )\n        for line in lines\n    ]\n\n    return \"{margin}{padding}{content}{padding}{margin}\".format(\n        margin=colorize(margin, color=border_color),\n        padding=\"\".join(padding_lines),\n        content=\"\".join(content_lines),\n    )\n\n\ndef _visual_width(line):\n    \"\"\"Get the number of columns required to display a string\"\"\"\n\n    return len(re.sub(AnsiToWin32.ANSI_CSI_RE, \"\", line))\n\n\ndef _visual_center(line, width):\n    \"\"\"Center align string according to it's visual width\"\"\"\n\n    spaces = max(width - _visual_width(line), 0)",
+      "snippet_start_line": 153,
+      "snippet_end_line": 215
+    }
+  ],
+  "errors": [],
+  "repo_label": "dvc",
+  "github_path": "iterative/dvc",
+  "github_branch": "main",
+  "raw_url_prefix": "https://raw.githubusercontent.com/iterative/dvc/main",
+  "github_blob_prefix": "https://github.com/iterative/dvc/blob/main"
+}

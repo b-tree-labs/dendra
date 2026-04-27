@@ -43,6 +43,7 @@ from dendra.core import (
     Verdict,
 )
 from dendra.decorator import ml_switch
+from dendra.switch_class import Switch
 from dendra.gates import (
     AccuracyMarginGate,
     CompositeGate,
@@ -160,6 +161,7 @@ __all__ = [
     "StdoutEmitter",
     "Storage",
     "StorageBase",
+    "Switch",
     "SwitchConfig",
     "SwitchStatus",
     "CallableVerdictSource",

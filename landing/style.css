@@ -277,6 +277,25 @@ section:first-of-type {
   border-bottom: var(--border);
 }
 
+/* Section divider — eyebrow + heading marking the "how it works" pivot */
+.section-divider {
+  padding: var(--space-12) 0 var(--space-6);
+  border-top: var(--border);
+  border-bottom: var(--border);
+  background: var(--ground-soft);
+  margin-top: var(--space-12);
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: var(--size-caption);
+  font-weight: 500;
+  color: var(--accent);
+  margin-bottom: var(--space-2);
+  font-family: var(--font-display);
+}
+
 .proof-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -295,6 +314,17 @@ section:first-of-type {
 .proof-grid > div > span {
   font-size: var(--size-caption);
   color: var(--ink-soft);
+}
+
+.proof-grid__lead > strong {
+  font-size: var(--size-h2);
+  color: var(--accent);
+}
+
+.secondary-note {
+  font-size: var(--size-caption);
+  color: var(--ink-soft);
+  font-style: italic;
 }
 
 @media (max-width: 768px) {
@@ -620,4 +650,1032 @@ section:first-of-type {
     grid-template-columns: 1fr;
     gap: var(--space-6);
   }
+}
+
+/* =====================================================================
+ * Try-it analyzer panel — front-door curiosity loop. Lives directly
+ * under the proof grid so a visitor can run it before any mechanism
+ * reveal. Pure CSS; no framework, no JS dependencies on render.
+ * =================================================================== */
+.try-panel {
+  background: var(--ground-soft);
+  border-top: var(--border);
+  border-bottom: var(--border);
+  padding: var(--space-12) 0;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* URL form */
+.try-form {
+  display: flex;
+  gap: var(--space-3);
+  margin: var(--space-6) 0 var(--space-4);
+  max-width: 640px;
+}
+
+.try-form input {
+  flex: 1;
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  border: 1px solid var(--rule);
+  background: var(--ground);
+  color: var(--ink);
+  border-radius: 6px;
+}
+
+.try-form input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+/* Preset chip row */
+.try-presets {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-8);
+}
+
+.try-presets__label {
+  font-size: var(--size-caption);
+  color: var(--ink-soft);
+  margin-right: var(--space-2);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--rule);
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.chip:hover,
+.chip:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+  outline: none;
+}
+
+.chip[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--ground);
+  border-color: var(--accent);
+}
+
+/* Result block — summary + table + ROI */
+.try-result {
+  background: var(--ground);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: var(--space-6);
+  margin-top: var(--space-6);
+}
+
+.try-summary {
+  margin: 0 0 var(--space-4);
+  font-size: 1.0625rem;
+  color: var(--ink);
+}
+
+.try-summary .num {
+  font-family: var(--font-mono);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.try-summary .error {
+  color: #b3261e;
+}
+
+.try-summary .info {
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+}
+
+/* Table */
+.try-table-wrap {
+  overflow-x: auto;
+  margin-bottom: var(--space-8);
+  border-top: var(--border);
+}
+
+.try-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  /* Fixed layout — column widths come from the first row (we set them
+   * via colgroup) so that one outlier long path can't blow the table
+   * past .try-table-wrap and force horizontal scroll. */
+  table-layout: fixed;
+}
+
+/* Per-column widths. file:line takes whatever's left after the rest;
+ * function flex-shrinks but truncates with ellipsis; the small badge
+ * columns are pinned. Last column (fit + chevron) stays narrow. */
+.try-table col.col-fileline { width: auto; }
+.try-table col.col-function { width: 22%; }
+.try-table col.col-pattern  { width: 78px; }
+.try-table col.col-labels   { width: 64px; }
+.try-table col.col-regime   { width: 92px; }
+.try-table col.col-fit      { width: 72px; }
+
+/* file:line cell truncates with leading ellipsis preserved by JS in
+ * renderTable (the JS picks the suffix); the ellipsis-clipped overflow
+ * here is a belt-and-suspenders for any case the JS misses. */
+.try-table .cell-fileline {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.try-table .cell-function {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.try-table th {
+  text-align: left;
+  padding: var(--space-3) var(--space-3);
+  font-weight: 500;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.75rem;
+  border-bottom: var(--border);
+  white-space: nowrap;
+}
+
+/* "?" info marker on column headers — hover for native tooltip; the
+ * extra cursor + outline make it discoverable. */
+.th-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 4px;
+  border: 1px solid var(--rule);
+  border-radius: 50%;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  background: transparent;
+  cursor: help;
+  vertical-align: 1px;
+  transition: all 0.12s;
+  font-family: var(--font-display);
+  letter-spacing: 0;
+}
+.th-info:hover,
+.th-info:focus-visible {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--ground);
+  outline: none;
+}
+
+.try-table td {
+  padding: var(--space-3) var(--space-3);
+  border-bottom: 1px solid color-mix(in oklab, var(--rule) 40%, transparent);
+  vertical-align: top;
+}
+
+.try-table .mono {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+.try-table .num {
+  font-family: var(--font-mono);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.try-table .dim {
+  color: var(--ink-soft);
+}
+
+.try-table .empty {
+  text-align: center;
+  padding: var(--space-8);
+  color: var(--ink-soft);
+}
+
+.try-table .more-row td {
+  text-align: center;
+  font-size: 0.85rem;
+  border-bottom: none;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.badge--narrow      { background: color-mix(in oklab, var(--accent) 16%, transparent); color: var(--accent-deep); }
+.badge--high_card   { background: color-mix(in oklab, var(--ink) 10%, transparent);   color: var(--ink); }
+.badge--unknown     { background: color-mix(in oklab, var(--ink-soft) 14%, transparent); color: var(--ink-soft); }
+.badge--pattern     { background: var(--ground-soft); color: var(--ink-soft); border: 1px solid var(--rule); }
+
+/* ROI block */
+.try-roi {
+  border-top: var(--border);
+  padding-top: var(--space-6);
+}
+
+.try-roi__head h3 {
+  margin: 0 0 var(--space-2);
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.try-roi__head .caption {
+  margin: 0 0 var(--space-6);
+}
+
+.try-roi__sliders {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+
+.slider {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.slider__label {
+  font-size: var(--size-caption);
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.slider input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.slider output {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.try-roi__numbers {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-6);
+  padding: var(--space-6) 0;
+  border-top: var(--border);
+  border-bottom: var(--border);
+  margin-bottom: var(--space-6);
+}
+
+.try-roi__stat strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: var(--size-h2);
+  color: var(--accent);
+  margin-bottom: var(--space-1);
+}
+
+.try-roi__stat span {
+  font-size: var(--size-caption);
+  color: var(--ink-soft);
+}
+
+.try-roi__cta {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+}
+
+.try-roi__cta code {
+  font-family: var(--font-mono);
+  background: var(--ground-soft);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 768px) {
+  .try-form {
+    flex-direction: column;
+  }
+  .try-roi__sliders {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+  .try-roi__numbers {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+}
+
+/* Languages strap — sits below the install row, deemphasizes Python
+ * as today's impl while signaling cross-language roadmap. */
+.languages-strap {
+  margin-top: var(--space-4);
+  font-size: var(--size-caption);
+  color: var(--ink-soft);
+  max-width: 56ch;
+}
+
+/* Try-panel intro lede + v1.1 disclosure block */
+.try-intro {
+  margin: var(--space-4) 0 var(--space-6);
+  font-size: 1.0625rem;
+  color: var(--ink);
+  max-width: 60ch;
+}
+
+.try-custom {
+  margin: var(--space-6) 0 var(--space-10);
+  border: none;
+  border-radius: 0 6px 6px 0;
+  padding: var(--space-4) var(--space-5) var(--space-4) calc(var(--space-5) + 3px);
+  background: color-mix(in oklab, var(--ground-soft) 55%, var(--ground));
+  box-shadow: inset 3px 0 0 0 color-mix(in oklab, var(--accent) 45%, transparent);
+}
+
+.try-custom[open] {
+  padding-bottom: var(--space-5);
+}
+
+.try-custom > summary {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+  list-style: none;
+  padding: var(--space-2) 0;
+}
+
+.try-custom > summary::-webkit-details-marker { display: none; }
+
+.try-custom > summary::after {
+  content: "+";
+  margin-left: auto;
+  font-family: var(--font-mono);
+  color: var(--ink-soft);
+  font-size: 1.1rem;
+}
+
+.try-custom[open] > summary::after { content: "−"; }
+
+.try-custom .try-form { margin-top: var(--space-4); }
+
+.try-custom .caption {
+  margin-top: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.badge--soon {
+  background: color-mix(in oklab, var(--accent) 16%, transparent);
+  color: var(--accent-deep);
+  border: 1px solid color-mix(in oklab, var(--accent) 32%, transparent);
+  padding: 2px 7px;
+}
+
+/* =====================================================================
+ * Install walkthrough — 5-step guided onboarding. Designed to be the
+ * landing target of every "Get started →" CTA. Visual rhythm: numbered
+ * step cards in a vertical list, each with a copy-able command, an
+ * expected-output block, and a one-sentence "what just happened."
+ * =================================================================== */
+.install-walkthrough {
+  padding: var(--space-12) 0;
+  background: var(--ground);
+  border-top: var(--border);
+  border-bottom: var(--border);
+}
+
+.install-walkthrough > .container > .caption {
+  margin-bottom: var(--space-10);
+  max-width: 60ch;
+}
+
+.step-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  counter-reset: step;
+}
+
+.step {
+  position: relative;
+  padding: var(--space-8) 0;
+  border-top: var(--border);
+}
+
+.step:last-child {
+  border-bottom: var(--border);
+}
+
+.step__head {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-5);
+  align-items: start;
+  margin-bottom: var(--space-5);
+}
+
+.step__num {
+  display: inline-grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--ground);
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 1.0625rem;
+}
+
+.step__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.step__desc {
+  margin: var(--space-1) 0 0;
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+}
+
+/* Command + copy button row */
+.step__cmd {
+  position: relative;
+  margin: var(--space-4) 0 var(--space-3);
+  padding-left: calc(2.25rem + var(--space-5));
+}
+
+.step__cmd > pre {
+  margin: 0;
+  padding: var(--space-4) var(--space-5);
+  padding-right: 5rem;
+  background: var(--ink);
+  color: #f3eee5;
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  overflow-x: auto;
+}
+
+.step__cmd > pre > code::before {
+  content: "$ ";
+  color: var(--accent);
+  user-select: none;
+}
+
+.copy-btn {
+  position: absolute;
+  top: 50%;
+  right: var(--space-3);
+  transform: translateY(-50%);
+  background: color-mix(in oklab, var(--ink) 80%, var(--ground));
+  color: #f3eee5;
+  border: 1px solid color-mix(in oklab, var(--ground) 30%, var(--ink));
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.04em;
+}
+
+.copy-btn:hover,
+.copy-btn:focus-visible {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--ground);
+  outline: none;
+}
+
+.copy-btn[data-copied="true"] {
+  background: var(--accent-deep);
+  border-color: var(--accent-deep);
+  color: var(--ground);
+}
+
+/* Expected-output block — dim, smaller, indented to match the cmd */
+.step__out {
+  padding-left: calc(2.25rem + var(--space-5));
+  margin-bottom: var(--space-3);
+}
+
+.step__out > pre {
+  margin: 0;
+  padding: var(--space-4) var(--space-5);
+  background: var(--ground-soft);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  overflow-x: auto;
+  line-height: 1.55;
+}
+
+.step__cap {
+  margin: 0;
+  padding-left: calc(2.25rem + var(--space-5));
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  font-style: italic;
+  max-width: 70ch;
+}
+
+.step__cap code {
+  font-family: var(--font-mono);
+  font-style: normal;
+  background: var(--ground-soft);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 0.85rem;
+}
+
+.step__cap--standalone {
+  margin-top: var(--space-2);
+}
+
+.install-cta {
+  margin-top: var(--space-10);
+  padding-top: var(--space-8);
+  border-top: var(--border);
+  text-align: center;
+}
+
+.install-cta p {
+  margin: 0 0 var(--space-4);
+  font-size: 1.0625rem;
+  color: var(--ink);
+}
+
+.install-cta .secondary-links {
+  justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .step__cmd,
+  .step__out,
+  .step__cap {
+    padding-left: 0;
+  }
+}
+
+/* CTA row — used to make "Install" the visual anchor at end of sections */
+.cta-row,
+.try-roi__cta-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-top: var(--space-6);
+}
+
+.cta-row--centered {
+  justify-content: center;
+  margin-top: var(--space-8);
+}
+
+.cta-aside,
+.try-roi__cta-aside {
+  font-size: var(--size-caption);
+  color: var(--ink-soft);
+  font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .cta-row,
+  .try-roi__cta-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+}
+
+/* =====================================================================
+ * Site-row interactivity — hover, click-to-expand, four-tab panel
+ * (Source / Dendra-wrapped / Config / Sample log entry). Tier 1 of
+ * the Dendra Shared Package preview UX.
+ * =================================================================== */
+
+.try-table .site-row {
+  cursor: pointer;
+  transition: background-color 0.12s;
+}
+
+.try-table .site-row:hover,
+.try-table .site-row:focus-visible {
+  background: color-mix(in oklab, var(--accent) 6%, transparent);
+  outline: none;
+}
+
+.try-table .site-row--open {
+  background: color-mix(in oklab, var(--accent) 10%, transparent);
+}
+
+.row-chevron {
+  display: inline-block;
+  margin-left: var(--space-2);
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  transition: transform 0.15s;
+}
+
+.site-row--open .row-chevron {
+  transform: rotate(90deg);
+  color: var(--accent);
+}
+
+.try-table .site-expansion-row > td {
+  padding: 0;
+  background: var(--ground-soft);
+  border-bottom: 1px solid color-mix(in oklab, var(--rule) 40%, transparent);
+  /* The .code-snippet inside has overflow: auto + max-width: 100%, so
+   * long source lines no longer escape — we don't need cell-level
+   * clipping (which was also clipping legitimate UI like the
+   * top-right GitHub icon). */
+}
+
+.try-table .site-expanded {
+  width: 100%;
+}
+
+.site-expanded {
+  position: relative;  /* anchor for .site-github-link */
+  padding: var(--space-5) var(--space-6) var(--space-5);
+}
+
+/* GitHub icon link — pinned to the top-right corner of the expanded
+ * panel, NOT in the tabs flex row. Reason: with `max-width: 0;
+ * overflow: hidden` on the cell, anything pushed to the right edge
+ * via `margin-left: auto` got clipped at unpredictable widths. An
+ * absolute element off the same .site-expanded box always lands
+ * inside the visible area. */
+.site-github-link {
+  /* Inline-flex item at the START of the .site-tabs row. Lives in
+   * the tabs flex flow so it's always inside the visible wrap area
+   * (the table can be wider than the wrap, so an absolute right-edge
+   * position would land in the overflow zone and disappear). */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: var(--ink);
+  background: var(--ground);
+  border: 1px solid var(--rule);
+  transition: all 0.12s;
+  text-decoration: none;
+  flex-shrink: 0;
+  margin-right: var(--space-2);
+  align-self: center;
+}
+.site-github-link:hover,
+.site-github-link:focus-visible {
+  color: var(--ground);
+  background: var(--ink);
+  border-color: var(--ink);
+  outline: none;
+}
+
+.site-tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  border-bottom: var(--border);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.site-tab {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.85rem;
+  font-family: var(--font-display);
+  color: var(--ink-soft);
+  cursor: pointer;
+  margin-bottom: -1px;
+  transition: all 0.12s;
+}
+
+.site-tab:hover,
+.site-tab:focus-visible {
+  color: var(--ink);
+  outline: none;
+}
+
+.site-tab[aria-selected="true"] {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 500;
+}
+
+
+.site-tab-pane {
+  margin-bottom: 0;
+}
+
+.code-snippet-wrap {
+  position: relative;
+  margin: 0;
+}
+
+.copy-btn--code {
+  position: absolute;
+  top: 8px;
+  /* 18px clears the 10px webkit scrollbar so the button never overlaps
+   * a vertical scroll thumb on tall blocks; the wrap is the same width
+   * as the dark snippet so this is also "8px from the dark right edge". */
+  right: 18px;
+  /* Override the install-walkthrough .copy-btn vertical-centering
+   * transform; we anchor by top: 8px instead. */
+  transform: none;
+  background: rgba(20, 20, 24, 0.78);
+  color: #f3eee5;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0;  /* the button is icon-only; the aria-label remains for assistive tech */
+  letter-spacing: 0;
+  text-transform: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.12s;
+  z-index: 3;
+  backdrop-filter: blur(2px);
+}
+
+.copy-btn--code svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.copy-btn--code:hover,
+.copy-btn--code:focus-visible {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--ground);
+  outline: none;
+}
+
+.copy-btn--code[data-copied="true"] {
+  background: var(--accent-deep);
+  border-color: var(--accent-deep);
+  color: var(--ground);
+}
+
+.code-snippet {
+  margin: 0;
+  /* default (no-gutter) padding — variants override .code-snippet--gutter */
+  padding: var(--space-3) var(--space-4);
+  background: var(--ink);
+  color: #f3eee5;
+  border-radius: 6px 6px 0 0;  /* bottom corners flush against the drag bar */
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  white-space: pre;
+  overflow: auto;
+  min-height: 96px;
+  /* Default fits content but caps at 60% viewport so the dark block
+   * never dominates a small screen. User can drag the bottom resize
+   * handle past this if they want more. */
+  max-height: 60vh;
+  max-width: 100%;
+  position: relative;
+  counter-reset: codeline;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+
+/* Gutter variant — Source + Dendra-wrapped tabs only. The line-number
+ * column lives in left padding; .cs-line ::before draws into it.
+ * Log + Config tabs use the bare .code-snippet above (no numbers). */
+.code-snippet--gutter {
+  padding: var(--space-3) 0;
+}
+
+/* Line gutter: line number + diff marker, both via pseudo-elements so
+ * they stay out of clipboard copy. Only used inside .code-snippet--gutter. */
+.cs-line {
+  display: block;
+  position: relative;
+  padding-left: 4em;
+  counter-increment: codeline;
+}
+
+.cs-line::before {
+  content: counter(codeline);
+  position: absolute;
+  left: 0;
+  width: 2.6em;
+  text-align: right;
+  padding-right: 0.4em;
+  color: rgba(255, 255, 255, 0.32);
+  user-select: none;
+  font-variant-numeric: tabular-nums;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.cs-line::after {
+  content: attr(data-marker);
+  position: absolute;
+  left: 3em;
+  width: 0.9em;
+  color: rgba(255, 255, 255, 0.32);
+  user-select: none;
+  text-align: center;
+}
+
+.cs-line--added {
+  background: rgba(127, 191, 124, 0.18);
+}
+
+.cs-line--added::after {
+  color: rgba(127, 191, 124, 1);
+  font-weight: 600;
+}
+
+.cs-line--added::before {
+  color: rgba(127, 191, 124, 0.85);
+}
+
+/* Custom drag bar — full-width horizontal handle below the code block.
+ * Replaces the native `resize: vertical` corner handle (which is a
+ * tiny target only at the bottom-right). The bar reads as a clear
+ * affordance: subtle ground-soft strip with a centered grip pill,
+ * highlighted on hover. Drag interaction is wired in
+ * scripts/code-resize.js. */
+.code-resize-handle {
+  height: 12px;
+  background: color-mix(in oklab, var(--ink) 88%, var(--ground));
+  border-radius: 0 0 6px 6px;
+  cursor: ns-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  user-select: none;
+  transition: background-color 0.12s;
+}
+.code-resize-handle:hover,
+.code-resize-handle:focus-visible,
+.code-resize-handle[data-dragging="true"] {
+  background: color-mix(in oklab, var(--accent) 22%, var(--ink));
+  outline: none;
+}
+.code-resize-grip {
+  display: block;
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.32);
+  pointer-events: none;
+  transition: background-color 0.12s;
+}
+.code-resize-handle:hover .code-resize-grip,
+.code-resize-handle:focus-visible .code-resize-grip,
+.code-resize-handle[data-dragging="true"] .code-resize-grip {
+  background: var(--ground);
+}
+
+.code-snippet::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.code-snippet::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+}
+.code-snippet::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 4px;
+}
+.code-snippet::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.34);
+}
+
+.site-tab-cap {
+  margin: var(--space-3) 0 0;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  font-style: italic;
+  line-height: 1.45;
+}
+
+.site-tab-cap code {
+  font-style: normal;
+  font-family: var(--font-mono);
+  background: var(--ground);
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid var(--rule);
+  font-size: 0.8rem;
+}
+
+/* One-line command snippet beneath a tab caption — keeps long shell
+ * commands on a single line with horizontal scroll, instead of
+ * wrapping mid-flag inside the prose. The icon copy button sits
+ * inside its right padding. */
+.cap-cmd {
+  position: relative;
+  margin-top: var(--space-2);
+  background: var(--ink);
+  color: #f3eee5;
+  border-radius: 5px;
+  padding: 8px 48px 8px 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+}
+.cap-cmd code {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: inherit;
+  white-space: nowrap;
+}
+.cap-cmd .copy-btn--code {
+  /* Pinned to the cap-cmd box so the button stays visible even when
+   * the long command scrolls underneath. */
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+}
+.cap-cmd .copy-btn--code svg {
+  width: 12px;
+  height: 12px;
+}
+
+@media (max-width: 768px) {
+  .site-tab-link { display: none; }
+  .site-expanded { padding: var(--space-4) var(--space-3); }
+  .code-snippet { font-size: 0.74rem; }
+}
+
+/* Visual gap between the orange-tinted active row and the panel
+ * below, so the panel reads as its own card rather than welded to
+ * the row's bottom edge. */
+.try-table .site-row--open td {
+  border-bottom-color: transparent;
+}
+
+.try-table .site-expansion-row > td {
+  border-top: 1px solid color-mix(in oklab, var(--rule) 50%, transparent);
 }

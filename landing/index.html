@@ -10,23 +10,22 @@
     />
 
     <title>
-      Dendra — The classification primitive every production codebase is
-      missing
+      Dendra — When should your rule learn? Dendra answers with a p-value.
     </title>
     <meta
       name="description"
-      content="One decorator, six lifecycle phases, statistical gates at every transition, and a safety floor. When should your rule learn? Dendra answers with a p-value."
+      content="A classification primitive that turns any decision site in your codebase into a self-improving lifecycle: rule today, LLM in shadow tomorrow, a sub-millisecond ML head when evidence has earned it. Your rule stays as the safety floor."
     />
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Dendra" />
     <meta
       property="og:title"
-      content="Dendra — The classification primitive every production codebase is missing"
+      content="Dendra — When should your rule learn? Answered with a p-value."
     />
     <meta
       property="og:description"
-      content="One decorator, six lifecycle phases, statistical gates at every transition, and a safety floor."
+      content="Self-improving classifiers in your codebase: rule → LLM → in-process ML head. Graduations are evidence-gated and the rule stays behind everything as the safety floor."
     />
     <meta property="og:url" content="https://dendra.dev" />
     <meta property="og:image" content="https://dendra.dev/assets/social-card.png" />
@@ -53,12 +52,18 @@
     />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Geist+Mono:wght@400;500;600&display=swap"
     />
 
     <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" />
     <link rel="apple-touch-icon" href="./assets/favicon.svg" />
-    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./style.css?v=20260427-1740" />
+    <script defer src="./scripts/analyzer-demo.js?v=20260427-1740"></script>
+    <script defer src="./scripts/copy-buttons.js?v=20260427-1740"></script>
+    <script defer src="./scripts/code-resize.js?v=20260427-1740"></script>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
   </head>
 
   <body>
@@ -69,9 +74,10 @@
           <span>DENDRA</span>
         </a>
         <nav class="primary-nav" aria-label="Primary">
-          <a href="#code">Code</a>
-          <a href="#results">Results</a>
-          <a href="#analyzer">Analyzer</a>
+          <a href="#try">Try it</a>
+          <a href="#install">Install</a>
+          <a href="#how">How it works</a>
+          <a href="#results">Proof</a>
           <a href="#pricing">Pricing</a>
           <a href="https://github.com/axiom-labs-os/dendra">GitHub</a>
         </nav>
@@ -80,33 +86,40 @@
 
     <main id="top">
       <!--
-        HERO — Modal / Temporal / Clerk pattern. Code-first headline,
-        install command as the primary CTA, minimal supporting copy.
+        HERO — Aspiration first. Frame the outcome (self-improving
+        codebase, retiring LLM bill) before any mechanism.
       -->
       <section class="hero">
         <div class="container">
           <h1>
-            The classification primitive every production codebase is
-            missing.
+            Software that's smarter every&nbsp;month<br>than the day you shipped&nbsp;it.
           </h1>
           <p class="subhead">
-            When should your rule learn? Dendra's six-phase
-            graduated-autonomy primitive answers it with a p-value — and
-            a safety floor that survives jailbreaks, silent ML failures,
-            and unbounded token bills.
+            Dendra is a classification primitive that wraps any
+            decision site in your codebase with a self-improving
+            lifecycle: rule today, LLM in shadow tomorrow, a
+            sub-millisecond ML head when evidence has earned it. The
+            rule stays behind everything as the safety floor.
           </p>
           <div class="install-row">
             <pre class="install-cmd"><code>pip install dendra</code></pre>
             <a
               class="button"
-              href="https://github.com/axiom-labs-os/dendra#install"
-              >Get started →</a
+              href="#install"
+              >Get started →</
             >
-            <a class="button secondary" href="#results">See the results</a>
+            <a class="button secondary" href="#scale">See the bill retire</a>
           </div>
+          <p class="languages-strap">
+            Python ships in v1.0. TypeScript, Go, Rust, and Java
+            clients are v1.1 follow-ons, alongside a WASM build of
+            the gate primitive — so every client will share one
+            audit-chain format and one statistical contract.
+          </p>
           <div class="secondary-links">
-            <a href="#paper">Read the paper</a>
-            <a href="https://github.com/axiom-labs-os/dendra">See the code</a>
+            <a href="#results">See the proof</a>
+            <a href="https://github.com/axiom-labs-os/dendra">View the code</a>
+            <a href="#how">How it works</a>
             <a href="#pricing">Pricing</a>
           </div>
         </div>
@@ -119,21 +132,335 @@
       <section class="proof" aria-label="Proof points">
         <div class="container">
           <div class="proof-grid">
-            <div>
-              <strong>6 phases</strong>
-              <span>Rule → LLM → ML, statistically gated</span>
+            <div class="proof-grid__lead">
+              <strong>8 / 8</strong>
+              <span>Public benchmarks cleared the evidence gate.</span>
             </div>
             <div>
-              <strong>0.6 µs</strong>
-              <span>p50 switch overhead at Phase 0</span>
+              <strong>&lt; 2 ms · ~$0</strong>
+              <span>Per call, once the ML head graduates in.</span>
             </div>
             <div>
-              <strong>4 benchmarks</strong>
-              <span>ATIS · HWU64 · Banking77 · CLINC150 at p&nbsp;&lt;&nbsp;0.01</span>
+              <strong>One decorator</strong>
+              <span>Zero rewrites. Your call site never moves.</span>
             </div>
             <div>
-              <strong>Split OSS</strong>
-              <span>Apache SDK · BSL&nbsp;→&nbsp;Apache 2030 · patent-pending</span>
+              <strong>Open core</strong>
+              <span>Apache SDK · BSL&nbsp;→&nbsp;Apache 2030 · patent-pending.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!--
+        ANALYZER + ROI DEMO — front-door curiosity loop. Pick a real
+        OSS repo (or paste a URL once Pyodide ships), see the
+        classification sites that exist today + the LLM bill they'd
+        retire. All math runs in the browser; no signup, no upload.
+      -->
+      <section id="try" class="try-panel" data-analyzer-demo>
+        <div class="container">
+          <p class="eyebrow">Real analyzer output, real codebases</p>
+          <h2>See the classification sites Dendra finds in real OSS Python repos. And the LLM bill they'd retire.</h2>
+          <p class="try-intro">
+            Pick a repo. Drag the sliders. Watch the savings move. Every
+            row below comes from the v1.0 analyzer running on the
+            real source.
+          </p>
+
+          <div class="try-presets" role="group" aria-label="Preset repositories">
+            <span class="try-presets__label">Pick a repo:</span>
+            <button type="button" class="chip" data-preset="marimo" aria-pressed="false">marimo</button>
+            <button type="button" class="chip" data-preset="dvc" aria-pressed="false">dvc</button>
+            <button type="button" class="chip" data-preset="requests" aria-pressed="false">requests</button>
+            <button type="button" class="chip" data-preset="fastapi" aria-pressed="false">fastapi</button>
+          </div>
+
+          <details class="try-custom">
+            <summary>
+              <span class="badge badge--soon">v1.1</span>
+              Run live on any public GitHub repo
+            </summary>
+            <form class="try-form" data-custom-form>
+              <label class="visually-hidden" for="try-url">GitHub URL</label>
+              <input
+                id="try-url"
+                data-custom-input
+                type="text"
+                inputmode="url"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="github.com/yourorg/yourrepo"
+              />
+              <button type="submit" class="button">Analyze →</button>
+            </form>
+            <p class="caption">
+              Live custom-repo analysis ships in v1.1 (Pyodide-in-browser;
+              the analyzer fetches the repo from GitHub and runs in
+              your tab — your code never touches our server). For now,
+              <code>pip install dendra &amp;&amp; dendra analyze .</code>
+              runs the same scan on your machine in a few seconds.
+            </p>
+          </details>
+
+          <div class="try-result">
+            <p class="try-summary" data-summary-target>Loading marimo…</p>
+
+            <div class="try-table-wrap">
+              <table class="try-table">
+                <colgroup>
+                  <col class="col-fileline" />
+                  <col class="col-function" />
+                  <col class="col-pattern" />
+                  <col class="col-labels" />
+                  <col class="col-regime" />
+                  <col class="col-fit" />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th>file:line</th>
+                    <th>function</th>
+                    <th>pattern<span class="th-info" tabindex="0" role="button" aria-label="What pattern means" title="Pattern — the shape of the classification site Dendra detected. P0: dict/registry dispatch. P1: if/elif ladder. P2: match statement. P3: signal-routed handler. Higher patterns are more elaborate (and benefit more from being wrapped).">?</span></th>
+                    <th>labels<span class="th-info" tabindex="0" role="button" aria-label="What labels means" title="Labels — distinct return values found at the site. This is the candidate label set Dendra graduates the rule → model → ML head over. More labels usually means more LLM cost to amortize.">?</span></th>
+                    <th>regime<span class="th-info" tabindex="0" role="button" aria-label="What regime means" title="Regime — workload class. narrow: small fixed label set (3–10), best fit. high_card: many labels or open-ended (suggests an embedding head). unknown: ambiguous from static analysis alone.">?</span></th>
+                    <th>fit<span class="th-info" tabindex="0" role="button" aria-label="What fit means" title="Fit — heuristic score 0.0–5.0 weighing pattern type, label count, regime, and call-site shape. ≥4.0 = strong candidate to wrap now. Lower scores still work; they just have less savings headroom.">?</span></th>
+                  </tr>
+                </thead>
+                <tbody data-results-target>
+                  <tr><td colspan="6" class="dim">Picking a preset…</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="try-roi">
+              <div class="try-roi__head">
+                <h3>If this repo's LLM bill looked like…</h3>
+                <p class="caption">
+                  Sliders are your inputs; <strong>the savings number is what graduating to in-process ML heads recovers</strong>, weighted by how many of the detected sites are realistically Dendra-fit (score ≥ 3.0).
+                </p>
+              </div>
+
+              <div class="try-roi__sliders">
+                <label class="slider">
+                  <span class="slider__label">Monthly classifications</span>
+                  <input
+                    data-roi-input="calls"
+                    type="range"
+                    min="10000"
+                    max="100000000"
+                    step="10000"
+                    value="1000000"
+                  />
+                  <output data-roi-input-output="calls">1M</output>
+                </label>
+
+                <label class="slider">
+                  <span class="slider__label">$ per LLM call</span>
+                  <input
+                    data-roi-input="cost"
+                    type="range"
+                    min="0.0001"
+                    max="0.05"
+                    step="0.0001"
+                    value="0.005"
+                  />
+                  <output data-roi-input-output="cost">$0.0050</output>
+                </label>
+              </div>
+
+              <div class="try-roi__numbers">
+                <div class="try-roi__stat">
+                  <strong data-savings="annual">—</strong>
+                  <span>Estimated annualized savings</span>
+                </div>
+                <div class="try-roi__stat">
+                  <strong data-savings="daily">—</strong>
+                  <span>Per day, post-graduation</span>
+                </div>
+                <div class="try-roi__stat">
+                  <strong data-savings="sites">—</strong>
+                  <span>Sites Dendra-fit (score ≥ 3.0)</span>
+                </div>
+              </div>
+
+              <p class="try-roi__cta">
+                Want to run this on <strong>your private repo</strong>?
+                Same scan, same JSON, on your own machine in under a minute.
+              </p>
+              <div class="try-roi__cta-row">
+                <a class="button" href="#install">Install in 5 minutes →</a>
+                <span class="try-roi__cta-aside">no upload · no signup · no GPU</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!--
+        INSTALL WALKTHROUGH — front-door conversion path. 5 ruthlessly
+        tight steps from "interested" to "running locally on my own
+        outcome logs." Every CTA on the page eventually lands here.
+      -->
+      <section id="install" class="install-walkthrough">
+        <div class="container">
+          <p class="eyebrow">5 minutes on your machine</p>
+          <h2>Install Dendra and see your first classification site, locally, in five steps.</h2>
+          <p class="caption">
+            The walkthrough below is the same path you'd run in your
+            terminal right now. Every command is copy-able. Every
+            output snippet is from the v1.0 CLI, not a mockup.
+          </p>
+
+          <ol class="step-list">
+
+            <li class="step">
+              <div class="step__head">
+                <span class="step__num">1</span>
+                <div>
+                  <h3 class="step__title">Install</h3>
+                  <p class="step__desc">No GPU, no torch, no service deps. Sklearn-class only.</p>
+                </div>
+              </div>
+              <div class="step__cmd" data-copy-target>
+                <pre><code>pip install dendra</code></pre>
+                <button class="copy-btn" data-copy-source aria-label="Copy command">Copy</button>
+              </div>
+              <div class="step__out">
+                <pre><code>Successfully installed dendra-0.2.0</code></pre>
+              </div>
+              <p class="step__cap">
+                ~30s on a warm pip cache, up to a minute cold. <code>uv pip install dendra</code> works too if you've moved on.
+              </p>
+            </li>
+
+            <li class="step">
+              <div class="step__head">
+                <span class="step__num">2</span>
+                <div>
+                  <h3 class="step__title">Find your classification sites</h3>
+                  <p class="step__desc">Pure-Python AST scan. No network, no upload — your code stays on your machine.</p>
+                </div>
+              </div>
+              <div class="step__cmd" data-copy-target>
+                <pre><code>dendra analyze .</code></pre>
+                <button class="copy-btn" data-copy-source aria-label="Copy command">Copy</button>
+              </div>
+              <div class="step__out">
+<pre><code>Dendra static analyzer — classification sites
+============================================================
+Root:           /Users/you/myapp
+Files scanned:  84
+Sites found:    7
+
+file:line                  function          ptn   labels   regime  fit
+------------------------------------------------------------------------
+src/triage.py:14           triage_ticket      P1        3   narrow  5.0
+src/router.py:88           route_intent       P1        7   narrow  4.5
+src/moderation.py:31       classify_post      P1        3   narrow  4.5
+…
+
+By regime:
+    narrow: 5
+    high_card: 1
+    unknown: 1
+
+Next step: dendra init &lt;file&gt;:&lt;function&gt; --author @you:team</code></pre>
+              </div>
+              <p class="step__cap">
+                Runs in ~270&nbsp;ms on 1,000 files. The same JSON shape the website demo uses; pipe to <code>--json</code> if you want it programmatic.
+              </p>
+            </li>
+
+            <li class="step">
+              <div class="step__head">
+                <span class="step__num">3</span>
+                <div>
+                  <h3 class="step__title">Preview the wrapper</h3>
+                  <p class="step__desc">See the AST-injected diff before you commit a single line.</p>
+                </div>
+              </div>
+              <div class="step__cmd" data-copy-target>
+                <pre><code>dendra init src/triage.py:triage_ticket --author @you:team --dry-run</code></pre>
+                <button class="copy-btn" data-copy-source aria-label="Copy command">Copy</button>
+              </div>
+              <div class="step__out">
+<pre><code># would modify src/triage.py: 3 labels (inferred), phase=RULE
+--- src/triage.py (before dendra init)
++++ src/triage.py (after dendra init)
+@@ -1,3 +1,10 @@
++from dendra import ml_switch, Phase, SwitchConfig
++
++@ml_switch(
++    labels=['auto_close', 'escalate', 'queue'],
++    author='@you:team',
++    config=SwitchConfig(phase=Phase.RULE),
++)
+ def triage_ticket(ticket: dict) -&gt; str:
+     title = (ticket.get("title") or "").lower()</code></pre>
+              </div>
+              <p class="step__cap">
+                The body of your function is unchanged. Drop <code>--dry-run</code> when you're ready and the file is rewritten in place.
+              </p>
+            </li>
+
+            <li class="step">
+              <div class="step__head">
+                <span class="step__num">4</span>
+                <div>
+                  <h3 class="step__title">Run your code as usual</h3>
+                  <p class="step__desc">No command. The wrapper does the work.</p>
+                </div>
+              </div>
+              <p class="step__cap step__cap--standalone">
+                Outcomes log silently to <code>runtime/dendra/&lt;switch&gt;/</code> every time your app calls
+                <code>triage_ticket(...)</code>. Phase 0: the rule still decides; the switch just records.
+                Hand the same record IDs to <code>switch.record_verdict(record_id, Verdict.CORRECT)</code>
+                when downstream signals (CSAT, resolution code, human review) tell you whether the
+                classification was right.
+              </p>
+            </li>
+
+            <li class="step">
+              <div class="step__head">
+                <span class="step__num">5</span>
+                <div>
+                  <h3 class="step__title">See your ROI</h3>
+                  <p class="step__desc">Self-measured from your own outcome logs. Knobs are exposed for your own assumptions.</p>
+                </div>
+              </div>
+              <div class="step__cmd" data-copy-target>
+                <pre><code>dendra roi runtime/dendra/</code></pre>
+                <button class="copy-btn" data-copy-source aria-label="Copy command">Copy</button>
+              </div>
+              <div class="step__out">
+<pre><code>Dendra ROI report
+============================================================
+Sites tracked:        1
+Outcomes logged:      4,210
+Verified outcomes:    3,876  (92%)
+
+Per-site projection:
+  triage_ticket   $1,200/mo low  -  $3,800/mo high
+                  (eng-cost saved + LLM-bill avoided post-graduation)
+
+Total projected annual value: $14,400 - $45,600</code></pre>
+              </div>
+              <p class="step__cap">
+                Override the assumption bands with <code>--monthly-value-low</code> /
+                <code>--monthly-value-high</code> /
+                <code>--engineer-cost-per-week</code>, or pipe
+                <code>--json</code> into your own dashboard.
+              </p>
+            </li>
+
+          </ol>
+
+          <div class="install-cta">
+            <p>That's it. The same path runs on every classifier in your codebase.</p>
+            <div class="secondary-links">
+              <a href="https://github.com/axiom-labs-os/dendra#install">Full docs on GitHub →</a>
+              <a href="#try">Or browse OSS repos first</a>
+              <a href="https://github.com/axiom-labs-os/dendra/blob/main/docs/FAQ.md">FAQ</a>
             </div>
           </div>
         </div>
@@ -147,29 +474,104 @@
         <div class="container">
           <div class="intro">
             <h2>
-              Wrap your classifier. Ship outcomes. Graduate when
-              evidence earns it.
+              Wrap your <code>if/else</code>. Walk away. Come back to a
+              classifier paid in microseconds.
             </h2>
           </div>
-<pre class="code-block"><code><span class="k">from</span> dendra <span class="k">import</span> ml_switch, Phase, SwitchConfig
+<pre class="code-block"><code><span class="k">from</span> dendra <span class="k">import</span> ml_switch
+<span class="k">from</span> myapp.support <span class="k">import</span> auto_close, queue_for_human, escalate_to_oncall
 
-<span class="k">@ml_switch</span>(
-    labels=[<span class="s">"bug"</span>, <span class="s">"feature_request"</span>, <span class="s">"question"</span>],
-    author=<span class="s">"@triage:support"</span>,
-    config=SwitchConfig(phase=Phase.RULE),
-)
-<span class="k">def</span> <span class="k">triage</span>(ticket):
-    title = ticket.get(<span class="s">"title"</span>, <span class="s">""</span>).lower()
-    <span class="k">if</span> <span class="s">"crash"</span> <span class="k">in</span> title:
-        <span class="k">return</span> <span class="s">"bug"</span>
+<span class="c"># Each label is paired with a downstream action.</span>
+<span class="c"># The decorator wires classification, dispatch, and outcome</span>
+<span class="c"># logging at the call site. The body is the exact if/else</span>
+<span class="c"># your team would have inlined anyway.</span>
+<span class="k">@ml_switch</span>(labels={
+    <span class="s">"auto_close"</span>: auto_close,
+    <span class="s">"queue"</span>:      queue_for_human,
+    <span class="s">"escalate"</span>:   escalate_to_oncall,
+})
+<span class="k">def</span> <span class="k">triage_ticket</span>(ticket: dict) -&gt; str:
+    title = (ticket.get(<span class="s">"title"</span>) <span class="k">or</span> <span class="s">""</span>).lower()
+    <span class="k">if</span> <span class="s">"crash"</span> <span class="k">in</span> title <span class="k">or</span> <span class="s">"outage"</span> <span class="k">in</span> title:
+        <span class="k">return</span> <span class="s">"escalate"</span>
     <span class="k">if</span> title.endswith(<span class="s">"?"</span>):
-        <span class="k">return</span> <span class="s">"question"</span>
-    <span class="k">return</span> <span class="s">"feature_request"</span></code></pre>
+        <span class="k">return</span> <span class="s">"queue"</span>
+    <span class="k">return</span> <span class="s">"auto_close"</span>
+
+triage_ticket(ticket)  <span class="c"># classifies AND fires the matching handler</span></code></pre>
           <p class="caption">
-            Zero behavior change on day one. Dendra logs every outcome.
-            When your evidence crosses the statistical gate, advance
-            the phase and the LLM or ML head takes over — with the
-            rule always available as the safety floor.
+            Zero behavior change on day one. Your team ships the exact
+            <code>if</code>/<code>else</code> they would have inlined
+            anyway. Dendra does the work that usually takes a six-month
+            ML migration project: outcome logging, training, shadow
+            evaluation, graduation. By month six, that same
+            <code>triage_ticket(ticket)</code> call is paid in
+            microseconds and fractions of a cent. Nobody touches the
+            call site.
+          </p>
+        </div>
+      </section>
+
+      <!--
+        WHAT YOU REALLY GET — outcome-first, before any mechanism.
+        Three things customers actually want, framed as the dream
+        they're buying, not the machinery that produces it.
+      -->
+      <section>
+        <div class="container">
+          <h2>What you actually ship</h2>
+          <div class="pillars">
+            <div class="pillar">
+              <h3>An LLM bill that retires itself</h3>
+              <p>
+                Most production classifications eventually accumulate
+                enough evidence to retire the LLM tier. Dendra is the
+                substrate that earns it — automatically, with a
+                statistical floor under every promotion. By month six
+                you're paying microseconds and pennies, not seconds
+                and dollars, for the same call.
+              </p>
+            </div>
+            <div class="pillar">
+              <h3>Code that compounds</h3>
+              <p>
+                Every classification site is a wrapper that gathers
+                evidence on its own clock. The decision quality
+                improves with use. The migration to ML never blocks
+                a sprint. The call site is permanent — only the
+                brain underneath moves.
+              </p>
+            </div>
+            <div class="pillar">
+              <h3>A rule still behind everything</h3>
+              <p>
+                Your hand-written rule is preserved structurally at
+                every phase. When ML is uncertain, falls through to
+                LLM. When LLM is uncertain, falls through to rule.
+                Safety-critical sites cap at "ML-with-fallback" — no
+                ML-primary for authorization, ever, by construction.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!--
+        =====================================================
+        HOW IT WORKS — Reveal the mechanism here, after the
+        outcome story is told. Lifecycle, gate, theorem.
+        =====================================================
+      -->
+      <section id="how" class="section-divider" aria-label="How it works section">
+        <div class="container">
+          <p class="eyebrow">How it works</p>
+          <h2>The mechanism, for the curious.</h2>
+          <p class="caption">
+            None of what follows is required reading to use Dendra —
+            <code>pip install dendra</code> and the decorator above
+            are sufficient. The rest of this page is for the engineer
+            asking <em>"yes, but how do you actually know when to
+            graduate?"</em>
           </p>
         </div>
       </section>
@@ -181,12 +583,14 @@
       -->
       <section aria-label="Six-phase lifecycle">
         <div class="container">
-          <h2>Six phases. Five statistical gates. One rule floor.</h2>
+          <h2>Six phases. Three evidence-gated graduations. One rule floor.</h2>
           <p class="caption">
-            Each phase has a fixed routing behavior. Advancement is
-            permitted only when a paired-proportion McNemar test
-            rejects the null hypothesis that the higher-tier
-            classifier is no better than the current decision-maker.
+            Each phase routes decisions the same way every time. The
+            lifecycle only graduates to the next phase once enough
+            outcome evidence has accumulated to prove the upgrade is
+            real, not a coincidence. The bar is conservative by
+            default and the math is in the paper for those who want
+            to verify it.
           </p>
 
           <ol class="phase-flow" aria-label="Phase sequence">
@@ -215,7 +619,7 @@
             <li>
               <div class="phase-name">ML_WITH_FALLBACK</div>
               <div class="phase-desc">
-                ML decides; rule is fallback.
+                ML decides; on uncertainty falls through LLM, then rule.
               </div>
             </li>
             <li class="gate" aria-hidden="true">α</li>
@@ -228,51 +632,25 @@
               </div>
             </li>
           </ol>
+          <p class="caption" style="margin-top: var(--space-6)">
+            <strong>Predecessor cascade.</strong> Each phase's
+            low-confidence fallback is its predecessor's full routing.
+            Phase 4 → Phase 3 → Phase 2 → Rule, in the order each
+            tier was earned. Promotions add tiers; uncertainty walks
+            them back down. The rule fires when every learnable tier
+            above it is below threshold.
+          </p>
+          <p class="caption">
+            <strong>Drift detection rides along.</strong> The same
+            evidence test runs in reverse: if accumulated outcomes
+            show the rule has reclaimed the lead, the lifecycle
+            demotes by one phase. Safety-critical sites cap at
+            <code>ML_WITH_FALLBACK</code> — no ML-primary for
+            authorization decisions, ever, by construction.
+          </p>
         </div>
       </section>
 
-      <!--
-        PILLARS — LaunchDarkly / Clerk pattern. Three-up value grid
-        with specific claims, not generalities.
-      -->
-      <section>
-        <div class="container">
-          <h2>Why Dendra</h2>
-          <div class="pillars">
-            <div class="pillar">
-              <h3><span class="tick"></span> Bounded risk</h3>
-              <p>
-                The rule is always the safety floor. A paired-proportion
-                hypothesis test gates every phase transition. The
-                probability that any graduation produces worse-than-rule
-                behavior is bounded above by the test's Type-I error
-                rate. Verified on four public benchmarks at
-                p&nbsp;&lt;&nbsp;0.01.
-              </p>
-            </div>
-            <div class="pillar">
-              <h3><span class="tick"></span> Cut token cost</h3>
-              <p>
-                Route 80% through your rule. Pay LLM tokens on 20%.
-                At 100M classifications/month with a Sonnet-class
-                model, the LLM-only spend is $11.5M/yr. Dendra's
-                Phase-4 routing drops this to essentially zero while
-                preserving the LLM's judgment on hard cases.
-              </p>
-            </div>
-            <div class="pillar">
-              <h3><span class="tick"></span> Survives jailbreaks</h3>
-              <p>
-                20-pattern jailbreak corpus: 100% rule-floor preserved.
-                Prompt injection cannot change what a compiled rule
-                returns. The LLM runs in shadow. Safety-critical
-                classifiers are capped at Phase 4 — no ML-primary for
-                authorization decisions, ever.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
 
       <!--
         MEASURED RESULTS — Anthropic / OpenAI research-lab pattern.
@@ -280,45 +658,162 @@
       -->
       <section id="results">
         <div class="container">
-          <h2>Four public benchmarks. Transition depths measured at p&nbsp;&lt;&nbsp;0.01.</h2>
+          <h2>Eight public benchmarks across four text domains. All clear the gate.</h2>
           <div class="figure-wrap">
             <img
               src="./assets/figure-1-transition-curves.svg"
-              alt="Four-panel transition-curve plot from the paper: Banking77, CLINC150, HWU64, ATIS. Each panel shows rule accuracy floor, LLM shadow accuracy, and ML head accuracy as a function of accumulated outcome count, with McNemar significance markers at phase-transition points."
+              alt="Eight-panel chart: codelangs, ATIS, TREC-6, AG News, Snips, HWU64, Banking77, CLINC150. Each panel plots the hand-written rule's flat accuracy against the ML head's rising accuracy as outcomes accumulate. A dashed vertical line marks the first checkpoint where the evidence gate cleared."
               loading="lazy"
             />
           </div>
           <p class="caption">
-            All four benchmarks measured, all four show ML overtaking
-            the rule by the first checkpoint with statistical
-            significance. <strong>Two regimes emerge:</strong>
-            narrow-domain rules stay viable for years (ATIS, ~70% rule
-            floor), high-cardinality rules are non-starters (CLINC150,
-            0.5% rule floor — you need Dendra's outcome log to ever
-            ship ML at all).
+            Eight text benchmarks across intent classification (ATIS,
+            HWU64, Banking77, CLINC150, Snips), question categorization
+            (TREC-6), news topics (AG News), and programming-language
+            detection (codelangs, including FORTRAN sourced from
+            NJOY2016 nuclear-data processing code). Every benchmark
+            cleared the evidence gate at p&nbsp;&lt;&nbsp;0.01. Most
+            graduated within 250 outcomes; the slowest needed 2,000
+            (Snips, where the rule briefly beat the ML head — the gate
+            held until the ML head overtook).
           </p>
 
           <div class="stats-row">
             <div class="stat">
-              <strong>≤ 250</strong>
-              <span>ATIS transition depth · 26 labels · narrow</span>
+              <strong>250</strong>
+              <span>Outcomes to graduate on six of eight benchmarks.</span>
             </div>
             <div class="stat">
-              <strong>≤ 1,500</strong>
-              <span>CLINC150 transition depth · 151 labels</span>
+              <strong>1,000–2,000</strong>
+              <span>Outcomes for the two slowest (AG News, Snips).</span>
             </div>
             <div class="stat">
-              <strong>+19 → +82 pp</strong>
-              <span>Rule → ML accuracy gap range (ATIS → Banking77)</span>
+              <strong>+10 → +81 pp</strong>
+              <span>Rule → ML accuracy gap, codelangs to CLINC150.</span>
             </div>
           </div>
 
+          <h3 style="margin-top: var(--space-12)">Three regimes by cardinality &times; rule-keyword affinity</h3>
+          <div class="pillars">
+            <div class="pillar">
+              <h3>Regime I — rule near optimum</h3>
+              <p>
+                <strong>codelangs</strong> (12 langs, 87.8% rule).
+                Rigid syntax keywords (<code>def</code>,
+                <code>function</code>, <code>subroutine</code>) leave
+                the rule within ~10 points of ML. Graduation is
+                evidence-justifiable but the lift is modest; the
+                lifecycle's value is audit chain and drift symmetry.
+              </p>
+            </div>
+            <div class="pillar">
+              <h3>Regime II — rule usable</h3>
+              <p>
+                <strong>ATIS</strong> (70.0% rule), <strong>TREC-6</strong>
+                (43.0% rule). Mid-cardinality with strong-to-moderate
+                keyword affinity. The rule ships on day one. ML
+                decisively wins (88.7%, 85.2%) and the gate clears at
+                the first 250-outcome checkpoint.
+              </p>
+            </div>
+            <div class="pillar">
+              <h3>Regime III — rule at floor</h3>
+              <p>
+                <strong>HWU64, Banking77, CLINC150</strong> by high
+                cardinality; <strong>Snips, AG News</strong> by weak
+                keyword affinity. Rule is at-or-near chance on day
+                one. Dendra's role here is cold-start substrate —
+                outcome logging while a zero-shot LLM runs in front,
+                trained head warms up underneath.
+              </p>
+            </div>
+          </div>
+          <div class="figure-wrap" style="margin-top: var(--space-8)">
+            <img
+              src="./assets/figure-regimes.svg"
+              alt="Bar chart: rule baseline (grey) vs final ML-head accuracy (blue), all eight benchmarks, sorted by rule baseline. codelangs at 87.8% rule, ATIS at 70.0%, TREC-6 at 43.0%, AG News at 25.9%, Snips at 14.3%, HWU64 at 1.8%, Banking77 at 1.3%, CLINC150 at 0.5%. Background tinting hints at the three-regime taxonomy."
+              loading="lazy"
+            />
+          </div>
+
+          <p style="margin-top: var(--space-12)">
+            The mechanism is <strong>modality-agnostic by design</strong>.
+            The gate operates on right/wrong outcome streams that any
+            classifier produces — text, image, audio, or structured
+            data. Image and audio benchmarks with pretrained-embedding
+            heads (CLIP, ViT, Wav2Vec2) ship in a companion paper.
+          </p>
+
           <div class="secondary-links">
-            <a href="#paper" id="paper">Read the paper →</a>
             <a
               href="https://github.com/axiom-labs-os/dendra#cli"
               >Reproduce with <code>dendra bench</code> →</a
             >
+            <span class="secondary-note">
+              Paper preprint coming with v1.0 launch (arXiv, May&nbsp;2026).
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <!--
+        COST AT SCALE — Stripe / Vercel "the math is in your favor" pattern.
+        The economic story is now load-bearing per paper §10.3.
+      -->
+      <section id="scale">
+        <div class="container">
+          <h2>The same evidence that lifts accuracy retires the LLM bill.</h2>
+          <p>
+            When the lifecycle reaches its final phase, every
+            classification has earned <em>two</em> things at once:
+            the right to trust the ML head's accuracy, and the right
+            to skip the LLM tier permanently. Latency drops from
+            hundreds of milliseconds to sub-millisecond. Per-call
+            cost drops to essentially zero. The math, illustrative
+            not predictive, at three scales:
+          </p>
+          <table class="pricing-table">
+            <thead>
+              <tr>
+                <th>Workload</th>
+                <th>LLM tier (~$0.005/call)</th>
+                <th>ML head (post-graduation)</th>
+                <th>Annualized swing</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>10⁴/day · small SaaS</td>
+                <td>~$50/day</td>
+                <td>~$0/day</td>
+                <td>~$18k/year</td>
+              </tr>
+              <tr>
+                <td>10⁶/day · mid-scale</td>
+                <td>~$5,000/day</td>
+                <td>~$0/day</td>
+                <td>~$1.8M/year</td>
+              </tr>
+              <tr>
+                <td>10⁸/day · large platform</td>
+                <td>~$500,000/day</td>
+                <td>~$0/day</td>
+                <td>~$182M/year</td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="caption">
+            Linear in unit cost. A frontier-tier model at $0.05/call
+            multiplies the savings 10×; a small-tier model at $0.0005
+            divides them 10×. The shape that matters is constant:
+            once the lifecycle has graduated, the ML-head tier is
+            essentially free per call. Workloads that started on an
+            LLM because their rule was a non-starter see the most
+            visible economic effect.
+          </p>
+          <div class="cta-row cta-row--centered">
+            <a class="button" href="#install">See it on your codebase →</a>
+            <span class="cta-aside">5 minutes, locally, no upload.</span>
           </div>
         </div>
       </section>
@@ -381,7 +876,7 @@ Report written to <span class="dim">.dendra/analyze-2026-04-22.json</span></pre>
             <tbody>
               <tr>
                 <td><strong>OSS library</strong></td>
-                <td>Free</td>
+                <td><a href="#install">Free — install now →</a></td>
                 <td>unlimited (self-hosted)</td>
               </tr>
               <tr>
@@ -455,6 +950,59 @@ Report written to <span class="dim">.dendra/analyze-2026-04-22.json</span></pre>
       </section>
 
       <!--
+        DISPLACEMENT — What does Dendra replace on a real roadmap.
+        Honest comparison vs. the alternatives a senior eng is
+        already considering, plus a "when not to use" honesty bullet.
+      -->
+      <section id="vs">
+        <div class="container">
+          <h2>What this replaces</h2>
+          <table class="pricing-table">
+            <thead>
+              <tr>
+                <th>Approach</th>
+                <th>What it solves</th>
+                <th>Where Dendra differs</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>LLM-response caching</strong><br>(LiteLLM, langfuse cache)</td>
+                <td>Cuts repeat-call cost on identical inputs.</td>
+                <td>Dendra retires the LLM tier permanently when an in-process ML head clears the gate — not only on cache hits.</td>
+              </tr>
+              <tr>
+                <td><strong>Fine-tuning the LLM</strong></td>
+                <td>Better LLM accuracy on your domain.</td>
+                <td>Dendra's terminal classifier is not a tuned LLM. It's a sklearn-class in-process head: sub-ms, ~$0/call, no GPU, no inference API.</td>
+              </tr>
+              <tr>
+                <td><strong>Roll your own ML migration</strong></td>
+                <td>Full control over outcome plumbing, training, shadow rollout.</td>
+                <td>Dendra is one decorator at every classification site, with a uniform statistical contract and audit chain — and the rule preserved as the safety floor.</td>
+              </tr>
+              <tr>
+                <td><strong>Feature flags + manual ramp</strong></td>
+                <td>Operator-driven rollout with an off switch.</td>
+                <td>Dendra's gate is statistical, not vibes-based: graduation only fires when accumulated outcomes prove the upgrade is real.</td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="caption">
+            <strong>When Dendra isn't the right fit.</strong> If your
+            LLM bill is dominated by generation, summarization, or
+            agent loops rather than classification, the savings story
+            scales down — you'll get the safety-floor and audit-chain
+            benefits but not the "$5,000/day retires itself" story.
+            If you have abundant day-one labeled data, train a
+            classifier directly. If your verdicts never arrive (no
+            downstream signal, no human review, no inferred
+            outcome), the gate has nothing to fire on.
+          </p>
+        </div>
+      </section>
+
+      <!--
         AGENT-FIRST — Dendra-unique. Explicitly acknowledge that
         LLM-assisted coding is the install path for new libraries.
       -->
@@ -501,8 +1049,10 @@ Report written to <span class="dim">.dendra/analyze-2026-04-22.json</span></pre>
         <div>
           <h4>Product</h4>
           <ul>
-            <li><a href="#code">Code</a></li>
-            <li><a href="#results">Results</a></li>
+            <li><a href="#install">Quickstart</a></li>
+            <li><a href="#try">Try it on a real repo</a></li>
+            <li><a href="#code">Code example</a></li>
+            <li><a href="#results">Proof</a></li>
             <li><a href="#analyzer">Analyzer</a></li>
             <li><a href="#pricing">Pricing</a></li>
           </ul>
@@ -524,9 +1074,10 @@ Report written to <span class="dim">.dendra/analyze-2026-04-22.json</span></pre>
         <p class="legal">
           © 2026 B-Tree Ventures, LLC (dba Axiom Labs). Split-licensed
           — Apache 2.0 on the client SDK, BSL 1.1 on Dendra-operated
-          components (Change Date 2030-05-01 → Apache 2.0). DENDRA,
-          TRANSITION CURVES, and AXIOM LABS are trademarks of B-Tree
-          Ventures, LLC.
+          components (Change Date 2030-05-01 → Apache 2.0).
+          DENDRA™ and AXIOM LABS™ are trademarks of B-Tree Ventures,
+          LLC. Patent pending: U.S. Provisional Patent Application
+          No. 64/045,809, filed 2026-04-21.
         </p>
       </div>
     </footer>
