@@ -350,6 +350,25 @@ class SwitchConfig:
     # latency on a 10k-record log.
     auto_advance: bool = True
     auto_advance_interval: int = 500
+    # Drift gate: the Gate the auto-demote loop calls to detect when the
+    # current phase's decision-maker has been overtaken by the rule. The
+    # gate is direction-agnostic; the auto-demote path passes the rule
+    # as the comparison target. ``None`` resolves to ``McNemarGate()`` at
+    # switch construction so the demotion check is symmetric with the
+    # advance check by default. Pass any ``Gate`` for a different
+    # statistical test.
+    drift_gate: Any = None
+    # Automatic demotion: every ``auto_advance_interval`` records, the
+    # switch also asks ``drift_gate`` whether the rule has reclaimed the
+    # lead and demotes one phase if so. Set ``auto_demote=False`` for
+    # operator-only demotion via :meth:`LearnedSwitch.demote`.
+    auto_demote: bool = True
+    # Cooldown: after ANY phase change (advance or demote), suppress
+    # both auto-checks until ``phase_cooldown_records`` more verdicts
+    # accumulate. Prevents thrash on data near the gate's decision
+    # boundary. Defaults to the typical ``min_paired`` so a fresh
+    # paired-correctness window is collected before re-evaluating.
+    phase_cooldown_records: int = 200
     # Optional hook fired after every successful ``record_verdict``.
     # Receives the persisted :class:`ClassificationRecord`. Useful
     # for mirroring verdicts to an external audit store, triggering
@@ -653,6 +672,7 @@ class LearnedSwitch:
         "_lock",
         "_circuit_tripped",
         "_records_since_advance_check",
+        "_records_since_phase_change",
         "_labels_raw",
         "_label_index",
         "_persist",
@@ -739,6 +759,13 @@ class LearnedSwitch:
 
             resolved_config.gate = McNemarGate()
 
+        # Same for the drift_gate. Default ``McNemarGate()`` makes the
+        # demotion check symmetric with the advance check by default.
+        if resolved_config.drift_gate is None:
+            from dendra.gates import McNemarGate
+
+            resolved_config.drift_gate = McNemarGate()
+
         # safety_critical refuses ML_PRIMARY even as a ceiling; this
         # is stricter than SwitchConfig's post_init (which only caps
         # the ceiling). Keeps the paper §7.1 architectural guarantee.
@@ -820,6 +847,15 @@ class LearnedSwitch:
         # under the lock, reset when the gate is asked (whether it
         # said yes or no).
         self._records_since_advance_check: int = 0
+        # Counter driving the phase-change cooldown. Reset to 0 on any
+        # successful advance() or demote(); the auto-check loop
+        # suppresses both gates while this is below
+        # ``config.phase_cooldown_records``. Prevents thrash on data
+        # near a gate's decision boundary. Initialized to a large value
+        # so a freshly-constructed switch (no prior phase change to
+        # cool down from) does not have the very first auto-check
+        # blocked by the cooldown.
+        self._records_since_phase_change: int = 10**9
         # Canonical labels list (Label objects). Assignment via the setter
         # normalizes strings / dicts and rebuilds the name index.
         self._labels_raw: list[Label] = _normalize_labels(labels)
@@ -1462,26 +1498,70 @@ class LearnedSwitch:
         except BaseException:
             pass
 
-        # Auto-advance: every ``auto_advance_interval`` recorded
-        # predictions, ask the gate whether we've earned the next
-        # phase. The counter increment is locked so concurrent
+        # Auto-evaluate: every ``auto_advance_interval`` recorded
+        # predictions, ask the configured gates whether the phase
+        # should change. We check the drift gate first (demote takes
+        # precedence over advance because a drift signal is a safety
+        # regression that should not be masked by an advance-eligible
+        # signal). Counter increments are locked so concurrent
         # record_verdicts can't race on read-modify-write (v1
         # finding #16). Gate refusals and exceptions never break
         # record_verdict.
-        if self.config.auto_advance:
-            should_advance = False
+        if self.config.auto_advance or self.config.auto_demote:
+            should_check = False
             with self._lock:
                 self._records_since_advance_check += 1
-                if self._records_since_advance_check >= self.config.auto_advance_interval:
+                self._records_since_phase_change += 1
+                if (
+                    self._records_since_advance_check >= self.config.auto_advance_interval
+                    and self._records_since_phase_change >= self.config.phase_cooldown_records
+                ):
                     self._records_since_advance_check = 0
-                    should_advance = True
-            if should_advance:
-                try:
-                    self.advance(_auto=True)
-                except (KeyboardInterrupt, SystemExit):
-                    raise
-                except BaseException:
-                    pass
+                    should_check = True
+            if should_check:
+                # Drift first. If it fires, demote and skip the advance
+                # check this cycle.
+                demoted = False
+                if self.config.auto_demote and self.config.drift_gate is not None:
+                    try:
+                        demoted = self._maybe_auto_demote()
+                    except (KeyboardInterrupt, SystemExit):
+                        raise
+                    except BaseException:
+                        demoted = False
+                if not demoted and self.config.auto_advance:
+                    try:
+                        self.advance(_auto=True)
+                    except (KeyboardInterrupt, SystemExit):
+                        raise
+                    except BaseException:
+                        pass
+
+    def _maybe_auto_demote(self) -> bool:
+        """Run the configured ``drift_gate`` and demote if it fires.
+
+        Returns ``True`` iff the gate said the rule was the better
+        target and the lifecycle stepped one phase back. Internal
+        helper for the auto-evaluate loop in ``record_verdict``;
+        operators call :meth:`demote` directly for manual demotion.
+        """
+        with self._lock:
+            current = self.config.starting_phase
+        if current is Phase.RULE:
+            return False  # nothing below the rule
+        records = self._storage.load_records(self.name)
+        decision = self.config.drift_gate.evaluate(records, current, Phase.RULE)
+        if not decision.target_better:
+            return False
+        # Drift confirmed. Route through demote() so the audit chain
+        # captures the same telemetry shape as a manual demotion.
+        rationale = (
+            f"auto-demote: drift gate "
+            f"({type(self.config.drift_gate).__name__}) reports rule reliably "
+            f"better than {current.name} on accumulated evidence"
+        )
+        self.demote(reason=rationale, _auto=True, _decision=decision)
+        return True
 
     def phase(self) -> Phase:
         """Current lifecycle phase.
@@ -1559,6 +1639,10 @@ class LearnedSwitch:
 
             if decision.target_better:
                 self.config.starting_phase = target
+                # Reset the phase-change cooldown counter so the
+                # auto-check loop suppresses both gates until fresh
+                # paired-correctness data accumulates.
+                self._records_since_phase_change = 0
 
         if decision.target_better:
             try:
@@ -1630,6 +1714,10 @@ class LearnedSwitch:
                 )
 
             self.config.starting_phase = target
+            # Reset the phase-change cooldown counter for symmetry with
+            # advance(); the auto-check loop suppresses both gates until
+            # fresh paired-correctness data accumulates.
+            self._records_since_phase_change = 0
 
         # Build the audit-facing decision. If the auto-demote loop
         # supplied a gate decision, preserve its statistical fields and
