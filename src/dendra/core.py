@@ -1583,6 +1583,100 @@ class LearnedSwitch:
 
         return decision
 
+    def demote(self, *, reason: str, _auto: bool = False, _decision: Any = None) -> Any:
+        """Step the lifecycle phase one slot back toward the rule floor.
+
+        The symmetric counterpart of :meth:`advance`. Where ``advance``
+        is gate-driven (the McNemar gate must say "yes" before the
+        phase moves up), ``demote`` is operator-driven: it mutates
+        ``config.starting_phase`` to the previous phase unconditionally
+        with ``reason`` recorded in telemetry. The auto-demote loop
+        uses the configured :class:`DriftGate` to drive the same path
+        autonomously; ``_decision`` is the internal hand-off point for
+        that loop.
+
+        Parameters:
+            reason: non-empty operator-facing string describing why
+                the demotion was performed. Required by API contract;
+                the audit chain relies on it.
+            _auto: internal flag tagging the telemetry event when the
+                auto-demote loop fires. Not part of the stable API.
+            _decision: internal hand-off from the auto-demote loop;
+                carries the :class:`GateDecision` produced by the
+                drift gate so its rationale + p-value land in the
+                audit log unchanged.
+
+        Returns a :class:`dendra.gates.GateDecision`. ``advance=True``
+        on the returned decision means "phase moved one step back."
+        ``advance=False`` indicates the request was a no-op (already
+        at :attr:`Phase.RULE`).
+
+        ``safety_critical=True`` does NOT block demotion — that flag
+        caps the forward ceiling; demoting strengthens the safety
+        floor and is always permitted.
+        """
+        if not reason or not reason.strip():
+            raise ValueError("demote(reason=...) requires a non-empty reason")
+
+        from dendra.gates import GateDecision, prev_phase
+
+        with self._lock:
+            current = self.config.starting_phase
+            target = prev_phase(current)
+            if target is None:
+                return GateDecision(
+                    advance=False,
+                    rationale=(
+                        f"already at lifecycle floor {current.name}; nothing to demote"
+                    ),
+                )
+
+            self.config.starting_phase = target
+
+        # Build the audit-facing decision. If the auto-demote loop
+        # supplied a gate decision, preserve its statistical fields and
+        # extend the rationale with the operator-facing reason. Manual
+        # demote synthesizes a fresh decision with the operator reason.
+        if _decision is not None:
+            decision = GateDecision(
+                advance=True,
+                rationale=f"{_decision.rationale}; reason: {reason}",
+                p_value=_decision.p_value,
+                paired_sample_size=_decision.paired_sample_size,
+                current_accuracy=_decision.current_accuracy,
+                target_accuracy=_decision.target_accuracy,
+            )
+        else:
+            decision = GateDecision(
+                advance=True,
+                rationale=(
+                    f"manual demote {current.name} → {target.name}; reason: {reason}"
+                ),
+            )
+
+        try:
+            self._telemetry.emit(
+                "demote",
+                {
+                    "switch": self.name,
+                    "from": current.value,
+                    "to": target.value,
+                    "rationale": decision.rationale,
+                    "reason": reason,
+                    "p_value": decision.p_value,
+                    "paired_sample_size": decision.paired_sample_size,
+                    "current_accuracy": decision.current_accuracy,
+                    "target_accuracy": decision.target_accuracy,
+                    "auto": _auto,
+                },
+            )
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except BaseException:
+            pass
+
+        return decision
+
     def status(self) -> SwitchStatus:
         """Return a :class:`SwitchStatus` snapshot."""
         outcomes = self._storage.load_records(self.name)
