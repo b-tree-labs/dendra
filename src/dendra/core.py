@@ -1500,7 +1500,7 @@ class LearnedSwitch:
 
         Returns a :class:`dendra.gates.GateDecision` regardless of
         whether the phase moved — operators and audit trails want to
-        see the rationale either way. When ``decision.advance`` is
+        see the rationale either way. When ``decision.target_better`` is
         ``True``, ``config.starting_phase`` is mutated up by one
         phase in the lifecycle and an ``advance`` telemetry event is
         emitted.
@@ -1531,12 +1531,12 @@ class LearnedSwitch:
             target = next_phase(current)
             if target is None:
                 return GateDecision(
-                    advance=False,
+                    target_better=False,
                     rationale=f"already at terminal phase {current.name}",
                 )
             if _PHASE_ORDER[target] > _PHASE_ORDER[self.config.phase_limit]:
                 return GateDecision(
-                    advance=False,
+                    target_better=False,
                     rationale=(
                         f"target phase {target.name} exceeds phase_limit "
                         f"{self.config.phase_limit.name}"
@@ -1548,7 +1548,7 @@ class LearnedSwitch:
                 # on top of phase_limit — if anyone ever widens that cap,
                 # this check still enforces the architectural guarantee.
                 return GateDecision(
-                    advance=False,
+                    target_better=False,
                     rationale=(
                         "safety_critical=True refuses advancement to ML_PRIMARY (paper §7.1)"
                     ),
@@ -1557,10 +1557,10 @@ class LearnedSwitch:
             records = self._storage.load_records(self.name)
             decision = self.config.gate.evaluate(records, current, target)
 
-            if decision.advance:
+            if decision.target_better:
                 self.config.starting_phase = target
 
-        if decision.advance:
+        if decision.target_better:
             try:
                 self._telemetry.emit(
                     "advance",
@@ -1606,10 +1606,10 @@ class LearnedSwitch:
                 drift gate so its rationale + p-value land in the
                 audit log unchanged.
 
-        Returns a :class:`dendra.gates.GateDecision`. ``advance=True``
-        on the returned decision means "phase moved one step back."
-        ``advance=False`` indicates the request was a no-op (already
-        at :attr:`Phase.RULE`).
+        Returns a :class:`dendra.gates.GateDecision`. ``target_better=True``
+        on the returned decision means "phase moved one step back" (the
+        rule was the better target). ``target_better=False`` indicates
+        the request was a no-op (already at :attr:`Phase.RULE`).
 
         ``safety_critical=True`` does NOT block demotion — that flag
         caps the forward ceiling; demoting strengthens the safety
@@ -1625,10 +1625,8 @@ class LearnedSwitch:
             target = prev_phase(current)
             if target is None:
                 return GateDecision(
-                    advance=False,
-                    rationale=(
-                        f"already at lifecycle floor {current.name}; nothing to demote"
-                    ),
+                    target_better=False,
+                    rationale=(f"already at lifecycle floor {current.name}; nothing to demote"),
                 )
 
             self.config.starting_phase = target
@@ -1639,7 +1637,7 @@ class LearnedSwitch:
         # demote synthesizes a fresh decision with the operator reason.
         if _decision is not None:
             decision = GateDecision(
-                advance=True,
+                target_better=True,
                 rationale=f"{_decision.rationale}; reason: {reason}",
                 p_value=_decision.p_value,
                 paired_sample_size=_decision.paired_sample_size,
@@ -1648,10 +1646,8 @@ class LearnedSwitch:
             )
         else:
             decision = GateDecision(
-                advance=True,
-                rationale=(
-                    f"manual demote {current.name} → {target.name}; reason: {reason}"
-                ),
+                target_better=True,
+                rationale=(f"manual demote {current.name} → {target.name}; reason: {reason}"),
             )
 
         try:

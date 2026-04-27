@@ -1,7 +1,7 @@
 # Copyright (c) 2026 B-Tree Ventures, LLC
 # SPDX-License-Identifier: Apache-2.0
 #
-# Quarantined to schedule-only — the shared security-scan reusable in
+ # Quarantined to schedule-only — the shared security-scan reusable in
 # axiom-labs-os/.github@v1 has three independent upstream bugs that make
 # every run fail without signal:
 #   1. grype: invalid SARIF / stale DB pinning produces "Failed minimum

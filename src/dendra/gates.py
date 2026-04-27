@@ -53,9 +53,10 @@ def prev_phase(current: Phase) -> Phase | None:
     """The previous phase in the six-phase lifecycle, or ``None`` at the floor.
 
     The symmetric counterpart of :func:`next_phase`. Used by
-    :class:`DriftGate` and :meth:`LearnedSwitch.demote` to walk the
-    lifecycle backward when accumulated evidence shows the current
-    phase's decision-maker has drifted below the rule's accuracy.
+    :meth:`LearnedSwitch.demote` and the auto-demote loop to walk
+    the lifecycle backward when accumulated evidence shows the
+    current phase's decision-maker has drifted below the rule's
+    accuracy.
     """
     order = _PHASE_ORDER[current]
     for phase, idx in _PHASE_ORDER.items():
@@ -65,7 +66,7 @@ def prev_phase(current: Phase) -> Phase | None:
 
 
 # ---------------------------------------------------------------------------
-# Gate decision
+# GateDecision + Gate Protocol
 # ---------------------------------------------------------------------------
 
 
@@ -73,13 +74,21 @@ def prev_phase(current: Phase) -> Phase | None:
 class GateDecision:
     """What a :class:`Gate` returns from ``evaluate``.
 
-    ``advance`` is the binding answer; ``rationale`` is a human-
-    readable explanation surfaced in telemetry and audit logs.
-    Statistical gates include ``p_value`` and ``paired_sample_size``
-    so operators and auditors can replay the decision.
+    ``target_better`` is the binding answer: was the ``target_phase``
+    decision-maker reliably better than the ``current_phase``
+    decision-maker on the paired correctness evidence, per the gate's
+    test? Direction-agnostic: this flag carries no opinion about
+    whether "better" means advance, demote, or sideways move. The
+    caller (``LearnedSwitch.advance``, ``LearnedSwitch.demote``, or a
+    future axis-step method) interprets it in domain context.
+
+    ``rationale`` is the human-readable explanation surfaced in
+    telemetry and audit logs. Statistical gates include ``p_value``
+    and ``paired_sample_size`` so operators and auditors can replay
+    the decision.
     """
 
-    advance: bool
+    target_better: bool
     rationale: str
     p_value: float | None = None
     paired_sample_size: int = 0
@@ -87,19 +96,22 @@ class GateDecision:
     target_accuracy: float | None = None
 
 
-# ---------------------------------------------------------------------------
-# Protocol
-# ---------------------------------------------------------------------------
-
-
 @runtime_checkable
 class Gate(Protocol):
-    """Phase-graduation decision protocol.
+    """Statistical comparator over two states.
 
-    Implementations take the switch's outcome log plus the current
-    and target phases and return a :class:`GateDecision`. The gate
-    does NOT mutate state — :meth:`LearnedSwitch.advance` is what
-    actually updates the phase when the gate says yes.
+    Takes records and two phases; answers whether the target's
+    decision-maker is reliably better than the current's per the
+    gate's test. The gate is direction-agnostic: it does not know
+    whether "better" means advance, demote, or another axis-step.
+    The caller interprets the result in domain context.
+
+    Sibling concrete gates: :class:`McNemarGate`,
+    :class:`AccuracyMarginGate`, :class:`MinVolumeGate`,
+    :class:`CompositeGate`, :class:`ManualGate`. The gate does NOT
+    mutate state; ``LearnedSwitch.advance`` and
+    ``LearnedSwitch.demote`` actually update the phase when the gate
+    says ``target_better``.
     """
 
     def evaluate(
@@ -242,7 +254,7 @@ class McNemarGate:
 
         if n < self._min_paired:
             return GateDecision(
-                advance=False,
+                target_better=False,
                 rationale=(f"insufficient paired samples: {n} < {self._min_paired} required"),
                 paired_sample_size=n,
             )
@@ -256,7 +268,7 @@ class McNemarGate:
         p = mcnemar_p(current_correct, target_correct)
         if p is None:
             return GateDecision(
-                advance=False,
+                target_better=False,
                 rationale="mcnemar_p returned None (degenerate input)",
                 paired_sample_size=n,
                 current_accuracy=current_acc,
@@ -265,7 +277,7 @@ class McNemarGate:
 
         if p < self._alpha:
             return GateDecision(
-                advance=True,
+                target_better=True,
                 rationale=(
                     f"McNemar p={p:.4g} < alpha={self._alpha}; "
                     f"{current_phase.name}={current_acc:.1%} "
@@ -277,7 +289,7 @@ class McNemarGate:
                 target_accuracy=target_acc,
             )
         return GateDecision(
-            advance=False,
+            target_better=False,
             rationale=(
                 f"McNemar p={p:.4g} >= alpha={self._alpha}; "
                 f"evidence insufficient on {n} paired samples"
@@ -286,131 +298,6 @@ class McNemarGate:
             paired_sample_size=n,
             current_accuracy=current_acc,
             target_accuracy=target_acc,
-        )
-
-
-# ---------------------------------------------------------------------------
-# DriftGate — symmetric counterpart of McNemarGate for autonomous demotion
-# ---------------------------------------------------------------------------
-
-
-class DriftGate:
-    """Paired-proportion test gate that fires when the rule has drifted
-    back into the lead.
-
-    The forward :class:`McNemarGate` advances when the candidate is
-    reliably better than the incumbent. ``DriftGate`` fires when the
-    rule (the lifecycle's structural safety floor) is reliably better
-    than the current phase's decision-maker on accumulated evidence.
-    Returning ``advance=True`` from the gate means "yes, demote one
-    phase" — the caller (LearnedSwitch.demote / the auto-demote loop)
-    interprets the directional flag in the demotion direction.
-
-    Statistical contract: the probability of demoting from a phase
-    that is actually still better than the rule is bounded above by
-    ``alpha`` per evaluation. Same paired McNemar machinery as
-    McNemarGate; argument order to ``mcnemar_p`` is flipped so the
-    "candidate" being tested is the rule, not the higher-tier phase.
-
-    Defaults match McNemarGate (alpha=0.01, min_paired=200) so the
-    demotion check is symmetric in conservatism with the advance
-    check.
-    """
-
-    def __init__(
-        self,
-        alpha: float = DEFAULT_ALPHA,
-        min_paired: int = DEFAULT_MIN_PAIRED,
-    ) -> None:
-        if not 0.0 < alpha < 1.0:
-            raise ValueError(f"alpha must be in (0, 1); got {alpha}")
-        if min_paired <= 0:
-            raise ValueError(f"min_paired must be positive; got {min_paired}")
-        self._alpha = alpha
-        self._min_paired = min_paired
-
-    @property
-    def alpha(self) -> float:
-        return self._alpha
-
-    @property
-    def min_paired(self) -> int:
-        return self._min_paired
-
-    def evaluate(
-        self,
-        records: list[ClassificationRecord],
-        current_phase: Phase,
-        target_phase: Phase,
-        /,
-    ) -> GateDecision:
-        # At Phase.RULE there's nothing below to demote into; the gate
-        # cannot fire by construction.
-        if current_phase is Phase.RULE:
-            return GateDecision(
-                advance=False,
-                rationale="no demotion target below RULE",
-            )
-
-        # Compute paired correctness between the rule and the current
-        # phase's decision-maker. _paired_correctness returns
-        # (current_correct, target_correct); we pass current=current_phase
-        # and target=Phase.RULE so target_correct is rule_correct.
-        current_correct, rule_correct = _paired_correctness(
-            records, current_phase, Phase.RULE
-        )
-        n = len(current_correct)
-
-        if n < self._min_paired:
-            return GateDecision(
-                advance=False,
-                rationale=(
-                    f"insufficient paired samples for drift check: "
-                    f"{n} < {self._min_paired} required"
-                ),
-                paired_sample_size=n,
-            )
-
-        current_acc = sum(current_correct) / n
-        rule_acc = sum(rule_correct) / n
-
-        from dendra.viz import mcnemar_p
-
-        # mcnemar_p(A, B) tests H1: B is better than A. We want
-        # H1: rule is better than current. Pass current as A, rule as B.
-        p = mcnemar_p(current_correct, rule_correct)
-        if p is None:
-            return GateDecision(
-                advance=False,
-                rationale="mcnemar_p returned None (degenerate input)",
-                paired_sample_size=n,
-                current_accuracy=current_acc,
-                target_accuracy=rule_acc,
-            )
-
-        if p < self._alpha:
-            return GateDecision(
-                advance=True,
-                rationale=(
-                    f"DriftGate: McNemar p={p:.4g} < alpha={self._alpha}; "
-                    f"rule={rule_acc:.1%} > {current_phase.name}={current_acc:.1%} "
-                    f"on {n} paired samples; demoting to {target_phase.name}"
-                ),
-                p_value=p,
-                paired_sample_size=n,
-                current_accuracy=current_acc,
-                target_accuracy=rule_acc,
-            )
-        return GateDecision(
-            advance=False,
-            rationale=(
-                f"DriftGate: McNemar p={p:.4g} >= alpha={self._alpha}; "
-                f"no significant drift on {n} paired samples"
-            ),
-            p_value=p,
-            paired_sample_size=n,
-            current_accuracy=current_acc,
-            target_accuracy=rule_acc,
         )
 
 
@@ -437,7 +324,7 @@ class ManualGate:
         /,
     ) -> GateDecision:
         return GateDecision(
-            advance=False,
+            target_better=False,
             rationale=f"ManualGate: graduation from {current_phase.name} requires operator action",
         )
 
@@ -485,7 +372,7 @@ class AccuracyMarginGate:
         n = len(current_correct)
         if n < self._min_paired:
             return GateDecision(
-                advance=False,
+                target_better=False,
                 rationale=(f"insufficient paired samples: {n} < {self._min_paired} required"),
                 paired_sample_size=n,
             )
@@ -494,7 +381,7 @@ class AccuracyMarginGate:
         delta = target_acc - current_acc
         if delta > self._margin:
             return GateDecision(
-                advance=True,
+                target_better=True,
                 rationale=(
                     f"accuracy delta {delta:+.1%} exceeds margin {self._margin:.1%} "
                     f"({current_phase.name}={current_acc:.1%} "
@@ -505,7 +392,7 @@ class AccuracyMarginGate:
                 target_accuracy=target_acc,
             )
         return GateDecision(
-            advance=False,
+            target_better=False,
             rationale=(
                 f"accuracy delta {delta:+.1%} within margin {self._margin:.1%} on {n} samples"
             ),
@@ -555,7 +442,7 @@ class MinVolumeGate:
         n = len(records)
         if n < self._min_records:
             return GateDecision(
-                advance=False,
+                target_better=False,
                 rationale=(
                     f"MinVolumeGate: {n} records < {self._min_records} required "
                     "before delegating to inner gate"
@@ -621,21 +508,22 @@ class CompositeGate:
     ) -> GateDecision:
         sub_decisions = [g.evaluate(records, current_phase, target_phase) for g in self._gates]
         if self._mode == "all":
-            advance = all(d.advance for d in sub_decisions)
+            target_better = all(d.target_better for d in sub_decisions)
         else:  # any
-            advance = any(d.advance for d in sub_decisions)
+            target_better = any(d.target_better for d in sub_decisions)
         rationale_parts = [
-            f"[{i} {'✓' if d.advance else '✗'}] {d.rationale}" for i, d in enumerate(sub_decisions)
+            f"[{i} {'✓' if d.target_better else '✗'}] {d.rationale}"
+            for i, d in enumerate(sub_decisions)
         ]
         rationale = f"CompositeGate.{self._mode}_of: " + " | ".join(rationale_parts)
         # Merge the most informative stats — prefer the first sub-decision
-        # that advanced (any_of) or the first one with stats (all_of).
+        # with statistical content (all gates fire the same comparison).
         stats_from = next(
             (d for d in sub_decisions if d.p_value is not None or d.paired_sample_size > 0),
             sub_decisions[0],
         )
         return GateDecision(
-            advance=advance,
+            target_better=target_better,
             rationale=rationale,
             p_value=stats_from.p_value,
             paired_sample_size=stats_from.paired_sample_size,

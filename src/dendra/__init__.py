@@ -46,7 +46,6 @@ from dendra.decorator import ml_switch
 from dendra.gates import (
     AccuracyMarginGate,
     CompositeGate,
-    DriftGate,
     Gate,
     GateDecision,
     ManualGate,
@@ -155,7 +154,6 @@ __all__ = [
     "deserialize_record",
     "flock_supported",
     "ml_switch",
-    "DriftGate",
     "next_phase",
     "prev_phase",
     "serialize_record",
