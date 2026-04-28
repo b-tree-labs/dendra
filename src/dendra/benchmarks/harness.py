@@ -43,6 +43,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from dendra.refresh import write_generated_file
 from dendra.roi import ROIAssumptions
@@ -286,10 +287,7 @@ class _CostRecorder:
                 out_rate = (
                     a.llm_output_usd_per_1m_tokens_low + a.llm_output_usd_per_1m_tokens_high
                 ) / 2.0
-                cost = (
-                    (tokens_in or 0) * in_rate / 1e6
-                    + (tokens_out or 0) * out_rate / 1e6
-                )
+                cost = (tokens_in or 0) * in_rate / 1e6 + (tokens_out or 0) * out_rate / 1e6
         if cost is not None:
             self.cost_usd_total += float(cost)
             self.calls_with_cost += 1
@@ -398,7 +396,7 @@ def run_benchmark(
     else:
         p95 = 0.0
 
-    # Cost — estimated by default; opt-in real-cost is recorded
+    # Cost: estimated by default; opt-in real-cost is recorded
     # alongside the estimate when the model adapter reports cost_usd
     # (or token counts) on each prediction.
     a = ROIAssumptions()
@@ -419,19 +417,17 @@ def run_benchmark(
         if total_calls == 0:
             # Switch never reached a phase that exercised a model /
             # head. Nothing to measure; warn so the operator knows.
-            adapter_names = ", ".join(
-                sorted({r.adapter_class_name for r in cost_recorders})
-            ) or "<no adapter>"
+            adapter_names = (
+                ", ".join(sorted({r.adapter_class_name for r in cost_recorders})) or "<no adapter>"
+            )
             print(
                 f"warning: --measure-real-cost was requested but no "
                 f"model/ml_head calls fired during the run "
                 f"(adapter: {adapter_names}). Falling back to estimated cost.",
             )
         elif not any_with_cost:
-            # Adapter never returned cost_usd or tokens — fall back.
-            adapter_names = ", ".join(
-                sorted({r.adapter_class_name for r in cost_recorders})
-            )
+            # Adapter never returned cost_usd or tokens; fall back.
+            adapter_names = ", ".join(sorted({r.adapter_class_name for r in cost_recorders}))
             print(
                 f"warning: adapter {adapter_names} returned no cost_usd "
                 f"or token counts; cannot record real cost. Falling back "

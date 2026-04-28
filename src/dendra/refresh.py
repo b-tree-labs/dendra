@@ -36,6 +36,12 @@ _RE_SOURCE = re.compile(r"# Source:\s*(?P<module>[\w.]+):(?P<func>\w+)")
 _RE_AST_HASH = re.compile(r"# AST hash:\s*(?P<hash>[0-9a-f]+)")
 _RE_CONTENT_HASH = re.compile(r"# Content hash:\s*(?P<hash>[0-9a-f]+)")
 _HASH_LEN = 32  # blake2b digest size in hex chars when digest_size=16
+# Min/max range pinned for v1: any future widening of the digest needs
+# a coordinated header-version bump so old clients refuse the new file
+# with an "unsupported Dendra version" message instead of silently
+# mis-parsing the hash.
+_HASH_MIN_LEN = 32
+_HASH_MAX_LEN = 32
 
 
 # ----------------------------------------------------------------------
@@ -150,6 +156,24 @@ def parse_generated_header(text: str) -> GeneratedHeader:
         )
     ast_h = m_ast.group("hash")
     content_h = m_content.group("hash")
+    # Two hash-length failure modes, each with a distinct error so the
+    # operator can tell "this file is corrupt" from "this file came
+    # from a newer Dendra than I have installed".
+    if len(ast_h) > _HASH_MAX_LEN or len(content_h) > _HASH_MAX_LEN:
+        version = m_ver.group("version")
+        raise ValueError(
+            f"Generated file uses an unsupported header hash length "
+            f"(AST={len(ast_h)}, content={len(content_h)}, "
+            f"max={_HASH_MAX_LEN}); this file was likely written by a "
+            f"newer Dendra (v{version}); upgrade your Dendra install or "
+            f"regenerate after downgrading the source."
+        )
+    if len(ast_h) < _HASH_MIN_LEN or len(content_h) < _HASH_MIN_LEN:
+        raise ValueError(
+            f"Generated file has malformed hash (expected at least "
+            f"{_HASH_MIN_LEN} hex chars, got AST={len(ast_h)} "
+            f"content={len(content_h)})."
+        )
     if len(ast_h) != _HASH_LEN or len(content_h) != _HASH_LEN:
         raise ValueError(
             f"Generated file has malformed hash (expected {_HASH_LEN} "

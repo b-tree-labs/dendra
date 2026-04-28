@@ -59,11 +59,37 @@ def _state_file() -> Path:
     return Path.home() / ".dendra" / "state.toml"
 
 
+def _strip_unsafe_chars(value: str) -> str:
+    """Remove non-printable + ESC bytes from a string before printing it.
+
+    Defense-in-depth: an attacker who manages to land an API key with
+    embedded ANSI CSI sequences in the local credentials file (or
+    DENDRA_API_KEY env var) would otherwise see those bytes flow into
+    a terminal verbatim through ``print()``, and the terminal would
+    interpret them as color / cursor-control directives. We never
+    pass keys through a shell, but the rendered bytes can still
+    confuse log scrapers and any downstream pipe.
+
+    Strategy: keep printable ASCII (``str.isprintable()``) and strip
+    everything else (ESC=0x1b, BEL=0x07, BS=0x08, VT=0x0b, FF=0x0c,
+    DEL=0x7f, all C0 controls). The underlying credential is
+    unchanged; only the rendered form is sanitized.
+    """
+    return "".join(c for c in value if c.isprintable())
+
+
 def _truncate_key(api_key: str) -> str:
-    """Return a display-safe truncation of an API key."""
-    if len(api_key) <= 12:
-        return api_key
-    return f"{api_key[:8]}...{api_key[-4:]}"
+    """Return a display-safe truncation of an API key.
+
+    The truncation runs through :func:`_strip_unsafe_chars` so a key
+    containing ANSI ESC sequences or other control bytes never leaks
+    those bytes into stdout when ``dendra login`` / ``dendra whoami``
+    print the abbreviation.
+    """
+    sanitized = _strip_unsafe_chars(api_key)
+    if len(sanitized) <= 12:
+        return sanitized
+    return f"{sanitized[:8]}...{sanitized[-4:]}"
 
 
 def _load_state() -> dict:
