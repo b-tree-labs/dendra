@@ -75,6 +75,28 @@ def main() -> int:
                         expansion2.screenshot(path=out)
                         print(f"wrote {out}")
 
+            # Capture the Switch-class authoring style on the wrapped tab.
+            wrapped_btn = page.query_selector(".site-tab[data-tab='wrapped']")
+            if wrapped_btn:
+                wrapped_btn.click()
+                page.wait_for_timeout(150)
+                switch_toggle = page.query_selector("[data-wrapped-style='switch']")
+                if switch_toggle:
+                    switch_toggle.click()
+                    page.wait_for_timeout(150)
+                    expansion3 = page.query_selector(".site-expanded")
+                    if expansion3:
+                        expansion3.screenshot(path="/tmp/landing-tab-wrapped-switch.png")
+                        print("wrote /tmp/landing-tab-wrapped-switch.png")
+
+        # Prove-the-savings section.
+        prove = page.query_selector("#prove")
+        if prove:
+            prove.scroll_into_view_if_needed()
+            page.wait_for_timeout(150)
+            prove.screenshot(path="/tmp/landing-prove.png")
+            print("wrote /tmp/landing-prove.png")
+
         # Install walkthrough.
         install = page.query_selector("#install")
         if install:

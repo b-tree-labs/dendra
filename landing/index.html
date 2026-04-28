@@ -57,10 +57,10 @@
 
     <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" />
     <link rel="apple-touch-icon" href="./assets/favicon.svg" />
-    <link rel="stylesheet" href="./style.css?v=20260427-1740" />
-    <script defer src="./scripts/analyzer-demo.js?v=20260427-1740"></script>
-    <script defer src="./scripts/copy-buttons.js?v=20260427-1740"></script>
-    <script defer src="./scripts/code-resize.js?v=20260427-1740"></script>
+    <link rel="stylesheet" href="./style.css?v=20260427-2030" />
+    <script defer src="./scripts/analyzer-demo.js?v=20260427-2030"></script>
+    <script defer src="./scripts/copy-buttons.js?v=20260427-2030"></script>
+    <script defer src="./scripts/code-resize.js?v=20260427-2030"></script>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -304,11 +304,13 @@
       <section id="install" class="install-walkthrough">
         <div class="container">
           <p class="eyebrow">5 minutes on your machine</p>
-          <h2>Install Dendra and see your first classification site, locally, in five steps.</h2>
+          <h2>Install Dendra and see your first classification site, locally.</h2>
           <p class="caption">
             The walkthrough below is the same path you'd run in your
-            terminal right now. Every command is copy-able. Every
-            output snippet is from the v1.0 CLI, not a mockup.
+            terminal right now. Steps 4 and 7 are optional (auto-lift
+            and the MCP server); the other five are the core install
+            path. Every command is copy-able. Every output snippet is
+            from the v1.0 CLI, not a mockup.
           </p>
 
           <ol class="step-list">
@@ -407,6 +409,54 @@ Next step: dendra init &lt;file&gt;:&lt;function&gt; --author @you:team</code></
               <div class="step__head">
                 <span class="step__num">4</span>
                 <div>
+                  <h3 class="step__title">Auto-lift the wrapper (optional)</h3>
+                  <p class="step__desc">Extract per-branch handlers and hidden-state evidence into a Switch subclass, so the LLM/ML head can graduate.</p>
+                </div>
+              </div>
+              <div class="step__cmd" data-copy-target>
+                <pre><code>dendra init src/triage.py:triage_ticket --author @you:team --auto-lift</code></pre>
+                <button class="copy-btn" data-copy-source aria-label="Copy command">Copy</button>
+              </div>
+              <div class="step__out">
+<pre><code># would modify src/triage.py and create __dendra_generated__/triage__triage_ticket.py
+--- src/triage.py (before)
++++ src/triage.py (after)
+@@ -1,3 +1,5 @@
++from __dendra_generated__.triage__triage_ticket import TriageTicketSwitch
++
+ def triage_ticket(ticket: dict) -&gt; str:
+-    # original body unchanged
+-    ...
++    return TriageTicketSwitch().dispatch(ticket).label
+
++++ __dendra_generated__/triage__triage_ticket.py (new)
+@@ -0,0 +1,18 @@
++from dendra import Switch
++
++class TriageTicketSwitch(Switch):
++    def _evidence_title(self, ticket: dict) -&gt; str:
++        return (ticket.get("title") or "").lower()
++
++    def _rule(self, evidence) -&gt; str:
++        if "crash" in evidence.title or "outage" in evidence.title:
++            return "escalate"
++        if evidence.title.endswith("?"):
++            return "queue"
++        return "auto_close"
++
++    def _on_escalate(self, ticket): ...   # extracted side effect
++    def _on_queue(self, ticket): ...      # extracted side effect
++    def _on_auto_close(self, ticket): ... # extracted side effect</code></pre>
+              </div>
+              <p class="step__cap">
+                <code>--auto-lift</code> adds the per-branch (<code>_on_*</code>) and per-evidence (<code>_evidence_*</code>) machinery the analyzer would otherwise flag as missing. Skip it on simple sites; reach for it once a site grows hidden state or branch-specific side effects.
+              </p>
+            </li>
+
+            <li class="step">
+              <div class="step__head">
+                <span class="step__num">5</span>
+                <div>
                   <h3 class="step__title">Run your code as usual</h3>
                   <p class="step__desc">No command. The wrapper does the work.</p>
                 </div>
@@ -422,7 +472,7 @@ Next step: dendra init &lt;file&gt;:&lt;function&gt; --author @you:team</code></
 
             <li class="step">
               <div class="step__head">
-                <span class="step__num">5</span>
+                <span class="step__num">6</span>
                 <div>
                   <h3 class="step__title">See your ROI</h3>
                   <p class="step__desc">Self-measured from your own outcome logs. Knobs are exposed for your own assumptions.</p>
@@ -453,6 +503,31 @@ Total projected annual value: $14,400 - $45,600</code></pre>
               </p>
             </li>
 
+            <li class="step">
+              <div class="step__head">
+                <span class="step__num">7</span>
+                <div>
+                  <h3 class="step__title">Drive Dendra from your IDE (optional)</h3>
+                  <p class="step__desc">Dendra ships an MCP server (stdio) so Claude Code, Cursor, and any MCP-aware client can drive the CLI directly.</p>
+                </div>
+              </div>
+              <div class="step__cmd" data-copy-target>
+                <pre><code>dendra mcp</code></pre>
+                <button class="copy-btn" data-copy-source aria-label="Copy command">Copy</button>
+              </div>
+              <div class="step__out">
+<pre><code>// ~/.config/claude-code/mcp.json (or your client's equivalent)
+{
+  "mcpServers": {
+    "dendra": { "command": "dendra", "args": ["mcp"] }
+  }
+}</code></pre>
+              </div>
+              <p class="step__cap">
+                Same 14 CLI verbs (<code>analyze</code>, <code>init</code>, <code>roi</code>, <code>benchmark</code>, <code>report</code>, <code>graduate</code>, <code>verdict</code>, ...), reachable as MCP tools. Your assistant calls <code>dendra init</code> and <code>dendra benchmark</code> for you, with deterministic output.
+              </p>
+            </li>
+
           </ol>
 
           <div class="install-cta">
@@ -461,6 +536,50 @@ Total projected annual value: $14,400 - $45,600</code></pre>
               <a href="https://github.com/axiom-labs-os/dendra#install">Full docs on GitHub →</a>
               <a href="#try">Or browse OSS repos first</a>
               <a href="https://github.com/axiom-labs-os/dendra/blob/main/docs/FAQ.md">FAQ</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!--
+        PROVE THE SAVINGS — close-the-loop story. The walkthrough
+        installs Dendra and finds sites; this section shows how to
+        turn projected savings into measured ones on your own data.
+      -->
+      <section id="prove" class="prove">
+        <div class="container">
+          <p class="eyebrow">Close the loop</p>
+          <h2>Prove the savings on your data.</h2>
+          <div class="prove-grid">
+            <div class="prove-grid__copy">
+              <p>
+                Dendra ships a benchmark + report harness that turns
+                projected savings into <em>measured</em> savings on
+                your repo, with your data. Run
+                <code>dendra benchmark &lt;site&gt;</code> after every
+                change to a switch (rule edit, label add, evidence
+                tweak); <code>dendra report</code> rolls every recorded
+                run up into a per-switch timeseries (phase transitions,
+                cost per call, cumulative dollars saved).
+              </p>
+              <p>
+                The same JSON the report emits is what
+                <code>--json</code> returns, so you can pipe it into
+                whatever dashboard your team already runs. Nothing
+                leaves your machine.
+              </p>
+            </div>
+            <div class="prove-grid__terminal">
+<pre class="terminal" aria-label="Example dendra benchmark and report output"><span class="prompt">$</span> dendra benchmark src/triage.py:triage_ticket
+3 passed in 0.04s
+triage_ticket: first run (phase=RULE, cost $0.00002-$0.00032/call)
+
+<span class="prompt">$</span> dendra report
+Dendra report - 1 switch, 14 days of data
+
+triage_ticket  RULE -&gt; MODEL_PRIMARY 2026-05-04 (after 312 verdicts)
+               cost: $0.0042 -&gt; $0.00031/call (-92%)
+               estimated saved this week: $128</pre>
             </div>
           </div>
         </div>

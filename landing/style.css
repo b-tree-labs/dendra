@@ -1679,3 +1679,82 @@ section:first-of-type {
 .try-table .site-expansion-row > td {
   border-top: 1px solid color-mix(in oklab, var(--rule) 50%, transparent);
 }
+
+/* ===================================================================
+ * Prove the savings — close-the-loop section after the install
+ * walkthrough. Two-column on desktop (copy + terminal); stacked on
+ * mobile. Terminal block reuses the existing .terminal styling so
+ * the visual rhythm matches the analyzer section.
+ * =================================================================== */
+.prove-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: var(--space-8);
+  align-items: start;
+  margin-top: var(--space-6);
+}
+
+.prove-grid__copy p {
+  margin: 0 0 var(--space-4);
+  color: var(--ink);
+}
+
+.prove-grid__copy p:last-child {
+  margin-bottom: 0;
+}
+
+.prove-grid__copy code {
+  font-family: var(--font-mono);
+  background: var(--ground-soft);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 0.88em;
+}
+
+.prove-grid__terminal .terminal {
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .prove-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+  }
+}
+
+/* Wrapped-tab authoring style toggle (Decorator / Switch class).
+ * Sits inside the wrapped pane; small pill row anchored above the
+ * code block so users can flip between the two authoring forms. */
+.wrapped-style-toggle {
+  display: inline-flex;
+  gap: 0;
+  margin: 0 0 var(--space-3);
+  padding: 2px;
+  background: var(--ground-soft);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+}
+
+.wrapped-style-toggle__btn {
+  background: transparent;
+  border: none;
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  font-family: var(--font-display);
+  color: var(--ink-soft);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.12s;
+  letter-spacing: 0.02em;
+}
+
+.wrapped-style-toggle__btn:hover,
+.wrapped-style-toggle__btn:focus-visible {
+  color: var(--ink);
+  outline: none;
+}
+
+.wrapped-style-toggle__btn[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--ground);
+}

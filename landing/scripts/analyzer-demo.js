@@ -127,6 +127,67 @@
     return true;
   }
 
+  // Pull the `(param: type, ...)` parameter list off the function
+  // header in the source snippet. Returns an array of
+  //   { name, annotation }   (annotation may be null)
+  // in declaration order. Falls back to a single `input` param when
+  // the snippet is missing or the def line can't be parsed; that
+  // mirrors the existing `def fn(...)` placeholder behavior.
+  function extractParams(site) {
+    const fallback = [{ name: "input", annotation: null }];
+    if (!site || !site.snippet) return fallback;
+    const fn = site.function_name;
+    const re = new RegExp(`def\\s+${fn}\\s*\\(([^)]*)\\)`);
+    const m = site.snippet.match(re);
+    if (!m) return fallback;
+    const raw = m[1].trim();
+    if (!raw) return fallback;
+    const parts = [];
+    let depth = 0;
+    let buf = "";
+    for (const ch of raw) {
+      if (ch === "[" || ch === "(" || ch === "{") depth++;
+      else if (ch === "]" || ch === ")" || ch === "}") depth--;
+      if (ch === "," && depth === 0) {
+        parts.push(buf.trim());
+        buf = "";
+      } else {
+        buf += ch;
+      }
+    }
+    if (buf.trim()) parts.push(buf.trim());
+    const out = [];
+    for (const p of parts) {
+      // Strip default values: "x: int = 3" -> "x: int"
+      const noDefault = p.split("=")[0].trim();
+      // Skip `self` and `cls` (instance/class methods).
+      if (noDefault === "self" || noDefault === "cls") continue;
+      // Skip *args / **kwargs varieties — evidence methods need named
+      // positional parameters.
+      if (noDefault.startsWith("*")) continue;
+      const colonIdx = noDefault.indexOf(":");
+      if (colonIdx === -1) {
+        out.push({ name: noDefault, annotation: null });
+      } else {
+        const name = noDefault.slice(0, colonIdx).trim();
+        const ann = noDefault.slice(colonIdx + 1).trim();
+        if (name) out.push({ name, annotation: ann || null });
+      }
+    }
+    return out.length > 0 ? out : fallback;
+  }
+
+  // snake_case or camelCase function name -> PascalCase class stem.
+  function classNameFor(fn) {
+    if (!fn) return "Site";
+    const cleaned = String(fn).replace(/[^A-Za-z0-9_]/g, "_");
+    const parts = cleaned.split(/[_\s]+/).filter(Boolean);
+    if (parts.length === 0) return "Site";
+    return parts
+      .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+      .join("");
+  }
+
   // Build the synthesized "Dendra-wrapped" preview by inserting the
   // decorator into the actual source snippet. Returns
   //   { text, addedRanges, startLine }
@@ -189,6 +250,105 @@
     };
   }
 
+  // Build the synthesized "Switch-class" preview for the same site.
+  // Mirrors examples/25_native_switch_class.py: per-evidence methods
+  // (one per param), a single _rule, and stub _on_<label> handlers
+  // commented as "potential side effects detected here." Returns the
+  // same { text, addedRanges, startLine } shape as buildWrappedPreview
+  // — the entire synthesized class is treated as an added block so
+  // the diff styling is consistent with the Decorator view.
+  function buildWrappedPreviewSwitch(site) {
+    const fn = site.function_name;
+    const cls = classNameFor(fn) + "Switch";
+    const params = extractParams(site);
+    const reasonable =
+      (site.labels || []).filter(looksLikeReasonableLabel);
+
+    // Evidence methods: one per non-self param, typed by the source
+    // annotation when present, falling back to `Any`.
+    const evidenceLines = params.map((p) => {
+      const ann = p.annotation || "Any";
+      return [
+        `    def _evidence_${p.name}(self, ${p.name}: ${ann}) -> ${ann}:`,
+        `        return ${p.name}`,
+      ].join("\n");
+    });
+
+    // Rule body: when we have analyzer-detected return labels we
+    // build an evidence.<first_param>-based ladder; otherwise emit a
+    // sentinel TODO. The first param is the convention for single-arg
+    // sites (which is most of what the analyzer surfaces).
+    const firstParam = params[0].name;
+    const labelList = reasonable.length > 0 ? reasonable : [];
+    let ruleBody;
+    if (labelList.length === 0) {
+      ruleBody =
+        `        # TODO: replace with the original branch logic, reading evidence.${firstParam}.\n` +
+        `        return "default"`;
+    } else {
+      const lines = [];
+      // Use the original return labels as a heuristic ladder; the
+      // last label becomes the default. Real --auto-lift output
+      // reproduces the original branch logic; this preview shows the
+      // shape, not a hand-fabricated fake.
+      // Sanitize the label twice: once as a Python identifier for the
+      // _matches_<label> helper name, and once as a string literal for
+      // the return value (single quotes, escape backslashes + quotes).
+      const sanId = (s) => String(s).replace(/[^A-Za-z0-9_]/g, "_");
+      const sanStr = (s) =>
+        String(s).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+      for (let i = 0; i < labelList.length - 1; i++) {
+        const id = sanId(labelList[i]);
+        const lit = sanStr(labelList[i]);
+        lines.push(`        if _matches_${id}(evidence.${firstParam}):`);
+        lines.push(`            return '${lit}'`);
+      }
+      const tailLit = sanStr(labelList[labelList.length - 1]);
+      lines.push(`        return '${tailLit}'`);
+      ruleBody = lines.join("\n");
+    }
+
+    // Action stubs: one _on_<label> per detected label, commented as
+    // a side-effect placeholder so the analyzer's hidden-state
+    // discovery is visible.
+    const onMethods =
+      labelList.length === 0
+        ? `    def _on_default(self, ${firstParam}):\n        ...  # action handler — analyzer detected potential side effects here`
+        : labelList
+            .map((l) => {
+              const safe = l.replace(/[^A-Za-z0-9_]/g, "_");
+              return `    def _on_${safe}(self, ${firstParam}):\n        ...  # potential side effect, lifted from the original branch`;
+            })
+            .join("\n\n");
+
+    const text =
+      `from dendra import Switch\n` +
+      `\n\n` +
+      `class ${cls}(Switch):\n` +
+      `    """Auto-lifted from ${fn}.\n` +
+      `\n` +
+      `    Conventions:\n` +
+      `      _evidence_<name> -> typed evidence dataclass field\n` +
+      `      _rule(evidence)  -> label name\n` +
+      `      _on_<label>      -> action handler (lifted side effect)\n` +
+      `    """\n` +
+      `\n` +
+      evidenceLines.join("\n\n") +
+      `\n\n` +
+      `    def _rule(self, evidence) -> str:\n` +
+      ruleBody +
+      `\n\n` +
+      onMethods +
+      `\n`;
+
+    const lineCount = text.split("\n").length;
+    return {
+      text,
+      addedRanges: [[0, lineCount - 1]],
+      startLine: 1,
+    };
+  }
+
   // Build the Config tab preview — three sections, lightest to deepest.
   // Goal is "set me at ease" not "show me everything." The centralize
   // block is the load-bearing pattern for projects with many sites;
@@ -232,7 +392,43 @@ def ${fn}(...): ...
 #   gate            McNemarGate     α=0.01 (1% per-step graduation FPR)
 #   verifier        'default'       auto-detect Ollama / OpenAI / Anthropic
 #   auto_advance    True            gate fires every 250 verdicts
-#   storage         FileStorage     runtime/dendra/<switch>/, atomic + fsynced`;
+#   storage         FileStorage     runtime/dendra/<switch>/, atomic + fsynced
+
+
+# 4. Native class form — the canonical v1 authoring pattern.
+# Same site as above, expressed as a Switch subclass instead of a
+# decorator. This is what \`dendra init --auto-lift\` writes for you.
+from dendra import Switch
+
+
+class ${classNameFor(fn)}Switch(Switch):
+    """Authoring conventions:
+       _evidence_<name>(...) -> typed evidence dataclass field
+       _rule(self, evidence) -> label name
+       _on_<label>(...)      -> action handler
+    """
+
+${extractParams(site)
+  .map((p) => {
+    const ann = p.annotation || "Any";
+    return `    def _evidence_${p.name}(self, ${p.name}: ${ann}) -> ${ann}:\n        return ${p.name}`;
+  })
+  .join("\n\n")}
+
+    def _rule(self, evidence) -> str:
+        # original branch logic, reading evidence.${extractParams(site)[0].name}
+        ...
+
+${
+  reasonable.length > 0
+    ? reasonable
+        .map(
+          (l) =>
+            `    def _on_${String(l).replace(/[^A-Za-z0-9_]/g, "_")}(self, ${extractParams(site)[0].name}): ...`
+        )
+        .join("\n")
+    : `    def _on_default(self, ${extractParams(site)[0].name}): ...`
+}`;
   }
 
   // Build a realistic Phase progression for the Sample-log tab — seven
@@ -385,6 +581,7 @@ def ${fn}(...): ...
       : "(source snippet not available — install dendra and run `dendra analyze .` for the live scan)";
     const sourceStartLine = site.snippet_start_line || site.line_start;
     const wrapped = buildWrappedPreview(site);
+    const wrappedSwitch = buildWrappedPreviewSwitch(site);
     return `
       <div class="site-expanded">
         <div class="site-tabs" role="tablist">
@@ -403,8 +600,17 @@ def ${fn}(...): ...
           <p class="site-tab-cap">Lines ${sourceStartLine}-${site.snippet_end_line || site.line_end} of <code>${escapeHtml(site.file_path)}</code></p>
         </div>
         <div class="site-tab-pane" data-pane="wrapped" hidden>
-          ${renderCodeBlock(wrapped.text, { startLine: wrapped.startLine, addedRanges: wrapped.addedRanges })}
-          <p class="site-tab-cap">Green <code>+</code> lines are the minimal decorator <code>dendra init</code> writes into <code>${escapeHtml(site.file_path)}</code>. Pass <code>--auto-lift</code> to also extract per-branch handlers and hidden-state evidence into a <code>__dendra_generated__/</code> sibling. Run locally:</p>
+          <div class="wrapped-style-toggle" role="group" aria-label="Authoring style">
+            <button type="button" class="wrapped-style-toggle__btn" data-wrapped-style="decorator" aria-pressed="true">Decorator</button>
+            <button type="button" class="wrapped-style-toggle__btn" data-wrapped-style="switch" aria-pressed="false">Switch class</button>
+          </div>
+          <div data-wrapped-render="decorator">
+            ${renderCodeBlock(wrapped.text, { startLine: wrapped.startLine, addedRanges: wrapped.addedRanges })}
+          </div>
+          <div data-wrapped-render="switch" hidden>
+            ${renderCodeBlock(wrappedSwitch.text, { startLine: wrappedSwitch.startLine, addedRanges: wrappedSwitch.addedRanges })}
+          </div>
+          <p class="site-tab-cap">Green <code>+</code> lines are what <code>dendra init</code> writes into <code>${escapeHtml(site.file_path)}</code>. <strong>Decorator</strong> is the drop-in two-liner; <strong>Switch class</strong> is what <code>--auto-lift</code> generates when you want per-branch handlers and per-evidence methods extracted. Run locally:</p>
           <div class="cap-cmd" data-copy-target>
             <code>dendra init ${escapeHtml(site.file_path)}:${escapeHtml(site.function_name)} --author @you:team --dry-run</code>
             <button type="button" class="copy-btn copy-btn--code" data-copy-source aria-label="Copy command" title="Copy"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="9" height="11" rx="1.5"/><path d="M3 5v8.5A1.5 1.5 0 0 0 4.5 15H11"/></svg></button>
@@ -531,6 +737,30 @@ def ${fn}(...): ...
           )
         );
         panes.forEach((p) => (p.hidden = p.dataset.pane !== target));
+      });
+    });
+    wireWrappedStyleToggle(expansion);
+  }
+
+  // Wire the Decorator / Switch-class toggle inside the wrapped pane.
+  // Default state ("decorator") is set in markup so the existing
+  // visual behavior is unchanged for users who never click.
+  function wireWrappedStyleToggle(expansion) {
+    const buttons = expansion.querySelectorAll("[data-wrapped-style]");
+    const renders = expansion.querySelectorAll("[data-wrapped-render]");
+    if (buttons.length === 0 || renders.length === 0) return;
+    buttons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const target = btn.dataset.wrappedStyle;
+        buttons.forEach((b) =>
+          b.setAttribute(
+            "aria-pressed",
+            b.dataset.wrappedStyle === target ? "true" : "false"
+          )
+        );
+        renders.forEach(
+          (r) => (r.hidden = r.dataset.wrappedRender !== target)
+        );
       });
     });
   }
