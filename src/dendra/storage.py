@@ -47,6 +47,7 @@ import contextlib
 import json
 import os
 import sqlite3
+import stat as _stat
 import sys
 import threading
 import time
@@ -268,6 +269,58 @@ class BoundedInMemoryStorage(StorageBase):
 # ---------------------------------------------------------------------------
 
 
+class _CachedFLock:
+    """Acquire/release a flock on an already-open fd, plus an in-process lock.
+
+    Used by :class:`FileStorage` so the .lock fd doesn't have to be
+    re-opened on every append (issue #136). The fd is shared across
+    threads, so we PAIR ``flock`` with a ``threading.Lock``: the OS
+    lock keeps other PROCESSES out, the in-process lock keeps other
+    THREADS in this process out. Both layers are necessary because
+    POSIX ``flock`` is keyed by the open file description, not the
+    file descriptor — threads sharing the same fd share the OFD and
+    so cannot use flock alone for mutual exclusion.
+    """
+
+    __slots__ = ("_fd", "_shared", "_thread_lock", "_acquired")
+
+    def __init__(
+        self, fd: int, *, shared: bool, thread_lock: threading.Lock | threading.RLock
+    ) -> None:
+        self._fd = fd
+        self._shared = shared
+        self._thread_lock = thread_lock
+        self._acquired = False
+
+    def __enter__(self) -> _CachedFLock:
+        # In-process serialization: prevents two threads in the same
+        # process from racing each other on the cached fd. Cross-
+        # process safety is handled by flock below.
+        self._thread_lock.acquire()
+        if not _HAS_FLOCK:
+            self._acquired = True
+            return self
+        op = fcntl.LOCK_SH if self._shared else fcntl.LOCK_EX  # type: ignore[union-attr]
+        try:
+            fcntl.flock(self._fd, op)  # type: ignore[union-attr]
+        except BaseException:
+            self._thread_lock.release()
+            raise
+        self._acquired = True
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        if not self._acquired:
+            return
+        try:
+            if _HAS_FLOCK:
+                with contextlib.suppress(OSError):
+                    fcntl.flock(self._fd, fcntl.LOCK_UN)  # type: ignore[union-attr]
+        finally:
+            self._acquired = False
+            self._thread_lock.release()
+
+
 class _FileLock:
     """Context manager wrapping POSIX ``flock`` on a sentinel file.
 
@@ -301,8 +354,14 @@ class _FileLock:
                 )
                 _WINDOWS_LOCK_WARNING_ISSUED = True
             return self
-        self._path.parent.mkdir(parents=True, exist_ok=True)
-        self._fd = os.open(str(self._path), os.O_RDWR | os.O_CREAT, 0o644)
+        try:
+            self._fd = os.open(str(self._path), os.O_RDWR | os.O_CREAT, 0o644)
+        except FileNotFoundError:
+            # First-time creation: parent may not exist yet. mkdir then
+            # retry. The hot path through FileStorage skips this branch
+            # because _append_sync ensures the dir before locking.
+            self._path.parent.mkdir(parents=True, exist_ok=True)
+            self._fd = os.open(str(self._path), os.O_RDWR | os.O_CREAT, 0o644)
         op = fcntl.LOCK_SH if self._shared else fcntl.LOCK_EX  # type: ignore[union-attr]
         fcntl.flock(self._fd, op)  # type: ignore[union-attr]
         return self
@@ -438,6 +497,26 @@ class FileStorage(StorageBase):
         # and ``close()``.
         self._fd_cache: dict[str, int] = {}
         self._fd_cache_lock = threading.Lock()
+        # Path-resolution cache (issue #136): ``Path.resolve()`` was
+        # the dominant cost on the concurrent-write hot path. The
+        # tuple is (resolved_path, (st_dev, st_ino) | None). The
+        # fingerprint enables a one-syscall TOCTOU re-validation on
+        # cache hit (see ``_verify_cached_dir``); fingerprint is None
+        # when the directory hasn't been created yet.
+        self._dir_cache: dict[str, tuple[Path, tuple[int, int] | None]] = {}
+        # Tracks switches whose on-disk directory has been mkdir'd at
+        # least once, so the redundant mkdir on the hot path can skip.
+        self._dir_ensured: dict[str, bool] = {}
+        self._dir_cache_lock = threading.Lock()
+        # Lock-fd cache: keep the per-switch ``.lock`` fd open across
+        # appends. Saves a posix.open/posix.close cycle per call. The
+        # tuple stores ``(fd, threading.Lock)`` because POSIX flock is
+        # keyed by the open file description, so threads sharing the
+        # cached fd would all see the lock as already-held; the
+        # per-switch threading.Lock provides the missing in-process
+        # mutual exclusion. Cross-process safety still flows from flock.
+        self._lock_fd_cache: dict[str, tuple[int, threading.Lock]] = {}
+        self._lock_fd_cache_lock = threading.Lock()
         # Batched-async path — when batching is on, ``append_record``
         # enqueues and a background thread drains every
         # ``flush_interval_ms`` (or when the queue reaches
@@ -476,7 +555,7 @@ class FileStorage(StorageBase):
     # Paths
     # ------------------------------------------------------------------
 
-    def _switch_dir(self, switch_name: str) -> Path:
+    def _switch_dir(self, switch_name: str, *, validate: bool = True) -> Path:
         """Resolve the per-switch directory, refusing path-escape attempts.
 
         A malicious or mistaken ``switch_name`` (``"../other"``,
@@ -484,7 +563,20 @@ class FileStorage(StorageBase):
         files outside the configured ``base_path``. We reject
         absolute names and any component equal to ``".."``, then
         confirm the resolved path stays inside the resolved base.
+
+        Validated results are cached (issue #136 — ``Path.resolve``
+        was the dominant hot-path cost). Public entry points pass
+        ``validate=True``: a single ``os.lstat`` re-confirms the
+        cached directory hasn't been swapped via a TOCTOU symlink
+        attack (redteam test_toctou_symlink_swap). Internal callers
+        pass ``validate=False`` so the per-call validation runs once
+        per ``append_record`` rather than 4-5 times.
         """
+        cached = self._dir_cache.get(switch_name)
+        if cached is not None:
+            if validate:
+                self._verify_cached_dir(switch_name, cached)
+            return cached[0]
         if not switch_name:
             raise ValueError("switch_name cannot be empty")
         if switch_name.startswith(("/", "\\")):
@@ -500,16 +592,65 @@ class FileStorage(StorageBase):
             raise ValueError(
                 f"switch_name {switch_name!r} resolves outside base_path {self._base}"
             ) from e
+        # Capture inode/dev fingerprint for TOCTOU detection. fp=None
+        # when the dir doesn't yet exist; the entry will be replaced
+        # on the next call (no validation can succeed without a fp).
+        try:
+            st = os.lstat(str(candidate))
+            fp: tuple[int, int] | None = (st.st_dev, st.st_ino)
+            if _stat.S_ISLNK(st.st_mode):
+                raise ValueError(f"switch_name {switch_name!r} resolves to a symlink; refusing")
+        except FileNotFoundError:
+            fp = None
+        with self._dir_cache_lock:
+            existing = self._dir_cache.get(switch_name)
+            if existing is not None:
+                return existing[0]
+            self._dir_cache[switch_name] = (candidate, fp)
         return candidate
 
+    def _verify_cached_dir(
+        self, switch_name: str, entry: tuple[Path, tuple[int, int] | None]
+    ) -> None:
+        """Cheap re-validation of a cached switch_dir (issue #136).
+
+        Single ``os.lstat`` call. If the inode changed since
+        cache-time, or the entry is now a symlink, the cache is
+        stale and we refuse the call (TOCTOU safety). If the
+        cached fingerprint is None (dir didn't exist at cache-time),
+        drop the entry and let the caller re-resolve so the next
+        pass records the real inode.
+        """
+        candidate, fingerprint = entry
+        if fingerprint is None:
+            with self._dir_cache_lock:
+                self._dir_cache.pop(switch_name, None)
+                self._dir_ensured.pop(switch_name, None)
+            return
+        try:
+            st = os.lstat(str(candidate))
+        except FileNotFoundError:
+            with self._dir_cache_lock:
+                self._dir_cache.pop(switch_name, None)
+                self._dir_ensured.pop(switch_name, None)
+            return
+        if _stat.S_ISLNK(st.st_mode):
+            raise ValueError(f"switch_name {switch_name!r} now resolves to a symlink; refusing")
+        if (st.st_dev, st.st_ino) != fingerprint:
+            with self._dir_cache_lock:
+                self._dir_cache.pop(switch_name, None)
+                self._dir_ensured.pop(switch_name, None)
+            raise ValueError(f"switch_name {switch_name!r} backing directory was swapped; refusing")
+
     def _active_path(self, switch_name: str) -> Path:
-        return self._switch_dir(switch_name) / "outcomes.jsonl"
+        # Internal: validation already happened in append_record.
+        return self._switch_dir(switch_name, validate=False) / "outcomes.jsonl"
 
     def _rotated_path(self, switch_name: str, idx: int) -> Path:
-        return self._switch_dir(switch_name) / f"outcomes.jsonl.{idx}"
+        return self._switch_dir(switch_name, validate=False) / f"outcomes.jsonl.{idx}"
 
     def _lock_path(self, switch_name: str) -> Path:
-        return self._switch_dir(switch_name) / ".lock"
+        return self._switch_dir(switch_name, validate=False) / ".lock"
 
     # ------------------------------------------------------------------
     # Locking helpers
@@ -518,12 +659,53 @@ class FileStorage(StorageBase):
     def _exclusive_lock(self, switch_name: str) -> contextlib.AbstractContextManager[object]:
         if not self._lock_enabled:
             return contextlib.nullcontext()
-        return _FileLock(self._lock_path(switch_name), shared=False)
+        return self._cached_flock(switch_name, shared=False)
 
     def _shared_lock(self, switch_name: str) -> contextlib.AbstractContextManager[object]:
         if not self._lock_enabled:
             return contextlib.nullcontext()
-        return _FileLock(self._lock_path(switch_name), shared=True)
+        return self._cached_flock(switch_name, shared=True)
+
+    def _cached_flock(
+        self, switch_name: str, *, shared: bool
+    ) -> contextlib.AbstractContextManager[object]:
+        """Return a flock context manager backed by a cached lock fd.
+
+        Combines a cached ``.lock`` fd (saves posix.open/close per
+        call, issue #136) with a per-switch ``threading.Lock``
+        (necessary because flock on a shared OFD is not mutually
+        exclusive between threads). Falls back to a fresh
+        ``_FileLock`` if the cache cannot be used.
+        """
+        if self._closed or not _HAS_FLOCK:
+            return _FileLock(self._lock_path(switch_name), shared=shared)
+        entry = self._get_lock_fd(switch_name)
+        if entry is None:
+            return _FileLock(self._lock_path(switch_name), shared=shared)
+        fd, thread_lock = entry
+        return _CachedFLock(fd, shared=shared, thread_lock=thread_lock)
+
+    def _get_lock_fd(self, switch_name: str) -> tuple[int, threading.Lock] | None:
+        """Return ``(fd, threading.Lock)`` for ``switch_name``.
+
+        Opens on first use; returns None if the open fails (rare on
+        a writable base_path; the caller falls back to per-call
+        ``_FileLock``).
+        """
+        key = self._cache_key(switch_name)
+        with self._lock_fd_cache_lock:
+            entry = self._lock_fd_cache.get(key)
+            if entry is not None:
+                return entry
+            lock_path = self._lock_path(switch_name)
+            try:
+                lock_path.parent.mkdir(parents=True, exist_ok=True)
+                fd = os.open(str(lock_path), os.O_RDWR | os.O_CREAT, 0o644)
+            except OSError:
+                return None
+            entry = (fd, threading.Lock())
+            self._lock_fd_cache[key] = entry
+            return entry
 
     # ------------------------------------------------------------------
     # Serialization hooks (override for custom encoding)
@@ -590,7 +772,13 @@ class FileStorage(StorageBase):
         """
         if not records:
             return
-        self._switch_dir(switch_name).mkdir(parents=True, exist_ok=True)
+        # mkdir on every append was a measurable hot-path cost
+        # (issue #136 profile: 41s cumtime in pathlib.mkdir over 40k
+        # appends). After the first successful mkdir, subsequent calls
+        # for the same switch can skip it.
+        if not self._dir_ensured.get(switch_name):
+            self._switch_dir(switch_name, validate=False).mkdir(parents=True, exist_ok=True)
+            self._dir_ensured[switch_name] = True
         linesep = os.linesep.encode("utf-8")
         payloads = [self._serialize_line(r) + linesep for r in records]
         total_bytes = sum(len(p) for p in payloads)
@@ -618,8 +806,13 @@ class FileStorage(StorageBase):
                 raise
 
     def _cache_key(self, switch_name: str) -> str:
-        """Deterministic cache key for the fd / lock caches."""
-        return str(self._switch_dir(switch_name))
+        """Deterministic cache key for the fd / lock caches.
+
+        Internal-only: skips re-validation. The entry-point
+        validation in ``append_record`` covers the security check
+        once per call cycle.
+        """
+        return str(self._switch_dir(switch_name, validate=False))
 
     def _get_append_fd(self, switch_name: str) -> int:
         """Return a cached append fd, opening on first use.
@@ -723,6 +916,13 @@ class FileStorage(StorageBase):
             fds = list(self._fd_cache.values())
             self._fd_cache.clear()
         for fd in fds:
+            with contextlib.suppress(OSError):
+                os.close(fd)
+        # Close any cached lock fds.
+        with self._lock_fd_cache_lock:
+            lock_entries = list(self._lock_fd_cache.values())
+            self._lock_fd_cache.clear()
+        for fd, _thread_lock in lock_entries:
             with contextlib.suppress(OSError):
                 os.close(fd)
 

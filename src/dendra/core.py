@@ -497,6 +497,26 @@ def _input_hash(value: Any) -> str:
     return hashlib.sha256(encoded).hexdigest()[:16]
 
 
+def _is_real_label(label: Any) -> bool:
+    """Return True if ``label`` looks like a usable decision.
+
+    A misbehaving model adapter or ML head can return ``label=""`` (or
+    a whitespace-only string, or None). Those are not decisions. The
+    switch must treat them as no-decision and fall back to the rule —
+    silently emitting an empty string downstream is the bug shape we
+    saw in issue #138.
+
+    Non-string labels (typed enums, ints) are passed through as-is;
+    only the string-empty / None case trips the fallback. ``str.strip``
+    is cheap and defensive: ``label=" "`` is also empty.
+    """
+    if label is None:
+        return False
+    if isinstance(label, str):
+        return label.strip() != ""
+    return True
+
+
 def _clamp_conf(v: float | None) -> float | None:
     """Clamp a confidence value to ``[0, 1]``; return None for None / NaN.
 
@@ -1324,6 +1344,18 @@ class LearnedSwitch:
                 raise
             except BaseException:
                 return _result(rule_output, "rule_fallback", 1.0)
+            # Empty / whitespace-only labels are not a decision: a
+            # misbehaving adapter can return label="" with high
+            # confidence; treat that as no-decision and fall back to
+            # the rule (issue #138).
+            if not _is_real_label(pred.label):
+                return _result(
+                    rule_output,
+                    "rule_fallback",
+                    1.0,
+                    model_output=pred.label,
+                    model_confidence=float(pred.confidence),
+                )
             if float(pred.confidence) < self.config.confidence_threshold:
                 return _result(
                     rule_output,
@@ -1381,6 +1413,7 @@ class LearnedSwitch:
                 ml_failed
                 or ml_confidence is None
                 or ml_confidence < self.config.confidence_threshold
+                or not _is_real_label(ml_output)
             ):
                 cascaded = self._phase_primary_decision(input, rule_output, phase)
                 cascaded._ml_output = ml_output
@@ -1425,6 +1458,17 @@ class LearnedSwitch:
                     self._circuit_tripped = True
                     self._save_breaker_state()
                     return _result(rule_output, "rule_fallback", 1.0)
+                # Empty / whitespace-only labels are not a decision —
+                # treat as fallback rather than emit "" downstream
+                # (issue #138).
+                if not _is_real_label(ml_pred.label):
+                    return _result(
+                        rule_output,
+                        "rule_fallback",
+                        1.0,
+                        ml_output=ml_pred.label,
+                        ml_confidence=float(ml_pred.confidence),
+                    )
                 return _result(
                     ml_pred.label,
                     "ml",
@@ -1473,6 +1517,15 @@ class LearnedSwitch:
             raise
         except BaseException:
             return _r(rule_output, "rule_fallback", 1.0)
+        # Empty / whitespace-only labels are not a decision (issue #138).
+        if not _is_real_label(pred.label):
+            return _r(
+                rule_output,
+                "rule_fallback",
+                1.0,
+                model_output=pred.label,
+                model_confidence=float(pred.confidence),
+            )
         if float(pred.confidence) < self.config.confidence_threshold:
             return _r(
                 rule_output,
