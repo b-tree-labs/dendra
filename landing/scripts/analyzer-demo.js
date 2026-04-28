@@ -805,11 +805,18 @@ ${
     return { annual, daily: annual / 365, sitesEligible };
   }
 
+  function fmtPerCallUSD(cost) {
+    // The slider goes down to $0.00001; cheap providers (Gemini Flash,
+    // Together) land below $0.0001 where 4-decimal would round to $0.0000.
+    // Use 6 decimal places below 0.0001, 4 places above.
+    return cost < 0.0001 ? "$" + cost.toFixed(6) : "$" + cost.toFixed(4);
+  }
+
   function renderSavings() {
     const calls = Number(callsInput.value);
     const cost = Number(costInput.value);
     if (callsOutput) callsOutput.textContent = fmtNum(calls);
-    if (costOutput) costOutput.textContent = "$" + cost.toFixed(4);
+    if (costOutput) costOutput.textContent = fmtPerCallUSD(cost);
     if (!current) {
       if (savingsAnnual) savingsAnnual.textContent = "—";
       if (savingsDaily) savingsDaily.textContent = "—";
@@ -858,6 +865,99 @@ ${
 
   if (callsInput) callsInput.addEventListener("input", renderSavings);
   if (costInput) costInput.addEventListener("input", renderSavings);
+
+  // ----- LLM provider preset chips -------------------------------
+  // Load landing/data/llm-prices.json on init; render one chip per
+  // provider; clicking a chip sets the cost slider to that provider's
+  // typical classifier-call cost AND surfaces the rate breakdown so
+  // the visitor sees what number they're using and where it came from.
+  // Manual cost-slider drags still work (no chip is active after a
+  // manual drag).
+  const presetsContainer = root.querySelector("[data-llm-presets-chips]");
+  const presetsDetail = root.querySelector("[data-llm-presets-detail]");
+
+  function fmtPerMillionUSD(n) {
+    return n === 0 ? "free" : "$" + n.toFixed(2) + "/M";
+  }
+
+  function renderPresetDetail(provider, lastUpdated) {
+    if (!presetsDetail) return;
+    const inputRate = fmtPerMillionUSD(provider.input_per_m_usd);
+    const outputRate = fmtPerMillionUSD(provider.output_per_m_usd);
+    const perCall = fmtPerCallUSD(provider.per_call_usd);
+    const note = provider.notes ? ` ${provider.notes}` : "";
+    presetsDetail.innerHTML = (
+      `<strong>${escapeHtml(provider.label)}</strong> (${escapeHtml(provider.model)}): ` +
+      `${escapeHtml(inputRate)} input + ${escapeHtml(outputRate)} output. ` +
+      `~${escapeHtml(perCall)}/call at 250+50 tokens.` +
+      `${escapeHtml(note)} ` +
+      `<span class="try-roi__presets-asof">Last updated ${escapeHtml(lastUpdated)}.</span>`
+    );
+  }
+
+  function setActivePresetChip(id) {
+    if (!presetsContainer) return;
+    presetsContainer.querySelectorAll("[data-llm-preset-id]").forEach((el) => {
+      el.setAttribute(
+        "aria-pressed",
+        el.dataset.llmPresetId === id ? "true" : "false"
+      );
+    });
+  }
+
+  function applyPreset(provider, lastUpdated) {
+    if (!costInput) return;
+    const cost = Number(provider.per_call_usd);
+    if (!Number.isFinite(cost) || cost <= 0) return;
+    // Clamp to slider min so the value lands in-range; the rate detail
+    // text still shows the unrounded provider price.
+    const min = Number(costInput.min) || 0.00001;
+    costInput.value = Math.max(cost, min);
+    setActivePresetChip(provider.id);
+    renderPresetDetail(provider, lastUpdated);
+    renderSavings();
+  }
+
+  async function loadLlmPresets() {
+    if (!presetsContainer) return;
+    try {
+      const r = await fetch("./data/llm-prices.json");
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const data = await r.json();
+      const lastUpdated = data.last_updated || "";
+      presetsContainer.innerHTML = "";
+      (data.providers || []).forEach((provider, idx) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "chip chip--preset";
+        btn.dataset.llmPresetId = provider.id;
+        btn.setAttribute("aria-pressed", "false");
+        btn.textContent = provider.label;
+        btn.addEventListener("click", () => applyPreset(provider, lastUpdated));
+        presetsContainer.appendChild(btn);
+        // Default selection: first chip (the baseline GPT-4o).
+        if (idx === 0) applyPreset(provider, lastUpdated);
+      });
+      if (presetsDetail && (data.providers || []).length === 0) {
+        presetsDetail.textContent = "No provider rates loaded.";
+      }
+    } catch (err) {
+      if (presetsDetail) {
+        presetsDetail.textContent =
+          "Could not load provider rates; the slider still works. Drag it to your typical $/call.";
+      }
+      if (presetsContainer) presetsContainer.innerHTML = "";
+    }
+  }
+
+  // Manual drag should clear the active chip so the visitor sees they
+  // are off-preset.
+  if (costInput) {
+    costInput.addEventListener("input", () => setActivePresetChip(null));
+  }
+
+  loadLlmPresets();
+  // ---------------------------------------------------------------
 
   if (customForm) {
     customForm.addEventListener("submit", (ev) => {

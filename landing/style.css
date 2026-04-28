@@ -920,6 +920,68 @@ section:first-of-type {
   margin: 0 0 var(--space-6);
 }
 
+.try-roi__presets {
+  margin-bottom: var(--space-6);
+  padding-bottom: var(--space-5);
+  border-bottom: 1px dashed var(--rule);
+}
+
+.try-roi__presets-label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  margin-bottom: var(--space-3);
+}
+
+.try-roi__presets-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.chip--preset {
+  background: var(--ground-soft);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: var(--space-1) var(--space-3);
+  font-size: 0.82rem;
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.chip--preset:hover,
+.chip--preset:focus-visible {
+  background: var(--ground);
+  border-color: color-mix(in oklab, var(--accent) 30%, var(--rule));
+  outline: none;
+}
+
+.chip--preset[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--ground);
+}
+
+.try-roi__presets-detail {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+.try-roi__presets-detail strong {
+  color: var(--ink);
+}
+
+.try-roi__presets-asof {
+  display: inline-block;
+  margin-left: var(--space-2);
+  font-style: italic;
+  color: color-mix(in oklab, var(--ink-soft) 80%, transparent);
+}
+
 .try-roi__sliders {
   display: grid;
   grid-template-columns: 1fr 1fr;

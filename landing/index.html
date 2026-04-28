@@ -57,10 +57,10 @@
 
     <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" />
     <link rel="apple-touch-icon" href="./assets/favicon.svg" />
-    <link rel="stylesheet" href="./style.css?v=20260427-2030" />
-    <script defer src="./scripts/analyzer-demo.js?v=20260427-2030"></script>
-    <script defer src="./scripts/copy-buttons.js?v=20260427-2030"></script>
-    <script defer src="./scripts/code-resize.js?v=20260427-2030"></script>
+    <link rel="stylesheet" href="./style.css?v=20260428-1100" />
+    <script defer src="./scripts/analyzer-demo.js?v=20260428-1100"></script>
+    <script defer src="./scripts/copy-buttons.js?v=20260428-1100"></script>
+    <script defer src="./scripts/code-resize.js?v=20260428-1100"></script>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -240,6 +240,16 @@
                 </p>
               </div>
 
+              <div class="try-roi__presets" data-llm-presets>
+                <span class="try-roi__presets-label">Per-call cost from your LLM provider</span>
+                <div class="try-roi__presets-chips" data-llm-presets-chips>
+                  <button type="button" class="chip chip--preset" data-llm-preset-loading>Loading rates…</button>
+                </div>
+                <p class="try-roi__presets-detail" data-llm-presets-detail>
+                  Click a provider to set the slider to a typical classifier-call cost at that rate.
+                </p>
+              </div>
+
               <div class="try-roi__sliders">
                 <label class="slider">
                   <span class="slider__label">Monthly classifications</span>
@@ -259,12 +269,12 @@
                   <input
                     data-roi-input="cost"
                     type="range"
-                    min="0.0001"
+                    min="0.00001"
                     max="0.05"
-                    step="0.0001"
-                    value="0.005"
+                    step="0.00001"
+                    value="0.001125"
                   />
-                  <output data-roi-input-output="cost">$0.0050</output>
+                  <output data-roi-input-output="cost">$0.001125</output>
                 </label>
               </div>
 

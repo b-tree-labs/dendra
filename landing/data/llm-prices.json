@@ -1,0 +1,93 @@
+{
+  "$schema": "https://dendra.ai/schemas/llm-prices.v1.json",
+  "last_updated": "2026-04-28",
+  "typical_classifier_prompt": {
+    "input_tokens": 250,
+    "output_tokens": 50,
+    "comment": "A representative classifier call: ~250 tokens of system + input, ~50 tokens of output (label + brief reasoning). Per-call cost below uses these values."
+  },
+  "providers": [
+    {
+      "id": "openai_gpt4o",
+      "label": "OpenAI GPT-4o",
+      "model": "gpt-4o",
+      "input_per_m_usd": 2.50,
+      "output_per_m_usd": 10.00,
+      "per_call_usd": 0.001125,
+      "notes": "Default baseline. The classifier-grade model most users start with."
+    },
+    {
+      "id": "openai_gpt4o_mini",
+      "label": "OpenAI GPT-4o mini",
+      "model": "gpt-4o-mini",
+      "input_per_m_usd": 0.15,
+      "output_per_m_usd": 0.60,
+      "per_call_usd": 0.0000675,
+      "notes": "OpenAI's lightweight tier. ~17x cheaper than GPT-4o per classifier call."
+    },
+    {
+      "id": "anthropic_haiku",
+      "label": "Anthropic Claude Haiku 3.5",
+      "model": "claude-3-5-haiku-latest",
+      "input_per_m_usd": 0.25,
+      "output_per_m_usd": 1.25,
+      "per_call_usd": 0.000125,
+      "notes": "Anthropic's fastest tier. Common production classifier choice."
+    },
+    {
+      "id": "anthropic_sonnet",
+      "label": "Anthropic Claude Sonnet 3.5",
+      "model": "claude-3-5-sonnet-latest",
+      "input_per_m_usd": 3.00,
+      "output_per_m_usd": 15.00,
+      "per_call_usd": 0.001500,
+      "notes": "Anthropic's mid-tier. Common when classifier quality matters more than per-call cost."
+    },
+    {
+      "id": "google_gemini_flash",
+      "label": "Google Gemini 1.5 Flash",
+      "model": "gemini-1.5-flash",
+      "input_per_m_usd": 0.075,
+      "output_per_m_usd": 0.30,
+      "per_call_usd": 0.0000338,
+      "notes": "Google's fast/cheap tier. Often the lowest cost-per-call from a hosted provider."
+    },
+    {
+      "id": "mistral_small",
+      "label": "Mistral Small",
+      "model": "mistral-small-latest",
+      "input_per_m_usd": 0.20,
+      "output_per_m_usd": 0.60,
+      "per_call_usd": 0.000080,
+      "notes": "European-residency option. Useful for EU customers under GDPR."
+    },
+    {
+      "id": "together_llama8b",
+      "label": "Together Llama 3.1 8B",
+      "model": "meta-llama/Llama-3.1-8B-Instruct-Turbo",
+      "input_per_m_usd": 0.18,
+      "output_per_m_usd": 0.18,
+      "per_call_usd": 0.000054,
+      "notes": "Open-weights via Together's serverless. Cheapest hosted Llama option at this size."
+    },
+    {
+      "id": "cohere_command_r",
+      "label": "Cohere Command R",
+      "model": "command-r",
+      "input_per_m_usd": 0.50,
+      "output_per_m_usd": 1.50,
+      "per_call_usd": 0.000200,
+      "notes": "Cohere's mid-tier; tuned for retrieval + classification workloads."
+    },
+    {
+      "id": "ollama_local",
+      "label": "Ollama (local)",
+      "model": "qwen2.5:7b or similar",
+      "input_per_m_usd": 0.00,
+      "output_per_m_usd": 0.00,
+      "per_call_usd": 0.00002,
+      "notes": "Local inference; per-call cost is notional electricity (~$0.00002/call on Apple Silicon). Zero per-token billing; latency is the trade-off."
+    }
+  ],
+  "disclaimer": "Per-call cost is the typical classifier prompt cost (250 input + 50 output tokens) at the listed input/output prices. Prices change; this file is updated weekly from public provider pricing pages. Verify current rates with the provider before sizing a contract."
+}
