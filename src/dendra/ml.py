@@ -20,10 +20,20 @@ from typing import Any, Protocol, runtime_checkable
 
 @dataclass(frozen=True)
 class MLPrediction:
-    """What an ML head returns for one input."""
+    """What an ML head returns for one input.
+
+    Optional ``tokens_in`` / ``tokens_out`` / ``cost_usd`` fields
+    parallel :class:`dendra.models.ModelPrediction` so a remote
+    inference-service-backed head can report real per-call spend
+    via the close-the-loop benchmark harness. Local sklearn heads
+    leave them as ``None`` (no per-call cost).
+    """
 
     label: str
     confidence: float
+    tokens_in: int | None = None
+    tokens_out: int | None = None
+    cost_usd: float | None = None
 
 
 @runtime_checkable

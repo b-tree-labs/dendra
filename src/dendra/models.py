@@ -23,10 +23,23 @@ from typing import Any, Protocol, runtime_checkable
 
 @dataclass(frozen=True)
 class ModelPrediction:
-    """What a language model classifier returns for one input."""
+    """What a language model classifier returns for one input.
+
+    Optional usage / cost fields are populated by adapters when the
+    underlying provider returns it (OpenAI / Anthropic surface
+    ``usage.prompt_tokens`` and ``usage.completion_tokens``; Ollama
+    returns ``prompt_eval_count`` and ``eval_count``). Adapters that
+    don't track usage leave them as ``None``; the close-the-loop
+    benchmark harness (``--measure-real-cost``) sums ``cost_usd``
+    across calls and falls back to the rate-card estimate when
+    ``cost_usd`` is None on every prediction.
+    """
 
     label: str
     confidence: float
+    tokens_in: int | None = None
+    tokens_out: int | None = None
+    cost_usd: float | None = None
 
 
 @runtime_checkable
@@ -155,7 +168,13 @@ class OpenAIAdapter(_BaseAdapter):
         # via confidence_threshold. Don't silently route every
         # unparseable response to labels[0].
         confidence = _logprob_to_confidence(choice) if matched else 0.0
-        return ModelPrediction(label=label, confidence=confidence)
+        tokens_in, tokens_out = _openai_usage(resp)
+        return ModelPrediction(
+            label=label,
+            confidence=confidence,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+        )
 
 
 class AnthropicAdapter(_BaseAdapter):
@@ -198,7 +217,13 @@ class AnthropicAdapter(_BaseAdapter):
         exact_hit = text in labels
         label, matched = self._normalize_label(text, labels)
         confidence = 0.0 if not matched else (0.9 if exact_hit else 0.5)
-        return ModelPrediction(label=label, confidence=confidence)
+        tokens_in, tokens_out = _anthropic_usage(resp)
+        return ModelPrediction(
+            label=label,
+            confidence=confidence,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+        )
 
 
 class OllamaAdapter(_BaseAdapter):
@@ -234,11 +259,18 @@ class OllamaAdapter(_BaseAdapter):
             timeout=self._timeout,
         )
         r.raise_for_status()
-        text = (r.json().get("response") or "").strip()
+        body = r.json()
+        text = (body.get("response") or "").strip()
         exact_hit = text in labels
         label, matched = self._normalize_label(text, labels)
         confidence = 0.0 if not matched else (0.85 if exact_hit else 0.5)
-        return ModelPrediction(label=label, confidence=confidence)
+        tokens_in, tokens_out = _ollama_usage(body)
+        return ModelPrediction(
+            label=label,
+            confidence=confidence,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+        )
 
 
 class LlamafileAdapter(OpenAIAdapter):
@@ -324,7 +356,13 @@ class OpenAIAsyncAdapter(_BaseAdapter):
         raw = (choice.message.content or "").strip()
         label, matched = self._normalize_label(raw, labels)
         confidence = _logprob_to_confidence(choice) if matched else 0.0
-        return ModelPrediction(label=label, confidence=confidence)
+        tokens_in, tokens_out = _openai_usage(resp)
+        return ModelPrediction(
+            label=label,
+            confidence=confidence,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+        )
 
 
 class AnthropicAsyncAdapter(_BaseAdapter):
@@ -364,7 +402,13 @@ class AnthropicAsyncAdapter(_BaseAdapter):
         exact_hit = text in labels
         label, matched = self._normalize_label(text, labels)
         confidence = 0.0 if not matched else (0.9 if exact_hit else 0.5)
-        return ModelPrediction(label=label, confidence=confidence)
+        tokens_in, tokens_out = _anthropic_usage(resp)
+        return ModelPrediction(
+            label=label,
+            confidence=confidence,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+        )
 
 
 class OllamaAsyncAdapter(_BaseAdapter):
@@ -400,11 +444,18 @@ class OllamaAsyncAdapter(_BaseAdapter):
                 json={"model": self._model, "prompt": prompt, "stream": False},
             )
         r.raise_for_status()
-        text = (r.json().get("response") or "").strip()
+        body = r.json()
+        text = (body.get("response") or "").strip()
         exact_hit = text in labels
         label, matched = self._normalize_label(text, labels)
         confidence = 0.0 if not matched else (0.85 if exact_hit else 0.5)
-        return ModelPrediction(label=label, confidence=confidence)
+        tokens_in, tokens_out = _ollama_usage(body)
+        return ModelPrediction(
+            label=label,
+            confidence=confidence,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+        )
 
 
 class LlamafileAsyncAdapter(OpenAIAsyncAdapter):
@@ -453,6 +504,60 @@ def _logprob_to_confidence(choice: Any) -> float:
         return float(math.exp(content[0].logprob))
     except (AttributeError, IndexError, TypeError, ValueError):
         return 0.8
+
+
+def _openai_usage(resp: Any) -> tuple[int | None, int | None]:
+    """Extract ``(prompt_tokens, completion_tokens)`` from an OpenAI
+    chat-completion response. Returns ``(None, None)`` when the
+    provider didn't include a ``usage`` block.
+    """
+    try:
+        usage = resp.usage  # type: ignore[attr-defined]
+        if usage is None:
+            return None, None
+        prompt = getattr(usage, "prompt_tokens", None)
+        completion = getattr(usage, "completion_tokens", None)
+        return (
+            int(prompt) if prompt is not None else None,
+            int(completion) if completion is not None else None,
+        )
+    except (AttributeError, TypeError, ValueError):
+        return None, None
+
+
+def _anthropic_usage(resp: Any) -> tuple[int | None, int | None]:
+    """Extract ``(input_tokens, output_tokens)`` from an Anthropic
+    Messages response. Returns ``(None, None)`` when ``usage`` is
+    missing.
+    """
+    try:
+        usage = resp.usage  # type: ignore[attr-defined]
+        if usage is None:
+            return None, None
+        prompt = getattr(usage, "input_tokens", None)
+        completion = getattr(usage, "output_tokens", None)
+        return (
+            int(prompt) if prompt is not None else None,
+            int(completion) if completion is not None else None,
+        )
+    except (AttributeError, TypeError, ValueError):
+        return None, None
+
+
+def _ollama_usage(body: dict) -> tuple[int | None, int | None]:
+    """Extract ``(prompt_eval_count, eval_count)`` from an Ollama
+    ``/api/generate`` response body. Older Ollama builds omit these
+    fields; we return ``(None, None)`` in that case.
+    """
+    try:
+        prompt = body.get("prompt_eval_count")
+        completion = body.get("eval_count")
+        return (
+            int(prompt) if prompt is not None else None,
+            int(completion) if completion is not None else None,
+        )
+    except (AttributeError, TypeError, ValueError):
+        return None, None
 
 
 __all__ = [

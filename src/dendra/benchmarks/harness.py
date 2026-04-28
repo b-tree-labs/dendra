@@ -249,6 +249,68 @@ def generate_benchmark_module(
 # ---------------------------------------------------------------------------
 
 
+class _CostRecorder:
+    """Wraps a model adapter / ML head and accumulates per-call cost
+    from each returned prediction.
+
+    Used by :func:`run_benchmark` when ``measure_real_cost=True``.
+    The wrapper is duck-typed: it forwards ``classify`` (model
+    adapters) and ``predict`` (ML heads) and pulls ``cost_usd`` off
+    the returned prediction. When ``cost_usd`` is None but tokens are
+    populated, it computes a best-effort cost using
+    :class:`dendra.roi.ROIAssumptions` rates so adapters that report
+    only token counts still produce a real-cost number.
+    """
+
+    def __init__(self, target: Any, *, assumptions: ROIAssumptions) -> None:
+        self._target = target
+        self._assumptions = assumptions
+        self.adapter_class_name: str = type(target).__name__
+        self.calls: int = 0
+        self.cost_usd_total: float = 0.0
+        self.calls_with_cost: int = 0
+
+    def _record(self, prediction: Any) -> None:
+        self.calls += 1
+        cost = getattr(prediction, "cost_usd", None)
+        if cost is None:
+            tokens_in = getattr(prediction, "tokens_in", None)
+            tokens_out = getattr(prediction, "tokens_out", None)
+            if tokens_in is not None or tokens_out is not None:
+                # Mid-point of the rate-card range; gives us a real-cost
+                # number for adapters that report tokens but not USD.
+                a = self._assumptions
+                in_rate = (
+                    a.llm_input_usd_per_1m_tokens_low + a.llm_input_usd_per_1m_tokens_high
+                ) / 2.0
+                out_rate = (
+                    a.llm_output_usd_per_1m_tokens_low + a.llm_output_usd_per_1m_tokens_high
+                ) / 2.0
+                cost = (
+                    (tokens_in or 0) * in_rate / 1e6
+                    + (tokens_out or 0) * out_rate / 1e6
+                )
+        if cost is not None:
+            self.cost_usd_total += float(cost)
+            self.calls_with_cost += 1
+
+    def classify(self, *args: Any, **kwargs: Any) -> Any:
+        prediction = self._target.classify(*args, **kwargs)
+        self._record(prediction)
+        return prediction
+
+    def predict(self, *args: Any, **kwargs: Any) -> Any:
+        prediction = self._target.predict(*args, **kwargs)
+        self._record(prediction)
+        return prediction
+
+    # Forward unknown attribute access to the wrapped target so any
+    # auxiliary methods the switch reads (model_version, fit, ...)
+    # keep working byte-for-byte.
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._target, name)
+
+
 def run_benchmark(
     *,
     switch_name: str,
@@ -266,6 +328,14 @@ def run_benchmark(
     case where the generated bench module isn't on disk yet (e.g. unit
     tests, smoke tests). The CLI command also supports a subprocess
     pytest path by importing the generated module directly.
+
+    When ``measure_real_cost=True``, the harness wraps the switch's
+    model / ML head with a :class:`_CostRecorder` that pulls
+    ``cost_usd`` off each returned prediction. The summed cost is
+    surfaced as ``real_cost_per_call`` in the JSONL row alongside the
+    estimate. Adapters that report neither ``cost_usd`` nor token
+    counts cause the harness to print a one-line warning naming the
+    adapter and leave ``real_cost_per_call`` as ``None``.
     """
     # Resolve the switch class.
     import importlib
@@ -273,6 +343,23 @@ def run_benchmark(
     module = importlib.import_module(switch_module)
     cls = getattr(module, switch_class_name)
     sw = cls()
+
+    # Hook the inner switch's model + ML head so we can record real
+    # per-call cost. The Switch base class wraps a LearnedSwitch as
+    # ``self._inner``; LearnedSwitch exposes ``_model`` / ``_ml_head``
+    # directly. Both are on a list so we can access their counters
+    # after the run.
+    cost_recorders: list[_CostRecorder] = []
+    if measure_real_cost:
+        assumptions = ROIAssumptions()
+        target_switch = getattr(sw, "_inner", sw)
+        for attr in ("_model", "_ml_head"):
+            wrapped = getattr(target_switch, attr, None)
+            if wrapped is None:
+                continue
+            recorder = _CostRecorder(wrapped, assumptions=assumptions)
+            setattr(target_switch, attr, recorder)
+            cost_recorders.append(recorder)
 
     # Label parity. We baseline against RULE; if no other phase is
     # reachable, parity defaults to 1.0 (nothing to disagree with).
@@ -311,7 +398,9 @@ def run_benchmark(
     else:
         p95 = 0.0
 
-    # Cost — estimated by default; opt-in real-cost left as a hook.
+    # Cost — estimated by default; opt-in real-cost is recorded
+    # alongside the estimate when the model adapter reports cost_usd
+    # (or token counts) on each prediction.
     a = ROIAssumptions()
     cost_low = (
         a.llm_input_tokens_per_call * a.llm_input_usd_per_1m_tokens_low / 1e6
@@ -321,6 +410,35 @@ def run_benchmark(
         a.llm_input_tokens_per_call * a.llm_input_usd_per_1m_tokens_high / 1e6
         + a.llm_output_tokens_per_call * a.llm_output_usd_per_1m_tokens_high / 1e6
     )
+
+    real_cost_per_call: float | None = None
+    if measure_real_cost:
+        total_calls = sum(r.calls for r in cost_recorders)
+        total_cost = sum(r.cost_usd_total for r in cost_recorders)
+        any_with_cost = any(r.calls_with_cost > 0 for r in cost_recorders)
+        if total_calls == 0:
+            # Switch never reached a phase that exercised a model /
+            # head. Nothing to measure; warn so the operator knows.
+            adapter_names = ", ".join(
+                sorted({r.adapter_class_name for r in cost_recorders})
+            ) or "<no adapter>"
+            print(
+                f"warning: --measure-real-cost was requested but no "
+                f"model/ml_head calls fired during the run "
+                f"(adapter: {adapter_names}). Falling back to estimated cost.",
+            )
+        elif not any_with_cost:
+            # Adapter never returned cost_usd or tokens — fall back.
+            adapter_names = ", ".join(
+                sorted({r.adapter_class_name for r in cost_recorders})
+            )
+            print(
+                f"warning: adapter {adapter_names} returned no cost_usd "
+                f"or token counts; cannot record real cost. Falling back "
+                f"to estimated cost.",
+            )
+        else:
+            real_cost_per_call = total_cost / total_calls
 
     # Phase tag — whatever the switch is currently in.
     try:
@@ -342,6 +460,8 @@ def run_benchmark(
         "cost_per_call_usd_high": cost_high,
         "estimated": not measure_real_cost,
     }
+    if measure_real_cost:
+        record["real_cost_per_call"] = real_cost_per_call
 
     bench_dir = runtime_dir / "dendra" / switch_name / "benchmarks"
     bench_dir.mkdir(parents=True, exist_ok=True)
