@@ -15,7 +15,7 @@
 
 namespace boost { namespace algorithm {
 
-template<typename InputIter, typename Sentinel, typename T>        
+template<typename InputIter, typename Sentinel, typename T>
 BOOST_CXX14_CONSTEXPR
 InputIter find_not(InputIter first, Sentinel last, const T & x)
 {

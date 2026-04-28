@@ -46,4 +46,3 @@ def test_runtime_layout_const() raises:
 
     assert_equal(String(materialize[layout_r.layout]()), "((-1, 8):(8, 1))")
     assert_equal(String(layout_r), "((16, 8):(8, 1))")
-

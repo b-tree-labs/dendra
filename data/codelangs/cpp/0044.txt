@@ -1,7 +1,7 @@
 //  Boost string_algo library find_format.hpp header file  ---------------------------//
 
 //  Copyright Pavol Droba 2002-2003.
-// 
+//
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE_1_0.txt or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
@@ -24,7 +24,7 @@ namespace boost {
 
 // find_format_copy (iterator variant) implementation -------------------------------//
 
-           template< 
+           template<
                 typename OutputIteratorT,
                 typename InputT,
                 typename FormatterT,
@@ -36,10 +36,10 @@ namespace boost {
                 FormatterT Formatter,
                 const FindResultT& FindResult,
                 const FormatResultT& FormatResult )
-            {       
+            {
                 typedef find_format_store<
-                    BOOST_STRING_TYPENAME 
-                        range_const_iterator<InputT>::type, 
+                    BOOST_STRING_TYPENAME
+                        range_const_iterator<InputT>::type,
                         FormatterT,
                         FormatResultT > store_type;
 

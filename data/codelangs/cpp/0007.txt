@@ -24,7 +24,7 @@
     for a specific Formatter. An example of such a cooperation is regex_finder
     and regex_formatter.
 
-    Formatters are used as pluggable components for replace facilities. 
+    Formatters are used as pluggable components for replace facilities.
     This header contains generator functions for the Formatters provided in this library.
 */
 

@@ -26,7 +26,7 @@
 #include <boost/algorithm/string/iter_find.hpp>
 
 /*! \file
-    Defines regex variants of the algorithms. 
+    Defines regex variants of the algorithms.
 */
 
 namespace boost {
@@ -37,14 +37,14 @@ namespace boost {
         //! Find regex algorithm
         /*!
             Search for a substring matching the given regex in the input.
-            
+
             \param Input A container which will be searched.
             \param Rx A regular expression
             \param Flags Regex options
-            \return 
-                An \c iterator_range delimiting the match. 
-                Returned iterator is either \c RangeT::iterator or 
-                \c RangeT::const_iterator, depending on the constness of 
+            \return
+                An \c iterator_range delimiting the match.
+                Returned iterator is either \c RangeT::iterator or
+                \c RangeT::const_iterator, depending on the constness of
                 the input parameter.
 
               \note This function provides the strong exception-safety guarantee

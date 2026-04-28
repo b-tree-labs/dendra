@@ -1,9 +1,9 @@
-/* 
+/*
    Copyright (c) Ivan Matek, Marshall Clow 2021.
 
    Distributed under the Boost Software License, Version 1.0. (See accompanying
    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-  
+
 */
 
 /// \file is_clamped.hpp
@@ -44,7 +44,7 @@ namespace boost { namespace algorithm {
     //    might be equal
     return p(val, lo) ? false : p(hi, val) ? false : true;
   }
-  
+
 /// \fn is_clamped ( T const& val,
 ///               typename boost::type_identity<T>::type const & lo,
 ///               typename boost::type_identity<T>::type const & hi)

@@ -28,10 +28,10 @@
 #include <boost/algorithm/string/detail/util.hpp>
 
 /*! \file
-    Defines generic split algorithms. Split algorithms can be 
-    used to divide a sequence into several part according 
-    to a given criteria. Result is given as a 'container 
-    of containers' where elements are copies or references 
+    Defines generic split algorithms. Split algorithms can be
+    used to divide a sequence into several part according
+    to a given criteria. Result is given as a 'container
+    of containers' where elements are copies or references
     to extracted parts.
 
     There are two algorithms provided. One iterates over matching
@@ -47,4 +47,4 @@ namespace boost {
         /*!
             This algorithm executes a given finder in iteration on the input,
             until the end of input is reached, or no match is found.
-            Iteration is done using built-in find_iterator, so the real 
+            Iteration is done using built-in find_iterator, so the real

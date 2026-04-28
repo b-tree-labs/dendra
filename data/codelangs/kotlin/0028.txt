@@ -21,7 +21,7 @@ import kotlin.ranges.reversed
 
 /**
  * Returns a set containing all elements of the original set except the given [element].
- * 
+ *
  * The returned set preserves the element iteration order of the original set.
  */
 public operator fun <T> Set<T>.minus(element: T): Set<T> {
@@ -32,7 +32,7 @@ public operator fun <T> Set<T>.minus(element: T): Set<T> {
 
 /**
  * Returns a set containing all elements of the original set except the elements contained in the given [elements] array.
- * 
+ *
  * The returned set preserves the element iteration order of the original set.
  */
 public operator fun <T> Set<T>.minus(elements: Array<out T>): Set<T> {
@@ -43,7 +43,7 @@ public operator fun <T> Set<T>.minus(elements: Array<out T>): Set<T> {
 
 /**
  * Returns a set containing all elements of the original set except the elements contained in the given [elements] collection.
- * 
+ *
  * The returned set preserves the element iteration order of the original set.
  */
 public operator fun <T> Set<T>.minus(elements: Iterable<T>): Set<T> {

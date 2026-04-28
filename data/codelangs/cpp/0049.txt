@@ -24,10 +24,10 @@
 #include <boost/algorithm/string/compare.hpp>
 
 /*! \file
-    Defines Finder generators. Finder object is a functor which is able to 
+    Defines Finder generators. Finder object is a functor which is able to
     find a substring matching a specific criteria in the input.
-    Finders are used as a pluggable components for replace, find 
-    and split facilities. This header contains generator functions 
+    Finders are used as a pluggable components for replace, find
+    and split facilities. This header contains generator functions
     for finders provided in this library.
 */
 
@@ -35,8 +35,8 @@ namespace boost {
     namespace algorithm {
 
 //  Finder generators ------------------------------------------//
-        
-        //! "First" finder 
+
+        //! "First" finder
         /*!
             Construct the \c first_finder. The finder searches for the first
             occurrence of the string in a given input.

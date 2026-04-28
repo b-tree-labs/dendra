@@ -37,9 +37,9 @@ namespace boost {
         //! Replace range algorithm
         /*!
             Replace the given range in the input string.
-            The result is a modified copy of the input. It is returned as a sequence 
+            The result is a modified copy of the input. It is returned as a sequence
             or copied to the output iterator.
-            
+
             \param Output An output iterator to which the result will be copied
             \param Input An input string
             \param SearchRange A range in the input to be substituted

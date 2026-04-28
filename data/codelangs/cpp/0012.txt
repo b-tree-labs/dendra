@@ -18,10 +18,10 @@
 #include <boost/algorithm/string/compare.hpp>
 
 /*! \file
-    Defines basic split algorithms. 
+    Defines basic split algorithms.
     Split algorithms can be used to divide a string
     into several parts according to given criteria.
-    
+
     Each part is copied and added as a new element to the
     output container.
     Thus the result container must be able to hold copies
@@ -40,7 +40,7 @@ namespace boost {
         /*!
             This algorithm finds all occurrences of the search string
             in the input.
-            
+
             Each part is copied and added as a new element to the
             output container.
             Thus the result container must be able to hold copies

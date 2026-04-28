@@ -37,7 +37,7 @@ namespace detail {
         Predicate p_;
         Iterator it_;
         };
-        
+
 //  Preconditions:
 //  1. The sequences are the same length
 //  2. Any common elements on the front have been removed (not necessary for correctness, just for performance)

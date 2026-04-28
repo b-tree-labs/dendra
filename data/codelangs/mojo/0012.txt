@@ -46,4 +46,3 @@ def test_multicast() raises:
     var ctx1 = create_test_device_context(device_id=1)
 
     _test_multicast_memory([ctx0, ctx1])
-

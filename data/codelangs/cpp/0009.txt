@@ -22,7 +22,7 @@ namespace boost {
         namespace detail {
 
 //  storage handling routines -----------------------------------------------//
-            
+
             template< typename StorageT, typename OutputIteratorT >
             inline OutputIteratorT move_from_storage(
                 StorageT& Storage,
@@ -30,7 +30,7 @@ namespace boost {
                 OutputIteratorT DestEnd )
             {
                 OutputIteratorT OutputIt=DestBegin;
-                
+
                 while( !Storage.empty() && OutputIt!=DestEnd )
                 {
                     *OutputIt=Storage.front();

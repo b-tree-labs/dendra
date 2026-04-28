@@ -21,9 +21,9 @@ namespace boost {
 //  trim iterator helper -----------------------------------------------//
 
             template< typename ForwardIteratorT, typename PredicateT >
-            inline ForwardIteratorT trim_end_iter_select( 
-                ForwardIteratorT InBegin, 
-                ForwardIteratorT InEnd, 
+            inline ForwardIteratorT trim_end_iter_select(
+                ForwardIteratorT InBegin,
+                ForwardIteratorT InEnd,
                 PredicateT IsSpace,
                 std::forward_iterator_tag )
             {
@@ -31,7 +31,7 @@ namespace boost {
 
                 for( ForwardIteratorT It=InBegin; It!=InEnd; ++It )
                 {
-                    if ( !IsSpace(*It) ) 
+                    if ( !IsSpace(*It) )
                     {
                         TrimIt=It;
                         ++TrimIt;
@@ -42,9 +42,9 @@ namespace boost {
             }
 
             template< typename ForwardIteratorT, typename PredicateT >
-            inline ForwardIteratorT trim_end_iter_select( 
-                ForwardIteratorT InBegin, 
-                ForwardIteratorT InEnd, 
+            inline ForwardIteratorT trim_end_iter_select(
+                ForwardIteratorT InBegin,
+                ForwardIteratorT InEnd,
                 PredicateT IsSpace,
                 std::bidirectional_iterator_tag )
             {

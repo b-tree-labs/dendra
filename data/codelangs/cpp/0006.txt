@@ -24,11 +24,11 @@ namespace boost {
 #pragma warning(push)
 #pragma warning(disable:4512) //assignment operator could not be generated
 #endif
-            template< 
+            template<
                 typename ForwardIteratorT,
                 typename FormatterT,
                 typename FormatResultT >
-            class find_format_store : 
+            class find_format_store :
                 public iterator_range<ForwardIteratorT>
             {
             public:
@@ -36,10 +36,10 @@ namespace boost {
                 typedef iterator_range<ForwardIteratorT> base_type;
                 typedef FormatterT  formatter_type;
                 typedef FormatResultT format_result_type;
-                
+
             public:
                 // Construction
-                find_format_store( 
+                find_format_store(
                         const base_type& FindResult,
                         const format_result_type& FormatResult,
                         const formatter_type& Formatter ) :

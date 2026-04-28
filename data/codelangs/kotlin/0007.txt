@@ -21,7 +21,7 @@ import kotlin.ranges.reversed
 
 /**
  * Returns 1st *element* from the array.
- * 
+ *
  * If the size of this array is less than 1, throws an [IndexOutOfBoundsException] except in Kotlin/JS
  * where the behavior is unspecified, and in Kotlin/Wasm where
  * a [trap](https://webassembly.github.io/spec/core/intro/overview.html#trap) will be raised instead,
@@ -34,7 +34,7 @@ public inline operator fun <T> Array<out T>.component1(): T {
 
 /**
  * Returns 1st *element* from the array.
- * 
+ *
  * If the size of this array is less than 1, throws an [IndexOutOfBoundsException] except in Kotlin/JS
  * where the behavior is unspecified, and in Kotlin/Wasm where
  * a [trap](https://webassembly.github.io/spec/core/intro/overview.html#trap) will be raised instead,
@@ -47,4 +47,4 @@ public inline operator fun ByteArray.component1(): Byte {
 
 /**
  * Returns 1st *element* from the array.
- * 
+ *

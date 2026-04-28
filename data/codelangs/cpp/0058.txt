@@ -26,7 +26,7 @@ namespace boost {
 
 // find_format_all_copy (iterator variant) implementation ---------------------------//
 
-           template< 
+           template<
                 typename OutputIteratorT,
                 typename InputT,
                 typename FinderT,
@@ -40,11 +40,11 @@ namespace boost {
                 FormatterT Formatter,
                 const FindResultT& FindResult,
                 const FormatResultT& FormatResult )
-            {       
-                typedef BOOST_STRING_TYPENAME 
-                    range_const_iterator<InputT>::type input_iterator_type; 
+            {
+                typedef BOOST_STRING_TYPENAME
+                    range_const_iterator<InputT>::type input_iterator_type;
 
                 typedef find_format_store<
-                        input_iterator_type, 
+                        input_iterator_type,
                         FormatterT,
                         FormatResultT > store_type;

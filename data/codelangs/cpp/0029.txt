@@ -16,7 +16,7 @@
 #include <boost/range/begin.hpp>
 #include <boost/range/end.hpp>
 
-/*! \file 
+/*! \file
     Defines concepts used in string_algo library
 */
 
@@ -45,5 +45,5 @@ namespace boost {
         private:
             range r;
             IteratorT i;
-            FinderT* pF;    
+            FinderT* pF;
         }; // Finder_concept

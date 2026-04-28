@@ -24,7 +24,7 @@ namespace boost {
         namespace detail {
 
 //  insert helpers  -------------------------------------------------//
-        
+
             template< typename InputT, typename ForwardIteratorT >
             inline void insert(
                 InputT& Input,
@@ -43,7 +43,7 @@ namespace boost {
             {
                 ::boost::algorithm::detail::insert( Input, At, ::boost::begin(Insert), ::boost::end(Insert) );
             }
-           
+
 //  erase helper  ---------------------------------------------------//
 
             // Erase a range in the sequence

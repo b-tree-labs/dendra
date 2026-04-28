@@ -20,10 +20,10 @@
 
 
 /*! \file
-    Classification predicates are included in the library to give 
-    some more convenience when using algorithms like \c trim() and \c all(). 
+    Classification predicates are included in the library to give
+    some more convenience when using algorithms like \c trim() and \c all().
     They wrap functionality of STL classification functions ( e.g. \c std::isspace() )
-    into generic functors. 
+    into generic functors.
 */
 
 namespace boost {
@@ -38,7 +38,7 @@ namespace boost {
 
             \param Type A \c std::ctype category
             \param Loc A locale used for classification
-            \return An instance of the \c is_classified predicate 
+            \return An instance of the \c is_classified predicate
         */
         inline detail::is_classifiedF
         is_classified(std::ctype_base::mask Type, const std::locale& Loc=std::locale())
