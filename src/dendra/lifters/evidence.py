@@ -244,12 +244,42 @@ def _validate_args(func: ast.FunctionDef) -> list[str]:
 # ----------------------------------------------------------------------
 
 
+# Probe expressions that name any of these builtins are refused outright.
+# An attacker-supplied annotation cannot turn `dendra init --auto-lift`
+# into a code-injection vector: the literal probe string is spliced into
+# generated source, so even though the LIFTER never `eval`s it, an
+# unsuspecting user who later imports the generated module would fire it.
+# We refuse so the unsafe expression never reaches the generated file.
+_FORBIDDEN_PROBE_BUILTINS = frozenset(
+    {"__import__", "eval", "exec", "compile", "open", "getattr", "setattr", "delattr"}
+)
+
+
+def _probe_calls_forbidden_builtin(expr: ast.expr) -> str | None:
+    """Return the offending builtin name if ``expr`` calls any forbidden
+    builtin (anywhere in its sub-expression tree), else None.
+    """
+    for node in ast.walk(expr):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id in _FORBIDDEN_PROBE_BUILTINS
+        ):
+            return node.func.id
+    return None
+
+
 def _extract_probe_overrides(func: ast.FunctionDef) -> dict[str, ast.expr]:
     """Pull ``@evidence_via_probe(field="probe_expr")`` annotations.
 
     Returns a dict mapping each declared field name to the parsed AST
     expression of the probe call. The decorator is removed from the
     function's decorator list in-place so codegen does not echo it.
+
+    Refuses probe expressions that call any builtin in
+    ``_FORBIDDEN_PROBE_BUILTINS``. Such probes would otherwise be
+    spliced verbatim into generated source - a code-injection risk
+    against any user who imports the generated module.
     """
     out: dict[str, ast.expr] = {}
     keep: list[ast.expr] = []
@@ -268,6 +298,17 @@ def _extract_probe_overrides(func: ast.FunctionDef) -> dict[str, ast.expr]:
                     parsed = ast.parse(kw.value.value, mode="eval").body
                 except SyntaxError:
                     continue
+                forbidden = _probe_calls_forbidden_builtin(parsed)
+                if forbidden is not None:
+                    raise LiftRefused(
+                        reason=(
+                            f"unsafe_probe: @evidence_via_probe({kw.arg}=...) "
+                            f"calls forbidden builtin {forbidden!r}. The "
+                            "probe expression is spliced into generated "
+                            "code; refusing to write it to disk."
+                        ),
+                        line=getattr(dec, "lineno", 0),
+                    )
                 out[kw.arg] = parsed
             continue
         keep.append(dec)
@@ -779,7 +820,7 @@ def _safe_field_name(raw: str, taken: set[str]) -> str:
 
 
 # ----------------------------------------------------------------------
-# Predicate factories — each returns a callable matching specific AST
+# Predicate factories - each returns a callable matching specific AST
 # shapes the rule rewriter should replace with ``evidence.<name>``.
 # ----------------------------------------------------------------------
 
@@ -880,7 +921,7 @@ def _match_self_attr(attr: str):
 
 
 # ----------------------------------------------------------------------
-# Side-effect refusal — narrower than the analyzer's
+# Side-effect refusal - narrower than the analyzer's
 # ----------------------------------------------------------------------
 
 

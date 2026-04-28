@@ -12,11 +12,11 @@
 # Additional Use Grant: see LICENSE-BSL. Production use is
 # permitted; offering a competing hosted service is not.
 
-"""``dendra`` CLI — minimum-viable entry point.
+"""``dendra`` CLI - minimum-viable entry point.
 
 Subcommands:
 
-- ``dendra bench <benchmark>`` — run the transition-curve experiment
+- ``dendra bench <benchmark>`` - run the transition-curve experiment
   for a named public intent-classification dataset and print JSON-lines
   checkpoints to stdout.
 
@@ -282,7 +282,7 @@ def _try_auto_lift(
 
 
 def cmd_status(args: argparse.Namespace) -> int:
-    """Bare ``dendra`` (no subcommand) — soft welcome / status."""
+    """Bare ``dendra`` (no subcommand) - soft welcome / status."""
     creds = auth.load_credentials()
     if creds is None:
         print(
@@ -432,7 +432,7 @@ def cmd_bench(args: argparse.Namespace) -> int:
 
 
 def _build_lm(args: argparse.Namespace):
-    """Factory — map CLI args to an ModelClassifier instance."""
+    """Factory - map CLI args to an ModelClassifier instance."""
     from dendra.models import (
         AnthropicAdapter,
         LlamafileAdapter,
@@ -559,7 +559,7 @@ def cmd_init(args: argparse.Namespace) -> int:
 
     _bump_counter("init_count")
     state = _load_state()
-    # The first successful `init` is a teachable moment — show the nudge
+    # The first successful `init` is a teachable moment - show the nudge
     # once even if the analyze threshold has not been reached.
     if (
         int(state.get("init_count", 0)) == 1
@@ -613,7 +613,7 @@ def cmd_roi(args: argparse.Namespace) -> int:
 
 
 _QUICKSTART_EXAMPLES = {
-    "hello": ("01_hello_world.py", "smallest example — rule + dispatch"),
+    "hello": ("01_hello_world.py", "smallest example - rule + dispatch"),
     "tournament": ("21_tournament.py", "pick among N candidates with statistical confidence"),
     "autoresearch": ("19_autoresearch_loop.py", "Karpathy-style propose / evaluate / reflect loop"),
     "verifier": ("20_verifier_default.py", "autonomous-verification default"),
@@ -625,7 +625,7 @@ def cmd_quickstart(args: argparse.Namespace) -> int:
     """Copy an example into the cwd (or path) and run it.
 
     The fastest path from `pip install dendra` to "I see it work."
-    No git clone, no `cd examples/` — `dendra quickstart` and you're
+    No git clone, no `cd examples/` - `dendra quickstart` and you're
     looking at output.
     """
     import shutil
@@ -635,7 +635,7 @@ def cmd_quickstart(args: argparse.Namespace) -> int:
     if args.list:
         print("Available quickstart examples:")
         for key, (filename, desc) in _QUICKSTART_EXAMPLES.items():
-            print(f"  {key:14s} — {desc}")
+            print(f"  {key:14s} - {desc}")
             print(f"  {'':14s}    ({filename})")
         return 0
 
@@ -649,11 +649,11 @@ def cmd_quickstart(args: argparse.Namespace) -> int:
     filename, desc = _QUICKSTART_EXAMPLES[args.example]
 
     # Locate the example. Two cases:
-    #  1. Editable install / source checkout — examples/ sits next to src/
-    #  2. Wheel install — examples aren't packaged; fetch from GitHub raw.
+    #  1. Editable install / source checkout - examples/ sits next to src/
+    #  2. Wheel install - examples aren't packaged; fetch from GitHub raw.
     #
     # We try the local path first; if it isn't there, fall back to a
-    # tagged release on GitHub. Failure is honest — the user gets a
+    # tagged release on GitHub. Failure is honest - the user gets a
     # clear "neither path worked" message with both URLs.
     here = Path(__file__).resolve()
     repo_root = here.parent.parent.parent
@@ -674,7 +674,7 @@ def cmd_quickstart(args: argparse.Namespace) -> int:
         import urllib.error
         import urllib.request
 
-        # Wheel install — fetch from the public repo.
+        # Wheel install - fetch from the public repo.
         url_base = "https://raw.githubusercontent.com/axiom-labs-os/dendra/main/examples"
         url = f"{url_base}/{filename}"
         try:
@@ -704,7 +704,7 @@ def cmd_quickstart(args: argparse.Namespace) -> int:
     rc = subprocess.run([sys.executable, str(target_file)]).returncode
     print("-" * 60, flush=True)
     if rc == 0:
-        print(f"done. The script lives at {target_file} — edit + re-run as you experiment.")
+        print(f"done. The script lives at {target_file} - edit + re-run as you experiment.")
     return rc
 
 
@@ -726,12 +726,41 @@ def cmd_refresh(args: argparse.Namespace) -> int:
 
     # Find all generated files under root: any *.py in a directory named
     # __dendra_generated__.
+    #
+    # SECURITY: refuse to follow symlinks that escape the project root.
+    # ``Path.rglob`` resolves directory entries by default, so a
+    # ``__dendra_generated__`` symlink pointing outside ``root`` would
+    # otherwise let the walker glob (and parse-read) arbitrary *.py
+    # files on the filesystem. No code is executed - parse_generated_header
+    # only reads the header - but presenting an out-of-tree path is
+    # itself a leak. We require both the symlink itself AND each *.py
+    # under it to resolve under ``root`` before honoring them.
+    root_resolved = root.resolve()
     generated_files: list[Path] = []
     for gen_dir in root.rglob("__dendra_generated__"):
         if not gen_dir.is_dir():
             continue
+        try:
+            gen_resolved = gen_dir.resolve()
+        except OSError:
+            continue
+        if not gen_resolved.is_relative_to(root_resolved):
+            sys.stderr.write(
+                f"refusing to walk {gen_dir}: resolves outside project root "
+                f"{root} (symlink escape).\n"
+            )
+            continue
         for f in gen_dir.glob("*.py"):
             if f.name == "__init__.py":
+                continue
+            try:
+                f_resolved = f.resolve()
+            except OSError:
+                continue
+            if not f_resolved.is_relative_to(root_resolved):
+                sys.stderr.write(
+                    f"refusing to inspect {f}: resolves outside project root {root}.\n"
+                )
                 continue
             generated_files.append(f)
 
@@ -981,7 +1010,7 @@ def cmd_plot(args: argparse.Namespace) -> int:
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="dendra")
-    # Bare `dendra` (no subcommand) routes to cmd_status — the soft entry
+    # Bare `dendra` (no subcommand) routes to cmd_status - the soft entry
     # point for new users. Subcommands are still discoverable via --help.
     parser.set_defaults(fn=cmd_status, cmd=None)
     sub = parser.add_subparsers(dest="cmd", required=False)
@@ -1071,7 +1100,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     p_init.add_argument(
         "target",
-        help="FILE:FUNCTION — e.g., src/triage.py:triage_ticket",
+        help="FILE:FUNCTION - e.g., src/triage.py:triage_ticket",
     )
     p_init.add_argument(
         "--author",
