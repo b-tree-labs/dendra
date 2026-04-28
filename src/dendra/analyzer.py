@@ -297,6 +297,71 @@ def _compute_fit_score(labels: list[str], pattern: str) -> float:
 
 
 # ---------------------------------------------------------------------------
+# Test-site detection (mirrors scripts/enrich_landing_corpus.py)
+#
+# Sites in test directories or with pytest/unittest naming conventions are
+# demoted with a ``not_a_classifier`` hazard so users running ``dendra
+# analyze`` on their own repo don't see test fixtures dominate the top of
+# the fit list.
+# ---------------------------------------------------------------------------
+
+
+_TEST_PATH_FRAGMENTS: tuple[str, ...] = (
+    "/tests/",
+    "/test/",
+    "_test.py",
+    "/conftest.py",
+)
+_UNITTEST_FIXTURE_NAMES: frozenset[str] = frozenset(
+    {
+        "setUp",
+        "tearDown",
+        "setUpClass",
+        "tearDownClass",
+        "setUpModule",
+        "tearDownModule",
+    }
+)
+
+
+def _is_test_site(
+    file_path: str,
+    function_name: str,
+    fn: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> bool:
+    """True if this site looks like a test fixture or test function.
+
+    Heuristics, any of which trips the demotion:
+
+    - File path contains ``/tests/``, ``/test/``, ``_test.py``, or
+      ``/conftest.py``.
+    - Function name matches ``test_<...>``.
+    - Function name is a unittest fixture (setUp/tearDown family).
+    - Function takes zero args AND has no ``return`` statements (covers
+      pytest-style sanity tests that the analyzer's pattern detectors
+      occasionally pick up).
+    """
+    # Normalize so a top-level "tests/" matches "/tests/".
+    normalized = "/" + file_path.replace("\\", "/").lstrip("/")
+    if any(frag in normalized for frag in _TEST_PATH_FRAGMENTS):
+        return True
+    if function_name.startswith("test_"):
+        return True
+    if function_name in _UNITTEST_FIXTURE_NAMES:
+        return True
+
+    args = fn.args
+    total_args = (
+        len(args.posonlyargs)
+        + len(args.args)
+        + len(args.kwonlyargs)
+        + (1 if args.vararg else 0)
+        + (1 if args.kwarg else 0)
+    )
+    return total_args == 0 and not any(isinstance(node, ast.Return) for node in ast.walk(fn))
+
+
+# ---------------------------------------------------------------------------
 # Per-file analysis
 # ---------------------------------------------------------------------------
 
@@ -316,8 +381,9 @@ def _analyze_file(path: Path, root: Path) -> tuple[list[ClassificationSite], lis
         errors.append(f"{path.relative_to(root)}: parse failed ({e.msg})")
         return sites, errors
 
+    rel_path_str = str(path.relative_to(root))
     for node in ast.walk(tree):
-        if not isinstance(node, ast.FunctionDef):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
         matched_pattern: str | None = None
         for pattern_name, detector in _PATTERNS:
@@ -339,6 +405,34 @@ def _analyze_file(path: Path, root: Path) -> tuple[list[ClassificationSite], lis
                 node_hazards.extend(detector(node))
             except Exception:  # noqa: BLE001 - detector failures must not kill the run
                 continue
+        # Test-suite demotion: pytest fixtures and unittest setUp/tearDown
+        # methods scored at fit 5.0 in real-codebase testing because they
+        # look structurally like classifiers (if/elif chains with string
+        # returns). Demote them to refused with a not_a_classifier hazard
+        # so the user sees what was found and why instead of the noise
+        # dominating the top of the fit list. Mirrors the existing
+        # landing-corpus filter, applied at the analyzer layer.
+        if _is_test_site(rel_path_str, node.name, node) and not any(
+            h.category == "not_a_classifier" for h in node_hazards
+        ):
+            node_hazards.append(
+                Hazard(
+                    category="not_a_classifier",
+                    line=node.lineno,
+                    reason=(
+                        f"Function {node.name!r} at {rel_path_str}:{node.lineno} "
+                        "looks like a test fixture or test function (path or "
+                        "name matches a test convention), not a production "
+                        "classifier."
+                    ),
+                    suggested_fix=(
+                        "If this really is a classifier worth wrapping, move "
+                        "it out of the test path and rename it so it doesn't "
+                        "match pytest/unittest conventions."
+                    ),
+                    severity="error",
+                )
+            )
         if any(h.severity == "error" for h in node_hazards):
             lift_status = LiftStatus.REFUSED.value
         elif node_hazards:
@@ -347,7 +441,7 @@ def _analyze_file(path: Path, root: Path) -> tuple[list[ClassificationSite], lis
             lift_status = LiftStatus.AUTO_LIFTABLE.value
 
         site = ClassificationSite(
-            file_path=str(path.relative_to(root)),
+            file_path=rel_path_str,
             function_name=node.name,
             line_start=node.lineno,
             line_end=getattr(node, "end_lineno", node.lineno),

@@ -497,3 +497,122 @@ class TestRegimeInJsonReport:
         text = render_text(report)
         # The text report's by-regime section should mention "high".
         assert "high" in text.lower()
+
+
+# ---------------------------------------------------------------------------
+# Async classifier sites — analyzer must surface AsyncFunctionDef matches.
+# Real-codebase testing on 2026-04-28 found zero async sites across 10
+# corpora including langchain. Root cause: ``isinstance(node, ast.FunctionDef)``
+# excludes ``AsyncFunctionDef``. The fix surfaces them; lifters keep
+# refusing for now (queued as v1.5 work).
+# ---------------------------------------------------------------------------
+
+
+class TestAsyncFunctionDef:
+    def test_analyzer_recognizes_async_def(self, tmp_path):
+        _write(
+            tmp_path / "async_triage.py",
+            "async def classify(text: str) -> str:\n"
+            "    if 'bug' in text:\n"
+            "        return 'bug'\n"
+            "    return 'other'\n",
+        )
+        report = analyze(tmp_path)
+        assert report.total_sites() == 1, (
+            f"expected analyzer to surface 1 async classifier site, "
+            f"got {report.total_sites()}: {[s.function_name for s in report.sites]}"
+        )
+        site = report.sites[0]
+        assert site.function_name == "classify"
+        assert site.pattern == "P1"
+        assert site.fit_score > 0.0
+        assert set(site.labels) == {"bug", "other"}
+
+    def test_analyzer_finds_both_sync_and_async_in_same_file(self, tmp_path):
+        _write(
+            tmp_path / "mixed.py",
+            "def sync_classify(text):\n"
+            "    if 'a' in text: return 'alpha'\n"
+            "    return 'beta'\n"
+            "\n"
+            "async def async_classify(text):\n"
+            "    if 'a' in text: return 'alpha'\n"
+            "    return 'beta'\n",
+        )
+        report = analyze(tmp_path)
+        names = sorted(s.function_name for s in report.sites)
+        assert names == ["async_classify", "sync_classify"]
+
+
+# ---------------------------------------------------------------------------
+# Test-path demotion — analyzer should mark sites in test directories /
+# pytest-style fixtures as refused with a ``not_a_classifier`` hazard so
+# they don't dominate fit lists when users run ``dendra analyze`` on
+# their own repo. Mirrors the existing landing-corpus filter, applied at
+# the analyzer layer.
+# ---------------------------------------------------------------------------
+
+
+class TestTestPathDemotion:
+    def test_analyzer_demotes_test_function_sites(self, tmp_path):
+        _write(
+            tmp_path / "tests" / "test_thing.py",
+            "def test_cors():\n"
+            "    if 'origin' in 'header': return 'allowed'\n"
+            "    return 'denied'\n",
+        )
+        report = analyze(tmp_path)
+        # Site is still surfaced (option (b) — transparency over silence).
+        assert report.total_sites() == 1
+        site = report.sites[0]
+        assert site.function_name == "test_cors"
+        assert site.lift_status == "refused"
+        assert any(h.category == "not_a_classifier" for h in site.hazards), (
+            f"expected a not_a_classifier hazard, got {[h.category for h in site.hazards]}"
+        )
+
+    def test_analyzer_demotes_setup_method(self, tmp_path):
+        _write(
+            tmp_path / "module" / "thing_test.py",
+            "def setUp():\n    if 'a' in 'b': return 'x'\n    return 'y'\n",
+        )
+        report = analyze(tmp_path)
+        assert report.total_sites() == 1
+        site = report.sites[0]
+        assert site.lift_status == "refused"
+        assert any(h.category == "not_a_classifier" for h in site.hazards)
+
+    def test_analyzer_demotes_conftest_site(self, tmp_path):
+        _write(
+            tmp_path / "conftest.py",
+            "def my_fixture(x):\n    if 'a' in x: return 'alpha'\n    return 'beta'\n",
+        )
+        report = analyze(tmp_path)
+        assert report.total_sites() == 1
+        site = report.sites[0]
+        assert site.lift_status == "refused"
+        assert any(h.category == "not_a_classifier" for h in site.hazards)
+
+    def test_analyzer_demotes_unittest_fixture_in_test_dir(self, tmp_path):
+        # Combination: name pattern + path pattern. Should still be one
+        # not_a_classifier hazard (no double-counting).
+        _write(
+            tmp_path / "tests" / "test_x.py",
+            "def tearDownClass():\n    if 'a' in 'b': return 'x'\n    return 'y'\n",
+        )
+        report = analyze(tmp_path)
+        assert report.total_sites() == 1
+        site = report.sites[0]
+        assert site.lift_status == "refused"
+
+    def test_real_classifier_in_non_test_path_is_unaffected(self, tmp_path):
+        """Sanity check: real production code keeps its lift_status."""
+        _write(
+            tmp_path / "src" / "triage.py",
+            "def triage(ticket):\n    if 'crash' in ticket: return 'bug'\n    return 'feature'\n",
+        )
+        report = analyze(tmp_path)
+        assert report.total_sites() == 1
+        site = report.sites[0]
+        assert site.lift_status == "auto_liftable"
+        assert site.hazards == []

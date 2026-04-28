@@ -287,11 +287,24 @@ def _try_auto_lift(
     # v1 simplicity, use the file stem; the lifter-doctor pair already
     # tolerates this convention.
     source_module = source_path.stem
+    # Hash the SAME thing the reader (`refresh.detect_drift`) hashes:
+    # the post-decoration extracted function source. ``original_source``
+    # is the pre-decoration full file; using it directly here would
+    # guarantee a hash mismatch on first refresh because the reader
+    # extracts just the function (with its newly-added decorator) and
+    # hashes only that snippet. Re-read the file to capture the wrapper
+    # state already written by ``cmd_init``.
+    post_decoration_source = source_path.read_text(encoding="utf-8")
+    fn_src = refresh_mod._extract_function_source(post_decoration_source, function_name)
+    if fn_src is None:
+        # Should not happen: cmd_init just wrapped this function. Fall
+        # back to the original source so we at least write a header.
+        fn_src = original_source
     refresh_mod.write_generated_file(
         gen_path,
         source_module=source_module,
         source_function=function_name,
-        source_ast_hash=refresh_mod.ast_hash(original_source),
+        source_ast_hash=refresh_mod.ast_hash(fn_src),
         content=lifted_source,
         dendra_version=_dendra_version,
     )
