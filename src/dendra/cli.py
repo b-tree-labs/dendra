@@ -46,8 +46,17 @@ from dendra import auth
 
 _DASHBOARD_BASE = "https://app.dendra.ai"
 _CLI_AUTH_PATH = "/cli-auth"
-_STATE_FILE = Path.home() / ".dendra" / "state.toml"
 _NUDGE_THRESHOLD = 3
+
+
+def _state_file() -> Path:
+    """Resolve the CLI state file lazily.
+
+    Resolved on each call so that the test harness's HOME redirect
+    (and any user-set ``HOME`` between invocations) takes effect
+    instead of being captured at import time.
+    """
+    return Path.home() / ".dendra" / "state.toml"
 
 
 def _truncate_key(api_key: str) -> str:
@@ -63,11 +72,12 @@ def _load_state() -> dict:
     We hand-parse the small subset we write (int counts, bool flags) to
     avoid a tomllib dependency on Python 3.10. Unknown lines are ignored.
     """
-    if not _STATE_FILE.exists():
+    state_file = _state_file()
+    if not state_file.exists():
         return {}
     state: dict = {}
     try:
-        for raw in _STATE_FILE.read_text(encoding="utf-8").splitlines():
+        for raw in state_file.read_text(encoding="utf-8").splitlines():
             line = raw.strip()
             if not line or line.startswith("#") or "=" not in line:
                 continue
@@ -87,7 +97,8 @@ def _load_state() -> dict:
 
 
 def _save_state(state: dict) -> None:
-    _STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    state_file = _state_file()
+    state_file.parent.mkdir(parents=True, exist_ok=True)
     lines = []
     for key, value in sorted(state.items()):
         if isinstance(value, bool):
@@ -96,7 +107,7 @@ def _save_state(state: dict) -> None:
             lines.append(f"{key} = {value}")
         else:
             lines.append(f'{key} = "{value}"')
-    _STATE_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    state_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def _maybe_nudge_signup() -> None:
