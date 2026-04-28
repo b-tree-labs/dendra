@@ -38,7 +38,8 @@ repos:
         exclude: |
           (?x)^(
               docs/papers/.*/results/.*\.jsonl|
-              tests/test_security_benchmarks\.py
+              tests/test_security_benchmarks\.py|
+              tests/redteam/test_auth_abuse\.py
           )$
 
   - repo: local
