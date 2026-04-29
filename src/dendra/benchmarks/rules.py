@@ -6,10 +6,17 @@
 Paper §4.2: the rule is "deliberately simple" — day-zero engineering-
 time rules, not expert-tuned baselines. We build one reproducibly:
 
-1. Take the first N training examples (paper default: 100).
-2. For each label appearing in that window, extract its most distinctive
+1. Shuffle the training stream with a deterministic seed (default
+   ``shuffle=True``, ``shuffle_seed=0``) so a label-sorted upstream
+   split (Banking77, HWU64, CLINC150, Snips on HuggingFace are all
+   sorted by class) cannot capture the seed window for a single label.
+   Pass ``shuffle=False`` to opt out and reproduce the v0.x
+   paper-as-shipped numbers.
+2. Take the first N training examples (paper default: 100) from that
+   (optionally shuffled) stream.
+3. For each label appearing in that window, extract its most distinctive
    bag-of-words tokens via per-class TF-style frequencies.
-3. Return a closure that scores an input against every label's keyword
+4. Return a closure that scores an input against every label's keyword
    set and returns the top-scoring label, falling back to the dominant
    label in the seed window when no keywords match.
 
@@ -19,6 +26,7 @@ time — no training signal leaks from outside the seed window.
 
 from __future__ import annotations
 
+import random
 import re
 from collections import Counter, defaultdict
 from collections.abc import Callable, Iterable
@@ -71,14 +79,41 @@ def build_reference_rule(
     *,
     seed_size: int = 100,
     keywords_per_label: int = 5,
+    shuffle: bool = True,
+    shuffle_seed: int = 0,
 ) -> ReferenceRule:
     """Build a :class:`ReferenceRule` from the first ``seed_size`` examples.
 
     Per-label keyword selection: pick the tokens whose in-label count is
     highest *and* that appear in fewer than 50% of the other labels. This
     keeps the rule biased toward distinctive words without a full TF-IDF.
+
+    Parameters
+    ----------
+    train_pairs:
+        Iterable of ``(text, label)`` training pairs.
+    seed_size:
+        Maximum number of pairs to use as the seed window.
+    keywords_per_label:
+        Cap on the number of distinctive tokens captured per label.
+    shuffle:
+        When ``True`` (default), the training stream is shuffled with a
+        deterministic ``random.Random(shuffle_seed)`` before slicing the
+        seed window. This protects the rule from label-sorted upstream
+        splits where the first ``seed_size`` rows belong to a single
+        class. Pass ``shuffle=False`` to reproduce the v0.x paper-as-
+        shipped behavior (the auto-rule then degenerates to predict-the-
+        modal-class on Banking77, HWU64, CLINC150, and Snips).
+    shuffle_seed:
+        Seed for the deterministic shuffle. Repeated calls with the same
+        ``shuffle_seed`` produce the same rule.
     """
-    seed = list(train_pairs)[:seed_size]
+    pairs = list(train_pairs)
+    if shuffle:
+        # Local RNG so we don't perturb the global random state.
+        rng = random.Random(shuffle_seed)
+        rng.shuffle(pairs)
+    seed = pairs[:seed_size]
     if not seed:
         raise ValueError("train_pairs must be non-empty")
 

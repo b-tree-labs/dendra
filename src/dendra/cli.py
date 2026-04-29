@@ -436,6 +436,8 @@ def cmd_bench(args: argparse.Namespace) -> int:
         ds.train,
         seed_size=args.seed_size,
         keywords_per_label=args.kw_per_label,
+        shuffle=not args.no_shuffle,
+        shuffle_seed=args.shuffle_seed,
     ).as_callable()
     head = SklearnTextHead(min_outcomes=args.min_train_for_ml)
 
@@ -460,6 +462,8 @@ def cmd_bench(args: argparse.Namespace) -> int:
         "test_rows": len(ds.test),
         "seed_size": args.seed_size,
         "kw_per_label": args.kw_per_label,
+        "shuffle": not args.no_shuffle,
+        "shuffle_seed": args.shuffle_seed,
         "checkpoint_every": args.checkpoint_every,
         "citation": ds.citation,
     }
@@ -687,16 +691,15 @@ def cmd_quickstart(args: argparse.Namespace) -> int:
 
     filename, desc = _QUICKSTART_EXAMPLES[args.example]
 
-    # Locate the example. Two cases:
+    # Locate the example. Three cases, tried in order:
     #  1. Editable install / source checkout - examples/ sits next to src/
-    #  2. Wheel install - examples aren't packaged; fetch from GitHub raw.
-    #
-    # We try the local path first; if it isn't there, fall back to a
-    # tagged release on GitHub. Failure is honest - the user gets a
-    # clear "neither path worked" message with both URLs.
+    #  2. Wheel install - examples bundled under dendra/_examples/
+    #  3. Last-ditch fallback - fetch from public repo (only works
+    #     post-launch, requires network)
     here = Path(__file__).resolve()
     repo_root = here.parent.parent.parent
     local_example = repo_root / "examples" / filename
+    bundled_example = here.parent / "_examples" / filename
 
     target_dir = Path(args.target).resolve()
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -709,11 +712,17 @@ def cmd_quickstart(args: argparse.Namespace) -> int:
         if local_stubs.exists():
             shutil.copy2(local_stubs, target_dir / "_stubs.py")
         source = f"local source ({local_example})"
+    elif bundled_example.exists():
+        shutil.copy2(bundled_example, target_file)
+        bundled_stubs = here.parent / "_examples" / "_stubs.py"
+        if bundled_stubs.exists():
+            shutil.copy2(bundled_stubs, target_dir / "_stubs.py")
+        source = f"bundled with dendra package ({bundled_example})"
     else:
         import urllib.error
         import urllib.request
 
-        # Wheel install - fetch from the public repo.
+        # Last-ditch: fetch from public repo (requires repo to be public + network).
         url_base = "https://raw.githubusercontent.com/axiom-labs-os/dendra/main/examples"
         url = f"{url_base}/{filename}"
         try:
@@ -1048,7 +1057,14 @@ def cmd_plot(args: argparse.Namespace) -> int:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    from dendra import __version__
+
     parser = argparse.ArgumentParser(prog="dendra")
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"dendra {__version__}",
+    )
     # Bare `dendra` (no subcommand) routes to cmd_status - the soft entry
     # point for new users. Subcommands are still discoverable via --help.
     parser.set_defaults(fn=cmd_status, cmd=None)
@@ -1070,6 +1086,28 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Training examples used to construct the rule (paper §4.2).",
     )
     p_bench.add_argument("--kw-per-label", type=int, default=5, help="Keywords selected per label.")
+    p_bench.add_argument(
+        "--no-shuffle",
+        action="store_true",
+        help=(
+            "Disable the deterministic shuffle of the training stream "
+            "before the seed window is taken. The default shuffles with "
+            "seed 0 so label-sorted upstream splits (Banking77, HWU64, "
+            "CLINC150, Snips on HuggingFace) cannot collapse the rule "
+            "to a single label. Pass --no-shuffle to reproduce the v0.x "
+            "paper-as-shipped behavior."
+        ),
+    )
+    p_bench.add_argument(
+        "--shuffle-seed",
+        type=int,
+        default=0,
+        help=(
+            "Seed for the deterministic training-stream shuffle. "
+            "Repeated runs with the same seed produce the same rule. "
+            "Ignored when --no-shuffle is set."
+        ),
+    )
     p_bench.add_argument(
         "--checkpoint-every", type=int, default=250, help="Outcomes between checkpoints."
     )

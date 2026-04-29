@@ -3,8 +3,7 @@
 
 """Core types and the LearnedSwitch class.
 
-v0.2.0 extends v0.1.0 with Phase 1 (MODEL_SHADOW). The six-phase
-lifecycle follows the paper outline (§3.1):
+The six-phase lifecycle follows the paper outline (§3.1):
 
     RULE → MODEL_SHADOW → MODEL_PRIMARY → ML_SHADOW → ML_WITH_FALLBACK → ML_PRIMARY
 
