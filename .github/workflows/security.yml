@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
  # Quarantined to schedule-only — the shared security-scan reusable in
-# axiom-labs-os/.github@v1 has three independent upstream bugs that make
+# b-tree-labs/.github@v1 has three independent upstream bugs that make
 # every run fail without signal:
 #   1. grype: invalid SARIF / stale DB pinning produces "Failed minimum
 #      severity level" against transitive deps we can't pin away.
@@ -30,7 +30,7 @@ permissions:
 
 jobs:
   scan:
-    uses: axiom-labs-os/.github/.github/workflows/security-scan.yml@v1
+    uses: b-tree-labs/.github/.github/workflows/security-scan.yml@v1
     with:
       package-name: dendra
       fail-on-severity: high

@@ -1,7 +1,7 @@
 # Dendra · typography
 
-Dendra inherits the Axiom Labs typography system exactly.
-`axiom-labs-os/.github/brand/typography.md` defines the source of
+Dendra inherits the B-Tree Labs typography system exactly.
+`b-tree-labs/.github/brand/typography.md` defines the source of
 truth; this file documents Dendra's use of that system plus any
 Dendra-specific overrides (none currently).
 
@@ -57,9 +57,9 @@ Base 16 px. Ratio 1.25 (major third).
 ## Wordmark typography
 
 The DENDRA wordmark is Space Grotesk Medium (500), all caps,
-tracked 0.18em. Identical treatment to the Axiom Labs wordmark
+tracked 0.18em. Identical treatment to the B-Tree Labs wordmark
 — same weight, same tracking. This is load-bearing for the
-portfolio-sibling read: at a glance, "DENDRA" and "AXIOM LABS"
+portfolio-sibling read: at a glance, "DENDRA" and "B-TREE LABS"
 should feel like members of the same typographic family.
 
 **Never:**
@@ -77,8 +77,8 @@ should feel like members of the same typographic family.
 
 ## Paper / LaTeX
 
-Dendra papers use the Axiom Labs preamble at
-`axiom-labs-os/.github/brand/templates/axiom-labs-preamble.tex`
+Dendra papers use the B-Tree Labs preamble at
+`b-tree-labs/.github/brand/templates/axiom-labs-preamble.tex`
 — serif body in TeX Gyre Pagella, Space Grotesk for figure labels
 and titles. Academic-convention-compliant body + branded display.
 

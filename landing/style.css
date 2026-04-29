@@ -3,7 +3,7 @@
  *
  * Paired with brand-tokens.css. Keep layout concerns here; keep the
  * design-system tokens (palette, type, scale) in brand-tokens.css so
- * both can be audited against the upstream Axiom Labs brand kit.
+ * both can be audited against the upstream B-Tree Labs brand kit.
  *
  * Aesthetic target: quiet technical. No animations beyond hover
  * states. No decoration. Code is the hero.

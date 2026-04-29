@@ -2,10 +2,10 @@
 <!--
   Concept A — "Dendrite" wordmark (horizontal lockup).
 
-  Follows the Axiom Labs horizontal-wordmark layout exactly:
+  Follows the B-Tree Labs horizontal-wordmark layout exactly:
   1200×300 canvas, mark scaled 0.391 to 200×200 square in the left
   gutter, "DENDRA" set in Space Grotesk Medium at 108 px with
-  letter-spacing 19.4 (matching the Axiom Labs wordmark). For
+  letter-spacing 19.4 (matching the B-Tree Labs wordmark). For
   production export, outline the text (Inkscape: Path → Object to
   Path) so rendering-device font substitution can't drift the mark.
 -->

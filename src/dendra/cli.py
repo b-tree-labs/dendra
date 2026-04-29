@@ -723,7 +723,7 @@ def cmd_quickstart(args: argparse.Namespace) -> int:
         import urllib.request
 
         # Last-ditch: fetch from public repo (requires repo to be public + network).
-        url_base = "https://raw.githubusercontent.com/axiom-labs-os/dendra/main/examples"
+        url_base = "https://raw.githubusercontent.com/b-tree-labs/dendra/main/examples"
         url = f"{url_base}/{filename}"
         try:
             urllib.request.urlretrieve(url, target_file)
@@ -737,7 +737,7 @@ def cmd_quickstart(args: argparse.Namespace) -> int:
             print(
                 f"Could not fetch example from {url}: {e}\n"
                 f"Recovery: clone the repo "
-                f"(git clone https://github.com/axiom-labs-os/dendra) "
+                f"(git clone https://github.com/b-tree-labs/dendra) "
                 f"and run `python examples/{filename}` directly.",
                 file=sys.stderr,
             )

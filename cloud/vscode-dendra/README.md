@@ -1,6 +1,6 @@
 # Dendra for VS Code
 
-Inline diagnostics for [Dendra](https://github.com/axiom-labs/dendra) analyzer hazards, plus a one-click "auto-lift here" quick fix.
+Inline diagnostics for [Dendra](https://github.com/b-tree-labs/dendra) analyzer hazards, plus a one-click "auto-lift here" quick fix.
 
 This extension shells out to your local `dendra` CLI (`dendra analyze --json <file>`) on every Python file open or save, parses the resulting `AnalyzerReport`, and surfaces each non-auto-liftable site as a VS Code Diagnostic.
 

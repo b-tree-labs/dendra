@@ -70,7 +70,7 @@ well inside any production budget. Dendra ships Apache 2.0 on
 the client SDK, Business Source License 1.1 on the analyzer and
 operated components (Change Date 2030-05-01 → Apache 2.0).
 Filed US provisional patent. Paper under submission. Built by
-Axiom Labs — a B-Tree Ventures, LLC DBA.
+B-Tree Labs — a B-Tree Ventures, LLC DBA.
 
 ## Audience-specific framings
 

@@ -1,8 +1,8 @@
 # Dendra · palette
 
-Dendra inherits the Axiom Labs palette exactly. Every color is
+Dendra inherits the B-Tree Labs palette exactly. Every color is
 already defined and documented in the parent system at
-`axiom-labs-os/.github/brand/palette.md`. This file exists to
+`b-tree-labs/.github/brand/palette.md`. This file exists to
 confirm Dendra uses the same values and to document any
 Dendra-specific usage rules on top of the parent.
 

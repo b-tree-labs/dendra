@@ -82,7 +82,7 @@ list.
 
 - **Second person** for instructions. "Wrap your classifier," not
   "The user wraps a classifier."
-- **First person plural** ("we") for Dendra/Axiom Labs claims.
+- **First person plural** ("we") for Dendra/B-Tree Labs claims.
   "We measured this on four benchmarks," not "Dendra was measured
   on four benchmarks" (passive) or "I measured this" (too
   personal). Reserve "I" for author blog posts only.
@@ -187,7 +187,7 @@ Internal docs and commit messages are signed:
 - Commit trailers: `Co-Authored-By:` for AI / pair programming.
   `Signed-off-by:` per DCO for every non-bot commit.
 - Public-facing content (blog, landing, paper) is attributed to
-  **Dendra** or **Axiom Labs** as appropriate. Individual
+  **Dendra** or **B-Tree Labs** as appropriate. Individual
   attribution (Benjamin Booth as author) appears in the paper,
   patent filings, and select first-person blog posts only.
 

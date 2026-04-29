@@ -193,6 +193,6 @@ Markdown docs in this repo target:
 ---
 
 **If you find an accessibility issue with a brand asset**, file
-it at https://github.com/axiom-labs-os/dendra/issues with the
+it at https://github.com/b-tree-labs/dendra/issues with the
 `a11y` label. Explicit, reproducible bug reports are strongly
 preferred over vague "this is hard to see" reports.

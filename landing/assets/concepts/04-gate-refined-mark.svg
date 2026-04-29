@@ -5,7 +5,7 @@
   Critic 2's three fixes applied:
   1. Accent tick shortened from ~104 px (y=200→96) to ~72 px
      (y=172→100) so it reads as "a short extension past the
-     threshold" rather than a third post. Matches Axiom Labs origin
+     threshold" rather than a third post. Matches B-Tree Labs origin
      accent proportions (origin accent ≈ 30 px on a ~310 px content
      width, same 10% ratio).
   2. Corner joints resolved by merging the two posts and the lintel
@@ -14,7 +14,7 @@
      square-capped overlaps.
   3. 28 r graphite center node placed at the lintel's midpoint —
      the threshold-crossing point the accent emerges from. Docks
-     Dendra into Axiom Labs' center-node vocabulary (origin mark
+     Dendra into B-Tree Labs' center-node vocabulary (origin mark
      uses the same 28 r node).
 -->
 <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
