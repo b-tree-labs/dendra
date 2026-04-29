@@ -1,0 +1,238 @@
+{
+  "root": "/private/tmp/dendra-corpus/haystack",
+  "files_scanned": 553,
+  "total_sites": 10,
+  "sites": [
+    {
+      "file_path": "haystack/testing/document_store.py",
+      "function_name": "_delete_all_supports_recreate",
+      "line_start": 654,
+      "line_end": 663,
+      "pattern": "P1",
+      "labels": [
+        "recreate_index",
+        "recreate_collection"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 658,
+          "reason": "Line 658 binds 'sig' from inspect.signature(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If inspect.signature supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused",
+      "snippet": "\n        This should not raise an error and should leave the store empty.\n        \"\"\"\n        assert document_store.count_documents() == 0\n        document_store.delete_all_documents()  # type:ignore[attr-defined]\n        assert document_store.count_documents() == 0\n\n    @staticmethod\n    def _delete_all_supports_recreate(document_store: DocumentStore) -> str | None:\n        \"\"\"\n        Return the recreate parameter name if delete_all_documents supports it, else None.\n        \"\"\"\n        sig = inspect.signature(document_store.delete_all_documents)  # type:ignore[attr-defined]\n        if \"recreate_index\" in sig.parameters:\n            return \"recreate_index\"\n        if \"recreate_collection\" in sig.parameters:\n            return \"recreate_collection\"\n        return None\n\n    @staticmethod\n    def test_delete_all_documents_without_recreate_index(document_store: DocumentStore):\n        \"\"\"\n        Test delete_all_documents() with recreate_index/recreate_collection=False when supported.\n\n        Skipped if the store's delete_all_documents does not have recreate_index or recreate_collection.\n        \"\"\"\n        param_name = DeleteAllTest._delete_all_supports_recreate(document_store)\n        if param_name is None:\n            pytest.skip(\"delete_all_documents has no recreate_index or recreate_collection parameter\")\n",
+      "snippet_start_line": 646,
+      "snippet_end_line": 675
+    },
+    {
+      "file_path": "haystack/testing/document_store_async.py",
+      "function_name": "_delete_all_supports_recreate",
+      "line_start": 53,
+      "line_end": 62,
+      "pattern": "P1",
+      "labels": [
+        "recreate_index",
+        "recreate_collection"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 57,
+          "reason": "Line 57 binds 'sig' from inspect.signature(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If inspect.signature supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused",
+      "snippet": "    \"\"\"\n    Tests for Document Store delete_all_documents_async().\n\n    To use it create a custom test class and override the `document_store` fixture.\n    Only mix in for stores that implement delete_all_documents_async.\n    \"\"\"\n\n    @staticmethod\n    def _delete_all_supports_recreate(document_store: AsyncDocumentStore) -> str | None:\n        \"\"\"\n        Return the recreate parameter name if delete_all_documents_async supports it, else None.\n        \"\"\"\n        sig = inspect.signature(document_store.delete_all_documents_async)  # type:ignore[attr-defined]\n        if \"recreate_index\" in sig.parameters:\n            return \"recreate_index\"\n        if \"recreate_collection\" in sig.parameters:\n            return \"recreate_collection\"\n        return None\n\n    @staticmethod\n    @pytest.mark.asyncio\n    async def test_delete_all_documents_async(document_store: AsyncDocumentStore):\n        \"\"\"\n        Test delete_all_documents_async() normal behaviour.\n\n        This test verifies that delete_all_documents_async() removes all documents from the store\n        and that the store remains functional after deletion.\n        \"\"\"\n        docs = [Document(content=\"first doc\", id=\"1\"), Document(content=\"second doc\", id=\"2\")]\n        await document_store.write_documents_async(docs)",
+      "snippet_start_line": 45,
+      "snippet_end_line": 74
+    },
+    {
+      "file_path": "haystack/tools/searchable_toolset.py",
+      "function_name": "search_tools",
+      "line_start": 182,
+      "line_end": 225,
+      "pattern": "P1",
+      "labels": [
+        "No tool keywords provided. Please provide space-separated words likely to appear in tool names/descriptions (e.g. 'route weather search').",
+        "No tools found matching these keywords. Try different keywords."
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 207,
+          "reason": "Line 207 binds 'results' from self._document_store.bm25_retrieval(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._document_store.bm25_retrieval supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused",
+      "snippet": "        \"\"\"\n        self._discovered_tools.clear()\n\n    def _create_search_tool(self) -> Tool:\n        \"\"\"Create the search_tools bootstrap tool.\"\"\"\n\n        tool_by_name = {tool.name: tool for tool in self._catalog}\n\n        def search_tools(\n            tool_keywords: Annotated[\n                str,\n                \"Space-separated words from tool names/descriptions (e.g. 'route weather search').\"\n                \" NOT the user's question or task\u2014use vocabulary from the tools you need.\",\n            ],\n            k: Annotated[int | None, f\"Number of results to return (default: {self._top_k})\"] = None,\n        ) -> str:\n            \"\"\"\n            ALWAYS use this tool FIRST when you need to invoke some tools but don't have the right one loaded yet.\n\n            Provide space separated tool keywords likely to appear in tool names/descriptions\n            (e.g. 'route distance weather', 'search email'). Do NOT pass the user's request or task (e.g.\n            'things to do in X', 'user question'); matching is keyword-based. Returns loaded\n            tool names; they become available immediately.\n            \"\"\"\n            num_results = k if k is not None else self._top_k\n\n            if not tool_keywords.strip():\n                return (\n                    \"No tool keywords provided. Please provide space-separated words likely to appear in tool \"\n                    \"names/descriptions (e.g. 'route weather search').\"\n                )\n\n            # at this point, the toolset has been warmed up, so self._document_store is not None\n            results = self._document_store.bm25_retrieval(query=tool_keywords, top_k=num_results)  # type: ignore[union-attr]\n\n            if not results:\n                return \"No tools found matching these keywords. Try different keywords.\"\n\n            # Add found tools to _discovered_tools. These become available to the LLM\n            # on the next agent iteration when __iter__ is called again - the Agent\n            # re-iterates over the toolset each loop, picking up newly discovered tools.\n            # The return message here just confirms what was found; actual tool availability\n            # comes through the dynamic iteration mechanism. This way we also save tokens\n            # by not returning the full tool definitions.\n            tool_names = []\n            for doc in results:\n                tool = tool_by_name[doc.meta[\"tool_name\"]]\n                tool.warm_up()\n                self._discovered_tools[tool.name] = tool\n                tool_names.append(tool.name)\n\n            return f\"Found and loaded {len(tool_names)} tool(s): {', '.join(tool_names)}. Use them directly as tools.\"\n\n        bootstrap_tool = create_tool_from_function(\n            function=search_tools, name=self._search_tool_name, description=self._search_tool_description\n        )\n\n        # Override parameter descriptions if custom ones were provided\n        if self._search_tool_parameters_description:\n            for param_name, desc in self._search_tool_parameters_description.items():\n                if param_name in bootstrap_tool.parameters.get(\"properties\", {}):\n                    bootstrap_tool.parameters[\"properties\"][param_name][\"description\"] = desc\n\n        return bootstrap_tool",
+      "snippet_start_line": 174,
+      "snippet_end_line": 237
+    },
+    {
+      "file_path": "haystack/components/builders/answer_builder.py",
+      "function_name": "_extract_answer_string",
+      "line_start": 222,
+      "line_end": 242,
+      "pattern": "P5",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "            answer = GeneratedAnswer(\n                data=answer_string, query=query, documents=referenced_docs, meta=extracted_metadata\n            )\n            all_answers.append(answer)\n\n        return {\"answers\": all_answers}\n\n    @staticmethod\n    def _extract_answer_string(reply: str, pattern: str | None = None) -> str:\n        \"\"\"\n        Extract the answer string from the generator output using the specified pattern.\n\n        If no pattern is specified, the whole string is used as the answer.\n\n        :param reply:\n            The output of the Generator. A string.\n        :param pattern:\n            The regular expression pattern to use to extract the answer text from the generator output.\n        \"\"\"\n        if pattern is None:\n            return reply\n\n        if match := re.search(pattern, reply):\n            # No capture group in pattern -> use the whole match as answer\n            if not match.lastindex:\n                return match.group(0)\n            # One capture group in pattern -> use the capture group as answer\n            return match.group(1)\n        return \"\"\n\n    @staticmethod\n    def _extract_reference_idxs(reply: str, reference_pattern: str) -> set[int]:\n        document_idxs = re.findall(reference_pattern, reply)\n        return {int(idx) - 1 for idx in document_idxs}\n\n    @staticmethod\n    def _check_num_groups_in_regex(pattern: str) -> None:\n        num_groups = re.compile(pattern).groups\n        if num_groups > 1:\n            raise ValueError(\n                f\"Pattern '{pattern}' contains multiple capture groups. \"",
+      "snippet_start_line": 214,
+      "snippet_end_line": 254
+    },
+    {
+      "file_path": "haystack/components/converters/multi_file_converter.py",
+      "function_name": "__init__",
+      "line_start": 62,
+      "line_end": 123,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "    ```\n    from haystack.super_components.converters import MultiFileConverter\n\n    converter = MultiFileConverter()\n    converter.run(sources=[\"test/test_files/txt/doc_1.txt\", \"test/test_files/pdf/sample_pdf_1.pdf\"], meta={})\n    ```\n    \"\"\"\n\n    def __init__(self, encoding: str = \"utf-8\", json_content_key: str = \"content\") -> None:\n        \"\"\"\n        Initialize the MultiFileConverter.\n\n        :param encoding: The encoding to use when reading files.\n        :param json_content_key: The key to use in a content field in a document when converting JSON files.\n        \"\"\"\n        self.encoding = encoding\n        self.json_content_key = json_content_key\n\n        # initialize components\n        router = FileTypeRouter(\n            mime_types=[mime_type.value for mime_type in ConverterMimeType],\n            # Ensure common extensions are registered. Tests on Windows fail otherwise.\n            additional_mimetypes={\n                \"application/vnd.openxmlformats-officedocument.wordprocessingml.document\": \".docx\",\n                \"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\": \".xlsx\",\n                \"application/vnd.openxmlformats-officedocument.presentationml.presentation\": \".pptx\",\n            },\n        )\n\n        # Create pipeline and add components\n        pp = Pipeline()\n\n        pp.add_component(\"router\", router)\n        pp.add_component(\"docx\", DOCXToDocument(link_format=\"markdown\"))\n        pp.add_component(\n            \"html\",\n            HTMLToDocument(\n                extraction_kwargs={\"output_format\": \"markdown\", \"include_tables\": True, \"include_links\": True}\n            ),\n        )\n        pp.add_component(\"json\", JSONConverter(content_key=self.json_content_key))\n        pp.add_component(\"md\", TextFileToDocument(encoding=self.encoding))\n        pp.add_component(\"text\", TextFileToDocument(encoding=self.encoding))\n        pp.add_component(\"pdf\", PyPDFToDocument())\n        pp.add_component(\"pptx\", PPTXToDocument())\n        pp.add_component(\"xlsx\", XLSXToDocument())\n        pp.add_component(\"joiner\", DocumentJoiner())\n        pp.add_component(\"csv\", CSVToDocument(encoding=self.encoding))\n\n        for mime_type in ConverterMimeType:\n            pp.connect(f\"router.{mime_type.value}\", str(mime_type).lower().rsplit(\".\", maxsplit=1)[-1])\n\n        pp.connect(\"docx.documents\", \"joiner.documents\")\n        pp.connect(\"html.documents\", \"joiner.documents\")\n        pp.connect(\"json.documents\", \"joiner.documents\")\n        pp.connect(\"md.documents\", \"joiner.documents\")\n        pp.connect(\"text.documents\", \"joiner.documents\")\n        pp.connect(\"pdf.documents\", \"joiner.documents\")\n        pp.connect(\"pptx.documents\", \"joiner.documents\")\n\n        pp.connect(\"csv.documents\", \"joiner.documents\")\n        pp.connect(\"xlsx.documents\", \"joiner.documents\")\n\n        self.pipeline = pp\n        self.output_mapping = {\n            \"joiner.documents\": \"documents\",\n            \"router.unclassified\": \"unclassified\",\n            \"router.failed\": \"failed\",\n        }\n        self.input_mapping = {\"sources\": [\"router.sources\"], \"meta\": [\"router.meta\"]}\n\n    if TYPE_CHECKING:\n        # fake method, never executed, but static analyzers will not complain about missing method\n        def run(  # noqa: D102\n            self, *, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None\n        ) -> dict[str, list[Document]]:  # noqa: D102\n            ...\n\n        def warm_up(self) -> None:  # noqa: D102\n            ...",
+      "snippet_start_line": 54,
+      "snippet_end_line": 133
+    },
+    {
+      "file_path": "haystack/components/extractors/regex_text_extractor.py",
+      "function_name": "_extract_from_text",
+      "line_start": 129,
+      "line_end": 146,
+      "pattern": "P5",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 141,
+          "reason": "Line 141 binds 'match' from re.search(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If re.search supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused",
+      "snippet": "        if not isinstance(last_message, ChatMessage):\n            raise TypeError(f\"Expected ChatMessage object, got {type(last_message)}\")\n        if last_message.text is None:\n            logger.warning(\"Last message has no text content\")\n            return {\"captured_text\": \"\"}\n        result = self._extract_from_text(last_message.text)\n        return self._build_result(result)\n\n    def _extract_from_text(self, text: str) -> str | list[str]:\n        \"\"\"\n        Extract text using the regex pattern.\n\n        :param text:\n            The text to search through.\n\n        :returns:\n            The text captured by the first capturing group in the regex pattern.\n            If the pattern has no capture groups, returns the entire match.\n            If no match is found, returns an empty string.\n        \"\"\"\n        match = re.search(self.regex_pattern, text)\n        if not match:\n            return \"\"\n        if match.groups():\n            return match.group(1)\n        return match.group(0)",
+      "snippet_start_line": 121,
+      "snippet_end_line": 146
+    },
+    {
+      "file_path": "haystack/components/generators/chat/openai.py",
+      "function_name": "run",
+      "line_start": 301,
+      "line_end": 373,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 352,
+          "reason": "getattr(...) at line 352 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused",
+      "snippet": "        init_params = data.get(\"init_parameters\", {})\n        serialized_callback_handler = init_params.get(\"streaming_callback\")\n\n        if serialized_callback_handler:\n            data[\"init_parameters\"][\"streaming_callback\"] = deserialize_callable(serialized_callback_handler)\n        return default_from_dict(cls, data)\n\n    @component.output_types(replies=list[ChatMessage])\n    def run(\n        self,\n        messages: list[ChatMessage],\n        streaming_callback: StreamingCallbackT | None = None,\n        generation_kwargs: dict[str, Any] | None = None,\n        *,\n        tools: ToolsType | None = None,\n        tools_strict: bool | None = None,\n    ) -> dict[str, list[ChatMessage]]:\n        \"\"\"\n        Invokes chat completion based on the provided messages and generation parameters.\n\n        :param messages:\n            A list of ChatMessage instances representing the input messages.\n        :param streaming_callback:\n            A callback function that is called when a new token is received from the stream.\n        :param generation_kwargs:\n            Additional keyword arguments for text generation. These parameters will\n            override the parameters passed during component initialization.\n            For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).\n        :param tools:\n            A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.\n            If set, it will override the `tools` parameter provided during initialization.\n        :param tools_strict:\n            Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly\n            the schema provided in the `parameters` field of the tool definition, but this may increase latency.\n            If set, it will override the `tools_strict` parameter set during component initialization.\n\n        :returns:\n            A dictionary with the following key:\n            - `replies`: A list containing the generated responses as ChatMessage instances.\n        \"\"\"\n        if not self._is_warmed_up:\n            self.warm_up()\n\n        if len(messages) == 0:\n            return {\"replies\": []}\n\n        streaming_callback = select_streaming_callback(\n            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False\n        )\n        chat_completion: Stream[ChatCompletionChunk] | ChatCompletion | ParsedChatCompletion\n\n        api_args = self._prepare_api_call(\n            messages=messages,\n            streaming_callback=streaming_callback,\n            generation_kwargs=generation_kwargs,\n            tools=tools,\n            tools_strict=tools_strict,\n        )\n        openai_endpoint = api_args.pop(\"openai_endpoint\")\n        openai_endpoint_method = getattr(self.client.chat.completions, openai_endpoint)\n        chat_completion = openai_endpoint_method(**api_args)\n\n        if streaming_callback is not None:\n            completions = self._handle_stream_response(\n                # we cannot check isinstance(chat_completion, Stream) because some observability tools wrap Stream\n                # and return a different type. See https://github.com/deepset-ai/haystack/issues/9014.\n                chat_completion,  # type: ignore\n                streaming_callback,\n            )\n\n        else:\n            assert isinstance(chat_completion, ChatCompletion), \"Unexpected response type for non-streaming request.\"\n            completions = [\n                _convert_chat_completion_to_chat_message(chat_completion, choice) for choice in chat_completion.choices\n            ]\n\n        # before returning, do post-processing of the completions\n        for message in completions:\n            _check_finish_reason(message.meta)\n\n        return {\"replies\": completions}\n\n    @component.output_types(replies=list[ChatMessage])\n    async def run_async(\n        self,\n        messages: list[ChatMessage],\n        streaming_callback: StreamingCallbackT | None = None,\n        generation_kwargs: dict[str, Any] | None = None,\n        *,\n        tools: ToolsType | None = None,\n        tools_strict: bool | None = None,\n    ) -> dict[str, list[ChatMessage]]:\n        \"\"\"",
+      "snippet_start_line": 293,
+      "snippet_end_line": 385
+    },
+    {
+      "file_path": "haystack/components/generators/chat/openai.py",
+      "function_name": "run_async",
+      "line_start": 376,
+      "line_end": 453,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 432,
+          "reason": "getattr(...) at line 432 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused",
+      "snippet": "\n        # before returning, do post-processing of the completions\n        for message in completions:\n            _check_finish_reason(message.meta)\n\n        return {\"replies\": completions}\n\n    @component.output_types(replies=list[ChatMessage])\n    async def run_async(\n        self,\n        messages: list[ChatMessage],\n        streaming_callback: StreamingCallbackT | None = None,\n        generation_kwargs: dict[str, Any] | None = None,\n        *,\n        tools: ToolsType | None = None,\n        tools_strict: bool | None = None,\n    ) -> dict[str, list[ChatMessage]]:\n        \"\"\"\n        Asynchronously invokes chat completion based on the provided messages and generation parameters.\n\n        This is the asynchronous version of the `run` method. It has the same parameters and return values\n        but can be used with `await` in async code.\n\n        :param messages:\n            A list of ChatMessage instances representing the input messages.\n        :param streaming_callback:\n            A callback function that is called when a new token is received from the stream.\n            Must be a coroutine.\n        :param generation_kwargs:\n            Additional keyword arguments for text generation. These parameters will\n            override the parameters passed during component initialization.\n            For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).\n        :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.\n            If set, it will override the `tools` parameter provided during initialization.\n        :param tools_strict:\n            Whether to enable strict schema adherence for tool calls. If set to `True`, the model will follow exactly\n            the schema provided in the `parameters` field of the tool definition, but this may increase latency.\n            If set, it will override the `tools_strict` parameter set during component initialization.\n\n        :returns:\n            A dictionary with the following key:\n            - `replies`: A list containing the generated responses as ChatMessage instances.\n        \"\"\"\n        if not self._is_warmed_up:\n            self.warm_up()\n\n        # validate and select the streaming callback\n        streaming_callback = select_streaming_callback(\n            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=True\n        )\n        chat_completion: AsyncStream[ChatCompletionChunk] | ChatCompletion | ParsedChatCompletion\n\n        if len(messages) == 0:\n            return {\"replies\": []}\n\n        api_args = self._prepare_api_call(\n            messages=messages,\n            streaming_callback=streaming_callback,\n            generation_kwargs=generation_kwargs,\n            tools=tools,\n            tools_strict=tools_strict,\n        )\n\n        openai_endpoint = api_args.pop(\"openai_endpoint\")\n        openai_endpoint_method = getattr(self.async_client.chat.completions, openai_endpoint)\n        chat_completion = await openai_endpoint_method(**api_args)\n\n        if streaming_callback is not None:\n            completions = await self._handle_async_stream_response(\n                # we cannot check isinstance(chat_completion, AsyncStream) because some observability tools wrap\n                # AsyncStream and return a different type. See https://github.com/deepset-ai/haystack/issues/9014.\n                chat_completion,  # type: ignore\n                streaming_callback,\n            )\n\n        else:\n            assert isinstance(chat_completion, ChatCompletion), \"Unexpected response type for non-streaming request.\"\n            completions = [\n                _convert_chat_completion_to_chat_message(chat_completion, choice) for choice in chat_completion.choices\n            ]\n\n        # before returning, do post-processing of the completions\n        for message in completions:\n            _check_finish_reason(message.meta)\n\n        return {\"replies\": completions}\n\n    def _prepare_api_call(  # noqa: PLR0913\n        self,\n        *,\n        messages: list[ChatMessage],\n        streaming_callback: StreamingCallbackT | None = None,\n        generation_kwargs: dict[str, Any] | None = None,\n        tools: ToolsType | None = None,\n        tools_strict: bool | None = None,\n    ) -> dict[str, Any]:\n        # update generation kwargs by merging with the generation kwargs passed to the run method\n        generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}",
+      "snippet_start_line": 368,
+      "snippet_end_line": 465
+    },
+    {
+      "file_path": "haystack/components/generators/openai.py",
+      "function_name": "run",
+      "line_start": 188,
+      "line_end": 270,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "        \"\"\"\n        init_params = data.get(\"init_parameters\", {})\n        serialized_callback_handler = init_params.get(\"streaming_callback\")\n        if serialized_callback_handler:\n            data[\"init_parameters\"][\"streaming_callback\"] = deserialize_callable(serialized_callback_handler)\n        return default_from_dict(cls, data)\n\n    @component.output_types(replies=list[str], meta=list[dict[str, Any]])\n    def run(\n        self,\n        prompt: str,\n        system_prompt: str | None = None,\n        streaming_callback: StreamingCallbackT | None = None,\n        generation_kwargs: dict[str, Any] | None = None,\n    ) -> dict[str, list[str] | list[dict[str, Any]]]:\n        \"\"\"\n        Invoke the text generation inference based on the provided messages and generation parameters.\n\n        :param prompt:\n            The string prompt to use for text generation.\n        :param system_prompt:\n            The system prompt to use for text generation. If this run time system prompt is omitted, the system\n            prompt, if defined at initialisation time, is used.\n        :param streaming_callback:\n            A callback function that is called when a new token is received from the stream.\n        :param generation_kwargs:\n            Additional keyword arguments for text generation. These parameters will potentially override the parameters\n            passed in the `__init__` method. For more details on the parameters supported by the OpenAI API, refer to\n            the OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat/create).\n        :returns:\n            A list of strings containing the generated responses and a list of dictionaries containing the metadata\n        for each response.\n        \"\"\"\n        message = ChatMessage.from_user(prompt)\n        if system_prompt is not None:\n            messages = [ChatMessage.from_system(system_prompt), message]\n        elif self.system_prompt:\n            messages = [ChatMessage.from_system(self.system_prompt), message]\n        else:\n            messages = [message]\n\n        # update generation kwargs by merging with the generation kwargs passed to the run method\n        generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}\n\n        # check if streaming_callback is passed\n        streaming_callback = select_streaming_callback(\n            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False\n        )\n\n        # adapt ChatMessage(s) to the format expected by the OpenAI API\n        openai_formatted_messages = [message.to_openai_dict_format() for message in messages]\n\n        completion: Stream[ChatCompletionChunk] | ChatCompletion = self.client.chat.completions.create(\n            model=self.model,\n            messages=openai_formatted_messages,  # type: ignore\n            stream=streaming_callback is not None,\n            **generation_kwargs,\n        )\n\n        completions: list[ChatMessage] = []\n        if streaming_callback is not None:\n            num_responses = generation_kwargs.pop(\"n\", 1)\n            if num_responses > 1:\n                raise ValueError(\"Cannot stream multiple responses, please set n=1.\")\n\n            component_info = ComponentInfo.from_component(self)\n            chunks: list[StreamingChunk] = []\n            for chunk in completion:\n                chunk_delta: StreamingChunk = _convert_chat_completion_chunk_to_streaming_chunk(\n                    chunk=chunk,  # type: ignore\n                    previous_chunks=chunks,\n                    component_info=component_info,\n                )\n                chunks.append(chunk_delta)\n                streaming_callback(chunk_delta)\n\n            completions = [_convert_streaming_chunks_to_chat_message(chunks=chunks)]\n        elif isinstance(completion, ChatCompletion):\n            completions = [\n                _convert_chat_completion_to_chat_message(completion=completion, choice=choice)\n                for choice in completion.choices\n            ]\n\n        # before returning, do post-processing of the completions\n        for response in completions:\n            _check_finish_reason(response.meta)\n\n        return {\n            \"replies\": [message.text or \"\" for message in completions],\n            \"meta\": [message.meta for message in completions],\n        }",
+      "snippet_start_line": 180,
+      "snippet_end_line": 270
+    },
+    {
+      "file_path": "haystack/components/generators/openai_dalle.py",
+      "function_name": "run",
+      "line_start": 97,
+      "line_end": 134,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 124,
+          "reason": "Line 124 binds 'response' from self.client.images.generate(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self.client.images.generate supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused",
+      "snippet": "                organization=self.organization,\n                base_url=self.api_base_url,\n                timeout=self.timeout,\n                max_retries=self.max_retries,\n                http_client=init_http_client(self.http_client_kwargs, async_client=False),\n            )\n\n    @component.output_types(images=list[str], revised_prompt=str)\n    def run(\n        self,\n        prompt: str,\n        size: Literal[\"256x256\", \"512x512\", \"1024x1024\", \"1792x1024\", \"1024x1792\"] | None = None,\n        quality: Literal[\"standard\", \"hd\"] | None = None,\n        response_format: Literal[\"url\", \"b64_json\"] | None = None,\n    ) -> dict[str, Any]:\n        \"\"\"\n        Invokes the image generation inference based on the provided prompt and generation parameters.\n\n        :param prompt: The prompt to generate the image.\n        :param size: If provided, overrides the size provided during initialization.\n        :param quality: If provided, overrides the quality provided during initialization.\n        :param response_format: If provided, overrides the response format provided during initialization.\n\n        :returns:\n            A dictionary containing the generated list of images and the revised prompt.\n            Depending on the `response_format` parameter, the list of images can be URLs or base64 encoded JSON strings.\n            The revised prompt is the prompt that was used to generate the image, if there was any revision\n            to the prompt made by OpenAI.\n        \"\"\"\n        if self.client is None:\n            self.warm_up()\n\n        size = size or self.size\n        quality = quality or self.quality\n        response_format = response_format or self.response_format\n        response = self.client.images.generate(  # type: ignore[union-attr]\n            model=self.model, prompt=prompt, size=size, quality=quality, response_format=response_format, n=1\n        )\n        if response.data is not None:\n            image: Image = response.data[0]\n            image_str = image.url or image.b64_json or \"\"\n            revised_prompt = image.revised_prompt or \"\"\n        else:\n            image_str = \"\"\n            revised_prompt = \"\"\n        return {\"images\": [image_str], \"revised_prompt\": revised_prompt}\n\n    def to_dict(self) -> dict[str, Any]:\n        \"\"\"\n        Serialize this component to a dictionary.\n\n        :returns:\n            The serialized component as a dictionary.\n        \"\"\"\n        return default_to_dict(\n            self,\n            model=self.model,\n            quality=self.quality,",
+      "snippet_start_line": 89,
+      "snippet_end_line": 146
+    }
+  ],
+  "errors": [],
+  "repo_label": "haystack",
+  "github_path": "deepset-ai/haystack",
+  "github_branch": "main",
+  "raw_url_prefix": "https://raw.githubusercontent.com/deepset-ai/haystack/main",
+  "github_blob_prefix": "https://github.com/deepset-ai/haystack/blob/main"
+}

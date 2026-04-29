@@ -1,0 +1,759 @@
+{
+  "root": "/private/tmp/dendra-corpus/autogen",
+  "files_scanned": 546,
+  "total_sites": 40,
+  "sites": [
+    {
+      "file_path": "python/packages/autogen-core/src/autogen_core/_image.py",
+      "function_name": "_get_mime_type_from_data_uri",
+      "line_start": 111,
+      "line_end": 123,
+      "pattern": "P1",
+      "labels": [
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "image/webp"
+      ],
+      "label_cardinality": 4,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 113,
+          "reason": "Line 113 binds 'image_data' from base64.b64decode(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If base64.b64decode supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused",
+      "snippet": "        return core_schema.with_info_after_validator_function(\n            validate,\n            core_schema.any_schema(),  # Accept any type; adjust if needed\n            serialization=core_schema.plain_serializer_function_ser_schema(serialize),\n        )\n\n\ndef _convert_base64_to_data_uri(base64_image: str) -> str:\n    def _get_mime_type_from_data_uri(base64_image: str) -> str:\n        # Decode the base64 string\n        image_data = base64.b64decode(base64_image)\n        # Check the first few bytes for known signatures\n        if image_data.startswith(b\"\\xff\\xd8\\xff\"):\n            return \"image/jpeg\"\n        elif image_data.startswith(b\"\\x89PNG\\r\\n\\x1a\\n\"):\n            return \"image/png\"\n        elif image_data.startswith(b\"GIF87a\") or image_data.startswith(b\"GIF89a\"):\n            return \"image/gif\"\n        elif image_data.startswith(b\"RIFF\") and image_data[8:12] == b\"WEBP\":\n            return \"image/webp\"\n        return \"image/jpeg\"  # use jpeg for unknown formats, best guess.\n\n    mime_type = _get_mime_type_from_data_uri(base64_image)\n    data_uri = f\"data:{mime_type};base64,{base64_image}\"\n    return data_uri",
+      "snippet_start_line": 103,
+      "snippet_end_line": 127
+    },
+    {
+      "file_path": "python/packages/autogen-core/src/autogen_core/_telemetry/_tracing_config.py",
+      "function_name": "_get_operation_type",
+      "line_start": 191,
+      "line_end": 201,
+      "pattern": "P1",
+      "labels": [
+        "publish",
+        "create",
+        "receive",
+        "process",
+        "Unknown"
+      ],
+      "label_cardinality": 5,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "            return f\"{destination.type}.({destination.source})-T\"\n        elif isinstance(destination, str):\n            return destination\n        elif destination is None:\n            return \"\"\n        else:\n            raise ValueError(f\"Unknown destination type: {type(destination)}\")\n\n    def _get_operation_type(self, operation: MessagingOperation) -> str:\n        if operation in [\"send\", \"publish\"]:\n            return \"publish\"\n        if operation in [\"create\"]:\n            return \"create\"\n        elif operation in [\"receive\", \"intercept\", \"ack\"]:\n            return \"receive\"\n        elif operation in [\"process\"]:\n            return \"process\"\n        else:\n            return \"Unknown\"",
+      "snippet_start_line": 183,
+      "snippet_end_line": 201
+    },
+    {
+      "file_path": "python/packages/autogen-ext/examples/mcp_example_server.py",
+      "function_name": "book_table",
+      "line_start": 23,
+      "line_end": 39,
+      "pattern": "P1",
+      "labels": [
+        "[CANCELLED] Booking cancelled",
+        "[CANCELLED] No booking made"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "\n    checkAlternative: bool = Field(description=\"Would you like to check another time?\")\n    alternativeTime: str = Field(\n        description=\"Alternative time.\",\n    )\n\n\n@mcp.tool()\nasync def book_table(\n    time: str,\n    party_size: int,\n    ctx: Context,\n) -> str:\n    \"\"\"Book a table with time availability check.\"\"\"\n    # time unavailable - ask user for alternative\n    result = await ctx.elicit(\n        message=(f\"No tables available for {party_size} at {time}. Would you like to try another time?\"),\n        schema=BookingPreferences,\n    )\n\n    if result.action == \"accept\" and result.data:\n        if result.data.checkAlternative:\n            return f\"[SUCCESS] Booked for {result.data.alternativeTime}\"\n        return \"[CANCELLED] No booking made\"\n    return \"[CANCELLED] Booking cancelled\"\n\n\n@mcp.tool()\nasync def list_dir(path: Path, ctx: Context) -> list[str]:\n    \"\"\"List the files and directories in path\"\"\"\n    roots = await ctx.session.list_roots()\n    for root in roots.roots:\n        root_path = root.uri.path\n        if root_path:\n            root_path = Path(root_path)\n            try:\n                _ = path.relative_to(root_path)",
+      "snippet_start_line": 15,
+      "snippet_end_line": 51
+    },
+    {
+      "file_path": "python/packages/autogen-ext/src/autogen_ext/code_executors/_common.py",
+      "function_name": "lang_to_cmd",
+      "line_start": 155,
+      "line_end": 171,
+      "pattern": "P1",
+      "labels": [
+        "python",
+        "sh",
+        "pwsh",
+        "powershell"
+      ],
+      "label_cardinality": 4,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "            reqs = match.group(1).split(\",\")\n            ret = {req.strip(\" \") for req in reqs}\n    return ret\n\n\nPYTHON_VARIANTS = [\"python\", \"Python\", \"py\"]\n\n\ndef lang_to_cmd(lang: str) -> str:\n    if lang in PYTHON_VARIANTS:\n        return \"python\"\n    if lang.startswith(\"python\") or lang in [\"bash\", \"sh\"]:\n        return lang\n    if lang in [\"shell\"]:\n        return \"sh\"\n    if lang in [\"pwsh\", \"powershell\", \"ps1\"]:\n        # Check if pwsh is available, otherwise fall back to powershell\n        if shutil.which(\"pwsh\") is not None:\n            return \"pwsh\"\n        elif shutil.which(\"powershell\") is not None:\n            return \"powershell\"\n        else:\n            raise ValueError(\"Powershell or pwsh is not installed. Please install one of them.\")\n    else:\n        raise ValueError(f\"Unsupported language: {lang}\")\n\n\n# Regular expression for finding a code block\n# ```[ \\t]*(\\w+)?[ \\t]*\\r?\\n(.*?)[ \\t]*\\r?\\n``` Matches multi-line code blocks.\n#   The [ \\t]* matches the potential spaces before language name.\n#   The (\\w+)? matches the language, where the ? indicates it is optional.\n#   The [ \\t]* matches the potential spaces (not newlines) after language name.\n#   The \\r?\\n makes sure there is a linebreak after ```.\n#   The (.*?) matches the code itself (non-greedy).\n#   The \\r?\\n makes sure there is a linebreak before ```.\n#   The [ \\t]* matches the potential spaces before closing ``` (the spec allows indentation).\nCODE_BLOCK_PATTERN = r\"```[ \\t]*(\\w+)?[ \\t]*\\r?\\n(.*?)\\r?\\n[ \\t]*```\"",
+      "snippet_start_line": 147,
+      "snippet_end_line": 183
+    },
+    {
+      "file_path": "python/packages/autogen-ext/src/autogen_ext/code_executors/_common.py",
+      "function_name": "infer_lang",
+      "line_start": 186,
+      "line_end": 199,
+      "pattern": "P1",
+      "labels": [
+        "sh",
+        "python",
+        "unknown"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "#   The [ \\t]* matches the potential spaces (not newlines) after language name.\n#   The \\r?\\n makes sure there is a linebreak after ```.\n#   The (.*?) matches the code itself (non-greedy).\n#   The \\r?\\n makes sure there is a linebreak before ```.\n#   The [ \\t]* matches the potential spaces before closing ``` (the spec allows indentation).\nCODE_BLOCK_PATTERN = r\"```[ \\t]*(\\w+)?[ \\t]*\\r?\\n(.*?)\\r?\\n[ \\t]*```\"\n\n\ndef infer_lang(code: str) -> str:\n    \"\"\"infer the language for the code.\n    TODO: make it robust.\n    \"\"\"\n    if code.startswith(\"python \") or code.startswith(\"pip\") or code.startswith(\"python3 \"):\n        return \"sh\"\n\n    # check if code is a valid python code\n    try:\n        compile(code, \"test\", \"exec\")\n        return \"python\"\n    except SyntaxError:\n        # not a valid python code\n        return \"unknown\"",
+      "snippet_start_line": 178,
+      "snippet_end_line": 199
+    },
+    {
+      "file_path": "python/packages/autogen-ext/src/autogen_ext/models/anthropic/_anthropic_client.py",
+      "function_name": "type_to_role",
+      "line_start": 120,
+      "line_end": 128,
+      "pattern": "P1",
+      "labels": [
+        "system",
+        "user",
+        "assistant",
+        "tool"
+      ],
+      "label_cardinality": 4,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "        raise ValueError(f\"Required create args are missing: {required_create_args - create_args_keys}\")\n\n    if disallowed_create_args.intersection(create_args_keys):\n        raise ValueError(f\"Disallowed create args are present: {disallowed_create_args.intersection(create_args_keys)}\")\n\n    return create_args\n\n\ndef type_to_role(message: LLMMessage) -> str:\n    if isinstance(message, SystemMessage):\n        return \"system\"\n    elif isinstance(message, UserMessage):\n        return \"user\"\n    elif isinstance(message, AssistantMessage):\n        return \"assistant\"\n    else:\n        return \"tool\"\n\n\ndef get_mime_type_from_image(image: Image) -> Literal[\"image/jpeg\", \"image/png\", \"image/gif\", \"image/webp\"]:\n    \"\"\"Get a valid Anthropic media type from an Image object.\"\"\"\n    # Get base64 data first\n    base64_data = image.to_base64()\n\n    # Decode the base64 string\n    image_data = base64.b64decode(base64_data)\n\n    # Check the first few bytes for known signatures\n    if image_data.startswith(b\"\\xff\\xd8\\xff\"):",
+      "snippet_start_line": 112,
+      "snippet_end_line": 140
+    },
+    {
+      "file_path": "python/packages/autogen-ext/src/autogen_ext/models/anthropic/_anthropic_client.py",
+      "function_name": "get_mime_type_from_image",
+      "line_start": 131,
+      "line_end": 150,
+      "pattern": "P1",
+      "labels": [
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "image/webp"
+      ],
+      "label_cardinality": 4,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 137,
+          "reason": "Line 137 binds 'image_data' from base64.b64decode(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If base64.b64decode supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused",
+      "snippet": "    elif isinstance(message, UserMessage):\n        return \"user\"\n    elif isinstance(message, AssistantMessage):\n        return \"assistant\"\n    else:\n        return \"tool\"\n\n\ndef get_mime_type_from_image(image: Image) -> Literal[\"image/jpeg\", \"image/png\", \"image/gif\", \"image/webp\"]:\n    \"\"\"Get a valid Anthropic media type from an Image object.\"\"\"\n    # Get base64 data first\n    base64_data = image.to_base64()\n\n    # Decode the base64 string\n    image_data = base64.b64decode(base64_data)\n\n    # Check the first few bytes for known signatures\n    if image_data.startswith(b\"\\xff\\xd8\\xff\"):\n        return \"image/jpeg\"\n    elif image_data.startswith(b\"\\x89PNG\\r\\n\\x1a\\n\"):\n        return \"image/png\"\n    elif image_data.startswith(b\"GIF87a\") or image_data.startswith(b\"GIF89a\"):\n        return \"image/gif\"\n    elif image_data.startswith(b\"RIFF\") and image_data[8:12] == b\"WEBP\":\n        return \"image/webp\"\n    else:\n        # Default to JPEG as a fallback\n        return \"image/jpeg\"\n\n\ndef convert_tool_choice_anthropic(tool_choice: Tool | Literal[\"auto\", \"required\", \"none\"]) -> Any:\n    \"\"\"Convert tool_choice parameter to Anthropic API format.\n\n    Args:\n        tool_choice: A single Tool object to force the model to use, \"auto\" to let the model choose any available tool, \"required\" to force tool usage, or \"none\" to disable tool usage.\n\n    Returns:\n        Anthropic API compatible tool_choice value.\n    \"\"\"\n    if tool_choice == \"none\":",
+      "snippet_start_line": 123,
+      "snippet_end_line": 162
+    },
+    {
+      "file_path": "python/packages/autogen-ext/src/autogen_ext/models/ollama/_ollama_client.py",
+      "function_name": "type_to_role",
+      "line_start": 151,
+      "line_end": 159,
+      "pattern": "P1",
+      "labels": [
+        "system",
+        "user",
+        "assistant",
+        "tool"
+      ],
+      "label_cardinality": 4,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "\n# TODO check types\n# oai_system_message_schema = type2schema(ChatCompletionSystemMessageParam)\n# oai_user_message_schema = type2schema(ChatCompletionUserMessageParam)\n# oai_assistant_message_schema = type2schema(ChatCompletionAssistantMessageParam)\n# oai_tool_message_schema = type2schema(ChatCompletionToolMessageParam)\n\n\ndef type_to_role(message: LLMMessage) -> str:  # return type: Message.role\n    if isinstance(message, SystemMessage):\n        return \"system\"\n    elif isinstance(message, UserMessage):\n        return \"user\"\n    elif isinstance(message, AssistantMessage):\n        return \"assistant\"\n    else:\n        return \"tool\"\n\n\ndef user_message_to_ollama(message: UserMessage) -> Sequence[Message]:\n    assert_valid_name(message.source)\n    if isinstance(message.content, str):\n        return [\n            Message(\n                content=message.content,\n                role=\"user\",\n                # name=message.source, # TODO: No name parameter in Ollama\n            )\n        ]",
+      "snippet_start_line": 143,
+      "snippet_end_line": 171
+    },
+    {
+      "file_path": "python/packages/autogen-ext/src/autogen_ext/models/openai/_message_transform.py",
+      "function_name": "user_condition",
+      "line_start": 377,
+      "line_end": 381,
+      "pattern": "P1",
+      "labels": [
+        "text",
+        "multimodal"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "    \"multimodal\": multimodal_user_transformer_funcs,\n}\nuser_transformer_constructors: Dict[str, Callable[..., Any]] = {\n    \"text\": ChatCompletionUserMessageParam,\n    \"multimodal\": ChatCompletionUserMessageParam,\n}\n\n\ndef user_condition(message: LLMMessage, context: Dict[str, Any]) -> str:\n    if isinstance(message.content, str):\n        return \"text\"\n    else:\n        return \"multimodal\"\n\n\nassistant_transformer_funcs: Dict[str, List[Callable[[LLMMessage, Dict[str, Any]], Dict[str, Any]]]] = {\n    \"text\": single_assistant_transformer_funcs,\n    \"tools\": tools_assistant_transformer_funcs,\n    \"thought\": thought_assistant_transformer_funcs,\n}\n\n\nassistant_transformer_constructors: Dict[str, Callable[..., Any]] = {\n    \"text\": ChatCompletionAssistantMessageParam,\n    \"tools\": ChatCompletionAssistantMessageParam,",
+      "snippet_start_line": 369,
+      "snippet_end_line": 393
+    },
+    {
+      "file_path": "python/packages/autogen-ext/src/autogen_ext/models/openai/_message_transform.py",
+      "function_name": "assistant_condition",
+      "line_start": 398,
+      "line_end": 406,
+      "pattern": "P1",
+      "labels": [
+        "text",
+        "thought",
+        "tools"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "\nassistant_transformer_constructors: Dict[str, Callable[..., Any]] = {\n    \"text\": ChatCompletionAssistantMessageParam,\n    \"tools\": ChatCompletionAssistantMessageParam,\n    \"thought\": ChatCompletionAssistantMessageParam,\n}\n\n\ndef assistant_condition(message: LLMMessage, context: Dict[str, Any]) -> str:\n    assert isinstance(message, AssistantMessage)\n    if isinstance(message.content, list):\n        if message.thought is not None:\n            return \"thought\"\n        else:\n            return \"tools\"\n    else:\n        return \"text\"\n\n\nuser_transformer_funcs_gemini: Dict[str, List[Callable[[LLMMessage, Dict[str, Any]], Dict[str, Any]]]] = {\n    \"text\": single_user_transformer_funcs + [_set_empty_to_whitespace],\n    \"multimodal\": multimodal_user_transformer_funcs,\n}\n\n\nassistant_transformer_funcs_gemini: Dict[str, List[Callable[[LLMMessage, Dict[str, Any]], Dict[str, Any]]]] = {\n    \"text\": single_assistant_transformer_funcs + [_set_empty_to_whitespace],\n    \"tools\": tools_assistant_transformer_funcs,  # that case, message.content is a list of FunctionCall\n    \"thought\": thought_assistant_transformer_funcs_gemini,  # that case, message.content is a list of FunctionCall",
+      "snippet_start_line": 390,
+      "snippet_end_line": 418
+    },
+    {
+      "file_path": "python/packages/autogen-ext/src/autogen_ext/models/openai/_openai_client.py",
+      "function_name": "type_to_role",
+      "line_start": 154,
+      "line_end": 162,
+      "pattern": "P1",
+      "labels": [
+        "system",
+        "user",
+        "assistant",
+        "tool"
+      ],
+      "label_cardinality": 4,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "\n# TODO check types\n# oai_system_message_schema = type2schema(ChatCompletionSystemMessageParam)\n# oai_user_message_schema = type2schema(ChatCompletionUserMessageParam)\n# oai_assistant_message_schema = type2schema(ChatCompletionAssistantMessageParam)\n# oai_tool_message_schema = type2schema(ChatCompletionToolMessageParam)\n\n\ndef type_to_role(message: LLMMessage) -> ChatCompletionRole:\n    if isinstance(message, SystemMessage):\n        return \"system\"\n    elif isinstance(message, UserMessage):\n        return \"user\"\n    elif isinstance(message, AssistantMessage):\n        return \"assistant\"\n    else:\n        return \"tool\"\n\n\ndef to_oai_type(\n    message: LLMMessage,\n    prepend_name: bool = False,\n    model: str = \"unknown\",\n    model_family: str = ModelFamily.UNKNOWN,\n    include_name_in_message: bool = True,\n) -> Sequence[ChatCompletionMessageParam]:\n    context = {\n        \"prepend_name\": prepend_name,\n        \"include_name_in_message\": include_name_in_message,",
+      "snippet_start_line": 146,
+      "snippet_end_line": 174
+    },
+    {
+      "file_path": "python/packages/autogen-ext/src/autogen_ext/models/openai/_openai_client.py",
+      "function_name": "convert_tool_choice",
+      "line_start": 274,
+      "line_end": 296,
+      "pattern": "P1",
+      "labels": [
+        "none",
+        "auto",
+        "required"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "            )\n        )\n    # Check if all tools have valid names.\n    for tool_param in result:\n        assert_valid_name(tool_param[\"function\"][\"name\"])\n    return result\n\n\ndef convert_tool_choice(tool_choice: Tool | Literal[\"auto\", \"required\", \"none\"]) -> Any:\n    \"\"\"Convert tool_choice parameter to OpenAI API format.\n\n    Args:\n        tool_choice: A single Tool object to force the model to use, \"auto\" to let the model choose any available tool, \"required\" to force tool usage, or \"none\" to disable tool usage.\n\n    Returns:\n        OpenAI API compatible tool_choice value or None if not specified.\n    \"\"\"\n    if tool_choice == \"none\":\n        return \"none\"\n\n    if tool_choice == \"auto\":\n        return \"auto\"\n\n    if tool_choice == \"required\":\n        return \"required\"\n\n    # Must be a Tool object\n    if isinstance(tool_choice, Tool):\n        return {\"type\": \"function\", \"function\": {\"name\": tool_choice.schema[\"name\"]}}\n    else:\n        raise ValueError(f\"tool_choice must be a Tool object, 'auto', 'required', or 'none', got {type(tool_choice)}\")\n\n\ndef normalize_name(name: str) -> str:\n    \"\"\"\n    LLMs sometimes ask functions while ignoring their own format requirements, this function should be used to replace invalid characters with \"_\".\n\n    Prefer _assert_valid_name for validating user configuration or input\n    \"\"\"\n    return re.sub(r\"[^a-zA-Z0-9_-]\", \"_\", name)[:64]\n\n\ndef count_tokens_openai(",
+      "snippet_start_line": 266,
+      "snippet_end_line": 308
+    },
+    {
+      "file_path": "python/packages/autogen-ext/src/autogen_ext/tools/azure/_config.py",
+      "function_name": "normalize_query_type",
+      "line_start": 152,
+      "line_end": 160,
+      "pattern": "P1",
+      "labels": [
+        "simple",
+        "full"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "    @field_validator(\"endpoint\")\n    def validate_endpoint(cls, v: str) -> str:\n        \"\"\"Validate that the endpoint is a valid URL.\"\"\"\n        if not v.startswith((\"http://\", \"https://\")):\n            raise ValueError(\"endpoint must be a valid URL starting with http:// or https://\")\n        return v\n\n    @field_validator(\"query_type\")\n    def normalize_query_type(cls, v: QueryTypeLiteral) -> QueryTypeLiteral:\n        \"\"\"Normalize query type to standard values.\"\"\"\n        if not v:\n            return \"simple\"\n\n        if isinstance(v, str) and v.lower() == \"fulltext\":\n            return \"full\"\n\n        return v\n\n    @field_validator(\"top\")\n    def validate_top(cls, v: Optional[int]) -> Optional[int]:\n        \"\"\"Ensure top is a positive integer if provided.\"\"\"\n        if v is not None and v <= 0:\n            raise ValueError(\"top must be a positive integer\")\n        return v\n\n    @model_validator(mode=\"after\")\n    def validate_interdependent_fields(self) -> \"AzureAISearchConfig\":\n        \"\"\"Validate interdependent fields after all fields have been parsed.\"\"\"\n        if self.query_type == \"semantic\" and not self.semantic_config_name:",
+      "snippet_start_line": 144,
+      "snippet_end_line": 172
+    },
+    {
+      "file_path": "python/packages/autogen-ext/src/autogen_ext/tools/mcp/_host/_sampling.py",
+      "function_name": "finish_reason_to_stop_reason",
+      "line_start": 88,
+      "line_end": 102,
+      "pattern": "P1",
+      "labels": [
+        "endTurn",
+        "maxTokens"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "        return AssistantMessage(\n            source=\"assistant\",\n            content=content,\n        )\n    else:\n        raise ValueError(f\"Unrecognized message role: {message.role}\")\n\n\ndef finish_reason_to_stop_reason(finish_reason: FinishReasons) -> StopReason:\n    \"\"\"Convert AutoGen finish reasons to MCP stop reasons.\n\n    Args:\n        finish_reason: AutoGen completion finish reason\n\n    Returns:\n        Corresponding MCP stop reason\n    \"\"\"\n    if finish_reason == \"stop\":\n        return \"endTurn\"\n    elif finish_reason == \"length\":\n        return \"maxTokens\"\n    else:\n        return finish_reason\n\n\ndef create_request_params_to_extra_create_args(params: mcp_types.CreateMessageRequestParams) -> Dict[str, Any]:\n    \"\"\"Convert MCP request parameters to AutoGen extra create arguments.\n\n    Args:\n        params: MCP message creation request parameters\n\n    Returns:\n        Dictionary of extra arguments for AutoGen chat completion client\n    \"\"\"\n    # TODO: Need to support all ChatCompletionClients",
+      "snippet_start_line": 80,
+      "snippet_end_line": 114
+    },
+    {
+      "file_path": "python/samples/agentchat_chainlit/app_team_user_proxy.py",
+      "function_name": "user_input_func",
+      "line_start": 14,
+      "line_end": 23,
+      "pattern": "P1",
+      "labels": [
+        "User did not provide any input.",
+        "User did not provide any input within the time limit."
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "from autogen_agentchat.base import TaskResult\nfrom autogen_agentchat.conditions import TextMentionTermination\nfrom autogen_agentchat.messages import ModelClientStreamingChunkEvent, TextMessage\nfrom autogen_agentchat.teams import RoundRobinGroupChat\nfrom autogen_core import CancellationToken\nfrom autogen_core.models import ChatCompletionClient\n\n\nasync def user_input_func(prompt: str, cancellation_token: CancellationToken | None = None) -> str:\n    \"\"\"Get user input from the UI for the user proxy agent.\"\"\"\n    try:\n        response = await cl.AskUserMessage(content=prompt).send()\n    except TimeoutError:\n        return \"User did not provide any input within the time limit.\"\n    if response:\n        return response[\"output\"]  # type: ignore\n    else:\n        return \"User did not provide any input.\"\n\n\nasync def user_action_func(prompt: str, cancellation_token: CancellationToken | None = None) -> str:\n    \"\"\"Get user action from the UI for the user proxy agent.\"\"\"\n    try:\n        response = await cl.AskActionMessage(\n            content=\"Pick an action\",\n            actions=[\n                cl.Action(name=\"approve\", label=\"Approve\", payload={\"value\": \"approve\"}),\n                cl.Action(name=\"reject\", label=\"Reject\", payload={\"value\": \"reject\"}),\n            ],\n        ).send()",
+      "snippet_start_line": 6,
+      "snippet_end_line": 35
+    },
+    {
+      "file_path": "python/samples/agentchat_chainlit/app_team_user_proxy.py",
+      "function_name": "user_action_func",
+      "line_start": 26,
+      "line_end": 44,
+      "pattern": "P1",
+      "labels": [
+        "User did not provide any input.",
+        "User did not provide any input within the time limit.",
+        "APPROVE.",
+        "REJECT."
+      ],
+      "label_cardinality": 4,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "python/packages/agbench/benchmarks/GAIA/Templates/ParallelAgents/scenario.py",
+      "function_name": "aggregate_final_answer",
+      "line_start": 154,
+      "line_end": 264,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 154,
+          "reason": "Function 'aggregate_final_answer' takes 5 args but 1 have no type annotation: team_results. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def aggregate_final_answer(task: str, client: str, team_results: str, source: str, cancellation_token: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
+    },
+    {
+      "file_path": "python/packages/agbench/src/agbench/linter/coders/oai_coder.py",
+      "function_name": "code_document",
+      "line_start": 31,
+      "line_end": 208,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "python/packages/autogen-agentchat/src/autogen_agentchat/teams/_group_chat/_base_group_chat_manager.py",
+      "function_name": "handle_start",
+      "line_start": 87,
+      "line_end": 132,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "python/packages/autogen-agentchat/src/autogen_agentchat/teams/_group_chat/_base_group_chat_manager.py",
+      "function_name": "handle_agent_response",
+      "line_start": 135,
+      "line_end": 170,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "python/packages/autogen-agentchat/src/autogen_agentchat/teams/_group_chat/_magentic_one/_magentic_one_orchestrator.py",
+      "function_name": "handle_start",
+      "line_start": 135,
+      "line_end": 190,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "python/packages/autogen-agentchat/src/autogen_agentchat/tools/_task_runner_tool.py",
+      "function_name": "return_value_as_string",
+      "line_start": 54,
+      "line_end": 66,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "python/packages/autogen-agentchat/src/autogen_agentchat/ui/_console.py",
+      "function_name": "Console",
+      "line_start": 82,
+      "line_end": 204,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "python/packages/autogen-ext/src/autogen_ext/agents/openai/_openai_agent.py",
+      "function_name": "_get_required_params_help",
+      "line_start": 466,
+      "line_end": 474,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "python/packages/autogen-ext/src/autogen_ext/agents/openai/_openai_assistant_agent.py",
+      "function_name": "messages",
+      "line_start": 369,
+      "line_end": 370,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "python/packages/autogen-ext/src/autogen_ext/code_executors/azure/_azure_container_code_executor.py",
+      "function_name": "_execute_code_dont_check_setup",
+      "line_start": 417,
+      "line_end": 494,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "python/packages/autogen-ext/src/autogen_ext/experimental/task_centric_memory/utils/apprentice.py",
+      "function_name": "_assign_task_to_assistant_agent",
+      "line_start": 151,
+      "line_end": 207,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "python/packages/autogen-ext/src/autogen_ext/experimental/task_centric_memory/utils/apprentice.py",
+      "function_name": "_assign_task_to_magentic_one",
+      "line_start": 209,
+      "line_end": 257,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "python/packages/autogen-ext/src/autogen_ext/experimental/task_centric_memory/utils/page_logger.py",
+      "function_name": "log_model_task",
+      "line_start": 337,
+      "line_end": 358,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 348,
+          "reason": "Line 348 binds 'response_str' from message.to_text(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If message.to_text supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "python/packages/autogen-ext/src/autogen_ext/models/anthropic/_anthropic_client.py",
+      "function_name": "create",
+      "line_start": 552,
+      "line_end": 763,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 705,
+          "reason": "getattr(...) at line 705 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 708,
+          "reason": "getattr(...) at line 708 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 716,
+          "reason": "getattr(...) at line 716 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 743,
+          "reason": "getattr(...) at line 743 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "side_effect_evidence",
+          "line": 672,
+          "reason": "Line 672 binds 'thinking_config' from self._get_thinking_config(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._get_thinking_config supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        },
+        {
+          "category": "side_effect_evidence",
+          "line": 563,
+          "reason": "Line 563 binds 'create_args' from self._create_args.copy(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._create_args.copy supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "python/packages/autogen-ext/src/autogen_ext/models/ollama/_ollama_client.py",
+      "function_name": "create",
+      "line_start": 612,
+      "line_end": 718,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "python/packages/autogen-ext/src/autogen_ext/models/openai/_openai_client.py",
+      "function_name": "create",
+      "line_start": 663,
+      "line_end": 814,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 712,
+          "reason": "getattr(...) at line 712 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 713,
+          "reason": "getattr(...) at line 713 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "side_effect_evidence",
+          "line": 673,
+          "reason": "Line 673 binds 'create_params' from self._process_create_args(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._process_create_args supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "python/packages/autogen-ext/src/autogen_ext/models/semantic_kernel/_sk_chat_completion_adapter.py",
+      "function_name": "count_tokens",
+      "line_start": 742,
+      "line_end": 749,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 748,
+          "reason": "getattr(...) at line 748 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "python/packages/autogen-ext/src/autogen_ext/tools/mcp/_host/_sampling.py",
+      "function_name": "sample",
+      "line_start": 143,
+      "line_end": 176,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "python/packages/autogen-ext/src/autogen_ext/ui/_rich_console.py",
+      "function_name": "RichConsole",
+      "line_start": 102,
+      "line_end": 217,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "python/packages/autogen-studio/autogenstudio/gallery/tools/generate_image.py",
+      "function_name": "generate_image",
+      "line_start": 13,
+      "line_end": 51,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 31,
+          "reason": "Line 31 binds 'response' from client.images.generate(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If client.images.generate supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "python/packages/autogen-studio/autogenstudio/mcp/callbacks.py",
+      "function_name": "create_sampling_callback",
+      "line_start": 67,
+      "line_end": 117,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "python/packages/autogen-studio/autogenstudio/mcp/callbacks.py",
+      "function_name": "sampling_callback",
+      "line_start": 70,
+      "line_end": 115,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "python/samples/agentchat_chess_game/main.py",
+      "function_name": "get_ai_move",
+      "line_start": 79,
+      "line_end": 98,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "python/samples/core_streaming_response_fastapi/app.py",
+      "function_name": "handle_user_message",
+      "line_start": 60,
+      "line_end": 81,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    }
+  ],
+  "errors": [],
+  "repo_label": "autogen",
+  "github_path": "microsoft/autogen",
+  "github_branch": "main",
+  "raw_url_prefix": "https://raw.githubusercontent.com/microsoft/autogen/main",
+  "github_blob_prefix": "https://github.com/microsoft/autogen/blob/main"
+}

@@ -1,0 +1,1618 @@
+{
+  "root": "/private/tmp/dendra-corpus/crewai",
+  "files_scanned": 1105,
+  "total_sites": 88,
+  "sites": [
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "observe_step_result",
+      "line_start": 451,
+      "line_end": 516,
+      "pattern": "P1",
+      "labels": [
+        "step_observed_low",
+        "step_observed_high",
+        "step_observed_medium"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 467,
+          "reason": "Line 467 binds 'effort' from self._get_reasoning_effort(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._get_reasoning_effort supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused",
+      "snippet": "            dependency_results=dependency_results,\n        )\n\n    # -------------------------------------------------------------------------\n    # Plan-and-Execute: New Observation-Driven Flow Methods\n    # -------------------------------------------------------------------------\n\n    @router(\"step_executed\")\n    def observe_step_result(\n        self,\n    ) -> Literal[\"step_observed_low\", \"step_observed_medium\", \"step_observed_high\"]:\n        \"\"\"Observe step result and route based on reasoning_effort level.\n\n        Always runs PlannerObserver.observe() to validate whether the step\n        succeeded. Then routes to the appropriate handler based on the\n        agent's reasoning_effort setting:\n\n        - \"low\": observe \u2192 mark complete \u2192 continue (no replan/refine)\n        - \"medium\": observe \u2192 replan on failure only (no refine)\n        - \"high\": observe \u2192 full decide pipeline (replan/refine/goal-achieved)\n\n        Based on PLAN-AND-ACT Section 3.3.\n        \"\"\"\n        current_todo = self.state.todos.current_todo\n        effort = self._get_reasoning_effort()\n\n        if not current_todo:\n            # No todo \u2014 route to low handler which will just continue\n            return \"step_observed_low\"\n\n        observer = self._ensure_planner_observer()\n        all_completed = self.state.todos.get_completed_todos()\n        remaining = self.state.todos.get_pending_todos()\n\n        observation = observer.observe(\n            completed_step=current_todo,\n            result=current_todo.result or \"\",\n            all_completed=all_completed,\n            remaining_todos=remaining,\n        )\n\n        self.state.observations[current_todo.step_number] = observation\n\n        # Log observation for debugging\n        self.state.execution_log.append(\n            {\n                \"type\": \"observation\",\n                \"step_number\": current_todo.step_number,\n                \"step_completed_successfully\": observation.step_completed_successfully,\n                \"key_information_learned\": observation.key_information_learned,\n                \"remaining_plan_still_valid\": observation.remaining_plan_still_valid,\n                \"needs_full_replan\": observation.needs_full_replan,\n                \"goal_already_achieved\": observation.goal_already_achieved,\n                \"reasoning_effort\": effort,\n            }\n        )\n\n        if self.agent.verbose:\n            PRINTER.print(\n                content=(\n                    f\"[Observe] Step {current_todo.step_number} \"\n                    f\"(effort={effort}): \"\n                    f\"success={observation.step_completed_successfully}, \"\n                    f\"plan_valid={observation.remaining_plan_still_valid}, \"\n                    f\"learned={observation.key_information_learned[:80]}...\"\n                ),\n                color=\"cyan\",\n            )\n\n        if effort == \"high\":\n            return \"step_observed_high\"\n        if effort == \"medium\":\n            return \"step_observed_medium\"\n        return \"step_observed_low\"\n\n    # -- Low effort: observe \u2192 mark complete \u2192 continue (no replan/refine) --\n\n    @router(\"step_observed_low\")\n    def handle_step_observed_low(\n        self,\n    ) -> Literal[\"continue_plan\", \"replan_now\"]:\n        \"\"\"Low reasoning effort: mark step complete and continue linearly.\n\n        Skips the refine/goal-achieved pipeline but still gates on hard\n        failures: if the observer says the step failed AND a full replan is\n        needed, we route to ``replan_now`` rather than blindly continuing.",
+      "snippet_start_line": 443,
+      "snippet_end_line": 528
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "handle_step_observed_low",
+      "line_start": 521,
+      "line_end": 575,
+      "pattern": "P1",
+      "labels": [
+        "continue_plan",
+        "replan_now"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 536,
+          "reason": "Line 536 binds 'observation' from self.state.observations.get(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self.state.observations.get supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused",
+      "snippet": "            return \"step_observed_high\"\n        if effort == \"medium\":\n            return \"step_observed_medium\"\n        return \"step_observed_low\"\n\n    # -- Low effort: observe \u2192 mark complete \u2192 continue (no replan/refine) --\n\n    @router(\"step_observed_low\")\n    def handle_step_observed_low(\n        self,\n    ) -> Literal[\"continue_plan\", \"replan_now\"]:\n        \"\"\"Low reasoning effort: mark step complete and continue linearly.\n\n        Skips the refine/goal-achieved pipeline but still gates on hard\n        failures: if the observer says the step failed AND a full replan is\n        needed, we route to ``replan_now`` rather than blindly continuing.\n        This prevents cascading failures where every subsequent step builds\n        on a broken foundation.\n        \"\"\"\n        current_todo = self.state.todos.current_todo\n        if not current_todo:\n            return \"continue_plan\"\n\n        observation = self.state.observations.get(current_todo.step_number)\n\n        # Even at low effort, don't ignore a hard step failure.\n        # A hard failure is one where the step did not succeed AND a replan\n        # is explicitly required (e.g. required tool not found, permission\n        # denied, environment misconfiguration).\n        if (\n            observation\n            and not observation.step_completed_successfully\n            and observation.needs_full_replan\n        ):\n            self.state.todos.mark_failed(\n                current_todo.step_number, result=current_todo.result\n            )\n            if self.agent.verbose:\n                PRINTER.print(\n                    content=(\n                        f\"[Low] Step {current_todo.step_number} hard-failed \"\n                        f\"\u2014 triggering replan: {observation.replan_reason}\"\n                    ),\n                    color=\"yellow\",\n                )\n            self.state.last_replan_reason = (\n                observation.replan_reason or \"Step did not complete successfully\"\n            )\n            return \"replan_now\"\n\n        self.state.todos.mark_completed(\n            current_todo.step_number, result=current_todo.result\n        )\n\n        if self.agent.verbose:\n            completed = self.state.todos.completed_count\n            total = len(self.state.todos.items)\n            PRINTER.print(\n                content=f\"[Low] Step {current_todo.step_number} done ({completed}/{total}) \u2014 continuing\",\n                color=\"green\",\n            )\n\n        return \"continue_plan\"\n\n    # -- Medium effort: observe \u2192 replan on failure only (no refine) --\n\n    @router(\"step_observed_medium\")\n    def handle_step_observed_medium(\n        self,\n    ) -> Literal[\"continue_plan\", \"replan_now\"]:\n        \"\"\"Medium reasoning effort: replan only when a step fails.\n\n        On success, marks the step complete and continues without\n        refinement or early goal detection. On failure, triggers replanning\n        so the agent can recover.",
+      "snippet_start_line": 513,
+      "snippet_end_line": 587
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "handle_step_observed_medium",
+      "line_start": 580,
+      "line_end": 643,
+      "pattern": "P1",
+      "labels": [
+        "continue_plan",
+        "replan_now"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 593,
+          "reason": "Line 593 binds 'observation' from self.state.observations.get(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self.state.observations.get supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused",
+      "snippet": "                color=\"green\",\n            )\n\n        return \"continue_plan\"\n\n    # -- Medium effort: observe \u2192 replan on failure only (no refine) --\n\n    @router(\"step_observed_medium\")\n    def handle_step_observed_medium(\n        self,\n    ) -> Literal[\"continue_plan\", \"replan_now\"]:\n        \"\"\"Medium reasoning effort: replan only when a step fails.\n\n        On success, marks the step complete and continues without\n        refinement or early goal detection. On failure, triggers replanning\n        so the agent can recover.\n        \"\"\"\n        current_todo = self.state.todos.current_todo\n        if not current_todo:\n            return \"continue_plan\"\n\n        observation = self.state.observations.get(current_todo.step_number)\n\n        # If observation is missing or step succeeded \u2014 continue\n        if not observation or observation.step_completed_successfully:\n            self.state.todos.mark_completed(\n                current_todo.step_number, result=current_todo.result\n            )\n            if self.agent.verbose:\n                completed = self.state.todos.completed_count\n                total = len(self.state.todos.items)\n                PRINTER.print(\n                    content=f\"[Medium] Step {current_todo.step_number} succeeded ({completed}/{total}) \u2014 continuing\",\n                    color=\"green\",\n                )\n            return \"continue_plan\"\n\n        # Step failed \u2014 only replan if observer explicitly requires it,\n        # otherwise mark done and continue (same gate as low-effort).\n        if observation.needs_full_replan:\n            self.state.todos.mark_failed(\n                current_todo.step_number, result=current_todo.result\n            )\n            if self.agent.verbose:\n                PRINTER.print(\n                    content=(\n                        f\"[Medium] Step {current_todo.step_number} failed + replan required \"\n                        f\"\u2014 triggering replan: {observation.replan_reason}\"\n                    ),\n                    color=\"yellow\",\n                )\n            self.state.last_replan_reason = (\n                observation.replan_reason or \"Step did not complete successfully\"\n            )\n            return \"replan_now\"\n\n        # Step failed but observer does not require a full replan \u2014 mark as\n        # failed (not completed) so get_failed_todos() tracks it correctly.\n        self.state.todos.mark_failed(\n            current_todo.step_number, result=current_todo.result\n        )\n        if self.agent.verbose:\n            failed = len(self.state.todos.get_failed_todos())\n            total = len(self.state.todos.items)\n            PRINTER.print(\n                content=(\n                    f\"[Medium] Step {current_todo.step_number} failed but no replan needed \"\n                    f\"({failed} failed/{total} total) \u2014 continuing\"\n                ),\n                color=\"yellow\",\n            )\n        return \"continue_plan\"\n\n    # -- High effort: full observation pipeline (existing behavior) --\n\n    @router(\"step_observed_high\")\n    def decide_next_action(\n        self,\n    ) -> Literal[\n        \"goal_achieved\",\n        \"replan_now\",\n        \"refine_and_continue\",\n        \"continue_plan\",\n    ]:",
+      "snippet_start_line": 572,
+      "snippet_end_line": 655
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "decide_next_action",
+      "line_start": 648,
+      "line_end": 733,
+      "pattern": "P1",
+      "labels": [
+        "continue_plan",
+        "goal_achieved",
+        "replan_now",
+        "refine_and_continue"
+      ],
+      "label_cardinality": 4,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 666,
+          "reason": "Line 666 binds 'observation' from self.state.observations.get(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self.state.observations.get supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused",
+      "snippet": "                ),\n                color=\"yellow\",\n            )\n        return \"continue_plan\"\n\n    # -- High effort: full observation pipeline (existing behavior) --\n\n    @router(\"step_observed_high\")\n    def decide_next_action(\n        self,\n    ) -> Literal[\n        \"goal_achieved\",\n        \"replan_now\",\n        \"refine_and_continue\",\n        \"continue_plan\",\n    ]:\n        \"\"\"High reasoning effort: full observation-driven routing.\n\n        Routes based on the Planner's observation. Can trigger early goal\n        achievement, full replanning, lightweight refinement, or simple\n        continuation. This is the most adaptive but highest-latency path.\n        \"\"\"\n        current_todo = self.state.todos.current_todo\n        if not current_todo:\n            return \"continue_plan\"\n\n        observation = self.state.observations.get(current_todo.step_number)\n        if not observation:\n            # No observation available \u2014 default to continue\n            self.state.todos.mark_completed(current_todo.step_number)\n            return \"continue_plan\"\n\n        # Goal already achieved \u2014 early termination\n        if observation.goal_already_achieved:\n            self.state.todos.mark_completed(\n                current_todo.step_number, result=current_todo.result\n            )\n            if self.agent.verbose:\n                PRINTER.print(\n                    content=\"[Decide] Goal achieved early \u2014 finalizing\",\n                    color=\"green\",\n                )\n            return \"goal_achieved\"\n\n        # Full replan needed\n        if observation.needs_full_replan:\n            self.state.todos.mark_failed(\n                current_todo.step_number, result=current_todo.result\n            )\n            if self.agent.verbose:\n                PRINTER.print(\n                    content=f\"[Decide] Full replan needed: {observation.replan_reason}\",\n                    color=\"yellow\",\n                )\n            self.state.last_replan_reason = observation.replan_reason\n            return \"replan_now\"\n\n        # Step failed \u2014 also trigger replan\n        if not observation.step_completed_successfully:\n            self.state.todos.mark_failed(\n                current_todo.step_number, result=current_todo.result\n            )\n            if self.agent.verbose:\n                PRINTER.print(\n                    content=\"[Decide] Step failed \u2014 triggering replan\",\n                    color=\"yellow\",\n                )\n            self.state.last_replan_reason = \"Step did not complete successfully\"\n            return \"replan_now\"\n\n        # Plan still valid but needs refinement\n        if observation.remaining_plan_still_valid and observation.suggested_refinements:\n            self.state.todos.mark_completed(\n                current_todo.step_number, result=current_todo.result\n            )\n            if self.agent.verbose:\n                PRINTER.print(\n                    content=\"[Decide] Plan valid but refining upcoming steps\",\n                    color=\"cyan\",\n                )\n            return \"refine_and_continue\"\n\n        # Plan still valid, no refinements needed \u2014 just continue\n        self.state.todos.mark_completed(\n            current_todo.step_number, result=current_todo.result\n        )\n        if self.agent.verbose:\n            completed = self.state.todos.completed_count\n            total = len(self.state.todos.items)\n            PRINTER.print(\n                content=f\"[Decide] Continue plan ({completed}/{total} done)\",\n                color=\"green\",\n            )\n        return \"continue_plan\"\n\n    @router(\"refine_and_continue\")\n    def handle_refine_and_continue(self) -> Literal[\"has_todos\"]:\n        \"\"\"Lightweight plan refinement \u2014 update pending todo descriptions.\n\n        The Planner sharpens upcoming step descriptions based on what was\n        learned, without regenerating the entire plan.\n        \"\"\"\n        # Find the most recent observation with refinements\n        recent_observation: StepObservation | None = None\n        last_step: int = 0\n        if self.state.observations:",
+      "snippet_start_line": 640,
+      "snippet_end_line": 745
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "handle_continue_plan",
+      "line_start": 782,
+      "line_end": 786,
+      "pattern": "P1",
+      "labels": [
+        "has_todos",
+        "all_todos_complete"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "                PRINTER.print(\n                    content=f\"[Refine] Updated {len(remaining)} pending step(s)\",\n                    color=\"cyan\",\n                )\n\n        return \"has_todos\"\n\n    @router(\"continue_plan\")\n    def handle_continue_plan(self) -> Literal[\"has_todos\", \"all_todos_complete\"]:\n        \"\"\"Continue to the next todo after a successful step.\"\"\"\n        if self.state.todos.is_complete:\n            return \"all_todos_complete\"\n        return \"has_todos\"\n\n    @router(\"goal_achieved\")\n    def handle_goal_achieved(self) -> Literal[\"all_todos_complete\"]:\n        \"\"\"Handle early goal achievement \u2014 skip remaining todos.\"\"\"\n        completed = self.state.todos.get_completed_todos()\n        remaining = self.state.todos.get_pending_todos()\n\n        # Emit goal achieved early event\n        crewai_event_bus.emit(\n            self.agent,\n            event=GoalAchievedEarlyEvent(\n                agent_role=self.agent.role,",
+      "snippet_start_line": 774,
+      "snippet_end_line": 798
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "handle_replan_now",
+      "line_start": 816,
+      "line_end": 856,
+      "pattern": "P1",
+      "labels": [
+        "all_todos_complete",
+        "has_todos"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 823,
+          "reason": "Line 823 binds 'max_replans' from self._get_max_replans(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._get_max_replans supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused",
+      "snippet": "        if self.agent.verbose:\n            PRINTER.print(\n                content=\"Goal achieved early \u2014 skipping remaining steps\",\n                color=\"green\",\n            )\n        return \"all_todos_complete\"\n\n    @router(\"replan_now\")\n    def handle_replan_now(\n        self,\n    ) -> Literal[\"has_todos\", \"all_todos_complete\"]:\n        \"\"\"Handle full replanning \u2014 regenerate the remaining plan.\n\n        Preserves completed todo results and replaces only pending steps.\n        \"\"\"\n        max_replans = self._get_max_replans()\n\n        if self.state.replan_count >= max_replans:\n            if self.agent.verbose:\n                PRINTER.print(\n                    content=f\"Max replans ({max_replans}) reached \u2014 finalizing with current results\",\n                    color=\"yellow\",\n                )\n            return \"all_todos_complete\"\n\n        self.state.replan_count += 1\n        reason = self.state.last_replan_reason or \"Dynamic replan triggered\"\n        completed = self.state.todos.get_completed_todos()\n\n        # Emit replan triggered event\n        crewai_event_bus.emit(\n            self.agent,\n            event=PlanReplanTriggeredEvent(\n                agent_role=self.agent.role,\n                step_number=completed[-1].step_number if completed else 0,\n                step_description=\"\",\n                replan_reason=reason,\n                replan_count=self.state.replan_count,\n                completed_steps_preserved=len(completed),\n                from_task=self.task,\n                from_agent=self.agent,\n            ),\n        )\n\n        self._trigger_replan(reason)\n\n        if self.state.todos.get_pending_todos():\n            return \"has_todos\"\n        return \"all_todos_complete\"\n\n    # -------------------------------------------------------------------------\n    # Todo-Driven Execution Flow\n    # -------------------------------------------------------------------------\n\n    @router(generate_plan)\n    def check_todos_available(\n        self,\n    ) -> Literal[\"has_todos\", \"no_todos\", \"planning_disabled\"]:\n        \"\"\"Check if todos were created from planning.\n\n        Routes to todo-driven execution if todos exist, otherwise falls back",
+      "snippet_start_line": 808,
+      "snippet_end_line": 868
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "check_todos_available",
+      "line_start": 863,
+      "line_end": 875,
+      "pattern": "P1",
+      "labels": [
+        "has_todos",
+        "planning_disabled",
+        "no_todos"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 871,
+          "reason": "getattr(...) at line 871 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused",
+      "snippet": "            return \"has_todos\"\n        return \"all_todos_complete\"\n\n    # -------------------------------------------------------------------------\n    # Todo-Driven Execution Flow\n    # -------------------------------------------------------------------------\n\n    @router(generate_plan)\n    def check_todos_available(\n        self,\n    ) -> Literal[\"has_todos\", \"no_todos\", \"planning_disabled\"]:\n        \"\"\"Check if todos were created from planning.\n\n        Routes to todo-driven execution if todos exist, otherwise falls back\n        to standard execution flow.\n        \"\"\"\n        if not getattr(self.agent, \"planning_enabled\", False):\n            return \"planning_disabled\"\n        if not self.state.todos.items:\n            return \"no_todos\"\n        return \"has_todos\"\n\n    @router(\"has_todos\")\n    def get_ready_todos_method(\n        self,\n    ) -> Literal[\n        \"single_todo_ready\",\n        \"multiple_todos_ready\",\n        \"all_todos_complete\",\n        \"needs_replan\",\n    ]:\n        \"\"\"Find todos whose dependencies are satisfied.\n",
+      "snippet_start_line": 855,
+      "snippet_end_line": 887
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "get_ready_todos_method",
+      "line_start": 878,
+      "line_end": 912,
+      "pattern": "P1",
+      "labels": [
+        "multiple_todos_ready",
+        "needs_replan",
+        "single_todo_ready",
+        "all_todos_complete"
+      ],
+      "label_cardinality": 4,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 891,
+          "reason": "Line 891 binds 'ready' from self.state.todos.get_ready_todos(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self.state.todos.get_ready_todos supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused",
+      "snippet": "        \"\"\"\n        if not getattr(self.agent, \"planning_enabled\", False):\n            return \"planning_disabled\"\n        if not self.state.todos.items:\n            return \"no_todos\"\n        return \"has_todos\"\n\n    @router(\"has_todos\")\n    def get_ready_todos_method(\n        self,\n    ) -> Literal[\n        \"single_todo_ready\",\n        \"multiple_todos_ready\",\n        \"all_todos_complete\",\n        \"needs_replan\",\n    ]:\n        \"\"\"Find todos whose dependencies are satisfied.\n\n        Determines if we can execute a single todo sequentially or multiple\n        todos in parallel.\n        \"\"\"\n        ready = self.state.todos.get_ready_todos()\n\n        if not ready:\n            if self.state.todos.is_complete:\n                return \"all_todos_complete\"\n            # Stuck state: pending todos exist but none are ready (unsatisfied\n            # dependencies, e.g. a dependency was never completed). Trigger a\n            # replan so the planner can generate a new plan that unblocks\n            # execution rather than erroneously finalizing.\n            self.state.last_replan_reason = (\n                \"No todos are ready but plan is not complete \u2014 \"\n                \"likely a dependency deadlock or missing completion\"\n            )\n            return \"needs_replan\"\n\n        if len(ready) == 1:\n            # Mark the single ready todo as running\n            self.state.todos.mark_running(ready[0].step_number)\n            return \"single_todo_ready\"\n\n        # Multiple todos ready - can parallelize\n        return \"multiple_todos_ready\"\n\n    @router(\"single_todo_ready\")\n    def execute_todo_sequential(\n        self,\n    ) -> Literal[\"step_executed\", \"todo_injected\"]:\n        \"\"\"Execute a single todo using StepExecutor (Plan-and-Execute mode)\n        or fall back to the old ReAct injection (legacy mode).\n\n        In Plan-and-Execute mode: executes the step in isolation via\n        StepExecutor, stores the result, and routes to the observation step.\n\n        In legacy mode: injects context into the shared message list and",
+      "snippet_start_line": 870,
+      "snippet_end_line": 924
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "execute_todo_sequential",
+      "line_start": 915,
+      "line_end": 982,
+      "pattern": "P1",
+      "labels": [
+        "todo_injected",
+        "step_executed"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 932,
+          "reason": "getattr(...) at line 932 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused",
+      "snippet": "            # Mark the single ready todo as running\n            self.state.todos.mark_running(ready[0].step_number)\n            return \"single_todo_ready\"\n\n        # Multiple todos ready - can parallelize\n        return \"multiple_todos_ready\"\n\n    @router(\"single_todo_ready\")\n    def execute_todo_sequential(\n        self,\n    ) -> Literal[\"step_executed\", \"todo_injected\"]:\n        \"\"\"Execute a single todo using StepExecutor (Plan-and-Execute mode)\n        or fall back to the old ReAct injection (legacy mode).\n\n        In Plan-and-Execute mode: executes the step in isolation via\n        StepExecutor, stores the result, and routes to the observation step.\n\n        In legacy mode: injects context into the shared message list and\n        routes to the ReAct loop.\n        \"\"\"\n        current = self.state.todos.current_todo\n        if not current:\n            return \"todo_injected\"  # Fall through to legacy\n\n        # Plan-and-Execute path: use StepExecutor for isolated execution\n        if getattr(self.agent, \"planning_enabled\", False):\n            if self.agent.verbose:\n                PRINTER.print(\n                    content=(\n                        f\"[Execute] Step {current.step_number}: \"\n                        f\"{current.description[:60]}...\"\n                    ),\n                    color=\"cyan\",\n                )\n\n            step_executor = self._ensure_step_executor()\n            context = self._build_context_for_todo(current)\n            result = step_executor.execute(\n                current,\n                context,\n                max_step_iterations=self._get_max_step_iterations(),\n                step_timeout=self._get_step_timeout(),\n            )\n\n            # Store result on the todo (do NOT mark completed \u2014 observation decides)\n            current.result = result.result\n\n            # Log to audit trail\n            self.state.execution_log.append(\n                {\n                    \"type\": \"step_execution\",\n                    \"step_number\": current.step_number,\n                    \"success\": result.success,\n                    \"result_preview\": result.result[:200] if result.result else \"\",\n                    \"error\": result.error,\n                    \"tool_calls\": result.tool_calls_made,\n                    \"execution_time\": result.execution_time,\n                }\n            )\n\n            if self.agent.verbose:\n                status = \"success\" if result.success else \"failed\"\n                PRINTER.print(\n                    content=(\n                        f\"[Execute] Step {current.step_number} {status} \"\n                        f\"({result.execution_time:.1f}s, \"\n                        f\"{len(result.tool_calls_made)} tool calls)\"\n                    ),\n                    color=\"green\" if result.success else \"red\",\n                )\n\n            return \"step_executed\"\n\n        # Legacy path: inject context into shared messages for ReAct loop\n        self._inject_todo_context(current)\n        return \"todo_injected\"\n\n    def _inject_todo_context(self, todo: TodoItem) -> None:\n        \"\"\"Inject todo-specific context into the conversation.\n\n        Args:\n            todo: The todo item to inject context for.\n        \"\"\"\n        # Build focused task prompt. Context from previous steps is already\n        # in self.state.messages as SYSTEM messages (added by _mark_todo_as_completed)\n        prompt = self._build_todo_prompt(todo, include_dependencies=False)\n        todo_message: LLMMessage = {\n            \"role\": \"user\",",
+      "snippet_start_line": 907,
+      "snippet_end_line": 994
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "after_parallel_execution",
+      "line_start": 1164,
+      "line_end": 1179,
+      "pattern": "P1",
+      "labels": [
+        "has_todos",
+        "needs_replan",
+        "all_todos_complete"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "                        f\"learned={observation.key_information_learned[:80]}...\"\n                    ),\n                    color=\"cyan\",\n                )\n\n        return \"parallel_todos_complete\"\n\n    @router(\"parallel_todos_complete\")\n    def after_parallel_execution(\n        self,\n    ) -> Literal[\"has_todos\", \"all_todos_complete\", \"needs_replan\"]:\n        \"\"\"Check for more todos after parallel execution completes.\n\n        Also checks if replanning is needed based on execution results.\n        \"\"\"\n        # Check if replanning is needed before continuing\n        should_replan, reason = self._should_replan()\n        if should_replan:\n            self.state.last_replan_reason = reason\n            return \"needs_replan\"\n\n        if self.state.todos.is_complete:\n            return \"all_todos_complete\"\n        return \"has_todos\"\n\n    @router(or_(\"todo_injected\", \"no_todos\", \"planning_disabled\"))\n    def initialize_reasoning(self) -> Literal[\"initialized\"]:\n        \"\"\"Initialize the reasoning flow and emit agent start logs.\n\n        This is called either after todo context is injected, or when\n        there are no todos (falling back to standard execution).\n        \"\"\"\n        self._show_start_logs()\n        # Check for native tool support on first iteration\n        if self.state.iterations == 0:\n            self.state.use_native_tools = self._check_native_tool_support()",
+      "snippet_start_line": 1156,
+      "snippet_end_line": 1191
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "call_llm_and_parse",
+      "line_start": 1214,
+      "line_end": 1280,
+      "pattern": "P1",
+      "labels": [
+        "parsed",
+        "parser_error",
+        "context_error"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "        )\n\n        self.state.current_answer = formatted_answer\n        self.state.is_finished = True\n\n        return \"agent_finished\"\n\n    @router(\"continue_reasoning\")\n    def call_llm_and_parse(self) -> Literal[\"parsed\", \"parser_error\", \"context_error\"]:\n        \"\"\"Execute LLM call with hooks and parse the response.\n\n        Returns routing decision based on parsing result.\n        \"\"\"\n        if self.state.is_finished:\n            return \"parsed\"\n\n        try:\n            enforce_rpm_limit(self.request_within_rpm_limit)\n\n            answer = get_llm_response(\n                llm=self.llm,\n                messages=list(self.state.messages),\n                callbacks=self.callbacks,\n                printer=PRINTER,\n                from_task=self.task,\n                from_agent=self.agent,\n                response_model=self.response_model,\n                executor_context=self,\n                verbose=self.agent.verbose,\n            )\n\n            # If response is structured output (BaseModel), store it directly\n            if isinstance(answer, BaseModel):\n                self.state.current_answer = AgentFinish(\n                    thought=\"\",\n                    output=answer,\n                    text=str(answer),\n                )\n                return \"parsed\"\n\n            # Parse the LLM response\n            formatted_answer = process_llm_response(answer, self.use_stop_words)\n\n            self.state.current_answer = formatted_answer\n\n            if \"Final Answer:\" in answer and isinstance(formatted_answer, AgentAction):\n                warning_text = Text()\n                warning_text.append(\"\u26a0\ufe0f \", style=\"yellow bold\")\n                warning_text.append(\n                    f\"LLM returned 'Final Answer:' but parsed as AgentAction (tool: {formatted_answer.tool})\",\n                    style=\"yellow\",\n                )\n                self._console.print(warning_text)\n                preview_text = Text()\n                preview_text.append(\"Answer preview: \", style=\"yellow\")\n                preview_text.append(f\"{answer[:200]}...\", style=\"yellow dim\")\n                self._console.print(preview_text)\n\n            return \"parsed\"\n\n        except OutputParserError as e:\n            # Store error context for recovery\n            self._last_parser_error = e or OutputParserError(\n                error=\"Unknown parser error\"\n            )\n            return \"parser_error\"\n\n        except Exception as e:\n            if is_context_length_exceeded(e):\n                self._last_context_error = e\n                return \"context_error\"\n            if e.__class__.__module__.startswith(\"litellm\"):\n                raise e\n            handle_unknown_error(PRINTER, e, verbose=self.agent.verbose)\n            raise\n\n    @router(\"continue_reasoning_native\")\n    def call_llm_native_tools(\n        self,\n    ) -> Literal[\n        \"native_tool_calls\", \"native_finished\", \"context_error\", \"todo_satisfied\"\n    ]:\n        \"\"\"Execute LLM call with native function calling.\n\n        Always calls the LLM so it can read reflection prompts and decide\n        whether to provide a final answer or request more tools.\n",
+      "snippet_start_line": 1206,
+      "snippet_end_line": 1292
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "call_llm_native_tools",
+      "line_start": 1283,
+      "line_end": 1371,
+      "pattern": "P1",
+      "labels": [
+        "native_finished",
+        "native_tool_calls",
+        "context_error"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "                self._last_context_error = e\n                return \"context_error\"\n            if e.__class__.__module__.startswith(\"litellm\"):\n                raise e\n            handle_unknown_error(PRINTER, e, verbose=self.agent.verbose)\n            raise\n\n    @router(\"continue_reasoning_native\")\n    def call_llm_native_tools(\n        self,\n    ) -> Literal[\n        \"native_tool_calls\", \"native_finished\", \"context_error\", \"todo_satisfied\"\n    ]:\n        \"\"\"Execute LLM call with native function calling.\n\n        Always calls the LLM so it can read reflection prompts and decide\n        whether to provide a final answer or request more tools.\n\n        When todos are active and the LLM produces a final answer, we treat it\n        as completing the current todo rather than finishing the entire task.\n\n        Returns routing decision based on whether tool calls or final answer.\n        \"\"\"\n        if self.state.is_finished:\n            return \"native_finished\"\n\n        try:\n            # Clear pending tools - LLM will decide what to do next after reading\n            # the reflection prompt. It can either:\n            # 1. Return a final answer (string) if it has enough info\n            # 2. Return tool calls (possibly same ones, or different ones)\n            self.state.pending_tool_calls.clear()\n\n            enforce_rpm_limit(self.request_within_rpm_limit)\n\n            # Call LLM with native tools\n            answer = get_llm_response(\n                llm=self.llm,\n                messages=list(self.state.messages),\n                callbacks=self.callbacks,\n                printer=PRINTER,\n                tools=self._openai_tools,\n                available_functions=None,\n                from_task=self.task,\n                from_agent=self.agent,\n                response_model=self.response_model,\n                executor_context=self,\n                verbose=self.agent.verbose,\n            )\n\n            # Check if the response is a list of tool calls\n            if isinstance(answer, list) and answer and self._is_tool_call_list(answer):\n                # Store tool calls for sequential processing\n                self.state.pending_tool_calls = list(answer)\n                return \"native_tool_calls\"\n\n            if isinstance(answer, BaseModel):\n                self.state.current_answer = AgentFinish(\n                    thought=\"\",\n                    output=answer,\n                    text=answer.model_dump_json(),\n                )\n                self._invoke_step_callback(self.state.current_answer)\n                self._append_message_to_state(answer.model_dump_json())\n                return self._route_finish_with_todos(\"native_finished\")\n\n            # Text response - this is the final answer\n            if isinstance(answer, str):\n                self.state.current_answer = AgentFinish(\n                    thought=\"\",\n                    output=answer,\n                    text=answer,\n                )\n                self._invoke_step_callback(self.state.current_answer)\n                self._append_message_to_state(answer)\n\n                return self._route_finish_with_todos(\"native_finished\")\n\n            # Unexpected response type, treat as final answer\n            self.state.current_answer = AgentFinish(\n                thought=\"\",\n                output=str(answer),\n                text=str(answer),\n            )\n            self._invoke_step_callback(self.state.current_answer)\n            self._append_message_to_state(str(answer))\n\n            return self._route_finish_with_todos(\"native_finished\")\n\n        except Exception as e:\n            if is_context_length_exceeded(e):\n                self._last_context_error = e\n                return \"context_error\"\n            if e.__class__.__module__.startswith(\"litellm\"):\n                raise e\n            handle_unknown_error(PRINTER, e, verbose=self.agent.verbose)\n            raise\n\n    def _route_finish_with_todos(\n        self, default_route: _RouteT\n    ) -> _RouteT | Literal[\"todo_satisfied\"]:\n        \"\"\"Helper to route finish events, checking for pending todos first.\n\n        If there are pending todos, route to todo_satisfied instead of the\n        default finish event to continue processing todos.\n\n        Args:\n            default_route: The default route to use if no todos are pending.\n",
+      "snippet_start_line": 1275,
+      "snippet_end_line": 1383
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "execute_tool_action",
+      "line_start": 1408,
+      "line_end": 1475,
+      "pattern": "P1",
+      "labels": [
+        "tool_completed",
+        "tool_result_is_final"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 1456,
+          "reason": "Line 1456 binds 'result' from self._handle_agent_action(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._handle_agent_action supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused",
+      "snippet": "        as completing the current todo rather than finishing the entire task.\n        \"\"\"\n        if isinstance(self.state.current_answer, AgentAction):\n            return \"execute_tool\"\n\n        return self._route_finish_with_todos(\"agent_finished\")\n\n    @router(\"execute_tool\")\n    def execute_tool_action(self) -> Literal[\"tool_completed\", \"tool_result_is_final\"]:\n        \"\"\"Execute the tool action and handle the result.\"\"\"\n\n        action = cast(AgentAction, self.state.current_answer)\n\n        fingerprint_context = {}\n        if (\n            self.agent\n            and hasattr(self.agent, \"security_config\")\n            and hasattr(self.agent.security_config, \"fingerprint\")\n        ):\n            fingerprint_context = {\n                \"agent_fingerprint\": str(self.agent.security_config.fingerprint)\n            }\n\n        try:\n            tool_result = execute_tool_and_check_finality(\n                agent_action=action,\n                fingerprint_context=fingerprint_context,\n                tools=self.tools,\n                agent_key=self.agent.key if self.agent else None,\n                agent_role=self.agent.role if self.agent else None,\n                tools_handler=self.tools_handler,\n                task=self.task,\n                agent=self.agent,\n                function_calling_llm=self.function_calling_llm,\n                crew=self.crew,\n            )\n        except Exception as e:\n            if self.agent and self.agent.verbose:\n                PRINTER.print(content=f\"Error in tool execution: {e}\", color=\"red\")\n            if self.task:\n                self.task.increment_tools_errors()\n\n            error_observation = f\"\\nObservation: Error executing tool: {e}\"\n            action.text += error_observation\n            action.result = str(e)\n            self._append_message_to_state(action.text)\n\n            reasoning_prompt = I18N_DEFAULT.slice(\"post_tool_reasoning\")\n            reasoning_message: LLMMessage = {\n                \"role\": \"user\",\n                \"content\": reasoning_prompt,\n            }\n            self.state.messages.append(reasoning_message)\n\n            return \"tool_completed\"\n\n        result = self._handle_agent_action(action, tool_result)\n        self.state.current_answer = result\n\n        self._invoke_step_callback(result)\n\n        if hasattr(result, \"text\"):\n            self._append_message_to_state(result.text)\n\n        if isinstance(result, AgentFinish):\n            self.state.is_finished = True\n            return \"tool_result_is_final\"\n\n        reasoning_prompt = I18N_DEFAULT.slice(\"post_tool_reasoning\")\n        reasoning_message_post: LLMMessage = {\n            \"role\": \"user\",\n            \"content\": reasoning_prompt,\n        }\n        self.state.messages.append(reasoning_message_post)\n\n        return \"tool_completed\"\n\n    @router(\"native_tool_calls\")\n    def execute_native_tool(\n        self,\n    ) -> Literal[\"native_tool_completed\", \"tool_result_is_final\"]:\n        \"\"\"Execute native tool calls in a batch.\n\n        Processes all tools from pending_tool_calls, executes them,\n        and appends results to the conversation history.\n\n        Returns:\n            \"native_tool_completed\" normally, or \"tool_result_is_final\" if",
+      "snippet_start_line": 1400,
+      "snippet_end_line": 1487
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "execute_native_tool",
+      "line_start": 1478,
+      "line_end": 1649,
+      "pattern": "P1",
+      "labels": [
+        "native_tool_completed",
+        "tool_result_is_final"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 1532,
+          "reason": "Line 1532 binds 'should_parallelize' from self._should_parallelize_native_tool_calls(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._should_parallelize_native_tool_calls supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused",
+      "snippet": "            \"role\": \"user\",\n            \"content\": reasoning_prompt,\n        }\n        self.state.messages.append(reasoning_message_post)\n\n        return \"tool_completed\"\n\n    @router(\"native_tool_calls\")\n    def execute_native_tool(\n        self,\n    ) -> Literal[\"native_tool_completed\", \"tool_result_is_final\"]:\n        \"\"\"Execute native tool calls in a batch.\n\n        Processes all tools from pending_tool_calls, executes them,\n        and appends results to the conversation history.\n\n        Returns:\n            \"native_tool_completed\" normally, or \"tool_result_is_final\" if\n            a tool with result_as_answer=True was executed.\n        \"\"\"\n        if not self.state.pending_tool_calls:\n            return \"native_tool_completed\"\n\n        pending_tool_calls = list(self.state.pending_tool_calls)\n        self.state.pending_tool_calls.clear()\n\n        # Group all tool calls into a single assistant message\n        tool_calls_to_report = []\n        for tool_call in pending_tool_calls:\n            info = extract_tool_call_info(tool_call)\n            if not info:\n                continue\n\n            call_id, func_name, func_args = info\n            tool_calls_to_report.append(\n                {\n                    \"id\": call_id,\n                    \"type\": \"function\",\n                    \"function\": {\n                        \"name\": func_name,\n                        \"arguments\": func_args\n                        if isinstance(func_args, str)\n                        else json.dumps(func_args),\n                    },\n                }\n            )\n\n        if tool_calls_to_report:\n            assistant_message: LLMMessage = {\n                \"role\": \"assistant\",\n                \"content\": None,\n                \"tool_calls\": tool_calls_to_report,\n            }\n            if all(type(tc).__qualname__ == \"Part\" for tc in pending_tool_calls):\n                assistant_message[\"raw_tool_call_parts\"] = list(pending_tool_calls)\n            self.state.messages.append(assistant_message)\n\n        runnable_tool_calls = [\n            tool_call\n            for tool_call in pending_tool_calls\n            if extract_tool_call_info(tool_call) is not None\n        ]\n        should_parallelize = self._should_parallelize_native_tool_calls(\n            runnable_tool_calls\n        )\n\n        execution_results: list[dict[str, Any]] = []\n        if should_parallelize:\n            max_workers = min(8, len(runnable_tool_calls))\n            with ThreadPoolExecutor(max_workers=max_workers) as pool:\n                future_to_idx = {\n                    pool.submit(\n                        contextvars.copy_context().run,\n                        self._execute_single_native_tool_call,\n                        tool_call,\n                    ): idx\n                    for idx, tool_call in enumerate(runnable_tool_calls)\n                }\n                ordered_results: list[dict[str, Any] | None] = [None] * len(\n                    runnable_tool_calls\n                )\n                for future in as_completed(future_to_idx):\n                    idx = future_to_idx[future]\n                    try:\n                        ordered_results[idx] = future.result()\n                    except Exception as e:\n                        tool_call = runnable_tool_calls[idx]\n                        info = extract_tool_call_info(tool_call)\n                        call_id = info[0] if info else \"unknown\"\n                        func_name = info[1] if info else \"unknown\"\n                        ordered_results[idx] = {\n                            \"call_id\": call_id,\n                            \"func_name\": func_name,\n                            \"result\": f\"Error executing tool: {e}\",\n                            \"from_cache\": False,\n                            \"original_tool\": None,\n                        }\n                execution_results = [\n                    result for result in ordered_results if result is not None\n                ]\n        else:\n            # Execute sequentially so result_as_answer tools can short-circuit\n            # immediately without running remaining calls.\n            for tool_call in runnable_tool_calls:\n                execution_result = self._execute_single_native_tool_call(tool_call)\n                call_id = cast(str, execution_result[\"call_id\"])\n                func_name = cast(str, execution_result[\"func_name\"])\n                result = cast(str, execution_result[\"result\"])\n                from_cache = cast(bool, execution_result[\"from_cache\"])\n                original_tool = execution_result[\"original_tool\"]\n\n                tool_message: LLMMessage = {\n                    \"role\": \"tool\",\n                    \"tool_call_id\": call_id,\n                    \"name\": func_name,\n                    \"content\": result,\n                }\n                self.state.messages.append(tool_message)\n\n                # Log the tool execution\n                if self.agent and self.agent.verbose:\n                    cache_info = \" (from cache)\" if from_cache else \"\"\n                    PRINTER.print(\n                        content=f\"Tool {func_name} executed with result{cache_info}: {result[:200]}...\",\n                        color=\"green\",\n                    )\n\n                if (\n                    original_tool\n                    and hasattr(original_tool, \"result_as_answer\")\n                    and original_tool.result_as_answer\n                ):\n                    self.state.current_answer = AgentFinish(\n                        thought=\"Tool result is the final answer\",\n                        output=result,\n                        text=result,\n                    )\n                    self.state.is_finished = True\n                    return \"tool_result_is_final\"\n\n            return \"native_tool_completed\"\n\n        for execution_result in execution_results:\n            call_id = cast(str, execution_result[\"call_id\"])\n            func_name = cast(str, execution_result[\"func_name\"])\n            result = cast(str, execution_result[\"result\"])\n            from_cache = cast(bool, execution_result[\"from_cache\"])\n            original_tool = execution_result[\"original_tool\"]\n\n            tool_message = {\n                \"role\": \"tool\",\n                \"tool_call_id\": call_id,\n                \"name\": func_name,\n                \"content\": result,\n            }\n            self.state.messages.append(tool_message)\n\n            # Log the tool execution\n            if self.agent and self.agent.verbose:\n                cache_info = \" (from cache)\" if from_cache else \"\"\n                PRINTER.print(\n                    content=f\"Tool {func_name} executed with result{cache_info}: {result[:200]}...\",\n                    color=\"green\",\n                )\n\n            if (\n                original_tool\n                and hasattr(original_tool, \"result_as_answer\")\n                and original_tool.result_as_answer\n            ):\n                # Set the result as the final answer\n                self.state.current_answer = AgentFinish(\n                    thought=\"Tool result is the final answer\",\n                    output=result,\n                    text=result,\n                )\n                self.state.is_finished = True\n                return \"tool_result_is_final\"\n\n        return \"native_tool_completed\"\n\n    def _should_parallelize_native_tool_calls(self, tool_calls: list[Any]) -> bool:\n        \"\"\"Determine if native tool calls are safe to run in parallel.\"\"\"\n        if len(tool_calls) <= 1:\n            return False\n\n        for tool_call in tool_calls:\n            info = extract_tool_call_info(tool_call)\n            if not info:\n                continue\n            _, func_name, _ = info\n",
+      "snippet_start_line": 1470,
+      "snippet_end_line": 1661
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "check_native_todo_completion",
+      "line_start": 1913,
+      "line_end": 1926,
+      "pattern": "P1",
+      "labels": [
+        "todo_satisfied",
+        "todo_not_satisfied"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "        if isinstance(tool_call, dict):\n            func_info = tool_call.get(\"function\", {})\n            return sanitize_tool_name(\n                func_info.get(\"name\", \"\") or tool_call.get(\"name\", \"unknown\")\n            )\n        return \"unknown\"\n\n    @router(execute_native_tool)\n    def check_native_todo_completion(\n        self,\n    ) -> Literal[\"todo_satisfied\", \"todo_not_satisfied\"]:\n        \"\"\"Check if the native tool execution satisfied the active todo.\n\n        Similar to check_todo_completion but for native tool execution path.\n        \"\"\"\n        current_todo = self.state.todos.current_todo\n\n        if not current_todo:\n            return \"todo_not_satisfied\"\n\n        # For native tools, any tool execution satisfies the todo\n        return \"todo_satisfied\"\n\n    @listen(\"initialized\")\n    def continue_iteration(self) -> Literal[\"check_iteration\"]:\n        \"\"\"Bridge listener that connects iteration loop back to iteration check.\"\"\"\n        self._discard_or_listener(FlowMethodName(\"continue_iteration\"))\n        return \"check_iteration\"\n\n    @router(or_(initialize_reasoning, continue_iteration))\n    def check_max_iterations(\n        self,\n    ) -> Literal[\n        \"force_final_answer\", \"continue_reasoning\", \"continue_reasoning_native\"",
+      "snippet_start_line": 1905,
+      "snippet_end_line": 1938
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "check_max_iterations",
+      "line_start": 1935,
+      "line_end": 1945,
+      "pattern": "P1",
+      "labels": [
+        "continue_reasoning",
+        "force_final_answer",
+        "continue_reasoning_native"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "check_todo_completion",
+      "line_start": 1948,
+      "line_end": 1976,
+      "pattern": "P1",
+      "labels": [
+        "todo_not_satisfied",
+        "todo_satisfied"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "check_more_todos",
+      "line_start": 2040,
+      "line_end": 2056,
+      "pattern": "P1",
+      "labels": [
+        "has_todos",
+        "needs_replan",
+        "all_todos_complete"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "finalize",
+      "line_start": 2076,
+      "line_end": 2148,
+      "pattern": "P1",
+      "labels": [
+        "completed",
+        "skipped"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "handle_replan",
+      "line_start": 2476,
+      "line_end": 2498,
+      "pattern": "P1",
+      "labels": [
+        "no_todos",
+        "has_todos"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 2482,
+          "reason": "Line 2482 binds 'max_replans' from self._get_max_replans(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._get_max_replans supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/flow/flow_serializer.py",
+      "function_name": "_get_method_type",
+      "line_start": 130,
+      "line_end": 158,
+      "pattern": "P1",
+      "labels": [
+        "listen",
+        "start_router",
+        "start",
+        "router"
+      ],
+      "label_cardinality": 4,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 147,
+          "reason": "getattr(...) at line 147 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 150,
+          "reason": "getattr(...) at line 150 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/llm.py",
+      "function_name": "_infer_provider_from_model",
+      "line_start": 549,
+      "line_end": 577,
+      "pattern": "P1",
+      "labels": [
+        "openai",
+        "anthropic",
+        "gemini",
+        "bedrock",
+        "azure"
+      ],
+      "label_cardinality": 5,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/memory/recall_flow.py",
+      "function_name": "decide_depth",
+      "line_start": 287,
+      "line_end": 304,
+      "pattern": "P1",
+      "labels": [
+        "synthesize",
+        "explore_deeper"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai-files/src/crewai_files/formatting/anthropic.py",
+      "function_name": "_get_block_type",
+      "line_start": 85,
+      "line_end": 98,
+      "pattern": "P1",
+      "labels": [
+        "image",
+        "document"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai-files/src/crewai_files/formatting/api.py",
+      "function_name": "_normalize_provider",
+      "line_start": 20,
+      "line_end": 54,
+      "pattern": "P1",
+      "labels": [
+        "openai",
+        "gemini",
+        "google",
+        "anthropic",
+        "claude",
+        "bedrock",
+        "aws",
+        "azure",
+        "gpt"
+      ],
+      "label_cardinality": 9,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 35,
+          "reason": "Line 35 binds 'provider_lower' from provider.lower(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If provider.lower supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai-files/src/crewai_files/uploaders/openai.py",
+      "function_name": "_get_purpose_for_content_type",
+      "line_start": 25,
+      "line_end": 43,
+      "pattern": "P1",
+      "labels": [
+        "user_data",
+        "vision"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai-tools/src/crewai_tools/tools/dalle_tool/dalle_tool.py",
+      "function_name": "_run",
+      "line_start": 51,
+      "line_end": 75,
+      "pattern": "P1",
+      "labels": [
+        "Image description is required.",
+        "Failed to generate image."
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 54,
+          "reason": "Line 54 binds 'image_description' from kwargs.get(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If kwargs.get supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        },
+        {
+          "category": "side_effect_evidence",
+          "line": 59,
+          "reason": "Line 59 binds 'response' from client.images.generate(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If client.images.generate supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai-tools/src/crewai_tools/tools/databricks_query_tool/databricks_query_tool.py",
+      "function_name": "_format_results",
+      "line_start": 151,
+      "line_end": 196,
+      "pattern": "P1",
+      "labels": [
+        "Query returned no results.",
+        "Query returned empty rows with no columns.",
+        "Query returned rows but with no column data."
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai-tools/src/crewai_tools/tools/databricks_query_tool/databricks_query_tool.py",
+      "function_name": "_run",
+      "line_start": 198,
+      "line_end": 850,
+      "pattern": "P4",
+      "labels": [
+        "SQL warehouse ID must be provided either as a parameter or as a default.",
+        "Failed to retrieve statement ID after execution.",
+        "Query returned no result (likely timed out or failed)",
+        "Query completed but returned an invalid result structure",
+        "Query executed successfully (no results to display)",
+        "Query was canceled",
+        "Query executed successfully (no data returned)"
+      ],
+      "label_cardinality": 7,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai-tools/src/crewai_tools/tools/parallel_tools/parallel_search_tool.py",
+      "function_name": "_run",
+      "line_start": 68,
+      "line_end": 116,
+      "pattern": "P1",
+      "labels": [
+        "Error: PARALLEL_API_KEY environment variable is required",
+        "Error: Provide at least one of 'objective' or 'search_queries'",
+        "Parallel Search API timeout. Please try again later."
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 78,
+          "reason": "Line 78 binds 'api_key' from os.environ.get(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If os.environ.get supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai-tools/src/crewai_tools/tools/stagehand_tool/stagehand_tool.py",
+      "function_name": "_simplify_instruction",
+      "line_start": 384,
+      "line_end": 405,
+      "pattern": "P1",
+      "labels": [
+        "search for content on the page",
+        "click on the element",
+        "type in the input field",
+        "click on the search input field",
+        "click the button",
+        "click the link",
+        "click the search field"
+      ],
+      "label_cardinality": 7,
+      "regime": "narrow",
+      "fit_score": 5.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 387,
+          "reason": "Line 387 binds 'instruction_lower' from instruction.lower(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If instruction.lower supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "ensure_force_final_answer",
+      "line_start": 1197,
+      "line_end": 1211,
+      "pattern": "P6",
+      "labels": [
+        "agent_finished"
+      ],
+      "label_cardinality": 1,
+      "regime": "narrow",
+      "fit_score": 3.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "mark_todo_complete",
+      "line_start": 1979,
+      "line_end": 2013,
+      "pattern": "P6",
+      "labels": [
+        "todo_marked"
+      ],
+      "label_cardinality": 1,
+      "regime": "narrow",
+      "fit_score": 3.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "recover_from_parser_error",
+      "line_start": 2501,
+      "line_end": 2521,
+      "pattern": "P6",
+      "labels": [
+        "initialized"
+      ],
+      "label_cardinality": 1,
+      "regime": "narrow",
+      "fit_score": 3.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "recover_from_context_length",
+      "line_start": 2524,
+      "line_end": 2537,
+      "pattern": "P6",
+      "labels": [
+        "initialized"
+      ],
+      "label_cardinality": 1,
+      "regime": "narrow",
+      "fit_score": 3.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/a2a/wrapper.py",
+      "function_name": "_kickoff_with_a2a",
+      "line_start": 394,
+      "line_end": 512,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/a2a/wrapper.py",
+      "function_name": "_akickoff_with_a2a",
+      "line_start": 515,
+      "line_end": 637,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/agent/core.py",
+      "function_name": "_build_output_from_result",
+      "line_start": 1634,
+      "line_end": 1709,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 1652,
+          "reason": "Line 1652 binds 'output' from result.get(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If result.get supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/agent/utils.py",
+      "function_name": "save_last_messages",
+      "line_start": 271,
+      "line_end": 307,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/agents/crew_agent_executor.py",
+      "function_name": "_setup_messages",
+      "line_start": 167,
+      "line_end": 190,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/agents/crew_agent_executor.py",
+      "function_name": "_inject_multimodal_files",
+      "line_start": 230,
+      "line_end": 257,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/agents/crew_agent_executor.py",
+      "function_name": "_ainject_multimodal_files",
+      "line_start": 259,
+      "line_end": 288,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/agents/crew_agent_executor.py",
+      "function_name": "_invoke_loop_react",
+      "line_start": 311,
+      "line_end": 445,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/agents/crew_agent_executor.py",
+      "function_name": "_invoke_loop_native_tools",
+      "line_start": 447,
+      "line_end": 555,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/agents/crew_agent_executor.py",
+      "function_name": "_invoke_loop_native_no_tools",
+      "line_start": 557,
+      "line_end": 592,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/agents/crew_agent_executor.py",
+      "function_name": "_handle_native_tool_calls",
+      "line_start": 627,
+      "line_end": 767,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 662,
+          "reason": "getattr(...) at line 662 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 671,
+          "reason": "getattr(...) at line 671 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "side_effect_evidence",
+          "line": 757,
+          "reason": "Line 757 binds 'tool_finish' from self._append_tool_result_and_check_finality(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._append_tool_result_and_check_finality supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        },
+        {
+          "category": "side_effect_evidence",
+          "line": 749,
+          "reason": "Line 749 binds 'execution_result' from self._execute_single_native_tool_call(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._execute_single_native_tool_call supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/agents/crew_agent_executor.py",
+      "function_name": "_append_tool_result_and_check_finality",
+      "line_start": 1026,
+      "line_end": 1060,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/agents/crew_agent_executor.py",
+      "function_name": "_ainvoke_loop_react",
+      "line_start": 1123,
+      "line_end": 1254,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/agents/crew_agent_executor.py",
+      "function_name": "_ainvoke_loop_native_tools",
+      "line_start": 1256,
+      "line_end": 1363,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/agents/crew_agent_executor.py",
+      "function_name": "_ainvoke_loop_native_no_tools",
+      "line_start": 1365,
+      "line_end": 1400,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/agents/crew_agent_executor.py",
+      "function_name": "_handle_agent_action",
+      "line_start": 1402,
+      "line_end": 1429,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 1414,
+          "reason": "Line 1414 binds 'add_image_tool' from I18N_DEFAULT.tools(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If I18N_DEFAULT.tools supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/core/providers/human_input.py",
+      "function_name": "_handle_training_feedback",
+      "line_start": 217,
+      "line_end": 237,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/core/providers/human_input.py",
+      "function_name": "_handle_regular_feedback",
+      "line_start": 239,
+      "line_end": 266,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/core/providers/human_input.py",
+      "function_name": "_handle_training_feedback_async",
+      "line_start": 271,
+      "line_end": 291,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/core/providers/human_input.py",
+      "function_name": "_handle_regular_feedback_async",
+      "line_start": 293,
+      "line_end": 320,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "messages",
+      "line_start": 274,
+      "line_end": 276,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "_should_replan",
+      "line_start": 2274,
+      "line_end": 2324,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 2285,
+          "reason": "Line 2285 binds 'max_replans' from self._get_max_replans(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._get_max_replans supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        },
+        {
+          "category": "side_effect_evidence",
+          "line": 2292,
+          "reason": "Line 2292 binds 'failed_todos' from self.state.todos.get_failed_todos(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self.state.todos.get_failed_todos supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "invoke",
+      "line_start": 2539,
+      "line_end": 2633,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "invoke_async",
+      "line_start": 2635,
+      "line_end": 2724,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "_handle_agent_action",
+      "line_start": 2730,
+      "line_end": 2759,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 2742,
+          "reason": "Line 2742 binds 'add_image_tool' from I18N_DEFAULT.tools(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If I18N_DEFAULT.tools supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "_inject_files_from_inputs",
+      "line_start": 2896,
+      "line_end": 2910,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 2902,
+          "reason": "Line 2902 binds 'files' from inputs.get(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If inputs.get supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/llms/providers/anthropic/completion.py",
+      "function_name": "_handle_completion",
+      "line_start": 793,
+      "line_end": 938,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 845,
+          "reason": "Line 845 binds 'usage' from self._extract_anthropic_token_usage(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._extract_anthropic_token_usage supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/llms/providers/anthropic/completion.py",
+      "function_name": "_handle_streaming_completion",
+      "line_start": 940,
+      "line_end": 1132,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/llms/providers/anthropic/completion.py",
+      "function_name": "_handle_tool_use_conversation",
+      "line_start": 1212,
+      "line_end": 1324,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 1229,
+          "reason": "Line 1229 binds 'tool_results' from self._execute_tools_and_collect_results(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._execute_tools_and_collect_results supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/llms/providers/anthropic/completion.py",
+      "function_name": "_ahandle_completion",
+      "line_start": 1326,
+      "line_end": 1459,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 1378,
+          "reason": "Line 1378 binds 'usage' from self._extract_anthropic_token_usage(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._extract_anthropic_token_usage supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/llms/providers/anthropic/completion.py",
+      "function_name": "_ahandle_streaming_completion",
+      "line_start": 1461,
+      "line_end": 1638,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/llms/providers/anthropic/completion.py",
+      "function_name": "_ahandle_tool_use_conversation",
+      "line_start": 1640,
+      "line_end": 1716,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 1657,
+          "reason": "Line 1657 binds 'tool_results' from self._execute_tools_and_collect_results(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._execute_tools_and_collect_results supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/llms/providers/bedrock/completion.py",
+      "function_name": "_get_document_format",
+      "line_start": 2170,
+      "line_end": 2190,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/llms/providers/bedrock/completion.py",
+      "function_name": "_get_video_format",
+      "line_start": 2192,
+      "line_end": 2211,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/llms/providers/openai/completion.py",
+      "function_name": "_handle_completion",
+      "line_start": 1598,
+      "line_end": 1747,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/llms/providers/openai/completion.py",
+      "function_name": "_handle_streaming_completion",
+      "line_start": 1845,
+      "line_end": 1983,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 1970,
+          "reason": "Line 1970 binds 'result' from self._finalize_streaming_response(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._finalize_streaming_response supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/llms/providers/openai/completion.py",
+      "function_name": "_ahandle_completion",
+      "line_start": 1985,
+      "line_end": 2135,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/llms/providers/openai/completion.py",
+      "function_name": "_ahandle_streaming_completion",
+      "line_start": 2137,
+      "line_end": 2281,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/mcp/client.py",
+      "function_name": "_get_prompt_impl",
+      "line_start": 663,
+      "line_end": 682,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/security/security_config.py",
+      "function_name": "validate_fingerprint",
+      "line_start": 45,
+      "line_end": 58,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/utilities/agent_utils.py",
+      "function_name": "_prepare_llm_call",
+      "line_start": 364,
+      "line_end": 388,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/utilities/agent_utils.py",
+      "function_name": "_setup_before_llm_call_hooks",
+      "line_start": 1615,
+      "line_end": 1668,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/utilities/agent_utils.py",
+      "function_name": "_setup_after_llm_call_hooks",
+      "line_start": 1671,
+      "line_end": 1748,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/utilities/internal_instructor.py",
+      "function_name": "to_pydantic",
+      "line_start": 127,
+      "line_end": 150,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai-tools/src/crewai_tools/tools/ai_mind_tool/ai_mind_tool.py",
+      "function_name": "_run",
+      "line_start": 86,
+      "line_end": 104,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 96,
+          "reason": "Line 96 binds 'completion' from openai_client.chat.completions.create(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If openai_client.chat.completions.create supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai-tools/src/crewai_tools/tools/files_compressor_tool/files_compressor_tool.py",
+      "function_name": "_run",
+      "line_start": 38,
+      "line_end": 90,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai-tools/src/crewai_tools/tools/files_compressor_tool/files_compressor_tool.py",
+      "function_name": "_compress_tar",
+      "line_start": 127,
+      "line_end": 143,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/devtools/src/crewai_devtools/cli.py",
+      "function_name": "translate_release_notes",
+      "line_start": 484,
+      "line_end": 526,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 499,
+          "reason": "Line 499 binds 'locale_cfg' from _CHANGELOG_LOCALES.get(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If _CHANGELOG_LOCALES.get supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/devtools/src/crewai_devtools/cli.py",
+      "function_name": "_generate_release_notes",
+      "line_start": 918,
+      "line_end": 1042,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/devtools/src/crewai_devtools/docs_check.py",
+      "function_name": "_analyze_diff",
+      "line_start": 175,
+      "line_end": 196,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/devtools/src/crewai_devtools/docs_check.py",
+      "function_name": "_generate_doc",
+      "line_start": 199,
+      "line_end": 241,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/devtools/src/crewai_devtools/docs_check.py",
+      "function_name": "_update_doc",
+      "line_start": 244,
+      "line_end": 281,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/devtools/src/crewai_devtools/docs_check.py",
+      "function_name": "_translate_doc",
+      "line_start": 284,
+      "line_end": 317,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "fit_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    }
+  ],
+  "errors": [
+    "lib/crewai/src/crewai/cli/templates/crew/crew.py: parse failed (invalid syntax)",
+    "lib/crewai/src/crewai/cli/templates/crew/main.py: parse failed (invalid syntax)",
+    "lib/crewai/src/crewai/cli/templates/flow/main.py: parse failed (invalid syntax)",
+    "lib/crewai/src/crewai/cli/templates/tool/src/{{folder_name}}/__init__.py: parse failed (invalid syntax)",
+    "lib/crewai/src/crewai/cli/templates/tool/src/{{folder_name}}/tool.py: parse failed (invalid syntax)"
+  ],
+  "repo_label": "crewai",
+  "github_path": "crewAIInc/crewAI",
+  "github_branch": "main",
+  "raw_url_prefix": "https://raw.githubusercontent.com/crewAIInc/crewAI/main",
+  "github_blob_prefix": "https://github.com/crewAIInc/crewAI/blob/main"
+}
