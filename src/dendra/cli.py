@@ -401,6 +401,114 @@ def cmd_whoami(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_insights_enroll(args: argparse.Namespace) -> int:
+    """Opt in to Dendra Insights — show disclosure, prompt, write flag."""
+    from dendra.insights import (
+        DISCLOSURE_TEXT,
+        disclosure_text_sha256,
+        is_enrolled,
+        write_enrollment,
+    )
+
+    if is_enrolled():
+        print("Already enrolled in Dendra Insights.")
+        print("Run `dendra insights status` for details, or `dendra insights leave` to opt out.")
+        return 0
+
+    print(DISCLOSURE_TEXT, end="")
+    if getattr(args, "yes", False):
+        answer = "y"
+        print("y  (auto-confirmed via --yes)")
+    else:
+        try:
+            answer = input().strip().lower()
+        except EOFError:
+            answer = ""
+
+    if answer not in ("y", "yes"):
+        print("\nNot enrolled. The OSS path remains telemetry-free.")
+        return 0
+
+    creds = auth.load_credentials() if hasattr(auth, "load_credentials") else None
+    account_hash = None
+    if creds and creds.get("api_key"):
+        # Hash the API key client-side so we never write the raw key
+        # to the enrollment record. Server-side hashing is layered on
+        # top by the collector.
+        import hashlib
+
+        account_hash = hashlib.sha256(creds["api_key"].encode("utf-8")).hexdigest()
+
+    state = write_enrollment(
+        account_hash=account_hash,
+        consent_text_sha256=disclosure_text_sha256(),
+    )
+    print()
+    print(f"Enrolled at {state.enrolled_at}.")
+    print("Telemetry events will be queued and flushed best-effort on next CLI runs.")
+    print("Leave at any time with: dendra insights leave")
+    return 0
+
+
+def cmd_insights_leave(args: argparse.Namespace) -> int:
+    """Opt out of Dendra Insights — remove flag, stop emitting."""
+    from dendra.insights import is_enrolled, write_unenrollment
+
+    if not is_enrolled():
+        print("Not currently enrolled in Dendra Insights.")
+        return 0
+    write_unenrollment()
+    print("Unenrolled. No further telemetry will be queued.")
+    print(
+        "Any events still in the local queue at "
+        "~/.dendra/insights-queue.jsonl have NOT been uploaded; "
+        "delete that file to discard them."
+    )
+    return 0
+
+
+def cmd_insights_status(args: argparse.Namespace) -> int:
+    """Show enrollment state + cached cohort defaults."""
+    from dendra.insights import (
+        load_cached_or_baked_in,
+        read_enrollment,
+        read_queue,
+    )
+    from dendra.insights.tuned_defaults import (
+        TUNED_DEFAULTS_URL,
+        cache_is_fresh,
+    )
+
+    state = read_enrollment()
+    defaults = load_cached_or_baked_in()
+    queue = read_queue()
+
+    print("Dendra Insights — status")
+    print("=" * 40)
+    if state.enrolled:
+        print(f"Enrolled:        yes (since {state.enrolled_at})")
+        print(f"Schema version:  {state.schema_version}")
+        if state.account_hash:
+            print(f"Account hash:    {state.account_hash[:16]}…")
+    else:
+        print("Enrolled:        no  (OSS path is telemetry-free)")
+    print()
+    print("Cohort defaults (fetched from dendra.dev):")
+    print(f"  URL:           {TUNED_DEFAULTS_URL}")
+    print(f"  Version:       {defaults.version}")
+    print(f"  Cohort size:   {defaults.cohort_size}")
+    if defaults.generated_at:
+        print(f"  Generated at:  {defaults.generated_at}")
+    print(f"  Cache fresh:   {'yes' if cache_is_fresh() else 'no (will refetch)'}")
+    if defaults.median_outcomes_to_graduation:
+        print("  Median outcomes to graduation:")
+        for regime, n in sorted(defaults.median_outcomes_to_graduation.items()):
+            print(f"    {regime:>8}: {n}")
+    print()
+    print(f"Pending events in queue: {len(queue)}")
+    return 0
+
+
 _BENCHMARKS = {
     "banking77": "load_banking77",
     "clinc150": "load_clinc150",
@@ -509,11 +617,13 @@ def cmd_analyze(args: argparse.Namespace) -> int:
 
     if args.format == "json":
         print(render_json(report))
+        _emit_analyze_event_if_enrolled(report)
         return 0
 
     if args.format == "markdown":
         projections = project_savings(report) if args.project_savings else None
         print(render_markdown(report, projections=projections))
+        _emit_analyze_event_if_enrolled(report)
         return 0
 
     # Default: text.
@@ -523,7 +633,49 @@ def cmd_analyze(args: argparse.Namespace) -> int:
         print("Run with --format markdown for the savings projection table.")
     _bump_counter("analyze_count")
     _maybe_nudge_signup()
+    _emit_analyze_event_if_enrolled(report)
     return 0
+
+
+def _emit_analyze_event_if_enrolled(report) -> None:
+    """Queue an analyze event for the cohort, no-op if not enrolled.
+
+    Failures are silent — telemetry must never break the analyze command.
+    Run-level histograms only; no per-site granularity (privacy posture).
+    """
+    try:
+        from dendra.insights import flush_queue_async, is_enrolled, queue_event
+    except ImportError:
+        return
+    if not is_enrolled():
+        return
+    try:
+        pattern_hist: dict[str, int] = {}
+        regime_hist: dict[str, int] = {}
+        lift_status_hist: dict[str, int] = {}
+        hazard_hist: dict[str, int] = {}
+        for site in report.sites:
+            pattern_hist[site.pattern] = pattern_hist.get(site.pattern, 0) + 1
+            regime_hist[site.regime] = regime_hist.get(site.regime, 0) + 1
+            lift_status_hist[site.lift_status] = lift_status_hist.get(site.lift_status, 0) + 1
+            for h in site.hazards:
+                hazard_hist[h.category] = hazard_hist.get(h.category, 0) + 1
+        queue_event(
+            "analyze",
+            payload={
+                "files_scanned": report.files_scanned,
+                "total_sites": report.total_sites(),
+                "already_dendrified_count": report.already_dendrified_count(),
+                "pattern_histogram": pattern_hist,
+                "regime_histogram": regime_hist,
+                "lift_status_histogram": lift_status_hist,
+                "hazard_category_histogram": hazard_hist,
+            },
+        )
+        # Best-effort flush in the background. Daemon thread, no join.
+        flush_queue_async()
+    except Exception:  # noqa: BLE001 — telemetry must never break the CLI
+        return
 
 
 def cmd_init(args: argparse.Namespace) -> int:
@@ -1362,6 +1514,36 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Show the signed-in account email and a truncated API key.",
     )
     p_whoami.set_defaults(fn=cmd_whoami)
+
+    p_insights = sub.add_parser(
+        "insights",
+        help="Manage Dendra Insights — opt-in cohort flywheel (enroll/leave/status).",
+    )
+    p_insights.set_defaults(fn=lambda _a: (p_insights.print_help() or 0))
+    insights_sub = p_insights.add_subparsers(dest="insights_cmd")
+
+    p_insights_enroll = insights_sub.add_parser(
+        "enroll",
+        help="Show the disclosure and opt in to Insights.",
+    )
+    p_insights_enroll.add_argument(
+        "--yes",
+        action="store_true",
+        help="Auto-confirm the disclosure prompt (for scripted installs on Ben-controlled infra).",
+    )
+    p_insights_enroll.set_defaults(fn=cmd_insights_enroll)
+
+    p_insights_leave = insights_sub.add_parser(
+        "leave",
+        help="Opt out of Insights. Local queue is NOT auto-deleted.",
+    )
+    p_insights_leave.set_defaults(fn=cmd_insights_leave)
+
+    p_insights_status = insights_sub.add_parser(
+        "status",
+        help="Show Insights enrollment + cached cohort defaults + pending queue size.",
+    )
+    p_insights_status.set_defaults(fn=cmd_insights_status)
 
     p_mcp = sub.add_parser(
         "mcp",
