@@ -169,7 +169,10 @@ def figure_1_transition_curves() -> None:
         ("banking77", "Banking77", 77),
         ("clinc150", "CLINC150", 151),
     ]
-    fig, axes = plt.subplots(2, 4, figsize=(15.5, 7.5), sharey=False)
+    # Width matches Figure 2 (figsize=(10, 6)) so the two figures sit
+    # column-aligned in the paper layout; height bumped to 6.5 so the
+    # 2-row grid has a touch more vertical room per panel.
+    fig, axes = plt.subplots(2, 4, figsize=(10, 6.5), sharey=False)
     panel_labels = ["(a)", "(b)", "(c)", "(d)", "(e)", "(f)", "(g)", "(h)"]
 
     for idx, (ax, (slug, name, k)) in enumerate(zip(axes.flat, panels, strict=False)):
@@ -205,6 +208,13 @@ def figure_1_transition_curves() -> None:
         ax.set_xscale("log")
         ax.set_xlim(left=outcomes.min() * 0.8)
         ax.set_ylim(0, 100)
+        # Show major ticks at powers of 10 only; suppress minor-tick LABELS
+        # that otherwise overlap on narrow x-ranges (e.g. codelangs at 100-600
+        # outcomes). Keeps the minor tick marks for visual density.
+        from matplotlib.ticker import LogLocator, NullFormatter
+
+        ax.xaxis.set_major_locator(LogLocator(base=10))
+        ax.xaxis.set_minor_formatter(NullFormatter())
         ax.set_xlabel("Training outcomes", fontsize=9)
         if idx % 4 == 0:
             ax.set_ylabel("Test accuracy (%)", fontsize=9)
@@ -588,6 +598,17 @@ def figure_6_autoresearch_winners() -> None:
         "TfidfGradientBoosting": "D",
     }
 
+    # Per-benchmark label offsets in points. Defaults to (8, 5) (above-right
+    # of the marker). Overridden for benchmarks whose markers cluster on the
+    # log-x axis: HWU64 (64) and Banking77 (77) sit ~8% apart in log-space,
+    # so HWU64's default label is occluded by Banking77's marker; same story
+    # for TREC-6 (6) and Snips (7).
+    label_offsets = {
+        "HWU64": (-10, -16),
+        "TREC-6": (-12, -16),
+        "Snips": (8, -2),
+    }
+
     fig, ax = plt.subplots(figsize=(11, 5.5))
     annotated_heads = set()
     for slug, name, k in EXTENDED_BENCHES:
@@ -612,7 +633,11 @@ def figure_6_autoresearch_winners() -> None:
             label=label,
             zorder=3,
         )
-        ax.annotate(name, (k, winner_acc), textcoords="offset points", xytext=(8, 5), fontsize=9)
+        offset = label_offsets.get(name, (8, 5))
+        ha = "right" if offset[0] < 0 else "left"
+        ax.annotate(
+            name, (k, winner_acc), textcoords="offset points", xytext=offset, fontsize=9, ha=ha
+        )
 
     ax.set_xscale("log")
     ax.set_xlabel("Label cardinality (log)")
