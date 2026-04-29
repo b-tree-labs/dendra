@@ -77,12 +77,21 @@ class AnalyzerReport:
     files_scanned: int
     sites: list[ClassificationSite] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+    # Functions skipped because they're already wrapped by Dendra
+    # (decorated with @ml_switch / @dendra.ml_switch) or live inside a
+    # ``Switch`` subclass. Tracked so the report can show "X sites
+    # already dendrified" without recommending re-graduation. Tuples
+    # are (file_path, function_name, line_start).
+    already_dendrified: list[tuple[str, str, int]] = field(default_factory=list)
 
     def by_score_desc(self) -> list[ClassificationSite]:
         return sorted(self.sites, key=lambda s: s.fit_score, reverse=True)
 
     def total_sites(self) -> int:
         return len(self.sites)
+
+    def already_dendrified_count(self) -> int:
+        return len(self.already_dendrified)
 
 
 # ---------------------------------------------------------------------------
@@ -185,6 +194,60 @@ def _body_has_keyword_scanner(fn: ast.FunctionDef) -> bool:
     return hits >= 2
 
 
+def _body_has_dict_argmax_scanner(fn: ast.FunctionDef) -> bool:
+    """Pattern P4 (extended) — argmax over a per-label scoring loop.
+
+    Shape: ``for <label>, <kws> in <mapping>.items(): ... <tracker> = <label>``,
+    followed by ``return <tracker>``. The canonical instance is
+    :meth:`dendra.benchmarks.rules.ReferenceRule.classify`, which scores
+    each label by token-set intersection and returns the highest-scoring
+    one. Without this detector the analyzer misses real per-label
+    scoring rules whose returns are dynamic (``return best_label``)
+    rather than literal-string, surfaced as a false negative in the
+    2026-04-28 dogfood report.
+    """
+    assigned_from_loop_var: set[str] = set()
+    for node in ast.walk(fn):
+        if not isinstance(node, ast.For):
+            continue
+        iter_node = node.iter
+        if not (
+            isinstance(iter_node, ast.Call)
+            and isinstance(iter_node.func, ast.Attribute)
+            and iter_node.func.attr == "items"
+        ):
+            continue
+        target = node.target
+        if not (
+            isinstance(target, ast.Tuple)
+            and len(target.elts) == 2
+            and all(isinstance(t, ast.Name) for t in target.elts)
+        ):
+            continue
+        label_var = target.elts[0].id  # type: ignore[union-attr]
+        for inner in ast.walk(node):
+            if (
+                isinstance(inner, ast.Assign)
+                and isinstance(inner.value, ast.Name)
+                and inner.value.id == label_var
+                and len(inner.targets) == 1
+                and isinstance(inner.targets[0], ast.Name)
+            ):
+                assigned_from_loop_var.add(inner.targets[0].id)
+
+    if not assigned_from_loop_var:
+        return False
+
+    for node in ast.walk(fn):
+        if (
+            isinstance(node, ast.Return)
+            and isinstance(node.value, ast.Name)
+            and node.value.id in assigned_from_loop_var
+        ):
+            return True
+    return False
+
+
 def _body_uses_regex_dispatch(fn: ast.FunctionDef) -> bool:
     """Pattern P5 — re.match / re.search calls with string-literal returns."""
     uses_re = False
@@ -241,6 +304,7 @@ _PATTERNS: list[tuple[str, Any]] = [
     ("P2", _body_has_match_case_string_dispatch),
     ("P3", _body_is_dict_lookup),
     ("P4", _body_has_keyword_scanner),
+    ("P4", _body_has_dict_argmax_scanner),
     ("P5", _body_uses_regex_dispatch),
     ("P6", _body_is_model_prompted),
 ]
@@ -366,24 +430,85 @@ def _is_test_site(
 # ---------------------------------------------------------------------------
 
 
-def _analyze_file(path: Path, root: Path) -> tuple[list[ClassificationSite], list[str]]:
+def _has_ml_switch_decorator(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    """True if ``fn`` is decorated with ``@ml_switch`` / ``@dendra.ml_switch``.
+
+    Matches both the bare form (``@ml_switch``) and the call form
+    (``@ml_switch(labels=...)``), under either the bare-import alias or
+    the dotted-attribute form. Intentionally syntactic: the analyzer
+    walks ASTs without resolving imports, so a user who aliases the
+    decorator under a different name will read as un-wrapped here.
+    That matches the semantics the lifters use and is documented as a
+    known shape in the FAQ.
+    """
+    for dec in fn.decorator_list:
+        target = dec.func if isinstance(dec, ast.Call) else dec
+        if isinstance(target, ast.Name) and target.id == "ml_switch":
+            return True
+        if isinstance(target, ast.Attribute) and target.attr == "ml_switch":
+            return True
+    return False
+
+
+def _collect_switch_subclass_method_lines(tree: ast.Module) -> set[int]:
+    """Return ``lineno`` of every method on a class that subclasses ``Switch``.
+
+    The check is syntactic — a base named ``Switch`` (bare or dotted).
+    Methods of these classes are skipped entirely because the analyzer
+    cannot tell ``_rule`` apart from ``_evidence_*`` / ``_when_*`` /
+    ``_on_*`` helpers without semantic understanding of the
+    :class:`dendra.Switch` contract, and reporting any of them as
+    classification sites is a false positive (see the 2026-04-28
+    dogfood report for the smoking-gun cases).
+    """
+    lines: set[int] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ClassDef):
+            continue
+        is_switch_subclass = any(
+            (isinstance(b, ast.Name) and b.id == "Switch")
+            or (isinstance(b, ast.Attribute) and b.attr == "Switch")
+            for b in node.bases
+        )
+        if not is_switch_subclass:
+            continue
+        for child in ast.walk(node):
+            if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                lines.add(child.lineno)
+    return lines
+
+
+def _analyze_file(
+    path: Path, root: Path
+) -> tuple[list[ClassificationSite], list[str], list[tuple[str, str, int]]]:
     sites: list[ClassificationSite] = []
     errors: list[str] = []
+    already_dendrified: list[tuple[str, str, int]] = []
     try:
         source = path.read_text(encoding="utf-8")
     except (UnicodeDecodeError, OSError) as e:
         errors.append(f"{path.relative_to(root)}: read failed ({e})")
-        return sites, errors
+        return sites, errors, already_dendrified
 
     try:
         tree = ast.parse(source)
     except SyntaxError as e:
         errors.append(f"{path.relative_to(root)}: parse failed ({e.msg})")
-        return sites, errors
+        return sites, errors, already_dendrified
 
     rel_path_str = str(path.relative_to(root))
+    switch_method_lines = _collect_switch_subclass_method_lines(tree)
     for node in ast.walk(tree):
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        # Already-dendrified shapes — skip detection entirely. Track
+        # decorator-wrapped functions so the report can show the
+        # surface area; Switch-subclass methods are noisier (multiple
+        # helpers per class) so they're skipped silently.
+        if _has_ml_switch_decorator(node):
+            already_dendrified.append((rel_path_str, node.name, node.lineno))
+            continue
+        if node.lineno in switch_method_lines:
             continue
         matched_pattern: str | None = None
         for pattern_name, detector in _PATTERNS:
@@ -455,7 +580,7 @@ def _analyze_file(path: Path, root: Path) -> tuple[list[ClassificationSite], lis
         )
         sites.append(site)
 
-    return sites, errors
+    return sites, errors, already_dendrified
 
 
 # ---------------------------------------------------------------------------
@@ -476,6 +601,13 @@ _DEFAULT_IGNORE_DIRS = {
     "build",
     "dist",
     ".ruff_cache",
+    # Dendra's own generated companion modules — re-suggesting them for
+    # graduation creates a re-graduation cycle bug as soon as
+    # `dendra init --auto-lift` produces any file.
+    "__dendra_generated__",
+    # Agent-harness directory (Claude Code). Frequently contains nested
+    # git worktrees that mirror the repo and double every site count.
+    ".claude",
 }
 
 
@@ -497,32 +629,84 @@ def analyze(
     if ignore_dirs is not None:
         ignore |= set(ignore_dirs)
 
+    # Project-self-blacklist: when scanning the Dendra repo itself,
+    # skip its own src/ tree. Dendra's analyzer/gates/models adapter
+    # plumbing is correctly P1/P6 in shape but is library
+    # infrastructure, not customer code. The dogfood report's
+    # smoking-gun self-flag is `analyzer.py:_classify_regime` — the
+    # analyzer's own bucket function.
+    skip_dendra_src = False
+    if not root.is_file():
+        pyproject = root / "pyproject.toml"
+        if pyproject.is_file():
+            try:
+                pp_text = pyproject.read_text(encoding="utf-8", errors="replace")
+                # Match either `name = "dendra"` or `name = "dendra-..."`,
+                # tolerating arbitrary whitespace.
+                import re as _re
+
+                if _re.search(
+                    r'^\s*name\s*=\s*"dendra(?:-[a-z0-9_-]+)?"',
+                    pp_text,
+                    flags=_re.MULTILINE,
+                ):
+                    skip_dendra_src = True
+            except OSError:
+                pass
+
     files_scanned = 0
     sites: list[ClassificationSite] = []
     errors: list[str] = []
+    already_dendrified: list[tuple[str, str, int]] = []
 
     if root.is_file():
         scan_root = root.parent if root.parent.exists() else root
         if root.suffix == ".py":
-            file_sites, file_errs = _analyze_file(root, scan_root)
+            file_sites, file_errs, file_dendrified = _analyze_file(root, scan_root)
             sites.extend(file_sites)
             errors.extend(file_errs)
+            already_dendrified.extend(file_dendrified)
             files_scanned = 1
     else:
+        # Pre-compute a set of nested-worktree roots to skip. A git
+        # worktree is marked by a `.git` *file* (not a directory) at
+        # its root pointing back to the main repo's gitdir. Skipping
+        # everything under those roots prevents the parallel-worktree
+        # double-count documented in the 2026-04-28 dogfood report.
+        nested_worktree_roots: set[Path] = set()
+        for git_marker in root.rglob(".git"):
+            if git_marker.parent == root:
+                continue  # the main repo itself
+            if git_marker.is_file():
+                nested_worktree_roots.add(git_marker.parent)
+
         for py_file in sorted(root.rglob("*.py")):
             rel_parts = py_file.relative_to(root).parts
             if any(part in ignore for part in rel_parts):
                 continue
+            if any(
+                worktree in py_file.parents for worktree in nested_worktree_roots
+            ):
+                continue
+            if (
+                skip_dendra_src
+                and len(rel_parts) >= 2
+                and rel_parts[0] == "src"
+                and rel_parts[1] == "dendra"
+            ):
+                continue
             files_scanned += 1
-            file_sites, file_errs = _analyze_file(py_file, root)
+            file_sites, file_errs, file_dendrified = _analyze_file(py_file, root)
             sites.extend(file_sites)
             errors.extend(file_errs)
+            already_dendrified.extend(file_dendrified)
 
     return AnalyzerReport(
         root=str(root),
         files_scanned=files_scanned,
         sites=sites,
         errors=errors,
+        already_dendrified=already_dendrified,
     )
 
 
@@ -538,8 +722,13 @@ def render_text(report: AnalyzerReport) -> str:
         f"Root:           {report.root}",
         f"Files scanned:  {report.files_scanned:,}",
         f"Sites found:    {report.total_sites():,}",
-        "",
     ]
+    if report.already_dendrified:
+        lines.append(
+            f"Already wrapped: {report.already_dendrified_count():,} "
+            f"(decorator-wrapped functions skipped)"
+        )
+    lines.append("")
     if report.errors:
         lines.append(f"Parse warnings ({len(report.errors)}):")
         for e in report.errors[:10]:
@@ -594,6 +783,11 @@ def render_json(report: AnalyzerReport) -> str:
             "total_sites": report.total_sites(),
             "sites": [asdict(s) for s in report.by_score_desc()],
             "errors": report.errors,
+            "already_dendrified_count": report.already_dendrified_count(),
+            "already_dendrified": [
+                {"file_path": fp, "function_name": fn, "line_start": line}
+                for fp, fn, line in report.already_dendrified
+            ],
         },
         indent=2,
     )
@@ -843,6 +1037,7 @@ class LiftStatus(_enum.Enum):
     AUTO_LIFTABLE = "auto_liftable"  # safe to lift today
     NEEDS_ANNOTATION = "needs_annotation"  # liftable with explicit annotation
     REFUSED = "refused"  # cannot lift; structural issue
+    ALREADY_DENDRIFIED = "already_dendrified"  # already wrapped (decorator/Switch subclass)
 
 
 @dataclass
@@ -1089,6 +1284,13 @@ def analyze_function_source(source: str, function_name: str) -> HazardAnalysis:
     if target is None:
         raise ValueError(
             f"Function {function_name!r} not found at the top level of the supplied source."
+        )
+
+    if _has_ml_switch_decorator(target):
+        return HazardAnalysis(
+            function_name=function_name,
+            lift_status=LiftStatus.ALREADY_DENDRIFIED,
+            hazards=[],
         )
 
     hazards: list[Hazard] = []

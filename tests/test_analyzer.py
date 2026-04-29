@@ -616,3 +616,300 @@ class TestTestPathDemotion:
         site = report.sites[0]
         assert site.lift_status == "auto_liftable"
         assert site.hazards == []
+
+
+# ---------------------------------------------------------------------------
+# Self-host fixes (P0/P1 follow-up to the 2026-04-28 dogfood report).
+#
+# The analyzer used to recommend re-graduating code that was already
+# wrapped (decorator or Switch subclass), recursing into its own
+# generated companion modules, and double-counting every site through
+# nested git worktrees. These tests pin the fixes.
+# ---------------------------------------------------------------------------
+
+
+_DECORATOR_RULE = """\
+from dendra import ml_switch
+
+@ml_switch(
+    ml_kind='triage',
+    labels={'bug', 'feature', 'question'},
+)
+def my_rule(ticket):
+    if ticket['kind'] == 'crash':
+        return 'bug'
+    if ticket['kind'] == 'request':
+        return 'feature'
+    return 'question'
+"""
+
+
+_SWITCH_SUBCLASS_RULE = """\
+from dendra import Switch
+
+class TicketRouter(Switch):
+    labels = ('bug', 'feature', 'question')
+
+    def _evidence_severity(self, ticket):
+        return ticket.get('severity', 'low')
+
+    def _rule(self, evidence):
+        if evidence.severity == 'high':
+            return 'bug'
+        if evidence.severity == 'medium':
+            return 'feature'
+        return 'question'
+"""
+
+
+_PLAIN_RULE = """\
+def my_rule(ticket):
+    if ticket['kind'] == 'crash':
+        return 'bug'
+    if ticket['kind'] == 'request':
+        return 'feature'
+    return 'question'
+"""
+
+
+class TestSelfHostDecoratorSkip:
+    def test_decorator_wrapped_function_is_already_dendrified(self, tmp_path):
+        _write(tmp_path / "src" / "rules.py", _DECORATOR_RULE)
+        report = analyze(tmp_path)
+        assert report.total_sites() == 0
+        assert report.already_dendrified_count() == 1
+        fp, fn, line = report.already_dendrified[0]
+        assert fp.endswith("rules.py")
+        assert fn == "my_rule"
+        assert line >= 1
+
+    def test_dotted_decorator_alias_is_recognized(self, tmp_path):
+        _write(
+            tmp_path / "src" / "rules.py",
+            (
+                "import dendra\n\n"
+                "@dendra.ml_switch(ml_kind='x', labels={'a', 'b'})\n"
+                "def my_rule(t):\n"
+                "    if t == 'a': return 'a'\n"
+                "    return 'b'\n"
+            ),
+        )
+        report = analyze(tmp_path)
+        assert report.total_sites() == 0
+        assert report.already_dendrified_count() == 1
+
+    def test_undecorated_peer_still_emits_a_site(self, tmp_path):
+        _write(tmp_path / "src" / "rules.py", _PLAIN_RULE)
+        report = analyze(tmp_path)
+        assert report.total_sites() == 1
+        assert report.already_dendrified_count() == 0
+        assert report.sites[0].function_name == "my_rule"
+
+
+class TestSelfHostSwitchSubclassSkip:
+    def test_switch_subclass_methods_are_skipped(self, tmp_path):
+        _write(tmp_path / "src" / "router.py", _SWITCH_SUBCLASS_RULE)
+        report = analyze(tmp_path)
+        # Both _rule and _evidence_severity should be skipped.
+        assert report.total_sites() == 0
+
+    def test_dotted_base_dendra_switch_is_recognized(self, tmp_path):
+        _write(
+            tmp_path / "src" / "router.py",
+            (
+                "import dendra\n\n"
+                "class TicketRouter(dendra.Switch):\n"
+                "    def _rule(self, evidence):\n"
+                "        if evidence.x == 'a': return 'a'\n"
+                "        return 'b'\n"
+            ),
+        )
+        report = analyze(tmp_path)
+        assert report.total_sites() == 0
+
+    def test_non_switch_subclass_still_analyzes_methods(self, tmp_path):
+        _write(
+            tmp_path / "src" / "other.py",
+            (
+                "class MyClassifier:\n"
+                "    def classify(self, ticket):\n"
+                "        if ticket == 'a': return 'a'\n"
+                "        if ticket == 'b': return 'b'\n"
+                "        return 'c'\n"
+            ),
+        )
+        report = analyze(tmp_path)
+        assert report.total_sites() == 1
+        assert report.sites[0].function_name == "classify"
+
+
+class TestSelfHostGeneratedDirIgnored:
+    def test_dendra_generated_directory_is_skipped(self, tmp_path):
+        _write(tmp_path / "src" / "rules.py", _PLAIN_RULE)
+        # Synthesize a generated companion module that the analyzer
+        # used to recurse into and re-suggest for graduation.
+        _write(
+            tmp_path / "src" / "__dendra_generated__" / "triage_switch.py",
+            (
+                "from dendra import Switch\n"
+                "class TriageSwitch(Switch):\n"
+                "    def _rule(self, evidence):\n"
+                "        if evidence.x == 'a': return 'a'\n"
+                "        return 'b'\n"
+            ),
+        )
+        report = analyze(tmp_path)
+        # Only the user's plain rule should be reported.
+        assert report.total_sites() == 1
+        assert report.sites[0].file_path.endswith("rules.py")
+        assert "__dendra_generated__" not in report.sites[0].file_path
+
+
+class TestSelfHostProjectSelfBlacklist:
+    def test_dendra_repo_self_scan_skips_src_dendra(self, tmp_path):
+        # Mimic the Dendra repo layout: pyproject.toml at root with
+        # name = "dendra", and a src/dendra/ tree that the analyzer
+        # would otherwise flag (analyzer's own _classify_regime is
+        # the canonical case).
+        _write(
+            tmp_path / "pyproject.toml",
+            '[project]\nname = "dendra"\nversion = "1.0.0"\n',
+        )
+        _write(
+            tmp_path / "src" / "dendra" / "library_helper.py",
+            (
+                "def _internal_bucket(n):\n"
+                "    if n == 0: return 'unknown'\n"
+                "    if n < 30: return 'narrow'\n"
+                "    return 'high'\n"
+            ),
+        )
+        # User code in another tree should still be scanned.
+        _write(
+            tmp_path / "examples" / "x.py",
+            (
+                "def my_rule(t):\n"
+                "    if t == 'a': return 'a'\n"
+                "    return 'b'\n"
+            ),
+        )
+        report = analyze(tmp_path)
+        assert report.total_sites() == 1
+        assert report.sites[0].file_path.startswith("examples/")
+
+    def test_dendra_named_package_variant_also_skips(self, tmp_path):
+        _write(
+            tmp_path / "pyproject.toml",
+            '[project]\nname = "dendra-server"\nversion = "1.0.0"\n',
+        )
+        _write(
+            tmp_path / "src" / "dendra" / "x.py",
+            "def f(t):\n    if t == 'a': return 'a'\n    return 'b'\n",
+        )
+        report = analyze(tmp_path)
+        assert report.total_sites() == 0
+
+    def test_unrelated_project_is_not_blacklisted(self, tmp_path):
+        # Different project name → src/<name>/ is scanned normally.
+        _write(
+            tmp_path / "pyproject.toml",
+            '[project]\nname = "their_app"\nversion = "0.1.0"\n',
+        )
+        _write(
+            tmp_path / "src" / "dendra" / "x.py",
+            "def f(t):\n    if t == 'a': return 'a'\n    return 'b'\n",
+        )
+        report = analyze(tmp_path)
+        assert report.total_sites() == 1
+
+
+class TestSelfHostNestedWorktreeSkip:
+    def test_nested_git_worktree_is_skipped(self, tmp_path):
+        _write(tmp_path / "src" / "rules.py", _PLAIN_RULE)
+        # A git worktree marks itself with a `.git` *file* at its root
+        # pointing back to the main gitdir. Mirror the user's tree
+        # under .claude/worktrees/ so the file globs would otherwise
+        # double-count it.
+        worktree_root = tmp_path / "subdir" / "wt"
+        _write(worktree_root / ".git", "gitdir: /tmp/somewhere/.git/worktrees/wt\n")
+        _write(worktree_root / "src" / "rules.py", _PLAIN_RULE)
+        report = analyze(tmp_path)
+        assert report.total_sites() == 1
+        assert report.sites[0].file_path.startswith("src/")
+
+
+class TestAnalyzeFunctionSourceAlreadyDendrified:
+    def test_decorated_top_level_function_returns_already_dendrified(self):
+        from dendra.analyzer import analyze_function_source
+
+        result = analyze_function_source(_DECORATOR_RULE, "my_rule")
+        assert result.lift_status.value == "already_dendrified"
+        assert result.hazards == []
+
+
+# ---------------------------------------------------------------------------
+# P4 widening — dict-driven argmax scanners (P1 #5 from the dogfood report).
+#
+# ReferenceRule.classify is the canonical instance: scores each label by
+# token-set intersection over a per-label dict and returns the highest-
+# scoring label. Returns are dynamic (return best_label), not literal
+# strings, so the original P1-P6 detectors all missed it.
+# ---------------------------------------------------------------------------
+
+
+class TestPatternP4DictArgmax:
+    def test_dict_items_argmax_is_detected(self, tmp_path):
+        _write(
+            tmp_path / "rules.py",
+            (
+                "def classify(self, text):\n"
+                "    tokens = set(text.split())\n"
+                "    best_label = self.fallback_label\n"
+                "    best_score = 0\n"
+                "    for label, kws in self.keywords_per_label.items():\n"
+                "        score = len(tokens & kws)\n"
+                "        if score > best_score:\n"
+                "            best_score = score\n"
+                "            best_label = label\n"
+                "    return best_label\n"
+            ),
+        )
+        report = analyze(tmp_path)
+        assert report.total_sites() == 1
+        site = report.sites[0]
+        assert site.function_name == "classify"
+        assert site.pattern == "P4"
+
+    def test_unrelated_dict_iteration_is_not_a_match(self, tmp_path):
+        # Loop iterates a mapping but the function returns a value
+        # unrelated to the loop variable. Should NOT match.
+        _write(
+            tmp_path / "fn.py",
+            (
+                "def total(d):\n"
+                "    s = 0\n"
+                "    for k, v in d.items():\n"
+                "        s += v\n"
+                "    return s\n"
+            ),
+        )
+        report = analyze(tmp_path)
+        assert report.total_sites() == 0
+
+    def test_existing_keyword_scanner_still_matches(self, tmp_path):
+        # The classic `if kw in text: return LABEL` shape was already
+        # detected (typically as P1 since detector order favors P1
+        # over P4). Pin that the new dict-argmax detector hasn't
+        # broken it.
+        _write(
+            tmp_path / "fn.py",
+            (
+                "def route(text):\n"
+                "    if 'urgent' in text: return 'p0'\n"
+                "    if 'bug' in text: return 'bug'\n"
+                "    return 'other'\n"
+            ),
+        )
+        report = analyze(tmp_path)
+        assert report.total_sites() == 1
+        assert report.sites[0].pattern in ("P1", "P4")
