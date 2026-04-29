@@ -327,6 +327,25 @@ section:first-of-type {
   font-style: italic;
 }
 
+.proof-broker-strap {
+  margin: var(--space-8) 0 0;
+  padding-top: var(--space-6);
+  border-top: var(--border);
+  font-size: var(--size-caption);
+  color: var(--ink-soft);
+  max-width: var(--max-prose);
+  line-height: 1.55;
+}
+
+.proof-broker-strap strong {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.proof-broker-strap a {
+  color: var(--accent);
+}
+
 @media (max-width: 768px) {
   .proof-grid {
     grid-template-columns: repeat(2, 1fr);
