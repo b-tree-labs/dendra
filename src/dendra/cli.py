@@ -468,16 +468,26 @@ def cmd_insights_leave(args: argparse.Namespace) -> int:
 
 
 def cmd_insights_status(args: argparse.Namespace) -> int:
-    """Show enrollment state + cached cohort defaults."""
+    """Show enrollment state + cached cohort defaults; refresh if --refresh."""
     from dendra.insights import (
+        get_tuned_defaults_url,
         load_cached_or_baked_in,
         read_enrollment,
         read_queue,
+        refresh_if_stale,
     )
-    from dendra.insights.tuned_defaults import (
-        TUNED_DEFAULTS_URL,
-        cache_is_fresh,
-    )
+    from dendra.insights.tuned_defaults import cache_is_fresh
+
+    # When the user invokes ``dendra insights status`` they want a real
+    # answer, not the stale cache. Refresh synchronously unless the
+    # cache is already fresh (within the freshness window).
+    if not getattr(args, "no_fetch", False):
+        refreshed = refresh_if_stale()
+        refreshed_msg = (
+            "  (just-refreshed from cohort endpoint)" if refreshed is not None else ""
+        )
+    else:
+        refreshed_msg = "  (--no-fetch; cache only)"
 
     state = read_enrollment()
     defaults = load_cached_or_baked_in()
@@ -493,13 +503,13 @@ def cmd_insights_status(args: argparse.Namespace) -> int:
     else:
         print("Enrolled:        no  (OSS path is telemetry-free)")
     print()
-    print("Cohort defaults (fetched from dendra.dev):")
-    print(f"  URL:           {TUNED_DEFAULTS_URL}")
+    print(f"Cohort defaults{refreshed_msg}:")
+    print(f"  URL:           {get_tuned_defaults_url()}")
     print(f"  Version:       {defaults.version}")
     print(f"  Cohort size:   {defaults.cohort_size}")
     if defaults.generated_at:
         print(f"  Generated at:  {defaults.generated_at}")
-    print(f"  Cache fresh:   {'yes' if cache_is_fresh() else 'no (will refetch)'}")
+    print(f"  Cache fresh:   {'yes' if cache_is_fresh() else 'no'}")
     if defaults.median_outcomes_to_graduation:
         print("  Median outcomes to graduation:")
         for regime, n in sorted(defaults.median_outcomes_to_graduation.items()):
@@ -613,6 +623,7 @@ def cmd_analyze(args: argparse.Namespace) -> int:
         render_text,
     )
 
+    _refresh_cohort_defaults_async()
     report = analyze(args.path)
 
     if args.format == "json":
@@ -635,6 +646,32 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     _maybe_nudge_signup()
     _emit_analyze_event_if_enrolled(report)
     return 0
+
+
+def _refresh_cohort_defaults_async() -> None:
+    """Kick off a background refresh of the cohort-tuned defaults.
+
+    Non-blocking. The fetch happens on a daemon thread; if the cache
+    is fresh the call no-ops in microseconds. Available to ALL users
+    (not gated on enrollment) — receiving aggregate cohort wisdom
+    doesn't require sharing data, only contributing back does.
+
+    Disabled by ``DENDRA_NO_INSIGHTS_FETCH=1`` for air-gapped or
+    privacy-paranoid users. The flag is documented but not surfaced
+    as a CLI arg (this is "configuration of last resort," not a UX).
+    """
+    import os
+
+    if os.environ.get("DENDRA_NO_INSIGHTS_FETCH"):
+        return
+    try:
+        from dendra.insights import refresh_if_stale_async
+    except ImportError:
+        return
+    try:
+        refresh_if_stale_async()
+    except Exception:  # noqa: BLE001 — telemetry must never break the CLI
+        return
 
 
 def _emit_analyze_event_if_enrolled(report) -> None:
@@ -1541,7 +1578,12 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     p_insights_status = insights_sub.add_parser(
         "status",
-        help="Show Insights enrollment + cached cohort defaults + pending queue size.",
+        help="Show Insights enrollment + cohort defaults + pending queue size.",
+    )
+    p_insights_status.add_argument(
+        "--no-fetch",
+        action="store_true",
+        help="Skip the cohort-defaults fetch; show local cache only.",
     )
     p_insights_status.set_defaults(fn=cmd_insights_status)
 

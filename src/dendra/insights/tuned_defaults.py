@@ -27,6 +27,7 @@ from __future__ import annotations
 import datetime as _dt
 import json
 import logging
+import os
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
@@ -40,8 +41,21 @@ from dendra.insights._paths import (
 
 _log = logging.getLogger(__name__)
 
-#: Public URL for the signed cohort-defaults document.
-TUNED_DEFAULTS_URL: Final[str] = "https://dendra.dev/insights/tuned-defaults.json"
+#: Public URL for the signed cohort-defaults document. Override with
+#: ``DENDRA_INSIGHTS_URL`` for staging, dev, or air-gapped deployments
+#: that need to point at a private mirror of the same JSON shape.
+DEFAULT_TUNED_DEFAULTS_URL: Final[str] = "https://dendra.dev/insights/tuned-defaults.json"
+
+
+def get_tuned_defaults_url() -> str:
+    """Resolve the tuned-defaults URL, honoring DENDRA_INSIGHTS_URL."""
+    return os.environ.get("DENDRA_INSIGHTS_URL", DEFAULT_TUNED_DEFAULTS_URL)
+
+
+# Back-compat alias — early code reads ``TUNED_DEFAULTS_URL`` directly.
+# The value is captured at import time, so callers that need the
+# env-var-honoring resolution should call :func:`get_tuned_defaults_url`.
+TUNED_DEFAULTS_URL: Final[str] = DEFAULT_TUNED_DEFAULTS_URL
 
 #: How long a cached copy is fresh enough to skip the network fetch.
 #: 24h matches the nightly aggregator cadence; longer would mean
@@ -137,16 +151,21 @@ BAKED_IN_DEFAULTS: Final[TunedDefaults] = TunedDefaults(
 
 def fetch_tuned_defaults(
     *,
-    url: str = TUNED_DEFAULTS_URL,
+    url: str | None = None,
     timeout: float = FETCH_TIMEOUT_SECONDS,
 ) -> TunedDefaults | None:
     """Fetch the latest tuned-defaults JSON. Return None on any failure.
 
+    ``url`` defaults to :func:`get_tuned_defaults_url`, which honors
+    the ``DENDRA_INSIGHTS_URL`` environment variable. Pass an explicit
+    URL to force a specific endpoint (testing, staging mirror).
+
     Caller should fall back to ``load_cached_or_baked_in()`` on None.
     """
+    target_url = url if url is not None else get_tuned_defaults_url()
     try:
         req = urllib.request.Request(
-            url,
+            target_url,
             headers={"User-Agent": "dendra-insights/1.0 (+https://dendra.dev)"},
         )
         with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 — HTTPS
@@ -155,6 +174,44 @@ def fetch_tuned_defaults(
         _log.debug("tuned-defaults fetch failed: %s", e)
         return None
     return TunedDefaults.from_payload(payload)
+
+
+def refresh_if_stale(*, timeout: float = FETCH_TIMEOUT_SECONDS) -> TunedDefaults | None:
+    """Fetch + cache when the local cache is missing or older than fresh-window.
+
+    Synchronous; caller decides whether to wrap in a thread. Returns the
+    newly-fetched defaults on success, ``None`` on failure or fresh-cache
+    skip. Callers can ignore the return value — the side effect (cache
+    write) is what matters for subsequent ``load_cached_or_baked_in()``
+    calls in the same process.
+    """
+    if cache_is_fresh():
+        return None
+    fetched = fetch_tuned_defaults(timeout=timeout)
+    if fetched is None:
+        return None
+    write_cache(fetched)
+    return fetched
+
+
+def refresh_if_stale_async(*, timeout: float = FETCH_TIMEOUT_SECONDS):
+    """Spawn a daemon thread to run :func:`refresh_if_stale`.
+
+    Non-blocking. The CLI can call this on every invocation; if the
+    cache is fresh the thread no-ops in microseconds. Returns the
+    started ``threading.Thread`` so callers can join with a timeout
+    if they want to wait for completion.
+    """
+    import threading
+
+    thread = threading.Thread(
+        target=refresh_if_stale,
+        kwargs={"timeout": timeout},
+        name="dendra-insights-defaults-refresh",
+        daemon=True,
+    )
+    thread.start()
+    return thread
 
 
 def write_cache(defaults: TunedDefaults) -> None:

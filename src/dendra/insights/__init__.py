@@ -71,7 +71,10 @@ from dendra.insights.tuned_defaults import (
     BAKED_IN_DEFAULTS,
     TunedDefaults,
     fetch_tuned_defaults,
+    get_tuned_defaults_url,
     load_cached_or_baked_in,
+    refresh_if_stale,
+    refresh_if_stale_async,
 )
 
 __all__ = [
@@ -87,8 +90,11 @@ __all__ = [
     "fingerprint_repo_files",
     "flush_queue",
     "flush_queue_async",
+    "get_tuned_defaults_url",
     "is_enrolled",
     "load_cached_or_baked_in",
+    "refresh_if_stale",
+    "refresh_if_stale_async",
     "queue_event",
     "read_enrollment",
     "read_queue",
