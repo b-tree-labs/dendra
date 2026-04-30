@@ -1,0 +1,19 @@
+{
+  "name": "dendra-collector",
+  "version": "1.0.0-rc1",
+  "private": true,
+  "description": "Dendra Insights collector — Cloudflare Worker for /v1/events ingestion + /health probe.",
+  "license": "BSL-1.1",
+  "scripts": {
+    "deploy:staging": "wrangler deploy",
+    "deploy:production": "wrangler deploy --env production",
+    "migrate:staging": "wrangler d1 migrations apply dendra-events-staging",
+    "migrate:production": "wrangler d1 migrations apply dendra-events --env production --remote",
+    "tail:staging": "wrangler tail",
+    "tail:production": "wrangler tail --env production"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260101.0",
+    "typescript": "^5.7.0"
+  }
+}

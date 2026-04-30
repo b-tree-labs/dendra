@@ -1,0 +1,98 @@
+# Deploy to staging on every push to main.
+# Production deploys go through .github/workflows/deploy-production.yml,
+# triggered only by tag pushes (release-x.y.z).
+
+name: Deploy to staging
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "landing/**"
+      - "cloud/collector/**"
+      - ".github/workflows/deploy-staging.yml"
+  workflow_dispatch:  # manual run option
+
+permissions:
+  contents: read
+  deployments: write
+
+concurrency:
+  # Cancel any in-flight staging deploy when a new one comes in.
+  group: deploy-staging
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -e .[viz,bench,train]
+      - run: pip install pytest pytest-timeout
+      - run: pytest --timeout=60
+
+  deploy-landing:
+    name: Deploy landing → staging.dendra.run
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish to Cloudflare Pages (staging)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy landing --project-name=dendra-run-staging --branch=main
+
+  deploy-collector:
+    name: Deploy collector Worker → staging
+    needs: test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cloud/collector
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install
+      - name: Apply D1 migrations (staging)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: cloud/collector
+          command: d1 migrations apply dendra-events-staging --remote
+      - name: Deploy Worker (staging env)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: cloud/collector
+          command: deploy
+
+  smoke:
+    name: Smoke tests against staging
+    needs: [deploy-landing, deploy-collector]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -e .
+      - run: pip install pytest pytest-timeout
+      - name: Wait briefly for deploy propagation
+        run: sleep 15
+      - name: Run smoke tests
+        env:
+          DENDRA_SMOKE_BASE_URL: https://staging.dendra.run
+          DENDRA_SMOKE_MODELS_URL: https://staging-models.dendra.run
+          DENDRA_SMOKE_COLLECTOR_URL: https://staging-collector.dendra.run
+        run: pytest -m smoke --timeout=60
