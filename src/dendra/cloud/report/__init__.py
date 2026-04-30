@@ -45,11 +45,19 @@ from dendra.cloud.report.aggregator import (
     aggregate_switch,
 )
 from dendra.cloud.report.render_markdown import render_switch_card
+from dendra.cloud.report.summary import (
+    ProjectSummary,
+    aggregate_project,
+    render_project_summary,
+)
 
 __all__ = [
     "Checkpoint",
     "HypothesisVerdict",
+    "ProjectSummary",
     "SwitchMetrics",
+    "aggregate_project",
     "aggregate_switch",
+    "render_project_summary",
     "render_switch_card",
 ]

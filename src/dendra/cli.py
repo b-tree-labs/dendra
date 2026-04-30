@@ -810,16 +810,35 @@ def _emit_analyze_event_if_enrolled(report) -> None:
 
 
 def cmd_report(args: argparse.Namespace) -> int:
-    """Generate a graduation report card for one switch.
+    """Generate a graduation report card.
 
-    Reads the switch's audit chain via the configured storage backend,
-    computes transition-curve metrics + paired-McNemar p-value
-    trajectory, renders markdown matching the locked sample design at
-    ``docs/working/sample-reports/triage_rule.md``.
+    Two modes:
+      - ``dendra report <switch>``: per-switch card matching the
+        locked sample at docs/working/sample-reports/triage_rule.md.
+      - ``dendra report --summary``: project-level rollup matching
+        docs/working/sample-reports/_summary.md.
     """
     from pathlib import Path
 
-    from dendra.cloud.report import aggregate_switch, render_switch_card
+    from dendra.cloud.report import (
+        aggregate_project,
+        aggregate_switch,
+        render_project_summary,
+        render_switch_card,
+    )
+
+    if not args.summary and not args.switch:
+        print(
+            "dendra report: provide a switch name or pass --summary",
+            file=sys.stderr,
+        )
+        return 2
+    if args.summary and args.switch:
+        print(
+            "dendra report: --summary and <switch> are mutually exclusive",
+            file=sys.stderr,
+        )
+        return 2
 
     storage_path = Path(args.storage_path)
     if args.storage == "file":
@@ -832,12 +851,40 @@ def cmd_report(args: argparse.Namespace) -> int:
 
         storage = SqliteStorage(storage_path)
     else:  # memory
-        # In-memory means a fresh empty store on every CLI invocation;
-        # only useful for the day-zero card flow.
         from dendra.storage import InMemoryStorage
 
         storage = InMemoryStorage()
 
+    # ---- Project summary path -----------------------------------------
+    if args.summary:
+        try:
+            summary = aggregate_project(storage, alpha=args.alpha)
+        except AttributeError as e:
+            print(
+                f"dendra report --summary: {e}\n"
+                f"Hint: --storage memory has no switch_names() method; "
+                f"use file or sqlite storage.",
+                file=sys.stderr,
+            )
+            return 2
+
+        project_name = Path.cwd().name or "(this project)"
+        markdown = render_project_summary(summary, project_name=project_name)
+
+        out_path = (
+            Path(args.out) if args.out else Path("dendra/results/_summary.md")
+        )
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(markdown, encoding="utf-8")
+        print(f"Wrote {out_path}")
+        print(f"  switches:         {len(summary.switches)}")
+        print(f"  graduated:        {summary.graduated_count}")
+        print(f"  in-flight:        {summary.pre_graduation_count}")
+        print(f"  drift events:     {summary.drift_count}")
+        print(f"  total outcomes:   {summary.total_outcomes:,}")
+        return 0
+
+    # ---- Per-switch path ----------------------------------------------
     metrics = aggregate_switch(
         storage,
         args.switch,
@@ -1568,12 +1615,26 @@ def main(argv: Sequence[str] | None = None) -> int:
         help=(
             "Generate a graduation report card for a switch. Reads the "
             "switch's audit chain, computes transition-curve metrics, "
-            "writes markdown to dendra/results/<switch>.md."
+            "writes markdown to dendra/results/<switch>.md. "
+            "Pass --summary instead of <switch> for a project-level rollup."
         ),
     )
     p_report.add_argument(
         "switch",
-        help="Switch name (matches LearnedSwitch(name=...) at construction).",
+        nargs="?",
+        default=None,
+        help=(
+            "Switch name (matches LearnedSwitch(name=...) at construction). "
+            "Omit when using --summary."
+        ),
+    )
+    p_report.add_argument(
+        "--summary",
+        action="store_true",
+        help=(
+            "Generate a project-level rollup across all switches in the "
+            "configured storage backend; writes dendra/results/_summary.md."
+        ),
     )
     p_report.add_argument(
         "--storage",
