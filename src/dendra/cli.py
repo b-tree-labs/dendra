@@ -750,17 +750,54 @@ def cmd_report(args: argparse.Namespace) -> int:
         alpha=args.alpha,
     )
 
+    out_path = (
+        Path(args.out) if args.out else Path("dendra/results") / f"{args.switch}.md"
+    )
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Try to generate PNG charts if matplotlib is installed and the
+    # switch has at least one checkpoint. Failures fall back to the
+    # text-only placeholders that render_switch_card emits when no
+    # chart paths are supplied.
+    transition_path: str | None = None
+    pvalue_path: str | None = None
+    cost_path: str | None = None
+    if metrics.checkpoints:
+        try:
+            from dendra.cloud.report import charts
+
+            base = out_path.parent / args.switch
+            transition_path = str(
+                charts.transition_curve(metrics, base.with_suffix(".transition.png")).name
+            )
+            pvalue_path = str(
+                charts.pvalue_trajectory(
+                    metrics, base.with_suffix(".pvalue.png"), alpha=args.alpha
+                ).name
+            )
+            if args.cost_per_call is not None:
+                cost_path = str(
+                    charts.cost_trajectory(
+                        metrics,
+                        base.with_suffix(".cost.png"),
+                        cost_per_call=args.cost_per_call,
+                    ).name
+                )
+        except ImportError:
+            print("  (install dendra[viz] to generate chart PNGs)")
+        except Exception as e:  # noqa: BLE001 — never fail the report on chart errors
+            print(f"  (chart rendering skipped: {e})")
+
     markdown = render_switch_card(
         metrics,
         alpha=args.alpha,
         cost_per_call=args.cost_per_call,
         estimated_calls_per_month=args.calls_per_month,
+        transition_chart_path=transition_path,
+        pvalue_chart_path=pvalue_path,
+        cost_chart_path=cost_path,
     )
 
-    out_path = (
-        Path(args.out) if args.out else Path("dendra/results") / f"{args.switch}.md"
-    )
-    out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(markdown, encoding="utf-8")
     print(f"Wrote {out_path}")
     print(f"  switch:           {args.switch}")
