@@ -222,6 +222,100 @@ def _try_emit_benchmarks(
     )
 
 
+def _try_generate_hypothesis(
+    *,
+    switch_name: str,
+    file_path: str,
+    function_name: str,
+    labels: list[str] | None,
+) -> None:
+    """Auto-generate dendra/hypotheses/<switch>.md after a successful init.
+
+    Idempotent — if the file already exists, we don't overwrite. Failures
+    here never fail the init; the hypothesis file is a nicety, not a
+    correctness requirement.
+    """
+    try:
+        from dendra.cloud.report.hypotheses import generate_hypothesis_file
+    except ImportError:
+        return
+
+    # Try to fetch cohort-tuned defaults for the prediction interval.
+    # This is best-effort; if the insights cache isn't warm, we fall
+    # back to regime defaults inside generate_hypothesis_file.
+    cohort_size = 0
+    cohort_low = None
+    cohort_high = None
+    try:
+        from dendra.insights import load_cached_or_baked_in
+
+        defaults = load_cached_or_baked_in()
+        cohort_size = defaults.cohort_size
+        # Regime "unknown" until the analyzer has scored this site;
+        # for now use narrow as the most-common shape for newly-init'd
+        # sites. The user edits the hypothesis file if their site is
+        # actually medium/high.
+        narrow_median = defaults.median_outcomes_to_graduation.get("narrow")
+        if narrow_median:
+            cohort_low = int(narrow_median * 0.7)
+            cohort_high = int(narrow_median * 1.4)
+    except Exception:  # noqa: BLE001 — never fail init on insights errors
+        pass
+
+    label_count = len(labels) if labels else None
+
+    try:
+        out_path, content_hash, was_created = generate_hypothesis_file(
+            switch_name=switch_name,
+            file_location=file_path,
+            function_name=function_name,
+            label_cardinality=label_count,
+            regime=_regime_from_cardinality(label_count),
+            cohort_size=cohort_size,
+            cohort_predicted_low=cohort_low,
+            cohort_predicted_high=cohort_high,
+        )
+    except Exception as e:  # noqa: BLE001 — hypothesis file is best-effort
+        # Common reasons: write blocked by sandbox (in tests),
+        # filesystem permission, disk full. Print a one-line note and
+        # continue — the wrap itself succeeded; hypothesis is a nicety.
+        print(
+            f"  (hypothesis file not written: {type(e).__name__}; "
+            f"the wrap is still in place)",
+            file=sys.stderr,
+        )
+        return
+
+    if was_created:
+        print(
+            f"  pre-registered hypothesis: {out_path} "
+            f"(content hash: {content_hash[:12]}…)",
+            file=sys.stderr,
+        )
+        print(
+            "  → review and commit before evidence accumulates "
+            "(edits change the hash; the hash is recorded in every "
+            "subsequent gate evaluation)",
+            file=sys.stderr,
+        )
+    else:
+        print(
+            f"  (hypothesis file already exists at {out_path}; preserving)",
+            file=sys.stderr,
+        )
+
+
+def _regime_from_cardinality(n: int | None) -> str:
+    """Map a label count to a regime string (matches analyzer convention)."""
+    if n is None or n == 0:
+        return "unknown"
+    if n < 30:
+        return "narrow"
+    if n <= 60:
+        return "medium"
+    return "high"
+
+
 def _try_auto_lift(
     *,
     source_path: Path,
@@ -869,6 +963,15 @@ def cmd_init(args: argparse.Namespace) -> int:
         f"{len(result.labels)} labels "
         f"({'inferred' if result.inferred_labels else 'supplied'})",
         file=sys.stderr,
+    )
+
+    # Auto-generate the pre-registered hypothesis file. Idempotent —
+    # if the user already has one for this switch, skip.
+    _try_generate_hypothesis(
+        switch_name=function_name,
+        file_path=file_path,
+        function_name=function_name,
+        labels=result.labels,
     )
 
     # --auto-lift: run the lifters on the (now-wrapped) source and emit
