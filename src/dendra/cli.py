@@ -715,6 +715,69 @@ def _emit_analyze_event_if_enrolled(report) -> None:
         return
 
 
+def cmd_report(args: argparse.Namespace) -> int:
+    """Generate a graduation report card for one switch.
+
+    Reads the switch's audit chain via the configured storage backend,
+    computes transition-curve metrics + paired-McNemar p-value
+    trajectory, renders markdown matching the locked sample design at
+    ``docs/working/sample-reports/triage_rule.md``.
+    """
+    from pathlib import Path
+
+    from dendra.cloud.report import aggregate_switch, render_switch_card
+
+    storage_path = Path(args.storage_path)
+    if args.storage == "file":
+        from dendra.storage import FileStorage
+
+        storage_path.mkdir(parents=True, exist_ok=True)
+        storage = FileStorage(storage_path)
+    elif args.storage == "sqlite":
+        from dendra.storage import SqliteStorage
+
+        storage = SqliteStorage(storage_path)
+    else:  # memory
+        # In-memory means a fresh empty store on every CLI invocation;
+        # only useful for the day-zero card flow.
+        from dendra.storage import InMemoryStorage
+
+        storage = InMemoryStorage()
+
+    metrics = aggregate_switch(
+        storage,
+        args.switch,
+        alpha=args.alpha,
+    )
+
+    markdown = render_switch_card(
+        metrics,
+        alpha=args.alpha,
+        cost_per_call=args.cost_per_call,
+        estimated_calls_per_month=args.calls_per_month,
+    )
+
+    out_path = (
+        Path(args.out) if args.out else Path("dendra/results") / f"{args.switch}.md"
+    )
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(markdown, encoding="utf-8")
+    print(f"Wrote {out_path}")
+    print(f"  switch:           {args.switch}")
+    print(f"  outcomes:         {metrics.total_outcomes}")
+    print(f"  current phase:    {metrics.current_phase.value}")
+    if metrics.gate_fire_outcome is not None:
+        print(
+            f"  gate fired at:    outcome {metrics.gate_fire_outcome} "
+            f"(p = {metrics.gate_fire_p_value:.4g})"
+        )
+    elif metrics.total_outcomes == 0:
+        print("  status:           wrapped, no outcomes yet — will fill in over time")
+    else:
+        print("  status:           accumulating evidence (gate not yet fired)")
+    return 0
+
+
 def cmd_init(args: argparse.Namespace) -> int:
     """Wrap a target function with @ml_switch via AST injection."""
     from dendra.wrap import WrapError, wrap_function
@@ -1222,7 +1285,7 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
     return rc
 
 
-def cmd_report(args: argparse.Namespace) -> int:
+def cmd_bench_report(args: argparse.Namespace) -> int:
     """Walk runtime/dendra/*/benchmarks/*.jsonl and print the report."""
     from dendra.benchmarks import aggregate_report, format_report
 
@@ -1359,6 +1422,54 @@ def main(argv: Sequence[str] | None = None) -> int:
         return cmd_analyze(args)
 
     p_analyze.set_defaults(fn=_analyze_wrapper)
+
+    p_report = sub.add_parser(
+        "report",
+        help=(
+            "Generate a graduation report card for a switch. Reads the "
+            "switch's audit chain, computes transition-curve metrics, "
+            "writes markdown to dendra/results/<switch>.md."
+        ),
+    )
+    p_report.add_argument(
+        "switch",
+        help="Switch name (matches LearnedSwitch(name=...) at construction).",
+    )
+    p_report.add_argument(
+        "--storage",
+        default="file",
+        choices=["file", "sqlite", "memory"],
+        help="Storage backend to read from (default: file).",
+    )
+    p_report.add_argument(
+        "--storage-path",
+        default=".dendra/storage",
+        help="Path to the storage backend (default: .dendra/storage).",
+    )
+    p_report.add_argument(
+        "--out",
+        default=None,
+        help="Output path (default: dendra/results/<switch>.md).",
+    )
+    p_report.add_argument(
+        "--cost-per-call",
+        type=float,
+        default=None,
+        help="Estimated $ per pre-graduation LLM call (for cost section).",
+    )
+    p_report.add_argument(
+        "--calls-per-month",
+        type=int,
+        default=None,
+        help="Estimated monthly call count (for monthly-savings row).",
+    )
+    p_report.add_argument(
+        "--alpha",
+        type=float,
+        default=0.01,
+        help="Gate threshold (default: 0.01, matches paper §3.2).",
+    )
+    p_report.set_defaults(fn=cmd_report)
 
     p_init = sub.add_parser(
         "init",
@@ -1507,19 +1618,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     p_benchmark.set_defaults(fn=cmd_benchmark)
 
-    p_report = sub.add_parser(
-        "report",
+    p_bench_report = sub.add_parser(
+        "bench-report",
         help=(
             "Aggregate runtime/dendra/*/benchmarks/*.jsonl across all "
             "switches and print a human-readable summary."
         ),
     )
-    p_report.add_argument(
+    p_bench_report.add_argument(
         "--runtime",
         default=None,
         help="Project runtime root (default: ./runtime).",
     )
-    p_report.set_defaults(fn=cmd_report)
+    p_bench_report.set_defaults(fn=cmd_bench_report)
 
     p_plot = sub.add_parser(
         "plot",
