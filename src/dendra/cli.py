@@ -736,10 +736,48 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     if args.project_savings and report.sites:
         print()
         print("Run with --format markdown for the savings projection table.")
+
+    # --report writes a discovery markdown alongside the terminal output
+    if getattr(args, "report", False):
+        _write_discovery_report(report, args)
+
     _bump_counter("analyze_count")
     _maybe_nudge_signup()
     _emit_analyze_event_if_enrolled(report)
     return 0
+
+
+def _write_discovery_report(report, args) -> None:
+    """Write the initial-analysis discovery report. Best-effort."""
+    try:
+        from dendra.cloud.report import render_discovery_report
+
+        cohort_size = 0
+        try:
+            from dendra.insights import load_cached_or_baked_in
+
+            defaults = load_cached_or_baked_in()
+            cohort_size = defaults.cohort_size
+        except Exception:  # noqa: BLE001
+            pass
+
+        markdown = render_discovery_report(
+            report,
+            cost_per_call=getattr(args, "cost_per_call", None),
+            llm_provider_hint=getattr(args, "llm_provider", "default"),
+            cohort_size=cohort_size,
+        )
+        out_path = (
+            Path(args.report_out)
+            if getattr(args, "report_out", None)
+            else Path("dendra/results/_initial-analysis.md")
+        )
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(markdown, encoding="utf-8")
+        print()
+        print(f"Wrote discovery report to {out_path}")
+    except Exception as e:  # noqa: BLE001 — discovery report is best-effort
+        print(f"  (discovery report not written: {type(e).__name__})", file=sys.stderr)
 
 
 def _refresh_cohort_defaults_async() -> None:
@@ -1599,6 +1637,39 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--project-savings",
         action="store_true",
         help="Include per-site annual savings projection (uses dendra.roi default cost model).",
+    )
+    p_analyze.add_argument(
+        "--report",
+        action="store_true",
+        help=(
+            "Write a discovery report at dendra/results/_initial-analysis.md. "
+            "Customer-facing opportunity assessment with ranked sites, "
+            "cohort-predicted graduation times, projected savings, and "
+            "recommended graduation sequence."
+        ),
+    )
+    p_analyze.add_argument(
+        "--report-out",
+        default=None,
+        help="Override the output path for --report (default: dendra/results/_initial-analysis.md).",
+    )
+    p_analyze.add_argument(
+        "--cost-per-call",
+        type=float,
+        default=None,
+        help=(
+            "Estimated $/LLM call for cost projections in --report. "
+            "Defaults to a frontier-LLM rate of $0.0042/call."
+        ),
+    )
+    p_analyze.add_argument(
+        "--llm-provider",
+        default="default",
+        choices=["openai", "anthropic", "haiku", "ollama", "default"],
+        help=(
+            "Hint for default --cost-per-call when not supplied explicitly. "
+            "Default: 'default' (~frontier-LLM rate)."
+        ),
     )
     p_analyze.set_defaults(fn=cmd_analyze)
 
