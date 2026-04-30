@@ -30,12 +30,12 @@ action:
 
 What we capture is documented in
 ``docs/working/telemetry-program-design-2026-04-28.md`` and at
-``https://dendra.dev/insights/transparency``. The short version:
+``https://dendra.run/insights/transparency``. The short version:
 fingerprint and shape, never content; HMAC of email + rotating salt
 for account ID; no IP, no machine ID, no source, no labels.
 
 The Phase A (pre-launch) implementation skips Ed25519 signature
-verification on the tuned-defaults JSON; HTTPS to dendra.dev provides
+verification on the tuned-defaults JSON; HTTPS to dendra.run provides
 integrity guarantees through the public CA system. Signature
 verification lands in Phase B (post-v1.1) when ``cryptography`` becomes
 an optional extra. The ``signature`` field is preserved in the JSON

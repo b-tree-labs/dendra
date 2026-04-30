@@ -1,4 +1,4 @@
-# Dendra landing page (`dendra.dev`)
+# Dendra landing page (`dendra.run`)
 
 Static single-page site. No build step. Deploy the `landing/`
 directory as-is to any static host.
@@ -44,7 +44,7 @@ wrangler pages deploy . --project-name=dendra-dev
 ```
 
 Or drag-and-drop the `landing/` directory into the Cloudflare
-dashboard. Point the project at the `dendra.dev` domain under
+dashboard. Point the project at the `dendra.run` domain under
 Custom Domains.
 
 Cloudflare Pages auto-picks up `_headers` and `_redirects`.

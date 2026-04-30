@@ -72,7 +72,7 @@ from dendra.verdicts import JudgeSource
 # until production CDN is up). The default is intentionally a placeholder
 # that resolves to a clear "models not hosted yet" error so anyone running
 # the bundled path before launch sees a useful failure.
-_DEFAULT_CDN_BASE = "https://models.dendra.dev"
+_DEFAULT_CDN_BASE = "https://models.dendra.run"
 
 
 def cdn_base() -> str:

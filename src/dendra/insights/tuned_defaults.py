@@ -4,7 +4,7 @@
 """Tuned defaults — fetch + cache + parse + fallback.
 
 The cohort-tuned defaults JSON document lives at
-``https://dendra.dev/insights/tuned-defaults.json`` and is refreshed
+``https://dendra.run/insights/tuned-defaults.json`` and is refreshed
 nightly by the aggregator. Every Dendra install fetches it on first
 analyzer/init/bench call per day and caches the result at
 ``~/.dendra/tuned-defaults.json``. Receiving the cohort wisdom does
@@ -44,7 +44,7 @@ _log = logging.getLogger(__name__)
 #: Public URL for the signed cohort-defaults document. Override with
 #: ``DENDRA_INSIGHTS_URL`` for staging, dev, or air-gapped deployments
 #: that need to point at a private mirror of the same JSON shape.
-DEFAULT_TUNED_DEFAULTS_URL: Final[str] = "https://dendra.dev/insights/tuned-defaults.json"
+DEFAULT_TUNED_DEFAULTS_URL: Final[str] = "https://dendra.run/insights/tuned-defaults.json"
 
 
 def get_tuned_defaults_url() -> str:
@@ -69,7 +69,7 @@ FETCH_TIMEOUT_SECONDS: Final[float] = 5.0
 
 @dataclass(frozen=True)
 class TunedDefaults:
-    """Cohort-tuned parameters fetched from dendra.dev.
+    """Cohort-tuned parameters fetched from dendra.run.
 
     All fields have safe baked-in defaults so a missing or stale file
     never breaks the analyzer. ``cohort_size`` of 0 means "no cohort
@@ -166,7 +166,7 @@ def fetch_tuned_defaults(
     try:
         req = urllib.request.Request(
             target_url,
-            headers={"User-Agent": "dendra-insights/1.0 (+https://dendra.dev)"},
+            headers={"User-Agent": "dendra-insights/1.0 (+https://dendra.run)"},
         )
         with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 — HTTPS
             payload = json.loads(resp.read().decode("utf-8"))

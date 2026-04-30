@@ -39,7 +39,7 @@ _log = logging.getLogger(__name__)
 
 #: Public collector endpoint. Phase A is single-region (US); Phase B
 #: introduces region-aware routing.
-COLLECTOR_URL: Final[str] = "https://collector.dendra.dev/v1/events"
+COLLECTOR_URL: Final[str] = "https://collector.dendra.run/v1/events"
 
 #: Cap on the number of events flushed in one POST. Keeps the request
 #: bounded so a slow CLI session doesn't accumulate a multi-MB body.
@@ -249,7 +249,7 @@ def flush_queue(
             data=body,
             headers={
                 "Content-Type": "application/json",
-                "User-Agent": "dendra-insights/1.0 (+https://dendra.dev)",
+                "User-Agent": "dendra-insights/1.0 (+https://dendra.run)",
             },
             method="POST",
         )

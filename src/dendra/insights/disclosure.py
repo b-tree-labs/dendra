@@ -48,7 +48,7 @@ Leaving stops new uploads immediately and queues a warehouse-side
 delete of your hashed-ID slot, completed within 24 hours.
 
 The full data dictionary, retention policy, and DPIA are at
-https://dendra.dev/insights/transparency. The OSS classification
+https://dendra.run/insights/transparency. The OSS classification
 path stays telemetry-free regardless of enrollment status.
 
 Continue and enroll? [y/N]
