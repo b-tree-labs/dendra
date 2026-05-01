@@ -61,6 +61,7 @@
     <script defer src="./scripts/analyzer-demo.js?v=20260428-1100"></script>
     <script defer src="./scripts/copy-buttons.js?v=20260428-1100"></script>
     <script defer src="./scripts/code-resize.js?v=20260428-1100"></script>
+    <script defer src="./scripts/pricing.js?v=20260430-1745"></script>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -1008,62 +1009,84 @@ Report written to <span class="dim">.dendra/analyze-2026-04-22.json</span></pre>
       <section id="pricing">
         <div class="container">
           <h2>Volume-based pricing. No per-seat fees. Free forever for the library.</h2>
-          <table class="pricing-table">
-            <thead>
-              <tr>
-                <th>Tier</th>
-                <th>Price</th>
-                <th>Classifications / mo</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><strong>OSS library</strong></td>
-                <td><a href="#install">Free — install now →</a></td>
-                <td>unlimited (self-hosted)</td>
-              </tr>
-              <tr>
-                <td><strong>Free hosted</strong></td>
-                <td>$0</td>
-                <td>10,000</td>
-              </tr>
-              <tr>
-                <td><strong>Solo</strong></td>
-                <td>$19/mo</td>
-                <td>100,000</td>
-              </tr>
-              <tr>
-                <td><strong>Team</strong></td>
-                <td>$99/mo</td>
-                <td>1,000,000</td>
-              </tr>
-              <tr>
-                <td><strong>Pro</strong></td>
-                <td>$499/mo</td>
-                <td>10,000,000</td>
-              </tr>
-              <tr>
-                <td><strong>Scale</strong></td>
-                <td>$2,499/mo</td>
-                <td>100,000,000</td>
-              </tr>
-              <tr>
-                <td><strong>Metered</strong></td>
-                <td>$0.01 / 1k</td>
-                <td>above Scale</td>
-              </tr>
-              <tr>
-                <td><strong>Enterprise</strong></td>
-                <td>Custom</td>
-                <td>Custom</td>
-              </tr>
-            </tbody>
-          </table>
+
+          <!--
+            Tier table + calculator are JS-rendered from
+            landing/data/pricing-tiers.json (single source of truth)
+            and landing/data/llm-prices.json (provider rates). Edit
+            those files; the page updates on next load.
+          -->
+          <div class="pricing-grid" data-pricing-tiers>
+            <p class="caption dim">Loading tier data…</p>
+          </div>
+
           <p class="caption">
             Every paid tier has a published price. No "contact us"
             gating below Enterprise. Volume-priced so adding another
             classifier doesn't cost you another seat. Cancel anytime.
           </p>
+
+          <div class="pricing-calculator" data-pricing-calculator hidden>
+            <h3>Find your tier · estimate your savings</h3>
+            <p class="caption">
+              Drag your monthly classification volume; pick your current
+              LLM. We recommend the smallest hosted tier that fits, and
+              project your post-graduation cost (assuming half your
+              sites graduate to in-process ML at <code>~$3 per million
+              calls</code>). Your inputs only — nothing is sent.
+            </p>
+
+            <div class="pricing-calculator__inputs">
+              <label class="slider">
+                <span class="slider__label">Monthly classifications</span>
+                <input
+                  data-pc-input="calls"
+                  type="range"
+                  min="10000"
+                  max="100000000"
+                  step="10000"
+                  value="1000000"
+                />
+                <output data-pc-input-output="calls">1M</output>
+              </label>
+
+              <label class="select">
+                <span class="slider__label">Current LLM provider</span>
+                <select data-pc-input="provider">
+                  <option>Loading…</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="pricing-calculator__output">
+              <div class="pricing-calculator__rec">
+                <span class="caption dim">Recommended tier</span>
+                <strong data-pc-output="tier">—</strong>
+                <span data-pc-output="tier-detail" class="caption dim"></span>
+              </div>
+              <div class="pricing-calculator__rec">
+                <span class="caption dim">Today's LLM bill</span>
+                <strong data-pc-output="baseline">—</strong>
+                <span class="caption dim">/ month</span>
+              </div>
+              <div class="pricing-calculator__rec">
+                <span class="caption dim">With Dendra (post-graduation)</span>
+                <strong data-pc-output="dendra">—</strong>
+                <span class="caption dim">/ month — incl. tier fee</span>
+              </div>
+              <div class="pricing-calculator__rec pricing-calculator__rec--savings">
+                <span class="caption dim">Net savings</span>
+                <strong data-pc-output="savings">—</strong>
+                <span class="caption dim">/ month</span>
+              </div>
+            </div>
+
+            <p class="caption dim" data-pc-output="footnote">
+              Assumes 50% of detected classification sites graduate to
+              in-process ML within 90 days. Your actual share will vary
+              with the report card.
+            </p>
+          </div>
         </div>
       </section>
 
@@ -1220,9 +1243,10 @@ Report written to <span class="dim">.dendra/analyze-2026-04-22.json</span></pre>
           © 2026 B-Tree Ventures, LLC (dba B-Tree Labs). Split-licensed
           — Apache 2.0 on the client SDK, BSL 1.1 on Dendra-operated
           components (Change Date 2030-05-01 → Apache 2.0).
-          DENDRA™ and B-TREE LABS™ are trademarks of B-Tree Ventures,
-          LLC. Patent pending: U.S. Provisional Patent Application
-          No. 64/045,809, filed 2026-04-21.
+          DENDRA and B-TREE LABS are trademarks (or pending
+          trademarks) of B-Tree Ventures, LLC. Patent pending:
+          U.S. Provisional Patent Application No. 64/045,809,
+          filed 2026-04-21.
         </p>
       </div>
     </footer>

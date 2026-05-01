@@ -518,6 +518,120 @@ section:first-of-type {
   background: var(--ground-soft);
 }
 
+/* Tier table — rendered from pricing-tiers.json. */
+.pricing-grid {
+  margin: var(--space-6) 0;
+}
+
+.pricing-table--tiers th:nth-child(2),
+.pricing-table--tiers td:nth-child(2),
+.pricing-table--tiers th:nth-child(3),
+.pricing-table--tiers td:nth-child(3) {
+  text-align: left;
+  white-space: nowrap;
+}
+
+.pricing-table--tiers th:nth-child(4),
+.pricing-table--tiers td:nth-child(4) {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.pricing-table--tiers tr.pricing-tier--enterprise td {
+  background: color-mix(in oklab, var(--ground-soft) 60%, transparent);
+}
+
+.pricing-tier__headline {
+  display: block;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+  margin-top: 2px;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1.4;
+}
+
+.pricing-tier__features {
+  display: inline-block;
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.pricing-tier__cta {
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+/* Pricing calculator — fed by pricing-tiers.json + llm-prices.json. */
+.pricing-calculator {
+  margin-top: var(--space-8);
+  padding: var(--space-6);
+  border: var(--border);
+  border-radius: var(--radius-lg, 12px);
+  background: var(--ground-soft);
+}
+
+.pricing-calculator h3 {
+  margin: 0 0 var(--space-2);
+}
+
+.pricing-calculator__inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4) var(--space-6);
+  margin: var(--space-5) 0;
+}
+
+.pricing-calculator__inputs .select select {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: var(--border);
+  border-radius: 6px;
+  background: var(--ground);
+  font-family: inherit;
+  font-size: 0.9375rem;
+  color: var(--ink);
+}
+
+.pricing-calculator__output {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+  margin: var(--space-5) 0;
+}
+
+.pricing-calculator__rec {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pricing-calculator__rec strong {
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.pricing-calculator__rec--savings strong.pricing-calculator__savings--positive {
+  color: var(--accent, #2da44e);
+}
+
+.pricing-calculator__rec--savings strong.pricing-calculator__savings--negative {
+  color: var(--ink-soft);
+}
+
+@media (max-width: 768px) {
+  .pricing-calculator__inputs,
+  .pricing-calculator__output {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Category list */
 .category-list {
   display: grid;
