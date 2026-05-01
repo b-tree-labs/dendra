@@ -1,6 +1,11 @@
 {
-  "$schema": "https://dendra.ai/schemas/llm-prices.v1.json",
-  "last_updated": "2026-04-28",
+  "$schema": "https://dendra.run/schemas/llm-prices.v1.json",
+  "last_updated": "2026-04-30",
+  "source": {
+    "name": "BerriAI/litellm model_prices_and_context_window.json",
+    "url": "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json",
+    "license": "MIT (LiteLLM project)"
+  },
   "typical_classifier_prompt": {
     "input_tokens": 250,
     "output_tokens": 50,
@@ -8,86 +13,95 @@
   },
   "providers": [
     {
-      "id": "openai_gpt4o",
-      "label": "OpenAI GPT-4o",
-      "model": "gpt-4o",
-      "input_per_m_usd": 2.50,
-      "output_per_m_usd": 10.00,
-      "per_call_usd": 0.001125,
-      "notes": "Default baseline. The classifier-grade model most users start with."
+      "id": "anthropic_opus_47",
+      "label": "Anthropic Claude Opus 4.7",
+      "model": "claude-opus-4-7",
+      "input_per_m_usd": 5.0,
+      "output_per_m_usd": 25.0,
+      "per_call_usd": 0.0025,
+      "notes": "Anthropic's flagship reasoning model. Common premium classifier choice for high-stakes labels."
     },
     {
-      "id": "openai_gpt4o_mini",
-      "label": "OpenAI GPT-4o mini",
-      "model": "gpt-4o-mini",
-      "input_per_m_usd": 0.15,
-      "output_per_m_usd": 0.60,
-      "per_call_usd": 0.0000675,
-      "notes": "OpenAI's lightweight tier. ~17x cheaper than GPT-4o per classifier call."
+      "id": "anthropic_sonnet_46",
+      "label": "Anthropic Claude Sonnet 4.6",
+      "model": "claude-sonnet-4-6",
+      "input_per_m_usd": 3.0,
+      "output_per_m_usd": 15.0,
+      "per_call_usd": 0.0015,
+      "notes": "Anthropic's workhorse. The most-used production classifier across the Anthropic line."
     },
     {
-      "id": "anthropic_haiku",
-      "label": "Anthropic Claude Haiku 3.5",
-      "model": "claude-3-5-haiku-latest",
-      "input_per_m_usd": 0.25,
-      "output_per_m_usd": 1.25,
-      "per_call_usd": 0.000125,
-      "notes": "Anthropic's fastest tier. Common production classifier choice."
+      "id": "anthropic_haiku_45",
+      "label": "Anthropic Claude Haiku 4.5",
+      "model": "claude-haiku-4-5",
+      "input_per_m_usd": 1.0,
+      "output_per_m_usd": 5.0,
+      "per_call_usd": 0.0005,
+      "notes": "Anthropic's fast tier. Frequent default for high-volume classifier workloads."
     },
     {
-      "id": "anthropic_sonnet",
-      "label": "Anthropic Claude Sonnet 3.5",
-      "model": "claude-3-5-sonnet-latest",
-      "input_per_m_usd": 3.00,
-      "output_per_m_usd": 15.00,
-      "per_call_usd": 0.001500,
-      "notes": "Anthropic's mid-tier. Common when classifier quality matters more than per-call cost."
+      "id": "openai_gpt55",
+      "label": "OpenAI GPT-5.5",
+      "model": "gpt-5.5",
+      "input_per_m_usd": 5.0,
+      "output_per_m_usd": 30.0,
+      "per_call_usd": 0.00275,
+      "notes": "OpenAI's current frontier (released 2026-04-23). Top-of-line reasoning."
     },
     {
-      "id": "google_gemini_flash",
-      "label": "Google Gemini 1.5 Flash",
-      "model": "gemini-1.5-flash",
-      "input_per_m_usd": 0.075,
-      "output_per_m_usd": 0.30,
-      "per_call_usd": 0.0000338,
-      "notes": "Google's fast/cheap tier. Often the lowest cost-per-call from a hosted provider."
+      "id": "openai_gpt54_mini",
+      "label": "OpenAI GPT-5.4 mini",
+      "model": "gpt-5.4-mini",
+      "input_per_m_usd": 0.75,
+      "output_per_m_usd": 4.5,
+      "per_call_usd": 0.0004125,
+      "notes": "OpenAI's cheap frontier-tier. Strong classifier accuracy at a fraction of GPT-5.5's per-call cost."
     },
     {
-      "id": "mistral_small",
-      "label": "Mistral Small",
-      "model": "mistral-small-latest",
-      "input_per_m_usd": 0.20,
-      "output_per_m_usd": 0.60,
-      "per_call_usd": 0.000080,
-      "notes": "European-residency option. Useful for EU customers under GDPR."
+      "id": "google_gemini_31_pro",
+      "label": "Google Gemini 3.1 Pro",
+      "model": "gemini-3.1-pro-preview",
+      "input_per_m_usd": 2.0,
+      "output_per_m_usd": 12.0,
+      "per_call_usd": 0.0011,
+      "notes": "Google's current frontier (preview). Strong long-context for classifier prompts with retrieval."
     },
     {
-      "id": "together_llama8b",
-      "label": "Together Llama 3.1 8B",
-      "model": "meta-llama/Llama-3.1-8B-Instruct-Turbo",
-      "input_per_m_usd": 0.18,
-      "output_per_m_usd": 0.18,
-      "per_call_usd": 0.000054,
-      "notes": "Open-weights via Together's serverless. Cheapest hosted Llama option at this size."
+      "id": "google_gemini_3_flash",
+      "label": "Google Gemini 3 Flash",
+      "model": "gemini-3-flash-preview",
+      "input_per_m_usd": 0.5,
+      "output_per_m_usd": 3.0,
+      "per_call_usd": 0.000275,
+      "notes": "Google's cheap-and-fast frontier tier. Often the lowest cost-per-call from a frontier lab."
     },
     {
-      "id": "cohere_command_r",
-      "label": "Cohere Command R",
-      "model": "command-r",
-      "input_per_m_usd": 0.50,
-      "output_per_m_usd": 1.50,
-      "per_call_usd": 0.000200,
-      "notes": "Cohere's mid-tier; tuned for retrieval + classification workloads."
+      "id": "xai_grok_420_reasoning",
+      "label": "xAI Grok 4.20 (reasoning)",
+      "model": "grok-4.20-0309-reasoning",
+      "input_per_m_usd": 2.0,
+      "output_per_m_usd": 6.0,
+      "per_call_usd": 0.0008,
+      "notes": "xAI's current reasoning-grade model. Useful when Grok is already in the stack."
+    },
+    {
+      "id": "deepseek_v32",
+      "label": "DeepSeek V3.2",
+      "model": "deepseek-v3.2",
+      "input_per_m_usd": 0.28,
+      "output_per_m_usd": 0.4,
+      "per_call_usd": 9e-05,
+      "notes": "Open-weights frontier with aggressive pricing. Common cheap baseline for high-volume classifiers."
     },
     {
       "id": "ollama_local",
       "label": "Ollama (local)",
-      "model": "qwen2.5:7b or similar",
-      "input_per_m_usd": 0.00,
-      "output_per_m_usd": 0.00,
-      "per_call_usd": 0.00002,
+      "model": "qwen3:8b or similar",
+      "input_per_m_usd": 0.0,
+      "output_per_m_usd": 0.0,
+      "per_call_usd": 2e-05,
       "notes": "Local inference; per-call cost is notional electricity (~$0.00002/call on Apple Silicon). Zero per-token billing; latency is the trade-off."
     }
   ],
-  "disclaimer": "Per-call cost is the typical classifier prompt cost (250 input + 50 output tokens) at the listed input/output prices. Prices change; this file is updated weekly from public provider pricing pages. Verify current rates with the provider before sizing a contract."
+  "disclaimer": "Per-call cost is the typical classifier prompt cost (250 input + 50 output tokens) at the listed input/output prices. Prices are pulled weekly from BerriAI/litellm's community-maintained catalog; verify current rates with the provider before sizing a contract."
 }
