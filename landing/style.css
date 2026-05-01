@@ -484,6 +484,11 @@ section:first-of-type {
   color: var(--ink-soft);
 }
 
+.terminal .ok {
+  color: var(--accent);
+  font-weight: 500;
+}
+
 /* Pricing table */
 .pricing-table {
   width: 100%;

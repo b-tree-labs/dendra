@@ -652,38 +652,57 @@ Total projected annual value: $14,400 - $45,600</code></pre>
       -->
       <section id="prove" class="prove">
         <div class="container">
-          <p class="eyebrow">Close the loop</p>
-          <h2>Prove the savings on your data.</h2>
+          <p class="eyebrow">The launch artifact</p>
+          <h2>The report card is the audit trail.</h2>
           <div class="prove-grid">
             <div class="prove-grid__copy">
               <p>
-                Dendra ships a benchmark + report harness that turns
-                projected savings into <em>measured</em> savings on
-                your repo, with your data. Run
-                <code>dendra benchmark &lt;site&gt;</code> after every
-                change to a switch (rule edit, label add, evidence
-                tweak); <code>dendra report</code> rolls every recorded
-                run up into a per-switch timeseries (phase transitions,
-                cost per call, cumulative dollars saved).
+                Every wrapped switch produces a markdown report card —
+                what the gate saw, when it fired, the cost trajectory,
+                the drift posture. Same artifact for compliance, your
+                CFO, and your on-call engineer. <strong>No separate
+                dashboard. No SaaS lock-in for the evidence.</strong>
               </p>
               <p>
-                The same JSON the report emits is what
-                <code>--json</code> returns, so you can pipe it into
-                whatever dashboard your team already runs. Nothing
-                leaves your machine.
+                Three commands, three cards. The discovery card from
+                <code>dendra analyze --report</code> shows you what's
+                wrappable on day 0. The per-switch card from
+                <code>dendra report &lt;switch&gt;</code> ships at
+                graduation. The project rollup from
+                <code>dendra report --summary</code> is the cockpit
+                view across everything you've wrapped.
+              </p>
+              <p>
+                <a class="button secondary" href="https://github.com/b-tree-labs/dendra/tree/main/docs/sample-reports">See the full sample report cards →</a>
               </p>
             </div>
             <div class="prove-grid__terminal">
-<pre class="terminal" aria-label="Example dendra benchmark and report output"><span class="prompt">$</span> dendra benchmark src/triage.py:triage_ticket
-3 passed in 0.04s
-triage_ticket: first run (phase=RULE, cost $0.00002-$0.00032/call)
+<pre class="terminal" aria-label="Example dendra report output">
+<span class="prompt">$</span> dendra report triage_rule
 
-<span class="prompt">$</span> dendra report
-Dendra report - 1 switch, 14 days of data
+# Triage Rule — Graduation Report Card
+Generated 2026-04-29 22:15 UTC.
+Site: <span class="dim">src/triage.py:triage_rule</span>.
+Fingerprint: <span class="dim">a1b2c3d4ef567890</span>.
 
-triage_ticket  RULE -&gt; MODEL_PRIMARY 2026-05-04 (after 312 verdicts)
-               cost: $0.0042 -&gt; $0.00031/call (-92%)
-               estimated saved this week: $128</pre>
+## Status
+
+<span class="ok">Phase: ML_PRIMARY</span> — graduated 4 days ago at outcome 312.
+Gate (McNemarGate, α = 0.01) fired with <span class="ok">p = 4.2 × 10⁻⁴</span>.
+Effect size: rule 78.4% → ML 87.2% (<span class="ok">+8.8 pp</span>).
+
+## Cost trajectory
+
+                Pre-grad   Post-grad   Reduction
+Per call       $0.0042   $0.000003     <span class="ok">99.93%</span>
+Per 1M calls   $4,200       $3.00      $4,197 saved
+Latency p50      412 ms      0.8 ms     <span class="ok">99.81%</span>
+
+## Drift posture
+
+<span class="ok">Green</span>. Last check 2026-05-01 03:00 UTC.
+Re-evaluation triggers if accuracy drops >2pp over a 7-day window.
+</pre>
             </div>
           </div>
         </div>
