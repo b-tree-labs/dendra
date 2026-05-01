@@ -62,6 +62,7 @@
     <script defer src="./scripts/copy-buttons.js?v=20260428-1100"></script>
     <script defer src="./scripts/code-resize.js?v=20260428-1100"></script>
     <script defer src="./scripts/pricing.js?v=20260501-1500"></script>
+    <script defer src="./scripts/paste-analyzer.js?v=20260501-2200"></script>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -315,6 +316,84 @@
               <div class="try-roi__cta-row">
                 <a class="button" href="#install">Install in 5 minutes →</a>
                 <span class="try-roi__cta-aside">no upload · no signup · no GPU</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!--
+        PASTE-YOUR-CODE — Pyodide-side analyzer. ~10 s from arrival to
+        personalized signal, no install, no account. Pasted source
+        stays in the browser; only "email me" / "send to teammate"
+        on explicit click hits the wire.
+      -->
+      <section id="paste" class="paste-demo" data-paste-root>
+        <div class="container">
+          <p class="eyebrow">10 seconds to your own analysis</p>
+          <h2>Paste a Python file. See its priority table.</h2>
+          <p class="caption">
+            Drop a function or a whole file (under 200 KB) below. Dendra's
+            static analyzer runs entirely in your browser via Pyodide —
+            <strong>your code never leaves this tab</strong>. Detected
+            classification sites get the same priority + volume + lift
+            scoring you'd see from <code>dendra analyze</code> locally.
+          </p>
+
+          <div class="paste-grid">
+            <div class="paste-input">
+              <label class="paste-label" for="paste-textarea">Your Python source</label>
+              <textarea
+                id="paste-textarea"
+                data-paste-textarea
+                spellcheck="false"
+                rows="14"
+                placeholder="def triage(ticket: dict) -> str:&#10;    title = (ticket.get('title') or '').lower()&#10;    if 'crash' in title or 'error' in title:&#10;        return 'bug'&#10;    if 'how do i' in title or '?' in title:&#10;        return 'question'&#10;    return 'feature_request'"
+              ></textarea>
+              <div class="paste-controls">
+                <button class="button" data-paste-run type="button">
+                  Analyze ↵
+                </button>
+                <span class="paste-hint dim">
+                  ⌘/Ctrl + Enter to run · first run loads Pyodide (~5 s)
+                </span>
+              </div>
+              <p class="paste-status caption" data-paste-status></p>
+            </div>
+
+            <div class="paste-output">
+              <div class="paste-results" data-paste-results>
+                <p class="dim caption">
+                  Results render here — function name, pattern, labels,
+                  regime, volume, priority, lift status, and the matched
+                  source range. Same shape as the local CLI output.
+                </p>
+              </div>
+
+              <div class="paste-share" data-paste-share hidden>
+                <p class="caption">
+                  <strong>Save this analysis or send it to a teammate.</strong>
+                  We'll email a Markdown copy with the <code>dendra init</code>
+                  commands for each top site. Your snippet is not stored
+                  — only the email + the result counts.
+                </p>
+                <form class="paste-share-form" data-leads-form>
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="you@yourcompany.com"
+                    required
+                    autocomplete="email"
+                  />
+                  <input
+                    type="email"
+                    name="teammate_email"
+                    placeholder="teammate@yourcompany.com (optional)"
+                    autocomplete="off"
+                  />
+                  <button type="submit" class="button secondary">Email results</button>
+                </form>
+                <p class="paste-share-status caption dim" data-leads-status></p>
               </div>
             </div>
           </div>
