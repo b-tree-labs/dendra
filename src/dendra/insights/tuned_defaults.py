@@ -90,6 +90,11 @@ class TunedDefaults:
     pattern_frequencies: dict[str, float] = field(default_factory=dict)
     #: Top-N refusal categories ranked by prevalence.
     top_refusal_categories: list[str] = field(default_factory=list)
+    #: Cohort-median fraction of detected sites with priority_score
+    #: >= 4.0. Populated by the aggregator once cohort_size >= 10.
+    #: ``None`` means "not yet enough signal" — CLI emitter suppresses
+    #: the comparison line in that state.
+    median_high_priority_density: float | None = None
     #: Reserved for Phase B Ed25519 verification. Phase A ignores it.
     signature: str | None = None
 
@@ -123,6 +128,9 @@ class TunedDefaults:
             ),
             top_refusal_categories=_list_str_or(
                 defaults_block.get("top_refusal_categories"), []
+            ),
+            median_high_priority_density=_float_or(
+                defaults_block.get("median_high_priority_density"), None
             ),
             signature=_str_or(payload.get("signature"), None),
         )

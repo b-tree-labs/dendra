@@ -973,11 +973,53 @@ def render_text(
         if count:
             lines.append(f"  {regime:>8}: {count}")
     lines.append("")
+
+    # Cohort-comparison line. Best-effort: silently suppressed when
+    # there isn't enough cohort signal yet (cohort_size < 10) or the
+    # median field hasn't been populated server-side. As enrollment
+    # grows past launch, this line unfurls naturally.
+    cohort_line = _format_cohort_comparison(report)
+    if cohort_line:
+        lines.append(cohort_line)
+        lines.append("")
+
     lines.append(
         "Next step: `dendra init <file>:<function> --author @you:team` "
         "to wrap the highest-priority site."
     )
     return "\n".join(lines)
+
+
+def _format_cohort_comparison(report: AnalyzerReport) -> str | None:
+    """Render a one-line cohort comparison, or ``None`` to suppress.
+
+    Suppresses when cohort signal is too thin (< 10 deployments) or the
+    median field isn't set yet — the latter is the launch state, the
+    former covers early-cohort weeks. Both conditions resolve naturally
+    as enrollment grows; no code change needed.
+    """
+    try:
+        from dendra.insights import load_cached_or_baked_in
+
+        defaults = load_cached_or_baked_in()
+    except Exception:  # noqa: BLE001 — never fail analyze on a cohort fetch
+        return None
+    if defaults.cohort_size < 10:
+        return None
+    median = defaults.median_high_priority_density
+    if median is None:
+        return None
+    n = len(report.sites)
+    if n == 0:
+        return None
+    high_priority = sum(1 for s in report.sites if s.priority_score >= 4.0)
+    your_density = high_priority / n
+    direction = "above" if your_density > median else "at or below"
+    return (
+        f"Cohort comparison (n={defaults.cohort_size:,} deployments):\n"
+        f"  high-priority density: {your_density:.0%} "
+        f"(cohort median: {median:.0%}) — {direction} median."
+    )
 
 
 def render_json(

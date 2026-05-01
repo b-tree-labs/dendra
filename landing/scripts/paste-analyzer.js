@@ -219,4 +219,95 @@ os.unlink(_paste_path)
       runAnalyze();
     }
   });
+
+  // ----- Lead capture submit handler ---------------------------------------
+  // Posts to the collector Worker (POST /v1/leads). On localhost the
+  // collector isn't running, so we fall back to a "thanks" message
+  // without persisting — the visitor sees the same flow either way.
+  const leadsForm = root.querySelector("[data-leads-form]");
+  const leadsStatus = root.querySelector("[data-leads-status]");
+
+  function getCollectorBase() {
+    const host = window.location.hostname;
+    if (host === "dendra.run" || host === "www.dendra.run") {
+      return "https://collector.dendra.run";
+    }
+    if (host === "staging.dendra.run") {
+      return "https://staging-collector.dendra.run";
+    }
+    // Local dev / unknown — no collector reachable. Caller handles
+    // the fall-through with a simulated success.
+    return null;
+  }
+
+  function setLeadsStatus(msg, kind) {
+    if (!leadsStatus) return;
+    leadsStatus.textContent = msg || "";
+    leadsStatus.dataset.kind = kind || "";
+  }
+
+  if (leadsForm) {
+    leadsForm.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const data = new FormData(leadsForm);
+      const email = String(data.get("email") || "").trim();
+      const teammateEmail = String(data.get("teammate_email") || "").trim();
+      if (!email) {
+        setLeadsStatus("Email required.", "error");
+        return;
+      }
+
+      // Pull result-shape from the latest analysis (stashed on the
+      // share element by renderResults).
+      const siteCount = parseInt(shareEl?.dataset.siteCount || "0", 10) || 0;
+      const topPriority = parseFloat(shareEl?.dataset.topPriority || "0") || 0;
+
+      const payload = {
+        email,
+        teammate_email: teammateEmail || null,
+        site_count: siteCount,
+        top_priority_score: topPriority,
+      };
+
+      const submitBtn = leadsForm.querySelector('button[type="submit"]');
+      if (submitBtn) submitBtn.disabled = true;
+      setLeadsStatus("Sending…", "loading");
+
+      const base = getCollectorBase();
+      try {
+        if (base === null) {
+          // Local dev: skip the network round-trip; show success so
+          // the demo flow is reviewable without the Worker running.
+          await new Promise((r) => setTimeout(r, 400));
+          setLeadsStatus(
+            "Recorded locally (preview mode — Worker not reachable). On dendra.run this would email your results.",
+            "success",
+          );
+        } else {
+          const resp = await fetch(`${base}/v1/leads`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const json = await resp.json();
+          setLeadsStatus(
+            json.forwarded_to_teammate
+              ? "Sent. Your teammate will get a copy too."
+              : "Sent. Check your inbox in a minute.",
+            "success",
+          );
+          leadsForm.reset();
+        }
+      } catch (err) {
+        console.error("[paste-analyzer:leads]", err);
+        setLeadsStatus(
+          "Couldn't send right now. Try again, or grab the install command at #install.",
+          "error",
+        );
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    });
+  }
 })();

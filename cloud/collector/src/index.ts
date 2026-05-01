@@ -104,9 +104,56 @@ export default {
       }
     }
 
+    if (request.method === 'POST' && url.pathname === '/v1/leads') {
+      try {
+        return await handleLeadsPost(request, env);
+      } catch (err) {
+        return errorResponse(err, env);
+      }
+    }
+
+    if (request.method === 'OPTIONS') {
+      // CORS preflight for the landing page (different origin than the
+      // collector subdomain). Allow the two endpoints; cap headers tight.
+      return new Response(null, {
+        status: 204,
+        headers: corsHeaders(request),
+      });
+    }
+
     return jsonResponse(404, { error: 'not_found', path: url.pathname });
   },
 };
+
+// ---------------------------------------------------------------------------
+// CORS — landing-page origin (dendra.run / staging.dendra.run) calls
+// the collector subdomain (collector.dendra.run / staging-collector...).
+// Same-org cross-origin; locked to known origins, no wildcard.
+// ---------------------------------------------------------------------------
+
+const ALLOWED_ORIGINS = new Set([
+  'https://dendra.run',
+  'https://www.dendra.run',
+  'https://staging.dendra.run',
+  // Local dev (python -m http.server / wrangler dev).
+  'http://localhost:8765',
+  'http://127.0.0.1:8765',
+  'http://localhost:8787',
+]);
+
+function corsHeaders(request: Request): Record<string, string> {
+  const origin = request.headers.get('origin') ?? '';
+  if (!ALLOWED_ORIGINS.has(origin)) {
+    return {};
+  }
+  return {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'content-type',
+    'Access-Control-Max-Age': '86400',
+    Vary: 'Origin',
+  };
+}
 
 // ---------------------------------------------------------------------------
 // POST /v1/events
@@ -301,17 +348,136 @@ function validateAndStripEvent(
 const ISO_TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
 const HEX_RE = /^[0-9a-f]+$/i;
 
+// ---------------------------------------------------------------------------
+// POST /v1/leads — landing-page paste-analyzer email/share capture
+// ---------------------------------------------------------------------------
+
+interface LeadPayload {
+  email: string;
+  teammate_email?: string | null;
+  // Result-shape signals from the in-browser analysis. All optional;
+  // the visitor's email alone is enough to capture the lead.
+  site_count?: number;
+  top_priority_score?: number;
+  top_pattern?: string;
+  high_priority_count?: number;
+}
+
+// Conservative email regex — RFC 5321 lookalike. Goal is reject obvious
+// garbage, not validate every legal address; the actual deliverability
+// check happens at send time.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const VALID_PATTERNS = new Set(['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'no_match']);
+
+async function handleLeadsPost(request: Request, env: Env): Promise<Response> {
+  const cors = corsHeaders(request);
+
+  // Bound the request body — leads payloads should be tiny (~200 bytes).
+  // Cap at 8 KB; anything larger is suspect.
+  const contentLength = parseInt(request.headers.get('content-length') ?? '0', 10);
+  if (contentLength > 8_192) {
+    return jsonResponse(413, { error: 'payload_too_large', limit_bytes: 8_192 }, cors);
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonResponse(400, { error: 'invalid_json' }, cors);
+  }
+
+  if (!isObject(body)) {
+    return jsonResponse(400, { error: 'invalid_payload_shape' }, cors);
+  }
+
+  const lead = body as Record<string, unknown>;
+  const email = typeof lead.email === 'string' ? lead.email.trim().toLowerCase() : '';
+  if (!email || email.length > 254 || !EMAIL_RE.test(email)) {
+    return jsonResponse(400, { error: 'invalid_email' }, cors);
+  }
+
+  let teammateEmail: string | null = null;
+  if (typeof lead.teammate_email === 'string' && lead.teammate_email.trim()) {
+    const t = lead.teammate_email.trim().toLowerCase();
+    if (t.length > 254 || !EMAIL_RE.test(t)) {
+      return jsonResponse(400, { error: 'invalid_teammate_email' }, cors);
+    }
+    teammateEmail = t;
+  }
+
+  // Result-shape signals — all optional; clamp to sane bounds.
+  const siteCount = boundedInt(lead.site_count, 0, 10_000);
+  const topPriority = boundedFloat(lead.top_priority_score, 0, 5);
+  const topPattern =
+    typeof lead.top_pattern === 'string' && VALID_PATTERNS.has(lead.top_pattern)
+      ? lead.top_pattern
+      : null;
+  const highPriorityCount = boundedInt(lead.high_priority_count, 0, 10_000);
+
+  // Cloudflare metadata for abuse triage. Same TTL as the events table.
+  const country = (request.cf as { country?: string })?.country ?? null;
+  const asn = (request.cf as { asn?: number })?.asn ?? null;
+  const userAgent = request.headers.get('user-agent') ?? null;
+
+  await env.DB.prepare(
+    `INSERT INTO leads (
+      email, teammate_email,
+      site_count, top_priority_score, top_pattern, high_priority_count,
+      request_country, request_asn, request_user_agent
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  )
+    .bind(
+      email,
+      teammateEmail,
+      siteCount,
+      topPriority,
+      topPattern,
+      highPriorityCount,
+      country,
+      asn,
+      userAgent
+    )
+    .run();
+
+  return jsonResponse(
+    200,
+    {
+      status: 'ok',
+      forwarded_to_teammate: teammateEmail !== null,
+    },
+    cors
+  );
+}
+
+function boundedInt(v: unknown, lo: number, hi: number): number | null {
+  if (typeof v !== 'number' || !Number.isFinite(v)) return null;
+  const n = Math.round(v);
+  if (n < lo || n > hi) return null;
+  return n;
+}
+
+function boundedFloat(v: unknown, lo: number, hi: number): number | null {
+  if (typeof v !== 'number' || !Number.isFinite(v)) return null;
+  if (v < lo || v > hi) return null;
+  return v;
+}
+
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function jsonResponse(status: number, body: unknown): Response {
+function jsonResponse(
+  status: number,
+  body: unknown,
+  extraHeaders?: Record<string, string>
+): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
       'content-type': 'application/json; charset=utf-8',
       'access-control-allow-origin': '*',
       'cache-control': 'no-store',
+      ...(extraHeaders ?? {}),
     },
   });
 }

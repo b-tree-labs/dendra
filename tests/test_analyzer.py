@@ -538,6 +538,86 @@ class TestPriorityScore:
         assert _compute_priority_score(5.0, "hot", "already_dendrified") == 0.0
 
 
+class TestCohortComparisonLine:
+    """``render_text`` emits a cohort-comparison line when cohort signal
+    is real (cohort_size >= 10 + median field populated)."""
+
+    def _patch_defaults(self, monkeypatch, *, cohort_size, median):
+        from dendra.insights.tuned_defaults import TunedDefaults
+
+        defaults = TunedDefaults(
+            cohort_size=cohort_size,
+            median_high_priority_density=median,
+        )
+
+        def _stub():
+            return defaults
+
+        # Patch via the import that analyzer.py uses lazily.
+        import dendra.insights as _i
+
+        monkeypatch.setattr(_i, "load_cached_or_baked_in", _stub)
+
+    def _build_report_with_priorities(self, priorities):
+        from dendra.analyzer import AnalyzerReport, ClassificationSite
+
+        sites = [
+            ClassificationSite(
+                file_path=f"f{i}.py",
+                function_name=f"fn{i}",
+                line_start=1,
+                line_end=2,
+                pattern="P1",
+                labels=["a", "b"],
+                label_cardinality=2,
+                regime="narrow",
+                volume_estimate="warm",
+                priority_score=p,
+                lift_status="auto_liftable",
+            )
+            for i, p in enumerate(priorities)
+        ]
+        return AnalyzerReport(root="/r", files_scanned=len(sites), sites=sites)
+
+    def test_suppressed_when_cohort_too_small(self, monkeypatch):
+        from dendra.analyzer import render_text
+
+        self._patch_defaults(monkeypatch, cohort_size=9, median=0.30)
+        report = self._build_report_with_priorities([5.0, 4.5, 2.0, 1.0])
+        out = render_text(report)
+        assert "Cohort comparison" not in out
+
+    def test_suppressed_when_median_missing(self, monkeypatch):
+        from dendra.analyzer import render_text
+
+        self._patch_defaults(monkeypatch, cohort_size=50, median=None)
+        report = self._build_report_with_priorities([5.0, 4.5, 2.0])
+        out = render_text(report)
+        assert "Cohort comparison" not in out
+
+    def test_emits_above_median_when_density_higher(self, monkeypatch):
+        from dendra.analyzer import render_text
+
+        # 3 of 4 sites are high-priority (75%); cohort median 30%.
+        self._patch_defaults(monkeypatch, cohort_size=47, median=0.30)
+        report = self._build_report_with_priorities([5.0, 4.5, 4.2, 1.0])
+        out = render_text(report)
+        assert "Cohort comparison (n=47 deployments)" in out
+        assert "75%" in out
+        assert "30%" in out
+        assert "above median" in out
+
+    def test_emits_at_or_below_median_when_density_lower(self, monkeypatch):
+        from dendra.analyzer import render_text
+
+        # 0 of 3 sites are high-priority (0%); cohort median 30%.
+        self._patch_defaults(monkeypatch, cohort_size=47, median=0.30)
+        report = self._build_report_with_priorities([3.5, 2.0, 1.0])
+        out = render_text(report)
+        assert "Cohort comparison" in out
+        assert "at or below median" in out
+
+
 class TestInternalSwitchWraps:
     """Dendra-on-Dendra: ``_classify_pattern`` and ``_classify_lift_status``
     are wrapped with ``@ml_switch`` at Phase.RULE.
