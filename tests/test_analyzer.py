@@ -538,6 +538,72 @@ class TestPriorityScore:
         assert _compute_priority_score(5.0, "hot", "already_dendrified") == 0.0
 
 
+class TestSortSites:
+    """``AnalyzerReport.sort_sites`` orders by the requested key."""
+
+    def _report_with_three_sites(self):
+        from dendra.analyzer import AnalyzerReport, ClassificationSite
+
+        a = ClassificationSite(
+            file_path="z_last.py", function_name="a", line_start=10,
+            line_end=20, pattern="P3", labels=["x", "y"], label_cardinality=2,
+            regime="medium", volume_estimate="cold", priority_score=1.5,
+            lift_status="refused",
+        )
+        b = ClassificationSite(
+            file_path="a_first.py", function_name="b", line_start=5,
+            line_end=15, pattern="P1", labels=["x", "y", "z"],
+            label_cardinality=3, regime="narrow", volume_estimate="hot",
+            priority_score=5.0, lift_status="auto_liftable",
+        )
+        c = ClassificationSite(
+            file_path="m_mid.py", function_name="c", line_start=1,
+            line_end=8, pattern="P2", labels=["x"], label_cardinality=1,
+            regime="narrow", volume_estimate="warm", priority_score=3.0,
+            lift_status="needs_annotation",
+        )
+        return AnalyzerReport(root="/r", files_scanned=3, sites=[a, b, c])
+
+    def test_priority_default_descending(self):
+        r = self._report_with_three_sites()
+        order = [s.function_name for s in r.sort_sites()]
+        assert order == ["b", "c", "a"]  # 5.0, 3.0, 1.5
+
+    def test_location_ascending(self):
+        r = self._report_with_three_sites()
+        order = [s.file_path for s in r.sort_sites(key="location")]
+        assert order == ["a_first.py", "m_mid.py", "z_last.py"]
+
+    def test_pattern_ascending(self):
+        r = self._report_with_three_sites()
+        order = [s.pattern for s in r.sort_sites(key="pattern")]
+        assert order == ["P1", "P2", "P3"]
+
+    def test_regime_narrow_first(self):
+        r = self._report_with_three_sites()
+        order = [s.regime for s in r.sort_sites(key="regime")]
+        # narrow×2 first (priority desc within), then medium
+        assert order == ["narrow", "narrow", "medium"]
+
+    def test_lift_auto_first(self):
+        r = self._report_with_three_sites()
+        order = [s.lift_status for s in r.sort_sites(key="lift")]
+        assert order == ["auto_liftable", "needs_annotation", "refused"]
+
+    def test_reverse_flips_order(self):
+        r = self._report_with_three_sites()
+        forward = [s.function_name for s in r.sort_sites()]
+        backward = [s.function_name for s in r.sort_sites(reverse=True)]
+        assert backward == list(reversed(forward))
+
+    def test_unknown_sort_key_raises(self):
+        import pytest as _pytest
+
+        r = self._report_with_three_sites()
+        with _pytest.raises(ValueError, match="unknown sort key"):
+            r.sort_sites(key="bogus")
+
+
 class TestRegimeInJsonReport:
     """Regime field round-trips correctly through render_json."""
 

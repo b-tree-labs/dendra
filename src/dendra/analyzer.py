@@ -93,7 +93,67 @@ class AnalyzerReport:
     already_dendrified: list[tuple[str, str, int]] = field(default_factory=list)
 
     def by_priority_desc(self) -> list[ClassificationSite]:
-        return sorted(self.sites, key=lambda s: s.priority_score, reverse=True)
+        return self.sort_sites(key="priority")
+
+    def sort_sites(
+        self, key: str = "priority", reverse: bool = False
+    ) -> list[ClassificationSite]:
+        """Return sites sorted by the given key.
+
+        Supported keys (default ``priority``):
+
+        - ``priority`` — composite ``priority_score`` descending; ties
+          broken by ``file_path``, ``line_start``.
+        - ``location`` — ``file_path`` ascending, then ``line_start``.
+        - ``pattern`` — pattern name (P1..P6); ``priority_score``
+          descending within each pattern.
+        - ``regime`` — narrow → medium → high → unknown; priority
+          descending within each regime.
+        - ``lift`` — auto_liftable → needs_annotation → refused →
+          already_dendrified; priority descending within each.
+
+        ``reverse=True`` flips the final order.
+        """
+        if key == "priority":
+            sites = sorted(
+                self.sites,
+                key=lambda s: (-s.priority_score, s.file_path, s.line_start),
+            )
+        elif key == "location":
+            sites = sorted(self.sites, key=lambda s: (s.file_path, s.line_start))
+        elif key == "pattern":
+            sites = sorted(
+                self.sites, key=lambda s: (s.pattern, -s.priority_score)
+            )
+        elif key == "regime":
+            regime_order = {"narrow": 0, "medium": 1, "high": 2, "unknown": 3}
+            sites = sorted(
+                self.sites,
+                key=lambda s: (
+                    regime_order.get(s.regime, 99),
+                    -s.priority_score,
+                ),
+            )
+        elif key == "lift":
+            lift_order = {
+                "auto_liftable": 0,
+                "needs_annotation": 1,
+                "refused": 2,
+                "already_dendrified": 3,
+            }
+            sites = sorted(
+                self.sites,
+                key=lambda s: (
+                    lift_order.get(s.lift_status, 99),
+                    -s.priority_score,
+                ),
+            )
+        else:
+            raise ValueError(
+                f"unknown sort key {key!r}; choose from "
+                "priority, location, pattern, regime, lift"
+            )
+        return list(reversed(sites)) if reverse else sites
 
     def total_sites(self) -> int:
         return len(self.sites)
@@ -796,7 +856,12 @@ def analyze(
 # ---------------------------------------------------------------------------
 
 
-def render_text(report: AnalyzerReport) -> str:
+def render_text(
+    report: AnalyzerReport,
+    *,
+    sort_key: str = "priority",
+    reverse: bool = False,
+) -> str:
     lines = [
         "Dendra static analyzer — classification sites",
         "=" * 60,
@@ -831,7 +896,7 @@ def render_text(report: AnalyzerReport) -> str:
         f"{'regime':>8} {'vol':>5} {'priority':>9}"
     )
     lines.append("-" * 102)
-    for s in report.by_priority_desc():
+    for s in report.sort_sites(key=sort_key, reverse=reverse):
         file_label = f"{s.file_path}:{s.line_start}"
         lines.append(
             f"{file_label:<40} {s.function_name:<22} "
@@ -856,14 +921,21 @@ def render_text(report: AnalyzerReport) -> str:
     return "\n".join(lines)
 
 
-def render_json(report: AnalyzerReport) -> str:
+def render_json(
+    report: AnalyzerReport,
+    *,
+    sort_key: str = "priority",
+    reverse: bool = False,
+) -> str:
     """Machine-readable report for CI diff tracking."""
     return json.dumps(
         {
             "root": report.root,
             "files_scanned": report.files_scanned,
             "total_sites": report.total_sites(),
-            "sites": [asdict(s) for s in report.by_priority_desc()],
+            "sites": [
+                asdict(s) for s in report.sort_sites(key=sort_key, reverse=reverse)
+            ],
             "errors": report.errors,
             "already_dendrified_count": report.already_dendrified_count(),
             "already_dendrified": [
@@ -977,6 +1049,8 @@ def render_markdown(
     report: AnalyzerReport,
     *,
     projections: list[SavingsProjection] | None = None,
+    sort_key: str = "priority",
+    reverse: bool = False,
 ) -> str:
     """Markdown report suitable for CI PR comments and the pricing page.
 
@@ -1017,7 +1091,7 @@ def render_markdown(
         "| File:Line | Function | Pattern | Labels | Regime | Volume | Priority |"
     )
     lines.append("|---|---|---|---:|---|---|---:|")
-    for s in report.by_priority_desc():
+    for s in report.sort_sites(key=sort_key, reverse=reverse):
         file_label = f"`{s.file_path}:{s.line_start}`"
         lines.append(
             f"| {file_label} | `{s.function_name}` | "

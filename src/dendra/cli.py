@@ -720,19 +720,29 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     _refresh_cohort_defaults_async()
     report = analyze(args.path)
 
+    sort_key = getattr(args, "sort", "priority")
+    reverse = bool(getattr(args, "reverse", False))
+
     if args.format == "json":
-        print(render_json(report))
+        print(render_json(report, sort_key=sort_key, reverse=reverse))
         _emit_analyze_event_if_enrolled(report)
         return 0
 
     if args.format == "markdown":
         projections = project_savings(report) if args.project_savings else None
-        print(render_markdown(report, projections=projections))
+        print(
+            render_markdown(
+                report,
+                projections=projections,
+                sort_key=sort_key,
+                reverse=reverse,
+            )
+        )
         _emit_analyze_event_if_enrolled(report)
         return 0
 
     # Default: text.
-    print(render_text(report))
+    print(render_text(report, sort_key=sort_key, reverse=reverse))
     if args.project_savings and report.sites:
         print()
         print("Run with --format markdown for the savings projection table.")
@@ -1670,6 +1680,21 @@ def main(argv: Sequence[str] | None = None) -> int:
             "Hint for default --cost-per-call when not supplied explicitly. "
             "Default: 'default' (~frontier-LLM rate)."
         ),
+    )
+    p_analyze.add_argument(
+        "--sort",
+        choices=["priority", "location", "pattern", "regime", "lift"],
+        default="priority",
+        help=(
+            "Sort detected sites by: priority (default — composite of "
+            "graduation-fitness, volume estimate, lift status), location "
+            "(file:line), pattern (P1..P6), regime, or lift status."
+        ),
+    )
+    p_analyze.add_argument(
+        "--reverse",
+        action="store_true",
+        help="Reverse the sort order.",
     )
     p_analyze.set_defaults(fn=cmd_analyze)
 
