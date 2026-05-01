@@ -40,15 +40,14 @@ _DEFAULT_COST_PER_CALL: dict[str, float] = {
     "default": 0.0042,
 }
 
-# Heuristic: at production traffic, sites of these regimes see this
-# many monthly verdicts on average. Used for projecting savings when
-# the user hasn't passed --calls-per-month. Tunable post-launch from
-# real cohort data.
-_DEFAULT_MONTHLY_VERDICTS_BY_REGIME: dict[str, int] = {
-    "narrow": 200_000,
-    "medium": 400_000,
-    "high": 800_000,
-    "unknown": 300_000,
+# Heuristic: at production traffic, sites in these volume buckets see
+# this many monthly calls on average. Volume bucket comes from the
+# analyzer's static AST signals (route decorators, file-path hints).
+# Tunable post-launch from real cohort data.
+_DEFAULT_MONTHLY_CALLS_BY_VOLUME: dict[str, int] = {
+    "cold": 300_000,
+    "warm": 1_300_000,
+    "hot": 3_000_000,
 }
 
 
@@ -66,7 +65,8 @@ class OpportunitySite:
     pattern: str
     regime: str
     label_cardinality: int
-    fit_score: float
+    volume_estimate: str
+    priority_score: float
     lift_status: str
     hazard_categories: list[str]
     predicted_graduation_low: int
@@ -250,8 +250,9 @@ def _rank_sites(
     out: list[OpportunitySite] = []
     for site in getattr(analyze_report, "sites", []):
         regime = site.regime if site.regime else "unknown"
+        volume = getattr(site, "volume_estimate", "warm")
         low, high = _resolve_predicted_interval(regime, cohort_low, cohort_high)
-        verdicts_per_month = _DEFAULT_MONTHLY_VERDICTS_BY_REGIME.get(regime, 300_000)
+        verdicts_per_month = _DEFAULT_MONTHLY_CALLS_BY_VOLUME.get(volume, 1_300_000)
         # Pre-graduation cost = cost_per_call * verdicts/month
         # Post-graduation cost ≈ 0 (in-process inference)
         savings_per_month = cost_per_call * verdicts_per_month
@@ -263,7 +264,8 @@ def _rank_sites(
                 pattern=site.pattern,
                 regime=regime,
                 label_cardinality=site.label_cardinality,
-                fit_score=site.fit_score,
+                volume_estimate=volume,
+                priority_score=site.priority_score,
                 lift_status=site.lift_status,
                 hazard_categories=[h.category for h in site.hazards],
                 predicted_graduation_low=low,
@@ -271,10 +273,10 @@ def _rank_sites(
                 estimated_monthly_savings_usd=savings_per_month,
             )
         )
-    # Rank by (fit_score desc, savings desc)
+    # Rank by (priority_score desc, savings desc)
     return sorted(
         out,
-        key=lambda s: (-s.fit_score, -s.estimated_monthly_savings_usd),
+        key=lambda s: (-s.priority_score, -s.estimated_monthly_savings_usd),
     )
 
 
@@ -298,8 +300,8 @@ def _resolve_predicted_interval(
 def _opportunities_table(sites: list[OpportunitySite], cost_per_call: float) -> str:
     """The ranked-sites table — the centerpiece of the discovery report."""
     rows = [
-        "| # | Site | Pattern | Regime | Fit | Cohort grad time | Est. $/mo savings | Action |",
-        "|---:|---|---|---|---:|---|---:|---|",
+        "| # | Site | Pattern | Regime | Vol | Priority | Cohort grad time | Est. $/mo savings | Action |",
+        "|---:|---|---|---|---|---:|---|---:|---|",
     ]
     for i, s in enumerate(sites[:15], start=1):  # cap top-15 for readability
         regime_str = (
@@ -319,7 +321,8 @@ def _opportunities_table(sites: list[OpportunitySite], cost_per_call: float) -> 
         site_label = f"`{s.file_path}:{s.line_start} {s.function_name}`"
         rows.append(
             f"| {i} | {site_label} | {s.pattern} | {regime_str} | "
-            f"**{s.fit_score:.1f}** | {grad_str} | {savings_str} | {action} |"
+            f"{s.volume_estimate} | **{s.priority_score:.2f}** | "
+            f"{grad_str} | {savings_str} | {action} |"
         )
     if len(sites) > 15:
         rows.append(
@@ -363,7 +366,7 @@ def _recommended_sequence(auto_liftable: list[OpportunitySite]) -> str:
     # Sort by graduation depth ascending (shorter time = wrap first)
     ordered = sorted(
         auto_liftable,
-        key=lambda s: (s.predicted_graduation_low, -s.fit_score),
+        key=lambda s: (s.predicted_graduation_low, -s.priority_score),
     )
     lines = [
         "To maximize *learning per graduation*, wrap in approximately this order:\n"
@@ -398,17 +401,17 @@ def _cohort_comparison(
     cohort_size: int,
 ) -> str:
     n_sites = len(sites)
-    n_fit5 = sum(1 for s in sites if s.fit_score >= 5.0)
-    fit5_pct = (n_fit5 / n_sites) * 100 if n_sites else 0
+    n_high = sum(1 for s in sites if s.priority_score >= 4.0)
+    high_pct = (n_high / n_sites) * 100 if n_sites else 0
     return (
         f"> **Insights enrolled.** Cohort size: **{cohort_size}** deployments.\n\n"
         f"| Metric | This codebase | Cohort median |\n"
         f"|---|---:|---:|\n"
         f"| Total classification sites | {n_sites} | (depends on codebase size) |\n"
-        f"| Fit-5.0 ratio | {n_fit5}/{n_sites} ({fit5_pct:.0f}%) | ~30% typical |\n\n"
-        f"You're {'above' if fit5_pct > 30 else 'at or below'} cohort median on "
-        f"high-fit-site density. Translation: the methodology should pay off "
-        f"{'faster' if fit5_pct > 30 else 'in line with median timelines'} here."
+        f"| High-priority (≥ 4.0) | {n_high}/{n_sites} ({high_pct:.0f}%) | ~30% typical |\n\n"
+        f"You're {'above' if high_pct > 30 else 'at or below'} cohort median on "
+        f"high-priority-site density. Translation: the methodology should pay off "
+        f"{'faster' if high_pct > 30 else 'in line with median timelines'} here."
     )
 
 

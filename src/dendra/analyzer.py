@@ -17,8 +17,10 @@
 The analyzer walks Python source files, parses each to an AST,
 and applies a pattern library to identify functions that look
 like classification decision points. Each match is scored for
-Dendra-fit and grouped into a regime (narrow-domain vs
-high-cardinality) so operators can prioritize sites to graduate.
+**wrap priority** — a composite of graduation-fitness (regime,
+labels, pattern), volume estimate (cold/warm/hot from AST
+signals), and lift status (auto-liftable / needs-annotation /
+refused) — so operators can prioritize sites to graduate.
 
 Six patterns ship in v1:
 
@@ -60,7 +62,13 @@ class ClassificationSite:
     labels: list[str] = field(default_factory=list)
     label_cardinality: int = 0
     regime: str = "unknown"  # "narrow" | "medium" | "high" | "unknown"
-    fit_score: float = 0.0  # 0-5
+    # Volume estimate from AST signals (route decorators, file-path
+    # heuristics). One of "cold" | "warm" | "hot". Cohort signal in
+    # v1.1 will refine this from real call counts.
+    volume_estimate: str = "warm"
+    # Composite priority score (0-5). Combines graduation-fitness,
+    # volume estimate, and lift status. See _compute_priority_score.
+    priority_score: float = 0.0
     # Phase 5 prescriptive output: hazard list + lift status. Empty
     # hazards + AUTO_LIFTABLE means `dendra init --auto-lift` would
     # succeed cleanly. Populated by analyze() when run with hazard
@@ -84,8 +92,8 @@ class AnalyzerReport:
     # are (file_path, function_name, line_start).
     already_dendrified: list[tuple[str, str, int]] = field(default_factory=list)
 
-    def by_score_desc(self) -> list[ClassificationSite]:
-        return sorted(self.sites, key=lambda s: s.fit_score, reverse=True)
+    def by_priority_desc(self) -> list[ClassificationSite]:
+        return sorted(self.sites, key=lambda s: s.priority_score, reverse=True)
 
     def total_sites(self) -> int:
         return len(self.sites)
@@ -339,14 +347,18 @@ def _classify_regime(cardinality: int) -> str:
     return "high"
 
 
-def _compute_fit_score(labels: list[str], pattern: str) -> float:
-    """Heuristic 0-5 score.
+def _compute_gate_fit(labels: list[str], pattern: str) -> float:
+    """Graduation-fitness — 0-5 heuristic measuring how well-shaped
+    a site is for the McNemar gate.
 
     - 2 base points for any matched pattern.
     - +1 for having 2-30 labels (the Regime A sweet spot per paper §6).
     - +1 for narrow/medium regime.
     - +1 for pattern types with strong outcome observability
       (P1/P4 triage-like patterns score higher).
+
+    Internal-only — exposed to users via the composite ``priority_score``
+    on ``ClassificationSite`` (see :func:`_compute_priority_score`).
     """
     score = 2.0
     n = len(labels)
@@ -358,6 +370,70 @@ def _compute_fit_score(labels: list[str], pattern: str) -> float:
     if pattern in ("P1", "P4"):
         score += 1.0
     return min(5.0, score)
+
+
+# Volume estimation — coarse cold / warm / hot bucket from static AST
+# signals only. Runtime measurement (cohort signal in v1.1) will refine.
+# These names are matched against the rightmost dotted attribute of a
+# decorator (e.g. ``@app.post`` → "post", ``@router.get`` → "get") or
+# the bare name (``@route``).
+_HOT_ROUTE_DECORATORS = frozenset({
+    "get", "post", "put", "patch", "delete", "head", "options",
+    "route", "api_route", "websocket", "page", "endpoint",
+    "method", "view",
+})
+
+# Substrings inside the (POSIX) file path that indicate a likely-cold
+# call site: CLI entrypoints, schema migrations, one-off scripts.
+_COLD_FILE_PATTERNS = ("cli.py", "__main__.py", "/migrations/", "/scripts/")
+
+# Multipliers used by the priority composite. Tuned for "fit-5 hot
+# auto-liftable" → 5.0 max; "fit-5 cold refused" → 0.6 (clearly
+# deprioritized but not zero, because the site shape is still good).
+_VOLUME_FACTOR = {"cold": 0.4, "warm": 0.7, "hot": 1.0}
+_LIFT_FACTOR = {
+    "refused": 0.3,
+    "needs_annotation": 0.7,
+    "auto_liftable": 1.0,
+    "already_dendrified": 0.0,
+}
+
+
+def _compute_volume_estimate(node: ast.FunctionDef, file_path: str) -> str:
+    """Return one of ``"cold"`` / ``"warm"`` / ``"hot"``.
+
+    Heuristic only — examines the function's decorators (web-route
+    decorators → hot) and the containing file path (cli.py /
+    migrations / scripts → cold). Defaults to warm when no signal.
+    """
+    for dec in node.decorator_list:
+        inner = dec.func if isinstance(dec, ast.Call) else dec
+        if isinstance(inner, ast.Attribute) and inner.attr in _HOT_ROUTE_DECORATORS:
+            return "hot"
+        if isinstance(inner, ast.Name) and inner.id in _HOT_ROUTE_DECORATORS:
+            return "hot"
+    fp = file_path.replace("\\", "/")
+    for pat in _COLD_FILE_PATTERNS:
+        if pat in fp:
+            return "cold"
+    return "warm"
+
+
+def _compute_priority_score(
+    gate_fit: float, volume_estimate: str, lift_status: str
+) -> float:
+    """Composite ``priority_score`` (0-5) shown to users.
+
+    Multiplies the graduation-fitness heuristic by volume + lift
+    factors so the displayed number reflects "what should I wrap
+    first?", not just "is this site shaped right?".
+    """
+    return round(
+        gate_fit
+        * _VOLUME_FACTOR.get(volume_estimate, 0.7)
+        * _LIFT_FACTOR.get(lift_status, 1.0),
+        2,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -565,6 +641,8 @@ def _analyze_file(
         else:
             lift_status = LiftStatus.AUTO_LIFTABLE.value
 
+        gate_fit = _compute_gate_fit(labels, matched_pattern)
+        volume_estimate = _compute_volume_estimate(node, rel_path_str)
         site = ClassificationSite(
             file_path=rel_path_str,
             function_name=node.name,
@@ -574,7 +652,10 @@ def _analyze_file(
             labels=labels,
             label_cardinality=len(labels),
             regime=_classify_regime(len(labels)),
-            fit_score=_compute_fit_score(labels, matched_pattern),
+            volume_estimate=volume_estimate,
+            priority_score=_compute_priority_score(
+                gate_fit, volume_estimate, lift_status
+            ),
             hazards=node_hazards,
             lift_status=lift_status,
         )
@@ -746,15 +827,16 @@ def render_text(report: AnalyzerReport) -> str:
         return "\n".join(lines)
 
     lines.append(
-        f"{'file:line':<40} {'function':<22} {'ptn':>4} {'labels':>8} {'regime':>8} {'fit':>4}"
+        f"{'file:line':<40} {'function':<22} {'ptn':>4} {'labels':>8} "
+        f"{'regime':>8} {'vol':>5} {'priority':>9}"
     )
-    lines.append("-" * 92)
-    for s in report.by_score_desc():
+    lines.append("-" * 102)
+    for s in report.by_priority_desc():
         file_label = f"{s.file_path}:{s.line_start}"
         lines.append(
             f"{file_label:<40} {s.function_name:<22} "
             f"{s.pattern:>4} {s.label_cardinality:>8} "
-            f"{s.regime:>8} {s.fit_score:>4.1f}"
+            f"{s.regime:>8} {s.volume_estimate:>5} {s.priority_score:>9.2f}"
         )
     lines.append("")
 
@@ -769,7 +851,7 @@ def render_text(report: AnalyzerReport) -> str:
     lines.append("")
     lines.append(
         "Next step: `dendra init <file>:<function> --author @you:team` "
-        "to wrap the highest-fit site."
+        "to wrap the highest-priority site."
     )
     return "\n".join(lines)
 
@@ -781,7 +863,7 @@ def render_json(report: AnalyzerReport) -> str:
             "root": report.root,
             "files_scanned": report.files_scanned,
             "total_sites": report.total_sites(),
-            "sites": [asdict(s) for s in report.by_score_desc()],
+            "sites": [asdict(s) for s in report.by_priority_desc()],
             "errors": report.errors,
             "already_dendrified_count": report.already_dendrified_count(),
             "already_dendrified": [
@@ -798,18 +880,22 @@ def render_json(report: AnalyzerReport) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _estimate_monthly_classifications(site: ClassificationSite) -> int:
-    """Rough projection of per-site monthly traffic from static signals alone.
+_VOLUME_TO_MONTHLY_CALLS = {
+    "cold": 300_000,    # script / migration / cli — bursty, low total
+    "warm": 1_300_000,  # default mid-market internal classifier
+    "hot": 3_000_000,   # web-route or scheduled hot path
+}
 
-    The static scanner has no traffic measurement, so this is a
-    deliberately-honest placeholder — we anchor on a conservative
-    default and let the caller override in the report.
+
+def _estimate_monthly_classifications(site: ClassificationSite) -> int:
+    """Rough projection of per-site monthly traffic from static signals.
+
+    Keyed off ``site.volume_estimate`` (cold / warm / hot) which the
+    analyzer derives from AST signals (route decorators, file path).
+    The dynamic-mode measurement wrapper (v1.1) replaces this with
+    real per-site call counts from the audit chain.
     """
-    # Placeholder: 30 calls/minute = ~1.3M/month. Realistic for an
-    # internal classifier in a mid-market SaaS. The dynamic-mode
-    # measurement wrapper (future release) replaces this with real
-    # per-site call counts.
-    return 1_300_000
+    return _VOLUME_TO_MONTHLY_CALLS.get(site.volume_estimate, 1_300_000)
 
 
 @dataclass
@@ -848,7 +934,7 @@ def project_savings(
     callers can adjust assumptions without forking this function.
     """
     projections: list[SavingsProjection] = []
-    for site in report.by_score_desc():
+    for site in report.by_priority_desc():
         vol = _estimate_monthly_classifications(site)
 
         eng_low = max(0, (baseline_weeks[0] - dendra_weeks) * eng_cost_per_week_usd)
@@ -894,9 +980,9 @@ def render_markdown(
 ) -> str:
     """Markdown report suitable for CI PR comments and the pricing page.
 
-    Produces a ranked table of classification sites with fit scores
-    and regime labels. When ``projections`` is supplied, includes
-    per-site annual savings ranges.
+    Produces a ranked table of classification sites with priority
+    scores, volume estimates, and regime labels. When ``projections``
+    is supplied, includes per-site annual savings ranges.
     """
     lines: list[str] = []
     lines.append("# Dendra analyzer report")
@@ -925,16 +1011,18 @@ def render_markdown(
         )
         return "\n".join(lines)
 
-    lines.append("## Sites ranked by Dendra-fit")
+    lines.append("## Sites ranked by wrap priority")
     lines.append("")
-    lines.append("| File:Line | Function | Pattern | Labels | Regime | Fit |")
-    lines.append("|---|---|---|---:|---|---:|")
-    for s in report.by_score_desc():
+    lines.append(
+        "| File:Line | Function | Pattern | Labels | Regime | Volume | Priority |"
+    )
+    lines.append("|---|---|---|---:|---|---|---:|")
+    for s in report.by_priority_desc():
         file_label = f"`{s.file_path}:{s.line_start}`"
         lines.append(
             f"| {file_label} | `{s.function_name}` | "
             f"{s.pattern} | {s.label_cardinality} | "
-            f"{s.regime} | {s.fit_score:.1f} |"
+            f"{s.regime} | {s.volume_estimate} | {s.priority_score:.2f} |"
         )
     lines.append("")
 
@@ -993,7 +1081,7 @@ def render_markdown(
     lines.append("```bash\ndendra init <file>:<function> --author @you:team\n```")
     lines.append("")
     lines.append(
-        "Wrap the highest-fit site with the `@ml_switch` decorator. "
+        "Wrap the highest-priority site with the `@ml_switch` decorator. "
         "Zero behavior change at Phase 0; outcome log captures every "
         "classification for later graduation."
     )
@@ -1021,9 +1109,9 @@ __all__ = [
 # ===========================================================================
 # Phase 5: prescriptive hazard detection
 #
-# The analyzer's per-site fit score answers "is this worth wrapping?". Phase
-# 5 answers "what's blocking auto-lift, and what's the minimum diff to fix
-# it?". Each detected site can be paired with a HazardAnalysis whose
+# The analyzer's per-site priority score answers "is this worth wrapping?".
+# Phase 5 answers "what's blocking auto-lift, and what's the minimum diff to
+# fix it?". Each detected site can be paired with a HazardAnalysis whose
 # `lift_status` and `hazards` drive both the CLI's prescriptive output and
 # the lifters' refusal decisions. The analyzer never silently disagrees with
 # the lifters: the detection logic here MUST stay in lockstep with

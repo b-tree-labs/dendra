@@ -74,9 +74,11 @@ class InsightsEvent:
 
     Allowed payload keys per event_type:
 
-    - ``analyze``: pattern, label_cardinality, regime, fit_score,
-      lift_status, hazard_categories (list), files_scanned, total_sites,
-      already_dendrified_count.
+    - ``analyze``: files_scanned, total_sites, already_dendrified_count,
+      pattern_histogram, regime_histogram, lift_status_histogram,
+      hazard_category_histogram. Per-site granularity (pattern,
+      priority_score, etc.) is intentionally *not* emitted from this
+      event; it would tie back to specific code locations.
     - ``init_attempt``: lifter, outcome, time_to_action_seconds,
       reverted_within_24h.
     - ``bench_phase_advance``: phase_before, phase_after, verdict_count,

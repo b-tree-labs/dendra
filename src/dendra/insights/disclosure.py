@@ -31,7 +31,7 @@ data so the cohort can tune defaults that benefit everyone.
 
 What Insights captures (when enrolled):
   - The SHAPE of classification sites (AST-shape hash, pattern, regime,
-    label cardinality, fit score, lift status).
+    label cardinality, priority score, lift status).
   - Lift-outcome events (success / refused / reverted-within-24h).
   - Aggregated benchmark phase-advance events (no input/output content).
   - A non-reversible HMAC of your account email + a server-rotating salt.

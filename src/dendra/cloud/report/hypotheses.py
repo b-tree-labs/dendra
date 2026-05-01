@@ -51,7 +51,7 @@ def generate_hypothesis_file(
     regime: str = "unknown",
     pattern: str | None = None,
     label_cardinality: int | None = None,
-    fit_score: float | None = None,
+    priority_score: float | None = None,
     cohort_size: int = 0,
     cohort_predicted_low: int | None = None,
     cohort_predicted_high: int | None = None,
@@ -91,7 +91,7 @@ def generate_hypothesis_file(
         regime=regime,
         pattern=pattern,
         label_cardinality=label_cardinality,
-        fit_score=fit_score,
+        priority_score=priority_score,
         cohort_size=cohort_size,
         pred_low=pred_low,
         pred_high=pred_high,
@@ -118,7 +118,7 @@ def _render_template(
     regime: str,
     pattern: str | None,
     label_cardinality: int | None,
-    fit_score: float | None,
+    priority_score: float | None,
     cohort_size: int,
     pred_low: int,
     pred_high: int,
@@ -185,15 +185,15 @@ def _render_template(
     lines.append(
         f"**{pred_low}–{pred_high} outcomes** (90% CI). Source: {cohort_basis}."
     )
-    if pattern or label_cardinality is not None or fit_score is not None:
+    if pattern or label_cardinality is not None or priority_score is not None:
         lines.append("")
         lines.append("Site-shape inputs to the prediction:")
         if pattern:
             lines.append(f"- Pattern: `{pattern}`")
         if label_cardinality is not None:
             lines.append(f"- Label cardinality: {label_cardinality}")
-        if fit_score is not None:
-            lines.append(f"- Analyzer fit score: {fit_score:.1f}")
+        if priority_score is not None:
+            lines.append(f"- Analyzer priority score: {priority_score:.2f}")
         lines.append(f"- Regime: {regime}")
     lines.append("")
 

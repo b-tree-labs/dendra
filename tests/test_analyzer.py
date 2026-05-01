@@ -51,7 +51,7 @@ class TestPatternP1:
         assert set(report.sites[0].labels) == {"bug", "question", "feature"}
         assert report.sites[0].label_cardinality == 3
         assert report.sites[0].regime == "narrow"
-        assert report.sites[0].fit_score >= 4.0
+        assert report.sites[0].priority_score > 0.0
 
 
 class TestPatternP2:
@@ -292,7 +292,7 @@ class TestRenderMarkdown:
         report = analyze(tmp_path)
         md = render_markdown(report)
         assert "# Dendra analyzer report" in md
-        assert "Sites ranked by Dendra-fit" in md
+        assert "Sites ranked by wrap priority" in md
         assert "`triage.py:1`" in md
         assert "`triage`" in md
 
@@ -424,48 +424,118 @@ class TestRegimeClassification:
         assert _classify_regime(151) == "high"
 
 
-class TestFitScoreBoundaries:
-    """``_compute_fit_score`` rewards the Regime A sweet spot (2..29)
+class TestGateFitBoundaries:
+    """``_compute_gate_fit`` rewards the Regime A sweet spot (2..29)
     plus narrow/medium regime plus P1/P4 patterns."""
 
     def test_min_score_no_labels_no_p1p4(self):
-        from dendra.analyzer import _compute_fit_score
+        from dendra.analyzer import _compute_gate_fit
 
         # Cardinality 0 → unknown regime, no sweet-spot bonus, P5 pattern.
-        assert _compute_fit_score([], "P5") == 2.0
+        assert _compute_gate_fit([], "P5") == 2.0
 
     def test_max_score_p1_narrow_sweet_spot(self):
-        from dendra.analyzer import _compute_fit_score
+        from dendra.analyzer import _compute_gate_fit
 
         labels = ["bug", "feature", "question"]  # 3 labels, narrow, sweet spot
-        assert _compute_fit_score(labels, "P1") == 5.0
+        assert _compute_gate_fit(labels, "P1") == 5.0
 
     def test_max_score_p4_narrow_sweet_spot(self):
-        from dendra.analyzer import _compute_fit_score
+        from dendra.analyzer import _compute_gate_fit
 
         labels = ["bug", "feature", "question"]
-        assert _compute_fit_score(labels, "P4") == 5.0
+        assert _compute_gate_fit(labels, "P4") == 5.0
 
     def test_high_cardinality_loses_sweet_spot_and_regime_bonus(self):
-        from dendra.analyzer import _compute_fit_score
+        from dendra.analyzer import _compute_gate_fit
 
         labels = [f"label_{i}" for i in range(70)]  # high regime, outside sweet spot
         # 2 base + 0 (not in sweet spot) + 0 (high regime) + 1 (P1) = 3.0
-        assert _compute_fit_score(labels, "P1") == 3.0
+        assert _compute_gate_fit(labels, "P1") == 3.0
 
     def test_medium_regime_loses_sweet_spot_keeps_regime_bonus(self):
-        from dendra.analyzer import _compute_fit_score
+        from dendra.analyzer import _compute_gate_fit
 
         labels = [f"label_{i}" for i in range(40)]  # medium regime, outside sweet spot
         # 2 base + 0 (not sweet spot, n>=30) + 1 (medium regime) + 1 (P4) = 4.0
-        assert _compute_fit_score(labels, "P4") == 4.0
+        assert _compute_gate_fit(labels, "P4") == 4.0
 
     def test_p2_pattern_no_pattern_bonus(self):
-        from dendra.analyzer import _compute_fit_score
+        from dendra.analyzer import _compute_gate_fit
 
         labels = ["bug", "feature"]  # narrow, sweet spot, but P2 not P1/P4
         # 2 base + 1 (sweet spot) + 1 (narrow) + 0 (P2) = 4.0
-        assert _compute_fit_score(labels, "P2") == 4.0
+        assert _compute_gate_fit(labels, "P2") == 4.0
+
+
+class TestVolumeEstimate:
+    """``_compute_volume_estimate`` derives cold/warm/hot from AST signals."""
+
+    def _parse_fn(self, src: str):
+        import ast as _ast
+
+        mod = _ast.parse(src)
+        return next(n for n in _ast.walk(mod) if isinstance(n, _ast.FunctionDef))
+
+    def test_warm_default(self):
+        from dendra.analyzer import _compute_volume_estimate
+
+        fn = self._parse_fn("def f(x):\n    return 'a'\n")
+        assert _compute_volume_estimate(fn, "src/svc/router.py") == "warm"
+
+    def test_hot_via_route_decorator_attribute(self):
+        from dendra.analyzer import _compute_volume_estimate
+
+        fn = self._parse_fn(
+            "@app.post('/triage')\ndef triage(req):\n    return 'bug'\n"
+        )
+        assert _compute_volume_estimate(fn, "src/svc/api.py") == "hot"
+
+    def test_hot_via_route_decorator_bare_name(self):
+        from dendra.analyzer import _compute_volume_estimate
+
+        fn = self._parse_fn("@route\ndef view(req):\n    return 'ok'\n")
+        assert _compute_volume_estimate(fn, "src/views.py") == "hot"
+
+    def test_cold_via_cli_path(self):
+        from dendra.analyzer import _compute_volume_estimate
+
+        fn = self._parse_fn("def cmd_init(args):\n    return 'ok'\n")
+        assert _compute_volume_estimate(fn, "src/dendra/cli.py") == "cold"
+
+    def test_cold_via_migrations_path(self):
+        from dendra.analyzer import _compute_volume_estimate
+
+        fn = self._parse_fn("def upgrade():\n    return 'done'\n")
+        assert _compute_volume_estimate(fn, "src/db/migrations/0042_add.py") == "cold"
+
+
+class TestPriorityScore:
+    """``_compute_priority_score`` blends gate-fit, volume, and lift."""
+
+    def test_max_priority_hot_auto_liftable(self):
+        from dendra.analyzer import _compute_priority_score
+
+        # gate_fit 5 × volume 1.0 × lift 1.0 → 5.0
+        assert _compute_priority_score(5.0, "hot", "auto_liftable") == 5.0
+
+    def test_warm_auto_liftable_takes_volume_haircut(self):
+        from dendra.analyzer import _compute_priority_score
+
+        # gate_fit 5 × volume 0.7 × lift 1.0 → 3.5
+        assert _compute_priority_score(5.0, "warm", "auto_liftable") == 3.5
+
+    def test_cold_refused_deeply_deprioritized(self):
+        from dendra.analyzer import _compute_priority_score
+
+        # gate_fit 5 × volume 0.4 × lift 0.3 → 0.6
+        assert _compute_priority_score(5.0, "cold", "refused") == 0.6
+
+    def test_already_dendrified_zeroed_out(self):
+        from dendra.analyzer import _compute_priority_score
+
+        # No remaining work to prioritize on a site already wrapped.
+        assert _compute_priority_score(5.0, "hot", "already_dendrified") == 0.0
 
 
 class TestRegimeInJsonReport:
@@ -525,7 +595,7 @@ class TestAsyncFunctionDef:
         site = report.sites[0]
         assert site.function_name == "classify"
         assert site.pattern == "P1"
-        assert site.fit_score > 0.0
+        assert site.priority_score > 0.0
         assert set(site.labels) == {"bug", "other"}
 
     def test_analyzer_finds_both_sync_and_async_in_same_file(self, tmp_path):
