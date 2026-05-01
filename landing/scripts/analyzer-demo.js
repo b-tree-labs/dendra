@@ -634,8 +634,8 @@ ${
         '<tr><td colspan="6" class="empty">No classification sites found in this repo. Try another preset.</td></tr>';
       return;
     }
-    // Sort by fit score descending; rule-fit sites are most actionable.
-    const sorted = [...sites].sort((a, b) => b.fit_score - a.fit_score);
+    // Sort by priority score descending; highest-priority sites first.
+    const sorted = [...sites].sort((a, b) => b.priority_score - a.priority_score);
     const shown = sorted.slice(0, ROW_CAP);
     const more = sorted.length - shown.length;
 
@@ -667,7 +667,7 @@ ${
           <td>${patternBadge(s.pattern)}</td>
           <td class="num">${s.label_cardinality || "—"}</td>
           <td>${regimeBadge(s.regime)}</td>
-          <td class="num">${s.fit_score.toFixed(1)}<span class="row-chevron" aria-hidden="true">›</span></td>
+          <td class="num">${s.priority_score.toFixed(2)}<span class="row-chevron" aria-hidden="true">›</span></td>
         </tr>
         <tr class="site-expansion-row" data-expansion-for="${idx}" hidden>
           <td colspan="6">${renderExpanded(s, data)}</td>
@@ -794,7 +794,7 @@ ${
     if (!data || !data.sites || data.sites.length === 0) {
       return { annual: 0, daily: 0, sitesEligible: 0 };
     }
-    const eligibleSites = data.sites.filter((s) => s.fit_score >= 3.0);
+    const eligibleSites = data.sites.filter((s) => s.priority_score >= 2.0);
     const sitesEligible = eligibleSites.length;
     if (sitesEligible === 0) {
       return { annual: 0, daily: 0, sitesEligible: 0 };

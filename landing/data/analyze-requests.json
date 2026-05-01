@@ -15,7 +15,18 @@
       ],
       "label_cardinality": 2,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 533,
+          "reason": "Line 533 binds 'content_type' from headers.get(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If headers.get supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused",
       "snippet": "        param = param.strip()\n        if param and (idx := param.find(\"=\")) != -1:\n            key = param[:idx].strip(strip_chars)\n            value = param[idx + 1 :].strip(strip_chars)\n            params_dict[key.lower()] = value\n    return content_type, params_dict\n\n\ndef get_encoding_from_headers(headers):\n    \"\"\"Returns encodings from given HTTP Header Dict.\n\n    :param headers: dictionary to extract encoding from.\n    :rtype: str\n    \"\"\"\n\n    content_type = headers.get(\"content-type\")\n\n    if not content_type:\n        return None\n\n    content_type, params = _parse_content_type_header(content_type)\n\n    if \"charset\" in params:\n        return params[\"charset\"].strip(\"'\\\"\")\n\n    if \"text\" in content_type:\n        return \"ISO-8859-1\"\n\n    if \"application/json\" in content_type:\n        # Assume UTF-8 based on RFC 4627: https://www.ietf.org/rfc/rfc4627.txt since the charset was unset\n        return \"utf-8\"\n\n\ndef stream_decode_response_unicode(iterator, r):\n    \"\"\"Stream decodes an iterator.\"\"\"\n\n    if r.encoding is None:\n        yield from iterator\n        return\n\n    decoder = codecs.getincrementaldecoder(r.encoding)(errors=\"replace\")\n    for chunk in iterator:\n        rv = decoder.decode(chunk)",
       "snippet_start_line": 518,
       "snippet_end_line": 560
@@ -38,7 +49,18 @@
       ],
       "label_cardinality": 8,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 958,
+          "reason": "Line 958 binds 'nullcount' from sample.count(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If sample.count supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused",
       "snippet": "\n\n# Null bytes; no need to recreate these on each call to guess_json_utf\n_null = \"\\x00\".encode(\"ascii\")  # encoding to ASCII for Python 3\n_null2 = _null * 2\n_null3 = _null * 3\n\n\ndef guess_json_utf(data):\n    \"\"\"\n    :rtype: str\n    \"\"\"\n    # JSON always starts with two ASCII characters, so detection is as\n    # easy as counting the nulls and from their location and count\n    # determine the encoding. Also detect a BOM, if present.\n    sample = data[:4]\n    if sample in (codecs.BOM_UTF32_LE, codecs.BOM_UTF32_BE):\n        return \"utf-32\"  # BOM included\n    if sample[:3] == codecs.BOM_UTF8:\n        return \"utf-8-sig\"  # BOM included, MS style (discouraged)\n    if sample[:2] in (codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE):\n        return \"utf-16\"  # BOM included\n    nullcount = sample.count(_null)\n    if nullcount == 0:\n        return \"utf-8\"\n    if nullcount == 2:\n        if sample[::2] == _null2:  # 1st and 3rd are null\n            return \"utf-16-be\"\n        if sample[1::2] == _null2:  # 2nd and 4th are null\n            return \"utf-16-le\"\n        # Did not detect 2 valid UTF-16 ascii-range characters\n    if nullcount == 3:\n        if sample[:3] == _null3:\n            return \"utf-32-be\"\n        if sample[1:] == _null3:\n            return \"utf-32-le\"\n        # Did not detect a valid UTF-32 ascii-range character\n    return None\n\n\ndef prepend_scheme_if_needed(url, new_scheme):\n    \"\"\"Given a URL that may or may not have a scheme, prepend the given scheme.\n    Does not replace a present scheme with the one provided as an argument.\n\n    :rtype: str\n    \"\"\"\n    parsed = parse_url(url)\n    scheme, auth, host, port, path, query, fragment = parsed\n\n    # A defect in urlparse determines that there isn't a netloc present in some",
       "snippet_start_line": 936,
       "snippet_end_line": 985

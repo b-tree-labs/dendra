@@ -238,7 +238,7 @@
                     <th>pattern<span class="th-info" tabindex="0" role="button" aria-label="What pattern means" title="Pattern — the shape of the classification site Dendra detected. P0: dict/registry dispatch. P1: if/elif ladder. P2: match statement. P3: signal-routed handler. Higher patterns are more elaborate (and benefit more from being wrapped).">?</span></th>
                     <th>labels<span class="th-info" tabindex="0" role="button" aria-label="What labels means" title="Labels — distinct return values found at the site. This is the candidate label set Dendra graduates the rule → model → ML head over. More labels usually means more LLM cost to amortize.">?</span></th>
                     <th>regime<span class="th-info" tabindex="0" role="button" aria-label="What regime means" title="Regime — workload class. narrow: small fixed label set (3–10), best fit. high_card: many labels or open-ended (suggests an embedding head). unknown: ambiguous from static analysis alone.">?</span></th>
-                    <th>fit<span class="th-info" tabindex="0" role="button" aria-label="What fit means" title="Fit — heuristic score 0.0–5.0 weighing pattern type, label count, regime, and call-site shape. ≥4.0 = strong candidate to wrap now. Lower scores still work; they just have less savings headroom.">?</span></th>
+                    <th>priority<span class="th-info" tabindex="0" role="button" aria-label="What priority means" title="Priority — composite score 0.00–5.00 blending graduation-fitness (regime, labels, pattern), volume estimate (cold/warm/hot from AST signals), and lift status (auto-liftable / needs-annotation / refused). ≥3.0 = strong candidate to wrap now. Lower scores still work; they just have less savings headroom or need refactors first.">?</span></th>
                   </tr>
                 </thead>
                 <tbody data-results-target>
@@ -251,7 +251,7 @@
               <div class="try-roi__head">
                 <h3>If this repo's LLM bill looked like…</h3>
                 <p class="caption">
-                  Sliders are your inputs; <strong>the savings number is what graduating to in-process ML heads recovers</strong>, weighted by how many of the detected sites are realistically Dendra-fit (score ≥ 3.0).
+                  Sliders are your inputs; <strong>the savings number is what graduating to in-process ML heads recovers</strong>, weighted by how many of the detected sites are realistically high-priority (score ≥ 2.0 on the composite).
                 </p>
               </div>
 
@@ -304,7 +304,7 @@
                 </div>
                 <div class="try-roi__stat">
                   <strong data-savings="sites">—</strong>
-                  <span>Sites Dendra-fit (score ≥ 3.0)</span>
+                  <span>Sites high-priority (score ≥ 2.0)</span>
                 </div>
               </div>
 
@@ -379,7 +379,7 @@ Root:           /Users/you/myapp
 Files scanned:  84
 Sites found:    7
 
-file:line                  function          ptn   labels   regime  fit
+file:line                  function          ptn   labels   regime  vol  priority
 ------------------------------------------------------------------------
 src/triage.py:14           triage_ticket      P1        3   narrow  5.0
 src/router.py:88           route_intent       P1        7   narrow  4.5
@@ -974,7 +974,7 @@ triage_ticket(ticket)  <span class="c"># classifies AND fires the matching handl
           <p class="caption">
             Runs entirely locally. No upload. No signup. Walks your
             Python source, identifies classification decision points
-            via six AST patterns, scores each for Dendra-fit, and
+            via six AST patterns, scores each for wrap priority, and
             outputs a JSON artifact for CI diff tracking.
           </p>
 
@@ -983,12 +983,12 @@ triage_ticket(ticket)  <span class="c"># classifies AND fires the matching handl
 Scanned 12,408 Python files; found 7 classification sites.
 
   src/support/triage.py:42  — 5 labels, medium cardinality
-    Dendra-fit: 4.5/5
+    Volume: hot · Lift: auto-liftable · Priority: 4.50/5
     Regime: narrow-domain rule-viable (ATIS-like)
     Estimated: rule accuracy ~70%; ML would add ~15-20pp after ~500 outcomes
 
   src/mod/content_score.py:88  — 3 labels, binary-ish
-    Dendra-fit: 4/5
+    Volume: warm · Lift: needs-annotation · Priority: 2.80/5
     Regime: safety-critical boundary
     Recommend: Phase 4 cap (ML_WITH_FALLBACK, never ML_PRIMARY)
 

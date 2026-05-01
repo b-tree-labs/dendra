@@ -4,8 +4,8 @@
 
 """Enrich landing/data/analyze-*.json with source snippets per site.
 
-For each detected classification site (top N by fit_score), reads the
-cloned source file from /tmp/dendra-corpus/<repo>/<file_path> and
+For each detected classification site (top N by priority_score), reads
+the cloned source file from /tmp/dendra-corpus/<repo>/<file_path> and
 captures lines [line_start - 3, line_end + 3] as `source_snippet`.
 Also captures repo-level metadata (default branch, raw URL prefix)
 so the landing UI can deep-link to GitHub.
@@ -61,6 +61,13 @@ REPOS = {
     "dspy": ("stanfordnlp/dspy", "main", ""),
     "litellm": ("BerriAI/litellm", "main", "litellm"),
     "instructor": ("567-labs/instructor", "main", ""),
+    # Reference Python codebases — show what "no classifier patterns"
+    # looks like (the analyzer doesn't hallucinate sites where there
+    # aren't any).
+    "fastapi": ("tiangolo/fastapi", "master", ""),
+    "requests": ("psf/requests", "main", ""),
+    "marimo": ("marimo-team/marimo", "main", ""),
+    "dvc": ("iterative/dvc", "main", ""),
 }
 
 ENRICH_TOP_N = 15  # match the UI's row cap with a buffer
@@ -211,7 +218,7 @@ def _run_analyzer(repo_root: Path) -> dict:
         "root": report.root,
         "files_scanned": report.files_scanned,
         "total_sites": report.total_sites(),
-        "sites": [asdict(s) for s in report.by_score_desc()],
+        "sites": [asdict(s) for s in report.by_priority_desc()],
         "errors": report.errors,
     }
 
@@ -246,7 +253,7 @@ def enrich_one(slug: str, gh_path: str, branch: str, subpath: str = "") -> int:
     sites, _counts = filter_test_sites(sites, repo_root, slug=slug)
     post_filter = len(sites)
 
-    sites_sorted = sorted(sites, key=lambda s: s["fit_score"], reverse=True)
+    sites_sorted = sorted(sites, key=lambda s: s["priority_score"], reverse=True)
     enriched = 0
 
     for site in sites_sorted[:ENRICH_TOP_N]:
@@ -257,7 +264,7 @@ def enrich_one(slug: str, gh_path: str, branch: str, subpath: str = "") -> int:
             site.update(snippet_info)
             enriched += 1
 
-    # Sort sites back by fit_score so the JSON order matches what UI expects.
+    # Sort sites back by priority_score so the JSON order matches what UI expects.
     data["sites"] = sites_sorted
     data["total_sites"] = post_filter
 

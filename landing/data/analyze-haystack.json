@@ -4,6 +4,57 @@
   "total_sites": 10,
   "sites": [
     {
+      "file_path": "haystack/components/builders/answer_builder.py",
+      "function_name": "_extract_answer_string",
+      "line_start": 222,
+      "line_end": 242,
+      "pattern": "P5",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "            answer = GeneratedAnswer(\n                data=answer_string, query=query, documents=referenced_docs, meta=extracted_metadata\n            )\n            all_answers.append(answer)\n\n        return {\"answers\": all_answers}\n\n    @staticmethod\n    def _extract_answer_string(reply: str, pattern: str | None = None) -> str:\n        \"\"\"\n        Extract the answer string from the generator output using the specified pattern.\n\n        If no pattern is specified, the whole string is used as the answer.\n\n        :param reply:\n            The output of the Generator. A string.\n        :param pattern:\n            The regular expression pattern to use to extract the answer text from the generator output.\n        \"\"\"\n        if pattern is None:\n            return reply\n\n        if match := re.search(pattern, reply):\n            # No capture group in pattern -> use the whole match as answer\n            if not match.lastindex:\n                return match.group(0)\n            # One capture group in pattern -> use the capture group as answer\n            return match.group(1)\n        return \"\"\n\n    @staticmethod\n    def _extract_reference_idxs(reply: str, reference_pattern: str) -> set[int]:\n        document_idxs = re.findall(reference_pattern, reply)\n        return {int(idx) - 1 for idx in document_idxs}\n\n    @staticmethod\n    def _check_num_groups_in_regex(pattern: str) -> None:\n        num_groups = re.compile(pattern).groups\n        if num_groups > 1:\n            raise ValueError(\n                f\"Pattern '{pattern}' contains multiple capture groups. \"",
+      "snippet_start_line": 214,
+      "snippet_end_line": 254
+    },
+    {
+      "file_path": "haystack/components/converters/multi_file_converter.py",
+      "function_name": "__init__",
+      "line_start": 62,
+      "line_end": 123,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "    ```\n    from haystack.super_components.converters import MultiFileConverter\n\n    converter = MultiFileConverter()\n    converter.run(sources=[\"test/test_files/txt/doc_1.txt\", \"test/test_files/pdf/sample_pdf_1.pdf\"], meta={})\n    ```\n    \"\"\"\n\n    def __init__(self, encoding: str = \"utf-8\", json_content_key: str = \"content\") -> None:\n        \"\"\"\n        Initialize the MultiFileConverter.\n\n        :param encoding: The encoding to use when reading files.\n        :param json_content_key: The key to use in a content field in a document when converting JSON files.\n        \"\"\"\n        self.encoding = encoding\n        self.json_content_key = json_content_key\n\n        # initialize components\n        router = FileTypeRouter(\n            mime_types=[mime_type.value for mime_type in ConverterMimeType],\n            # Ensure common extensions are registered. Tests on Windows fail otherwise.\n            additional_mimetypes={\n                \"application/vnd.openxmlformats-officedocument.wordprocessingml.document\": \".docx\",\n                \"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\": \".xlsx\",\n                \"application/vnd.openxmlformats-officedocument.presentationml.presentation\": \".pptx\",\n            },\n        )\n\n        # Create pipeline and add components\n        pp = Pipeline()\n\n        pp.add_component(\"router\", router)\n        pp.add_component(\"docx\", DOCXToDocument(link_format=\"markdown\"))\n        pp.add_component(\n            \"html\",\n            HTMLToDocument(\n                extraction_kwargs={\"output_format\": \"markdown\", \"include_tables\": True, \"include_links\": True}\n            ),\n        )\n        pp.add_component(\"json\", JSONConverter(content_key=self.json_content_key))\n        pp.add_component(\"md\", TextFileToDocument(encoding=self.encoding))\n        pp.add_component(\"text\", TextFileToDocument(encoding=self.encoding))\n        pp.add_component(\"pdf\", PyPDFToDocument())\n        pp.add_component(\"pptx\", PPTXToDocument())\n        pp.add_component(\"xlsx\", XLSXToDocument())\n        pp.add_component(\"joiner\", DocumentJoiner())\n        pp.add_component(\"csv\", CSVToDocument(encoding=self.encoding))\n\n        for mime_type in ConverterMimeType:\n            pp.connect(f\"router.{mime_type.value}\", str(mime_type).lower().rsplit(\".\", maxsplit=1)[-1])\n\n        pp.connect(\"docx.documents\", \"joiner.documents\")\n        pp.connect(\"html.documents\", \"joiner.documents\")\n        pp.connect(\"json.documents\", \"joiner.documents\")\n        pp.connect(\"md.documents\", \"joiner.documents\")\n        pp.connect(\"text.documents\", \"joiner.documents\")\n        pp.connect(\"pdf.documents\", \"joiner.documents\")\n        pp.connect(\"pptx.documents\", \"joiner.documents\")\n\n        pp.connect(\"csv.documents\", \"joiner.documents\")\n        pp.connect(\"xlsx.documents\", \"joiner.documents\")\n\n        self.pipeline = pp\n        self.output_mapping = {\n            \"joiner.documents\": \"documents\",\n            \"router.unclassified\": \"unclassified\",\n            \"router.failed\": \"failed\",\n        }\n        self.input_mapping = {\"sources\": [\"router.sources\"], \"meta\": [\"router.meta\"]}\n\n    if TYPE_CHECKING:\n        # fake method, never executed, but static analyzers will not complain about missing method\n        def run(  # noqa: D102\n            self, *, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None\n        ) -> dict[str, list[Document]]:  # noqa: D102\n            ...\n\n        def warm_up(self) -> None:  # noqa: D102\n            ...",
+      "snippet_start_line": 54,
+      "snippet_end_line": 133
+    },
+    {
+      "file_path": "haystack/components/generators/openai.py",
+      "function_name": "run",
+      "line_start": 188,
+      "line_end": 270,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "        \"\"\"\n        init_params = data.get(\"init_parameters\", {})\n        serialized_callback_handler = init_params.get(\"streaming_callback\")\n        if serialized_callback_handler:\n            data[\"init_parameters\"][\"streaming_callback\"] = deserialize_callable(serialized_callback_handler)\n        return default_from_dict(cls, data)\n\n    @component.output_types(replies=list[str], meta=list[dict[str, Any]])\n    def run(\n        self,\n        prompt: str,\n        system_prompt: str | None = None,\n        streaming_callback: StreamingCallbackT | None = None,\n        generation_kwargs: dict[str, Any] | None = None,\n    ) -> dict[str, list[str] | list[dict[str, Any]]]:\n        \"\"\"\n        Invoke the text generation inference based on the provided messages and generation parameters.\n\n        :param prompt:\n            The string prompt to use for text generation.\n        :param system_prompt:\n            The system prompt to use for text generation. If this run time system prompt is omitted, the system\n            prompt, if defined at initialisation time, is used.\n        :param streaming_callback:\n            A callback function that is called when a new token is received from the stream.\n        :param generation_kwargs:\n            Additional keyword arguments for text generation. These parameters will potentially override the parameters\n            passed in the `__init__` method. For more details on the parameters supported by the OpenAI API, refer to\n            the OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat/create).\n        :returns:\n            A list of strings containing the generated responses and a list of dictionaries containing the metadata\n        for each response.\n        \"\"\"\n        message = ChatMessage.from_user(prompt)\n        if system_prompt is not None:\n            messages = [ChatMessage.from_system(system_prompt), message]\n        elif self.system_prompt:\n            messages = [ChatMessage.from_system(self.system_prompt), message]\n        else:\n            messages = [message]\n\n        # update generation kwargs by merging with the generation kwargs passed to the run method\n        generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}\n\n        # check if streaming_callback is passed\n        streaming_callback = select_streaming_callback(\n            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False\n        )\n\n        # adapt ChatMessage(s) to the format expected by the OpenAI API\n        openai_formatted_messages = [message.to_openai_dict_format() for message in messages]\n\n        completion: Stream[ChatCompletionChunk] | ChatCompletion = self.client.chat.completions.create(\n            model=self.model,\n            messages=openai_formatted_messages,  # type: ignore\n            stream=streaming_callback is not None,\n            **generation_kwargs,\n        )\n\n        completions: list[ChatMessage] = []\n        if streaming_callback is not None:\n            num_responses = generation_kwargs.pop(\"n\", 1)\n            if num_responses > 1:\n                raise ValueError(\"Cannot stream multiple responses, please set n=1.\")\n\n            component_info = ComponentInfo.from_component(self)\n            chunks: list[StreamingChunk] = []\n            for chunk in completion:\n                chunk_delta: StreamingChunk = _convert_chat_completion_chunk_to_streaming_chunk(\n                    chunk=chunk,  # type: ignore\n                    previous_chunks=chunks,\n                    component_info=component_info,\n                )\n                chunks.append(chunk_delta)\n                streaming_callback(chunk_delta)\n\n            completions = [_convert_streaming_chunks_to_chat_message(chunks=chunks)]\n        elif isinstance(completion, ChatCompletion):\n            completions = [\n                _convert_chat_completion_to_chat_message(completion=completion, choice=choice)\n                for choice in completion.choices\n            ]\n\n        # before returning, do post-processing of the completions\n        for response in completions:\n            _check_finish_reason(response.meta)\n\n        return {\n            \"replies\": [message.text or \"\" for message in completions],\n            \"meta\": [message.meta for message in completions],\n        }",
+      "snippet_start_line": 180,
+      "snippet_end_line": 270
+    },
+    {
       "file_path": "haystack/testing/document_store.py",
       "function_name": "_delete_all_supports_recreate",
       "line_start": 654,
@@ -15,7 +66,8 @@
       ],
       "label_cardinality": 2,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
       "hazards": [
         {
           "category": "side_effect_evidence",
@@ -42,7 +94,8 @@
       ],
       "label_cardinality": 2,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
       "hazards": [
         {
           "category": "side_effect_evidence",
@@ -69,7 +122,8 @@
       ],
       "label_cardinality": 2,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
       "hazards": [
         {
           "category": "side_effect_evidence",
@@ -85,38 +139,6 @@
       "snippet_end_line": 237
     },
     {
-      "file_path": "haystack/components/builders/answer_builder.py",
-      "function_name": "_extract_answer_string",
-      "line_start": 222,
-      "line_end": 242,
-      "pattern": "P5",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0,
-      "hazards": [],
-      "lift_status": "auto_liftable",
-      "snippet": "            answer = GeneratedAnswer(\n                data=answer_string, query=query, documents=referenced_docs, meta=extracted_metadata\n            )\n            all_answers.append(answer)\n\n        return {\"answers\": all_answers}\n\n    @staticmethod\n    def _extract_answer_string(reply: str, pattern: str | None = None) -> str:\n        \"\"\"\n        Extract the answer string from the generator output using the specified pattern.\n\n        If no pattern is specified, the whole string is used as the answer.\n\n        :param reply:\n            The output of the Generator. A string.\n        :param pattern:\n            The regular expression pattern to use to extract the answer text from the generator output.\n        \"\"\"\n        if pattern is None:\n            return reply\n\n        if match := re.search(pattern, reply):\n            # No capture group in pattern -> use the whole match as answer\n            if not match.lastindex:\n                return match.group(0)\n            # One capture group in pattern -> use the capture group as answer\n            return match.group(1)\n        return \"\"\n\n    @staticmethod\n    def _extract_reference_idxs(reply: str, reference_pattern: str) -> set[int]:\n        document_idxs = re.findall(reference_pattern, reply)\n        return {int(idx) - 1 for idx in document_idxs}\n\n    @staticmethod\n    def _check_num_groups_in_regex(pattern: str) -> None:\n        num_groups = re.compile(pattern).groups\n        if num_groups > 1:\n            raise ValueError(\n                f\"Pattern '{pattern}' contains multiple capture groups. \"",
-      "snippet_start_line": 214,
-      "snippet_end_line": 254
-    },
-    {
-      "file_path": "haystack/components/converters/multi_file_converter.py",
-      "function_name": "__init__",
-      "line_start": 62,
-      "line_end": 123,
-      "pattern": "P3",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0,
-      "hazards": [],
-      "lift_status": "auto_liftable",
-      "snippet": "    ```\n    from haystack.super_components.converters import MultiFileConverter\n\n    converter = MultiFileConverter()\n    converter.run(sources=[\"test/test_files/txt/doc_1.txt\", \"test/test_files/pdf/sample_pdf_1.pdf\"], meta={})\n    ```\n    \"\"\"\n\n    def __init__(self, encoding: str = \"utf-8\", json_content_key: str = \"content\") -> None:\n        \"\"\"\n        Initialize the MultiFileConverter.\n\n        :param encoding: The encoding to use when reading files.\n        :param json_content_key: The key to use in a content field in a document when converting JSON files.\n        \"\"\"\n        self.encoding = encoding\n        self.json_content_key = json_content_key\n\n        # initialize components\n        router = FileTypeRouter(\n            mime_types=[mime_type.value for mime_type in ConverterMimeType],\n            # Ensure common extensions are registered. Tests on Windows fail otherwise.\n            additional_mimetypes={\n                \"application/vnd.openxmlformats-officedocument.wordprocessingml.document\": \".docx\",\n                \"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\": \".xlsx\",\n                \"application/vnd.openxmlformats-officedocument.presentationml.presentation\": \".pptx\",\n            },\n        )\n\n        # Create pipeline and add components\n        pp = Pipeline()\n\n        pp.add_component(\"router\", router)\n        pp.add_component(\"docx\", DOCXToDocument(link_format=\"markdown\"))\n        pp.add_component(\n            \"html\",\n            HTMLToDocument(\n                extraction_kwargs={\"output_format\": \"markdown\", \"include_tables\": True, \"include_links\": True}\n            ),\n        )\n        pp.add_component(\"json\", JSONConverter(content_key=self.json_content_key))\n        pp.add_component(\"md\", TextFileToDocument(encoding=self.encoding))\n        pp.add_component(\"text\", TextFileToDocument(encoding=self.encoding))\n        pp.add_component(\"pdf\", PyPDFToDocument())\n        pp.add_component(\"pptx\", PPTXToDocument())\n        pp.add_component(\"xlsx\", XLSXToDocument())\n        pp.add_component(\"joiner\", DocumentJoiner())\n        pp.add_component(\"csv\", CSVToDocument(encoding=self.encoding))\n\n        for mime_type in ConverterMimeType:\n            pp.connect(f\"router.{mime_type.value}\", str(mime_type).lower().rsplit(\".\", maxsplit=1)[-1])\n\n        pp.connect(\"docx.documents\", \"joiner.documents\")\n        pp.connect(\"html.documents\", \"joiner.documents\")\n        pp.connect(\"json.documents\", \"joiner.documents\")\n        pp.connect(\"md.documents\", \"joiner.documents\")\n        pp.connect(\"text.documents\", \"joiner.documents\")\n        pp.connect(\"pdf.documents\", \"joiner.documents\")\n        pp.connect(\"pptx.documents\", \"joiner.documents\")\n\n        pp.connect(\"csv.documents\", \"joiner.documents\")\n        pp.connect(\"xlsx.documents\", \"joiner.documents\")\n\n        self.pipeline = pp\n        self.output_mapping = {\n            \"joiner.documents\": \"documents\",\n            \"router.unclassified\": \"unclassified\",\n            \"router.failed\": \"failed\",\n        }\n        self.input_mapping = {\"sources\": [\"router.sources\"], \"meta\": [\"router.meta\"]}\n\n    if TYPE_CHECKING:\n        # fake method, never executed, but static analyzers will not complain about missing method\n        def run(  # noqa: D102\n            self, *, sources: list[str | Path | ByteStream], meta: dict[str, Any] | list[dict[str, Any]] | None = None\n        ) -> dict[str, list[Document]]:  # noqa: D102\n            ...\n\n        def warm_up(self) -> None:  # noqa: D102\n            ...",
-      "snippet_start_line": 54,
-      "snippet_end_line": 133
-    },
-    {
       "file_path": "haystack/components/extractors/regex_text_extractor.py",
       "function_name": "_extract_from_text",
       "line_start": 129,
@@ -125,7 +147,8 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0,
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
       "hazards": [
         {
           "category": "side_effect_evidence",
@@ -149,7 +172,8 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0,
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
       "hazards": [
         {
           "category": "dynamic_dispatch",
@@ -173,7 +197,8 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0,
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
       "hazards": [
         {
           "category": "dynamic_dispatch",
@@ -189,22 +214,6 @@
       "snippet_end_line": 465
     },
     {
-      "file_path": "haystack/components/generators/openai.py",
-      "function_name": "run",
-      "line_start": 188,
-      "line_end": 270,
-      "pattern": "P6",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0,
-      "hazards": [],
-      "lift_status": "auto_liftable",
-      "snippet": "        \"\"\"\n        init_params = data.get(\"init_parameters\", {})\n        serialized_callback_handler = init_params.get(\"streaming_callback\")\n        if serialized_callback_handler:\n            data[\"init_parameters\"][\"streaming_callback\"] = deserialize_callable(serialized_callback_handler)\n        return default_from_dict(cls, data)\n\n    @component.output_types(replies=list[str], meta=list[dict[str, Any]])\n    def run(\n        self,\n        prompt: str,\n        system_prompt: str | None = None,\n        streaming_callback: StreamingCallbackT | None = None,\n        generation_kwargs: dict[str, Any] | None = None,\n    ) -> dict[str, list[str] | list[dict[str, Any]]]:\n        \"\"\"\n        Invoke the text generation inference based on the provided messages and generation parameters.\n\n        :param prompt:\n            The string prompt to use for text generation.\n        :param system_prompt:\n            The system prompt to use for text generation. If this run time system prompt is omitted, the system\n            prompt, if defined at initialisation time, is used.\n        :param streaming_callback:\n            A callback function that is called when a new token is received from the stream.\n        :param generation_kwargs:\n            Additional keyword arguments for text generation. These parameters will potentially override the parameters\n            passed in the `__init__` method. For more details on the parameters supported by the OpenAI API, refer to\n            the OpenAI [documentation](https://platform.openai.com/docs/api-reference/chat/create).\n        :returns:\n            A list of strings containing the generated responses and a list of dictionaries containing the metadata\n        for each response.\n        \"\"\"\n        message = ChatMessage.from_user(prompt)\n        if system_prompt is not None:\n            messages = [ChatMessage.from_system(system_prompt), message]\n        elif self.system_prompt:\n            messages = [ChatMessage.from_system(self.system_prompt), message]\n        else:\n            messages = [message]\n\n        # update generation kwargs by merging with the generation kwargs passed to the run method\n        generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}\n\n        # check if streaming_callback is passed\n        streaming_callback = select_streaming_callback(\n            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False\n        )\n\n        # adapt ChatMessage(s) to the format expected by the OpenAI API\n        openai_formatted_messages = [message.to_openai_dict_format() for message in messages]\n\n        completion: Stream[ChatCompletionChunk] | ChatCompletion = self.client.chat.completions.create(\n            model=self.model,\n            messages=openai_formatted_messages,  # type: ignore\n            stream=streaming_callback is not None,\n            **generation_kwargs,\n        )\n\n        completions: list[ChatMessage] = []\n        if streaming_callback is not None:\n            num_responses = generation_kwargs.pop(\"n\", 1)\n            if num_responses > 1:\n                raise ValueError(\"Cannot stream multiple responses, please set n=1.\")\n\n            component_info = ComponentInfo.from_component(self)\n            chunks: list[StreamingChunk] = []\n            for chunk in completion:\n                chunk_delta: StreamingChunk = _convert_chat_completion_chunk_to_streaming_chunk(\n                    chunk=chunk,  # type: ignore\n                    previous_chunks=chunks,\n                    component_info=component_info,\n                )\n                chunks.append(chunk_delta)\n                streaming_callback(chunk_delta)\n\n            completions = [_convert_streaming_chunks_to_chat_message(chunks=chunks)]\n        elif isinstance(completion, ChatCompletion):\n            completions = [\n                _convert_chat_completion_to_chat_message(completion=completion, choice=choice)\n                for choice in completion.choices\n            ]\n\n        # before returning, do post-processing of the completions\n        for response in completions:\n            _check_finish_reason(response.meta)\n\n        return {\n            \"replies\": [message.text or \"\" for message in completions],\n            \"meta\": [message.meta for message in completions],\n        }",
-      "snippet_start_line": 180,
-      "snippet_end_line": 270
-    },
-    {
       "file_path": "haystack/components/generators/openai_dalle.py",
       "function_name": "run",
       "line_start": 97,
@@ -213,7 +222,8 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0,
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
       "hazards": [
         {
           "category": "side_effect_evidence",

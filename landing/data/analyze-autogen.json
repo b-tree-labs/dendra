@@ -4,35 +4,6 @@
   "total_sites": 40,
   "sites": [
     {
-      "file_path": "python/packages/autogen-core/src/autogen_core/_image.py",
-      "function_name": "_get_mime_type_from_data_uri",
-      "line_start": 111,
-      "line_end": 123,
-      "pattern": "P1",
-      "labels": [
-        "image/jpeg",
-        "image/png",
-        "image/gif",
-        "image/webp"
-      ],
-      "label_cardinality": 4,
-      "regime": "narrow",
-      "fit_score": 5.0,
-      "hazards": [
-        {
-          "category": "side_effect_evidence",
-          "line": 113,
-          "reason": "Line 113 binds 'image_data' from base64.b64decode(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
-          "suggested_fix": "If base64.b64decode supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
-          "severity": "error"
-        }
-      ],
-      "lift_status": "refused",
-      "snippet": "        return core_schema.with_info_after_validator_function(\n            validate,\n            core_schema.any_schema(),  # Accept any type; adjust if needed\n            serialization=core_schema.plain_serializer_function_ser_schema(serialize),\n        )\n\n\ndef _convert_base64_to_data_uri(base64_image: str) -> str:\n    def _get_mime_type_from_data_uri(base64_image: str) -> str:\n        # Decode the base64 string\n        image_data = base64.b64decode(base64_image)\n        # Check the first few bytes for known signatures\n        if image_data.startswith(b\"\\xff\\xd8\\xff\"):\n            return \"image/jpeg\"\n        elif image_data.startswith(b\"\\x89PNG\\r\\n\\x1a\\n\"):\n            return \"image/png\"\n        elif image_data.startswith(b\"GIF87a\") or image_data.startswith(b\"GIF89a\"):\n            return \"image/gif\"\n        elif image_data.startswith(b\"RIFF\") and image_data[8:12] == b\"WEBP\":\n            return \"image/webp\"\n        return \"image/jpeg\"  # use jpeg for unknown formats, best guess.\n\n    mime_type = _get_mime_type_from_data_uri(base64_image)\n    data_uri = f\"data:{mime_type};base64,{base64_image}\"\n    return data_uri",
-      "snippet_start_line": 103,
-      "snippet_end_line": 127
-    },
-    {
       "file_path": "python/packages/autogen-core/src/autogen_core/_telemetry/_tracing_config.py",
       "function_name": "_get_operation_type",
       "line_start": 191,
@@ -47,7 +18,8 @@
       ],
       "label_cardinality": 5,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
       "hazards": [],
       "lift_status": "auto_liftable",
       "snippet": "            return f\"{destination.type}.({destination.source})-T\"\n        elif isinstance(destination, str):\n            return destination\n        elif destination is None:\n            return \"\"\n        else:\n            raise ValueError(f\"Unknown destination type: {type(destination)}\")\n\n    def _get_operation_type(self, operation: MessagingOperation) -> str:\n        if operation in [\"send\", \"publish\"]:\n            return \"publish\"\n        if operation in [\"create\"]:\n            return \"create\"\n        elif operation in [\"receive\", \"intercept\", \"ack\"]:\n            return \"receive\"\n        elif operation in [\"process\"]:\n            return \"process\"\n        else:\n            return \"Unknown\"",
@@ -66,7 +38,8 @@
       ],
       "label_cardinality": 2,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
       "hazards": [],
       "lift_status": "auto_liftable",
       "snippet": "\n    checkAlternative: bool = Field(description=\"Would you like to check another time?\")\n    alternativeTime: str = Field(\n        description=\"Alternative time.\",\n    )\n\n\n@mcp.tool()\nasync def book_table(\n    time: str,\n    party_size: int,\n    ctx: Context,\n) -> str:\n    \"\"\"Book a table with time availability check.\"\"\"\n    # time unavailable - ask user for alternative\n    result = await ctx.elicit(\n        message=(f\"No tables available for {party_size} at {time}. Would you like to try another time?\"),\n        schema=BookingPreferences,\n    )\n\n    if result.action == \"accept\" and result.data:\n        if result.data.checkAlternative:\n            return f\"[SUCCESS] Booked for {result.data.alternativeTime}\"\n        return \"[CANCELLED] No booking made\"\n    return \"[CANCELLED] Booking cancelled\"\n\n\n@mcp.tool()\nasync def list_dir(path: Path, ctx: Context) -> list[str]:\n    \"\"\"List the files and directories in path\"\"\"\n    roots = await ctx.session.list_roots()\n    for root in roots.roots:\n        root_path = root.uri.path\n        if root_path:\n            root_path = Path(root_path)\n            try:\n                _ = path.relative_to(root_path)",
@@ -87,7 +60,8 @@
       ],
       "label_cardinality": 4,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
       "hazards": [],
       "lift_status": "auto_liftable",
       "snippet": "            reqs = match.group(1).split(\",\")\n            ret = {req.strip(\" \") for req in reqs}\n    return ret\n\n\nPYTHON_VARIANTS = [\"python\", \"Python\", \"py\"]\n\n\ndef lang_to_cmd(lang: str) -> str:\n    if lang in PYTHON_VARIANTS:\n        return \"python\"\n    if lang.startswith(\"python\") or lang in [\"bash\", \"sh\"]:\n        return lang\n    if lang in [\"shell\"]:\n        return \"sh\"\n    if lang in [\"pwsh\", \"powershell\", \"ps1\"]:\n        # Check if pwsh is available, otherwise fall back to powershell\n        if shutil.which(\"pwsh\") is not None:\n            return \"pwsh\"\n        elif shutil.which(\"powershell\") is not None:\n            return \"powershell\"\n        else:\n            raise ValueError(\"Powershell or pwsh is not installed. Please install one of them.\")\n    else:\n        raise ValueError(f\"Unsupported language: {lang}\")\n\n\n# Regular expression for finding a code block\n# ```[ \\t]*(\\w+)?[ \\t]*\\r?\\n(.*?)[ \\t]*\\r?\\n``` Matches multi-line code blocks.\n#   The [ \\t]* matches the potential spaces before language name.\n#   The (\\w+)? matches the language, where the ? indicates it is optional.\n#   The [ \\t]* matches the potential spaces (not newlines) after language name.\n#   The \\r?\\n makes sure there is a linebreak after ```.\n#   The (.*?) matches the code itself (non-greedy).\n#   The \\r?\\n makes sure there is a linebreak before ```.\n#   The [ \\t]* matches the potential spaces before closing ``` (the spec allows indentation).\nCODE_BLOCK_PATTERN = r\"```[ \\t]*(\\w+)?[ \\t]*\\r?\\n(.*?)\\r?\\n[ \\t]*```\"",
@@ -107,7 +81,8 @@
       ],
       "label_cardinality": 3,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
       "hazards": [],
       "lift_status": "auto_liftable",
       "snippet": "#   The [ \\t]* matches the potential spaces (not newlines) after language name.\n#   The \\r?\\n makes sure there is a linebreak after ```.\n#   The (.*?) matches the code itself (non-greedy).\n#   The \\r?\\n makes sure there is a linebreak before ```.\n#   The [ \\t]* matches the potential spaces before closing ``` (the spec allows indentation).\nCODE_BLOCK_PATTERN = r\"```[ \\t]*(\\w+)?[ \\t]*\\r?\\n(.*?)\\r?\\n[ \\t]*```\"\n\n\ndef infer_lang(code: str) -> str:\n    \"\"\"infer the language for the code.\n    TODO: make it robust.\n    \"\"\"\n    if code.startswith(\"python \") or code.startswith(\"pip\") or code.startswith(\"python3 \"):\n        return \"sh\"\n\n    # check if code is a valid python code\n    try:\n        compile(code, \"test\", \"exec\")\n        return \"python\"\n    except SyntaxError:\n        # not a valid python code\n        return \"unknown\"",
@@ -128,41 +103,13 @@
       ],
       "label_cardinality": 4,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
       "hazards": [],
       "lift_status": "auto_liftable",
       "snippet": "        raise ValueError(f\"Required create args are missing: {required_create_args - create_args_keys}\")\n\n    if disallowed_create_args.intersection(create_args_keys):\n        raise ValueError(f\"Disallowed create args are present: {disallowed_create_args.intersection(create_args_keys)}\")\n\n    return create_args\n\n\ndef type_to_role(message: LLMMessage) -> str:\n    if isinstance(message, SystemMessage):\n        return \"system\"\n    elif isinstance(message, UserMessage):\n        return \"user\"\n    elif isinstance(message, AssistantMessage):\n        return \"assistant\"\n    else:\n        return \"tool\"\n\n\ndef get_mime_type_from_image(image: Image) -> Literal[\"image/jpeg\", \"image/png\", \"image/gif\", \"image/webp\"]:\n    \"\"\"Get a valid Anthropic media type from an Image object.\"\"\"\n    # Get base64 data first\n    base64_data = image.to_base64()\n\n    # Decode the base64 string\n    image_data = base64.b64decode(base64_data)\n\n    # Check the first few bytes for known signatures\n    if image_data.startswith(b\"\\xff\\xd8\\xff\"):",
       "snippet_start_line": 112,
       "snippet_end_line": 140
-    },
-    {
-      "file_path": "python/packages/autogen-ext/src/autogen_ext/models/anthropic/_anthropic_client.py",
-      "function_name": "get_mime_type_from_image",
-      "line_start": 131,
-      "line_end": 150,
-      "pattern": "P1",
-      "labels": [
-        "image/jpeg",
-        "image/png",
-        "image/gif",
-        "image/webp"
-      ],
-      "label_cardinality": 4,
-      "regime": "narrow",
-      "fit_score": 5.0,
-      "hazards": [
-        {
-          "category": "side_effect_evidence",
-          "line": 137,
-          "reason": "Line 137 binds 'image_data' from base64.b64decode(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
-          "suggested_fix": "If base64.b64decode supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
-          "severity": "error"
-        }
-      ],
-      "lift_status": "refused",
-      "snippet": "    elif isinstance(message, UserMessage):\n        return \"user\"\n    elif isinstance(message, AssistantMessage):\n        return \"assistant\"\n    else:\n        return \"tool\"\n\n\ndef get_mime_type_from_image(image: Image) -> Literal[\"image/jpeg\", \"image/png\", \"image/gif\", \"image/webp\"]:\n    \"\"\"Get a valid Anthropic media type from an Image object.\"\"\"\n    # Get base64 data first\n    base64_data = image.to_base64()\n\n    # Decode the base64 string\n    image_data = base64.b64decode(base64_data)\n\n    # Check the first few bytes for known signatures\n    if image_data.startswith(b\"\\xff\\xd8\\xff\"):\n        return \"image/jpeg\"\n    elif image_data.startswith(b\"\\x89PNG\\r\\n\\x1a\\n\"):\n        return \"image/png\"\n    elif image_data.startswith(b\"GIF87a\") or image_data.startswith(b\"GIF89a\"):\n        return \"image/gif\"\n    elif image_data.startswith(b\"RIFF\") and image_data[8:12] == b\"WEBP\":\n        return \"image/webp\"\n    else:\n        # Default to JPEG as a fallback\n        return \"image/jpeg\"\n\n\ndef convert_tool_choice_anthropic(tool_choice: Tool | Literal[\"auto\", \"required\", \"none\"]) -> Any:\n    \"\"\"Convert tool_choice parameter to Anthropic API format.\n\n    Args:\n        tool_choice: A single Tool object to force the model to use, \"auto\" to let the model choose any available tool, \"required\" to force tool usage, or \"none\" to disable tool usage.\n\n    Returns:\n        Anthropic API compatible tool_choice value.\n    \"\"\"\n    if tool_choice == \"none\":",
-      "snippet_start_line": 123,
-      "snippet_end_line": 162
     },
     {
       "file_path": "python/packages/autogen-ext/src/autogen_ext/models/ollama/_ollama_client.py",
@@ -178,7 +125,8 @@
       ],
       "label_cardinality": 4,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
       "hazards": [],
       "lift_status": "auto_liftable",
       "snippet": "\n# TODO check types\n# oai_system_message_schema = type2schema(ChatCompletionSystemMessageParam)\n# oai_user_message_schema = type2schema(ChatCompletionUserMessageParam)\n# oai_assistant_message_schema = type2schema(ChatCompletionAssistantMessageParam)\n# oai_tool_message_schema = type2schema(ChatCompletionToolMessageParam)\n\n\ndef type_to_role(message: LLMMessage) -> str:  # return type: Message.role\n    if isinstance(message, SystemMessage):\n        return \"system\"\n    elif isinstance(message, UserMessage):\n        return \"user\"\n    elif isinstance(message, AssistantMessage):\n        return \"assistant\"\n    else:\n        return \"tool\"\n\n\ndef user_message_to_ollama(message: UserMessage) -> Sequence[Message]:\n    assert_valid_name(message.source)\n    if isinstance(message.content, str):\n        return [\n            Message(\n                content=message.content,\n                role=\"user\",\n                # name=message.source, # TODO: No name parameter in Ollama\n            )\n        ]",
@@ -197,7 +145,8 @@
       ],
       "label_cardinality": 2,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
       "hazards": [],
       "lift_status": "auto_liftable",
       "snippet": "    \"multimodal\": multimodal_user_transformer_funcs,\n}\nuser_transformer_constructors: Dict[str, Callable[..., Any]] = {\n    \"text\": ChatCompletionUserMessageParam,\n    \"multimodal\": ChatCompletionUserMessageParam,\n}\n\n\ndef user_condition(message: LLMMessage, context: Dict[str, Any]) -> str:\n    if isinstance(message.content, str):\n        return \"text\"\n    else:\n        return \"multimodal\"\n\n\nassistant_transformer_funcs: Dict[str, List[Callable[[LLMMessage, Dict[str, Any]], Dict[str, Any]]]] = {\n    \"text\": single_assistant_transformer_funcs,\n    \"tools\": tools_assistant_transformer_funcs,\n    \"thought\": thought_assistant_transformer_funcs,\n}\n\n\nassistant_transformer_constructors: Dict[str, Callable[..., Any]] = {\n    \"text\": ChatCompletionAssistantMessageParam,\n    \"tools\": ChatCompletionAssistantMessageParam,",
@@ -217,7 +166,8 @@
       ],
       "label_cardinality": 3,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
       "hazards": [],
       "lift_status": "auto_liftable",
       "snippet": "\nassistant_transformer_constructors: Dict[str, Callable[..., Any]] = {\n    \"text\": ChatCompletionAssistantMessageParam,\n    \"tools\": ChatCompletionAssistantMessageParam,\n    \"thought\": ChatCompletionAssistantMessageParam,\n}\n\n\ndef assistant_condition(message: LLMMessage, context: Dict[str, Any]) -> str:\n    assert isinstance(message, AssistantMessage)\n    if isinstance(message.content, list):\n        if message.thought is not None:\n            return \"thought\"\n        else:\n            return \"tools\"\n    else:\n        return \"text\"\n\n\nuser_transformer_funcs_gemini: Dict[str, List[Callable[[LLMMessage, Dict[str, Any]], Dict[str, Any]]]] = {\n    \"text\": single_user_transformer_funcs + [_set_empty_to_whitespace],\n    \"multimodal\": multimodal_user_transformer_funcs,\n}\n\n\nassistant_transformer_funcs_gemini: Dict[str, List[Callable[[LLMMessage, Dict[str, Any]], Dict[str, Any]]]] = {\n    \"text\": single_assistant_transformer_funcs + [_set_empty_to_whitespace],\n    \"tools\": tools_assistant_transformer_funcs,  # that case, message.content is a list of FunctionCall\n    \"thought\": thought_assistant_transformer_funcs_gemini,  # that case, message.content is a list of FunctionCall",
@@ -238,7 +188,8 @@
       ],
       "label_cardinality": 4,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
       "hazards": [],
       "lift_status": "auto_liftable",
       "snippet": "\n# TODO check types\n# oai_system_message_schema = type2schema(ChatCompletionSystemMessageParam)\n# oai_user_message_schema = type2schema(ChatCompletionUserMessageParam)\n# oai_assistant_message_schema = type2schema(ChatCompletionAssistantMessageParam)\n# oai_tool_message_schema = type2schema(ChatCompletionToolMessageParam)\n\n\ndef type_to_role(message: LLMMessage) -> ChatCompletionRole:\n    if isinstance(message, SystemMessage):\n        return \"system\"\n    elif isinstance(message, UserMessage):\n        return \"user\"\n    elif isinstance(message, AssistantMessage):\n        return \"assistant\"\n    else:\n        return \"tool\"\n\n\ndef to_oai_type(\n    message: LLMMessage,\n    prepend_name: bool = False,\n    model: str = \"unknown\",\n    model_family: str = ModelFamily.UNKNOWN,\n    include_name_in_message: bool = True,\n) -> Sequence[ChatCompletionMessageParam]:\n    context = {\n        \"prepend_name\": prepend_name,\n        \"include_name_in_message\": include_name_in_message,",
@@ -258,7 +209,8 @@
       ],
       "label_cardinality": 3,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
       "hazards": [],
       "lift_status": "auto_liftable",
       "snippet": "            )\n        )\n    # Check if all tools have valid names.\n    for tool_param in result:\n        assert_valid_name(tool_param[\"function\"][\"name\"])\n    return result\n\n\ndef convert_tool_choice(tool_choice: Tool | Literal[\"auto\", \"required\", \"none\"]) -> Any:\n    \"\"\"Convert tool_choice parameter to OpenAI API format.\n\n    Args:\n        tool_choice: A single Tool object to force the model to use, \"auto\" to let the model choose any available tool, \"required\" to force tool usage, or \"none\" to disable tool usage.\n\n    Returns:\n        OpenAI API compatible tool_choice value or None if not specified.\n    \"\"\"\n    if tool_choice == \"none\":\n        return \"none\"\n\n    if tool_choice == \"auto\":\n        return \"auto\"\n\n    if tool_choice == \"required\":\n        return \"required\"\n\n    # Must be a Tool object\n    if isinstance(tool_choice, Tool):\n        return {\"type\": \"function\", \"function\": {\"name\": tool_choice.schema[\"name\"]}}\n    else:\n        raise ValueError(f\"tool_choice must be a Tool object, 'auto', 'required', or 'none', got {type(tool_choice)}\")\n\n\ndef normalize_name(name: str) -> str:\n    \"\"\"\n    LLMs sometimes ask functions while ignoring their own format requirements, this function should be used to replace invalid characters with \"_\".\n\n    Prefer _assert_valid_name for validating user configuration or input\n    \"\"\"\n    return re.sub(r\"[^a-zA-Z0-9_-]\", \"_\", name)[:64]\n\n\ndef count_tokens_openai(",
@@ -277,7 +229,8 @@
       ],
       "label_cardinality": 2,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
       "hazards": [],
       "lift_status": "auto_liftable",
       "snippet": "    @field_validator(\"endpoint\")\n    def validate_endpoint(cls, v: str) -> str:\n        \"\"\"Validate that the endpoint is a valid URL.\"\"\"\n        if not v.startswith((\"http://\", \"https://\")):\n            raise ValueError(\"endpoint must be a valid URL starting with http:// or https://\")\n        return v\n\n    @field_validator(\"query_type\")\n    def normalize_query_type(cls, v: QueryTypeLiteral) -> QueryTypeLiteral:\n        \"\"\"Normalize query type to standard values.\"\"\"\n        if not v:\n            return \"simple\"\n\n        if isinstance(v, str) and v.lower() == \"fulltext\":\n            return \"full\"\n\n        return v\n\n    @field_validator(\"top\")\n    def validate_top(cls, v: Optional[int]) -> Optional[int]:\n        \"\"\"Ensure top is a positive integer if provided.\"\"\"\n        if v is not None and v <= 0:\n            raise ValueError(\"top must be a positive integer\")\n        return v\n\n    @model_validator(mode=\"after\")\n    def validate_interdependent_fields(self) -> \"AzureAISearchConfig\":\n        \"\"\"Validate interdependent fields after all fields have been parsed.\"\"\"\n        if self.query_type == \"semantic\" and not self.semantic_config_name:",
@@ -296,7 +249,8 @@
       ],
       "label_cardinality": 2,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
       "hazards": [],
       "lift_status": "auto_liftable",
       "snippet": "        return AssistantMessage(\n            source=\"assistant\",\n            content=content,\n        )\n    else:\n        raise ValueError(f\"Unrecognized message role: {message.role}\")\n\n\ndef finish_reason_to_stop_reason(finish_reason: FinishReasons) -> StopReason:\n    \"\"\"Convert AutoGen finish reasons to MCP stop reasons.\n\n    Args:\n        finish_reason: AutoGen completion finish reason\n\n    Returns:\n        Corresponding MCP stop reason\n    \"\"\"\n    if finish_reason == \"stop\":\n        return \"endTurn\"\n    elif finish_reason == \"length\":\n        return \"maxTokens\"\n    else:\n        return finish_reason\n\n\ndef create_request_params_to_extra_create_args(params: mcp_types.CreateMessageRequestParams) -> Dict[str, Any]:\n    \"\"\"Convert MCP request parameters to AutoGen extra create arguments.\n\n    Args:\n        params: MCP message creation request parameters\n\n    Returns:\n        Dictionary of extra arguments for AutoGen chat completion client\n    \"\"\"\n    # TODO: Need to support all ChatCompletionClients",
@@ -315,7 +269,8 @@
       ],
       "label_cardinality": 2,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
       "hazards": [],
       "lift_status": "auto_liftable",
       "snippet": "from autogen_agentchat.base import TaskResult\nfrom autogen_agentchat.conditions import TextMentionTermination\nfrom autogen_agentchat.messages import ModelClientStreamingChunkEvent, TextMessage\nfrom autogen_agentchat.teams import RoundRobinGroupChat\nfrom autogen_core import CancellationToken\nfrom autogen_core.models import ChatCompletionClient\n\n\nasync def user_input_func(prompt: str, cancellation_token: CancellationToken | None = None) -> str:\n    \"\"\"Get user input from the UI for the user proxy agent.\"\"\"\n    try:\n        response = await cl.AskUserMessage(content=prompt).send()\n    except TimeoutError:\n        return \"User did not provide any input within the time limit.\"\n    if response:\n        return response[\"output\"]  # type: ignore\n    else:\n        return \"User did not provide any input.\"\n\n\nasync def user_action_func(prompt: str, cancellation_token: CancellationToken | None = None) -> str:\n    \"\"\"Get user action from the UI for the user proxy agent.\"\"\"\n    try:\n        response = await cl.AskActionMessage(\n            content=\"Pick an action\",\n            actions=[\n                cl.Action(name=\"approve\", label=\"Approve\", payload={\"value\": \"approve\"}),\n                cl.Action(name=\"reject\", label=\"Reject\", payload={\"value\": \"reject\"}),\n            ],\n        ).send()",
@@ -336,30 +291,13 @@
       ],
       "label_cardinality": 4,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
       "hazards": [],
-      "lift_status": "auto_liftable"
-    },
-    {
-      "file_path": "python/packages/agbench/benchmarks/GAIA/Templates/ParallelAgents/scenario.py",
-      "function_name": "aggregate_final_answer",
-      "line_start": 154,
-      "line_end": 264,
-      "pattern": "P6",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0,
-      "hazards": [
-        {
-          "category": "multi_arg_no_annotation",
-          "line": 154,
-          "reason": "Function 'aggregate_final_answer' takes 5 args but 1 have no type annotation: team_results. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
-          "suggested_fix": "Add type hints to each parameter, e.g. `def aggregate_final_answer(task: str, client: str, team_results: str, source: str, cancellation_token: str):`. Single-arg functions are exempt for back-compat.",
-          "severity": "warn"
-        }
-      ],
-      "lift_status": "needs_annotation"
+      "lift_status": "auto_liftable",
+      "snippet": "    except TimeoutError:\n        return \"User did not provide any input within the time limit.\"\n    if response:\n        return response[\"output\"]  # type: ignore\n    else:\n        return \"User did not provide any input.\"\n\n\nasync def user_action_func(prompt: str, cancellation_token: CancellationToken | None = None) -> str:\n    \"\"\"Get user action from the UI for the user proxy agent.\"\"\"\n    try:\n        response = await cl.AskActionMessage(\n            content=\"Pick an action\",\n            actions=[\n                cl.Action(name=\"approve\", label=\"Approve\", payload={\"value\": \"approve\"}),\n                cl.Action(name=\"reject\", label=\"Reject\", payload={\"value\": \"reject\"}),\n            ],\n        ).send()\n    except TimeoutError:\n        return \"User did not provide any input within the time limit.\"\n    if response and response.get(\"payload\"):  # type: ignore\n        if response.get(\"payload\").get(\"value\") == \"approve\":  # type: ignore\n            return \"APPROVE.\"  # This is the termination condition.\n        else:\n            return \"REJECT.\"\n    else:\n        return \"User did not provide any input.\"\n\n\n@cl.on_chat_start  # type: ignore\nasync def start_chat() -> None:\n    # Load model configuration and create the model client.\n    with open(\"model_config.yaml\", \"r\") as f:\n        model_config = yaml.safe_load(f)\n    model_client = ChatCompletionClient.load_component(model_config)\n\n    # Create the assistant agent.\n    assistant = AssistantAgent(\n        name=\"assistant\",",
+      "snippet_start_line": 18,
+      "snippet_end_line": 56
     },
     {
       "file_path": "python/packages/agbench/src/agbench/linter/coders/oai_coder.py",
@@ -370,9 +308,13 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0,
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
       "hazards": [],
-      "lift_status": "auto_liftable"
+      "lift_status": "auto_liftable",
+      "snippet": "    DEFAULT_MODEL = \"gpt-4o\"\n\n    def __init__(self, cache_dir: str = \".cache\", model: str = DEFAULT_MODEL, cache_enabled: bool = False) -> None:\n        self.client = OpenAI()\n        self.cache_dir = cache_dir\n        self.model = model\n        self.cache_enabled = cache_enabled\n\n    def code_document(\n        self,\n        doc: Document,\n        code_set: Optional[Set[Code]] = None,\n    ) -> Optional[CodedDocument]:\n        # get hash of the document\n        doc_hash = hash(doc)\n        cache_file = os.path.join(self.cache_dir, f\"{doc_hash}.json\") if self.cache_enabled else None\n\n        if self.cache_enabled:\n            if not os.path.exists(self.cache_dir):\n                os.makedirs(self.cache_dir)\n            if cache_file and os.path.exists(cache_file):\n                with open(cache_file, \"r\") as f:\n                    cached_coded_doc_json = f.read()\n                    return CodedDocument.from_json(cached_coded_doc_json)\n\n        # sanitize the doc before passing it to openai\n        doc.text = remove_control_characters(doc.text)\n\n        coded_document: Optional[CodedDocument] = None\n\n        if code_set is None:\n            completion = self.client.beta.chat.completions.parse(\n                model=self.model,\n                messages=[\n                    {\n                        \"role\": \"system\",\n                        \"content\": \"\"\"You are an expert qualitative researcher.\n\nGiven a list of dcocuments containing errors below, generate a list of (error) codes.\nEach code should contains:\n- at least 3 words, max 4 word, hyphenated.\n\nFor example, the name could be of the format \"lack-of-word2\",\n\"failed-to-bar\", \"excessive-use-of-magenta\". Name should adhere to\nJoseph M. Williams' writing principles of clarity, conciseness, and coherence.\n\nEnsure each code name is lower-case, hyphenated, and directly reflects the\nconcept it represents. Avoid ambiguous or overly complex terms, and prioritize\nsimplicity, precision, and readability in the naming.\n\nThe code names should pass the 'clarity and grace' test by being easy to\nunderstand, descriptive, and reflective of the content they categorize.\n- suggest codes that are similar to good code names. avoid code names that are\nsimilar to bad code names.\n- The definition should be simple worded and practical. At least 2 sentences,\n max 3. It should be written in past tense.\n\nIt should convey how a labeller could apply this code to future logs, without\nmentioning the word \"labeller\". The definition should be specific enough to be\nuseful in debugging. It should be very concrete. And should be well thought and\nmake sense. Bull shitting will not earn you any points.\n\n- The examples should be a list. Each example should be descriptive between\n2-3 sentences. Examples should be concrete, informative and not vague. Provide\nat max 20 salient examples. Examples should contain a lot of detail about what\nhappened and should refer to incidents in the log.\n\n- The list of codes must mutually exclusive.\n\n# GOOD EXAMPLES OF FINAL CODE NAMES/CLUSTERS\n* looped-without-progress\n* repeated-unsuccessful-actions\n* repeated-syntax-errors\n* exceeded-context-window-limits\n* encountered-security-risks\n* failure-to-switch-strategy\n* exceeded-resource-limits\n* attempted-to-handle-excessive-data\n* no-errors-detected\nThese names are high-level but also concrete. They exactly mention the type of\nerror, issue, gap that has been identified.\n\n## BAD EXAMPLES OF FINAL CODE NAMES/CLUSTERS\n* mismanaged-data-utilization -- too high level\n* incomplete-or-misguided-execution -- too high level\n* misaligned-agent-interactions -- too high level\n* mismanaged-task-strategies -- too high level\n* resource-inefficiencies -- vague\n* communication-issues -- vague\n* coordination-issues -- too high level and vague\n* operational-failures\n* execution-errors -- too high level\n* navigation-issues -- too concise\n* adaptive-failures -- too concise\n* successful-processes -- I dont like the word processes\n* system-constraints\n* configuration-issues\n* information-inaccuracies -- too high level\n* process-improvements -- vague, not an error\n* inadequate-error-response -- too high-level, unclear what kind of errors\n* specific-access-issues -- makes no sense\n* strategy-inefficiency -- strategy is too high level\n* error-management-gaps -- unclear what error management means\n* error-handling-deficiency -- unclear what kind of errors\n* coordination-breakdown -- unclear what coordination means\n* muddled-task-execution -- unclear what kind of tasks were muddled\n* task-completion-gaps -- too high level\nThe above names are too high level and unclear. Please DO NOT use such names.\n    \"\"\",\n                    },\n                    {\n                        \"role\": \"user\",\n                        \"content\": doc.text,\n                    },\n                ],\n                response_format=CodeList,\n            )\n\n            message = completion.choices[0].message\n            if message.parsed and len(message.parsed.code_list) > 0:\n                coded_document = CodedDocument(doc=doc, codes=set(message.parsed.code_list))\n            else:\n                print(message.refusal)\n                raise ValueError(\"Error in coding document with OpenAI\")\n        else:\n            code_to_str = \"\\n\".join(\n                [\n                    (\n                        f\"\\n---\\nCode Name: {code.name}\\n\"\n                        f\"Definition: {code.definition}\\n\"\n                        f\"Examples: {code.examples}\\n---\\n\"\n                    )\n                    for code in code_set\n                ]\n            )\n\n            completion = self.client.beta.chat.completions.parse(\n                model=self.model,\n                messages=[\n                    {\n                        \"role\": \"system\",\n                        \"content\": \"\"\"You are an expert qualitative researcher.\n                        You can answer any questions about coding logs.\"\"\",\n                    },\n                    {\n                        \"role\": \"user\",\n                        \"content\": f\"\"\"\n## Context\nThe text below shows a log containing errors. Your task is to code the log with\nthe following codes. Generate a list of codes for the log below.\n\nOnly use the codes from the list below. Do not create new codes.\nModify the examples of the codes to fit the context of the log.\n\nYour example should be informative to narrow down the details of the error in\nthe context of the example.\n\n## Codes\n\n{code_to_str}\n\n## Log\n\n{doc.text}\n\"\"\",\n                    },\n                ],\n                response_format=CodeList,\n            )\n\n            message = completion.choices[0].message\n            if message.parsed and len(message.parsed.code_list) > 0:\n                code_list = message.parsed.code_list\n                # filter out codes whose names are not in the code_set\n                code_set_names = {code.name for code in code_set}\n                code_list = [code for code in code_list if code.name in code_set_names]\n\n                coded_document = CodedDocument(doc=doc, codes=set(code_list))\n\n        if coded_document is None:\n            raise ValueError(\"Error in coding document with OpenAI\")\n\n        if self.cache_enabled and cache_file:\n            with open(cache_file, \"w\") as f:\n                f.write(coded_document.model_dump_json(indent=4))\n        return coded_document",
+      "snippet_start_line": 23,
+      "snippet_end_line": 208
     },
     {
       "file_path": "python/packages/autogen-agentchat/src/autogen_agentchat/teams/_group_chat/_base_group_chat_manager.py",
@@ -383,7 +325,8 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0,
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
       "hazards": [],
       "lift_status": "auto_liftable"
     },
@@ -396,7 +339,8 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0,
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
       "hazards": [],
       "lift_status": "auto_liftable"
     },
@@ -409,7 +353,8 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0,
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
       "hazards": [],
       "lift_status": "auto_liftable"
     },
@@ -422,7 +367,8 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0,
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
       "hazards": [],
       "lift_status": "auto_liftable"
     },
@@ -435,7 +381,8 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0,
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
       "hazards": [],
       "lift_status": "auto_liftable"
     },
@@ -448,7 +395,8 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0,
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
       "hazards": [],
       "lift_status": "auto_liftable"
     },
@@ -461,7 +409,8 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0,
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
       "hazards": [],
       "lift_status": "auto_liftable"
     },
@@ -474,7 +423,8 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0,
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
       "hazards": [],
       "lift_status": "auto_liftable"
     },
@@ -487,7 +437,8 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0,
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
       "hazards": [],
       "lift_status": "auto_liftable"
     },
@@ -500,9 +451,184 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0,
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
       "hazards": [],
       "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "python/packages/autogen-ext/src/autogen_ext/models/ollama/_ollama_client.py",
+      "function_name": "create",
+      "line_start": 612,
+      "line_end": 718,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "python/packages/autogen-ext/src/autogen_ext/tools/mcp/_host/_sampling.py",
+      "function_name": "sample",
+      "line_start": 143,
+      "line_end": 176,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "python/packages/autogen-ext/src/autogen_ext/ui/_rich_console.py",
+      "function_name": "RichConsole",
+      "line_start": 102,
+      "line_end": 217,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "python/packages/autogen-studio/autogenstudio/mcp/callbacks.py",
+      "function_name": "create_sampling_callback",
+      "line_start": 67,
+      "line_end": 117,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "python/packages/autogen-studio/autogenstudio/mcp/callbacks.py",
+      "function_name": "sampling_callback",
+      "line_start": 70,
+      "line_end": 115,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "python/samples/agentchat_chess_game/main.py",
+      "function_name": "get_ai_move",
+      "line_start": 79,
+      "line_end": 98,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "python/samples/core_streaming_response_fastapi/app.py",
+      "function_name": "handle_user_message",
+      "line_start": 60,
+      "line_end": 81,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "python/packages/autogen-core/src/autogen_core/_image.py",
+      "function_name": "_get_mime_type_from_data_uri",
+      "line_start": 111,
+      "line_end": 123,
+      "pattern": "P1",
+      "labels": [
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "image/webp"
+      ],
+      "label_cardinality": 4,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 113,
+          "reason": "Line 113 binds 'image_data' from base64.b64decode(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If base64.b64decode supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "python/packages/autogen-ext/src/autogen_ext/models/anthropic/_anthropic_client.py",
+      "function_name": "get_mime_type_from_image",
+      "line_start": 131,
+      "line_end": 150,
+      "pattern": "P1",
+      "labels": [
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "image/webp"
+      ],
+      "label_cardinality": 4,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 137,
+          "reason": "Line 137 binds 'image_data' from base64.b64decode(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If base64.b64decode supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "python/packages/agbench/benchmarks/GAIA/Templates/ParallelAgents/scenario.py",
+      "function_name": "aggregate_final_answer",
+      "line_start": 154,
+      "line_end": 264,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 154,
+          "reason": "Function 'aggregate_final_answer' takes 5 args but 1 have no type annotation: team_results. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def aggregate_final_answer(task: str, client: str, team_results: str, source: str, cancellation_token: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
     },
     {
       "file_path": "python/packages/autogen-ext/src/autogen_ext/experimental/task_centric_memory/utils/page_logger.py",
@@ -513,7 +639,8 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0,
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
       "hazards": [
         {
           "category": "side_effect_evidence",
@@ -534,7 +661,8 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0,
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
       "hazards": [
         {
           "category": "dynamic_dispatch",
@@ -582,19 +710,6 @@
       "lift_status": "refused"
     },
     {
-      "file_path": "python/packages/autogen-ext/src/autogen_ext/models/ollama/_ollama_client.py",
-      "function_name": "create",
-      "line_start": 612,
-      "line_end": 718,
-      "pattern": "P6",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0,
-      "hazards": [],
-      "lift_status": "auto_liftable"
-    },
-    {
       "file_path": "python/packages/autogen-ext/src/autogen_ext/models/openai/_openai_client.py",
       "function_name": "create",
       "line_start": 663,
@@ -603,7 +718,8 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0,
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
       "hazards": [
         {
           "category": "dynamic_dispatch",
@@ -638,7 +754,8 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0,
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
       "hazards": [
         {
           "category": "dynamic_dispatch",
@@ -651,32 +768,6 @@
       "lift_status": "refused"
     },
     {
-      "file_path": "python/packages/autogen-ext/src/autogen_ext/tools/mcp/_host/_sampling.py",
-      "function_name": "sample",
-      "line_start": 143,
-      "line_end": 176,
-      "pattern": "P6",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0,
-      "hazards": [],
-      "lift_status": "auto_liftable"
-    },
-    {
-      "file_path": "python/packages/autogen-ext/src/autogen_ext/ui/_rich_console.py",
-      "function_name": "RichConsole",
-      "line_start": 102,
-      "line_end": 217,
-      "pattern": "P6",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0,
-      "hazards": [],
-      "lift_status": "auto_liftable"
-    },
-    {
       "file_path": "python/packages/autogen-studio/autogenstudio/gallery/tools/generate_image.py",
       "function_name": "generate_image",
       "line_start": 13,
@@ -685,7 +776,8 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0,
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
       "hazards": [
         {
           "category": "side_effect_evidence",
@@ -696,58 +788,6 @@
         }
       ],
       "lift_status": "refused"
-    },
-    {
-      "file_path": "python/packages/autogen-studio/autogenstudio/mcp/callbacks.py",
-      "function_name": "create_sampling_callback",
-      "line_start": 67,
-      "line_end": 117,
-      "pattern": "P6",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0,
-      "hazards": [],
-      "lift_status": "auto_liftable"
-    },
-    {
-      "file_path": "python/packages/autogen-studio/autogenstudio/mcp/callbacks.py",
-      "function_name": "sampling_callback",
-      "line_start": 70,
-      "line_end": 115,
-      "pattern": "P6",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0,
-      "hazards": [],
-      "lift_status": "auto_liftable"
-    },
-    {
-      "file_path": "python/samples/agentchat_chess_game/main.py",
-      "function_name": "get_ai_move",
-      "line_start": 79,
-      "line_end": 98,
-      "pattern": "P6",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0,
-      "hazards": [],
-      "lift_status": "auto_liftable"
-    },
-    {
-      "file_path": "python/samples/core_streaming_response_fastapi/app.py",
-      "function_name": "handle_user_message",
-      "line_start": 60,
-      "line_end": 81,
-      "pattern": "P6",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0,
-      "hazards": [],
-      "lift_status": "auto_liftable"
     }
   ],
   "errors": [],

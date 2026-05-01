@@ -1,7 +1,7 @@
 {
   "root": "/private/tmp/dendra-corpus/marimo",
   "files_scanned": 1994,
-  "total_sites": 80,
+  "total_sites": 81,
   "sites": [
     {
       "file_path": "frontend/islands/generate.py",
@@ -15,7 +15,10 @@
       ],
       "label_cardinality": 2,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
       "snippet": "import os\nfrom textwrap import dedent\nfrom typing import Any\nimport marimo\n\ngenerator = marimo.MarimoIslandGenerator()\n\n\ndef get_script_tags(mode: str) -> str:\n    \"\"\"Generate appropriate script tags based on mode.\n\n    Args:\n        mode: One of 'cdn', 'local', or 'dev'\n    \"\"\"\n    if mode == \"dev\":\n        return \"\"\"\n            <!-- Vite development mode -->\n            <script type=\"module\">import { injectIntoGlobalHook } from \"/@react-refresh\";\n            injectIntoGlobalHook(window);\n            window.$RefreshReg$ = () => {};\n            window.$RefreshSig$ = () => (type) => type;</script>\n\n            <script type=\"module\" src=\"/@vite/client\"></script>\n            <script type=\"module\" src=\"/src/core/islands/main.ts\"></script>\"\"\"\n    elif mode == \"local\":\n        return \"\"\"\n            <!-- Local production build -->\n            <script type=\"module\" src=\"http://127.0.0.1:8001/main.js\"></script>\n            <link\n              href=\"http://127.0.0.1:8001/style.css\"\n              rel=\"stylesheet\"\n              crossorigin=\"anonymous\"\n            />\"\"\"\n    else:\n        return f\"\"\"\n            {generator.render_head()}\"\"\"\n\n\ndef create_examples() -> list[tuple[str, list[Any]]]:\n    \"\"\"Create organized examples showcasing marimo islands features.\"\"\"\n    examples: list[tuple[str, list[Any]]] = []\n\n    # ============================================================================\n    # Getting Started\n    # ============================================================================\n    examples.append((\"Getting Started\", [\n        generator.add_code(\"import marimo as mo\"),\n        generator.add_code(",
       "snippet_start_line": 26,
       "snippet_end_line": 73
@@ -33,7 +36,10 @@
       ],
       "label_cardinality": 3,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
       "snippet": "from pathlib import Path\nfrom typing import Literal\n\nfrom marimo._utils.toml import toml_reader\n\nPackageManagerKind = Literal[\"pip\", \"rye\", \"uv\", \"poetry\", \"pixi\"]\n\n\ndef infer_package_manager() -> PackageManagerKind:\n    \"\"\"Infer the package manager from the current project.\"\"\"\n\n    # `uv run` sets `UV` to the uv executable path\n    # https://github.com/astral-sh/uv/issues/8775\n    if os.environ.get(\"UV\") is not None:\n        return \"uv\"\n\n    try:\n        # Get the project root by looking for common project files\n        current_dir = Path.cwd()\n        root_dir = current_dir\n\n        while root_dir != root_dir.parent:\n            if any(root_dir.glob(\"pyproject.toml\")) or any(\n                root_dir.glob(\"requirements.txt\")\n            ):\n                break\n            root_dir = root_dir.parent\n\n        # If there is a pyproject.toml, try to infer the package manager\n        pyproject_toml = root_dir / \"pyproject.toml\"\n        if pyproject_toml.exists():\n            package_manager = infer_package_manager_from_pyproject(\n                pyproject_toml\n            )\n            if package_manager is not None:\n                return package_manager\n\n        # Try to infer from lockfiles\n        package_manager = infer_package_manager_from_lockfile(root_dir)\n        if package_manager is not None:\n            return package_manager\n\n        # misc - Check for pixi.toml\n        if (root_dir / \"pixi.toml\").exists():\n            return \"pixi\"\n\n        # misc - Check for virtualenv/pip\n        VIRTUAL_ENV = os.environ.get(\"VIRTUAL_ENV\", \"\")\n\n        # Check for '/uv/' in VIRTUAL_ENV\n        if (os.path.sep + \"uv\" + os.path.sep) in VIRTUAL_ENV:\n            return \"uv\"\n\n        # Check for virtualenv/pip\n        if hasattr(sys, \"real_prefix\") or (\n            hasattr(sys, \"base_prefix\") and sys.base_prefix != sys.prefix\n        ):\n            return \"pip\"\n\n        # If no specific markers found, default to pip\n        return \"pip\"\n    except Exception:\n        # Fallback to pip\n        return \"pip\"\n\n\ndef infer_package_manager_from_pyproject(\n    pyproject_toml: Path,\n) -> PackageManagerKind | None:\n    \"\"\"Infer the package manager from a pyproject.toml file.\"\"\"\n    try:\n        data = toml_reader.read(pyproject_toml)\n\n        if \"tool\" not in data:\n            return None\n",
       "snippet_start_line": 6,
       "snippet_end_line": 81
@@ -56,7 +62,10 @@
       ],
       "label_cardinality": 8,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
       "snippet": "        \"\"\"Return the protocol of the storage backend.\"\"\"\n\n    @property\n    @abc.abstractmethod\n    def backend_type(self) -> BackendType:\n        \"\"\"Return the type of the storage backend.\"\"\"\n\n    @property\n    def display_name(self) -> str:\n        protocol = self.protocol\n        if protocol not in get_args(KNOWN_STORAGE_TYPES):\n            return protocol.capitalize()\n        known = cast(KNOWN_STORAGE_TYPES, protocol)\n        if known == \"s3\":\n            return \"Amazon S3\"\n        elif known == \"gcs\":\n            return \"Google Cloud Storage\"\n        elif known == \"azure\":\n            return \"Azure Blob Storage\"\n        elif known == \"cloudflare\":\n            return \"Cloudflare R2\"\n        elif known == \"http\":\n            return \"HTTP\"\n        elif known == \"file\":\n            return \"File\"\n        elif known == \"in-memory\":\n            return \"In-memory\"\n        elif known == \"coreweave\":\n            return \"Coreweave\"\n        else:\n            log_never(known)\n            return known\n\n    @property\n    @abc.abstractmethod\n    def root_path(self) -> str | None:\n        \"\"\"Return the root path of the storage backend. None if in-memory or cannot be found\"\"\"\n\n    @staticmethod\n    @abc.abstractmethod\n    def is_compatible(var: Any) -> bool:\n        \"\"\"Check if the backend is compatible with the given variable.\"\"\"",
       "snippet_start_line": 138,
       "snippet_end_line": 179
@@ -78,68 +87,13 @@
       ],
       "label_cardinality": 7,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
       "snippet": "        except BaseException:\n            # Sometimes, there will be a Rust panic when trying to get the config for invalid stores\n            LOGGER.exception(\n                \"Failed to read store config for %s\", type(store).__name__\n            )\n        return None\n\n    @property\n    def protocol(self) -> KNOWN_STORAGE_TYPES | str:\n        from obstore.store import (\n            AzureStore,\n            GCSStore,\n            HTTPStore,\n            LocalStore,\n            MemoryStore,\n            S3Store,\n        )\n\n        # Try the endpoint URL which can give a more accurate protocol\n        if not isinstance(self.store, (MemoryStore, HTTPStore, LocalStore)):\n            config = self._get_config(self.store)\n            if config is None:\n                return \"unknown\"\n\n            endpoint = config.get(\"endpoint\")\n            if isinstance(endpoint, str) and (\n                protocol := detect_protocol_from_url(endpoint)\n            ):\n                return protocol\n\n        if isinstance(self.store, MemoryStore):\n            return \"in-memory\"\n        elif isinstance(self.store, HTTPStore):\n            return \"http\"\n        elif isinstance(self.store, LocalStore):\n            return \"file\"\n        elif isinstance(self.store, S3Store):\n            return \"s3\"\n        elif isinstance(self.store, AzureStore):\n            return \"azure\"\n        elif isinstance(self.store, GCSStore):\n            return \"gcs\"\n        else:\n            log_never(self.store)\n            return \"unknown\"\n\n    @property\n    def backend_type(self) -> BackendType:\n        return \"obstore\"\n\n    @property\n    def root_path(self) -> str | None:\n        from obstore.store import HTTPStore, LocalStore, MemoryStore\n\n        if isinstance(self.store, MemoryStore):\n            return None\n        elif isinstance(self.store, HTTPStore):",
       "snippet_start_line": 152,
       "snippet_end_line": 208
-    },
-    {
-      "file_path": "marimo/_data/_external_storage/storage.py",
-      "function_name": "_identify_kind",
-      "line_start": 340,
-      "line_end": 348,
-      "pattern": "P1",
-      "labels": [
-        "file",
-        "directory"
-      ],
-      "label_cardinality": 2,
-      "regime": "narrow",
-      "fit_score": 5.0,
-      "snippet": "            try:\n                dircache.pop(key, None)\n            except Exception:\n                # Some custom mappings may not support pop semantics.\n                LOGGER.debug(\n                    \"Failed to clear fsspec cache key %s for listing\", key\n                )\n\n    def _identify_kind(self, entry_type: str) -> Literal[\"file\", \"directory\"]:\n        entry_type = entry_type.strip().lower()\n        if entry_type == \"file\":\n            return \"file\"\n        elif entry_type == \"directory\":\n            return \"directory\"\n        else:\n            LOGGER.debug(\"Unknown entry type: %s\", entry_type)\n            return \"file\"\n\n    async def get_entry(self, path: str) -> StorageEntry:\n        entry = await asyncio.to_thread(self.store.info, path)\n        if not isinstance(entry, dict):\n            raise ValueError(f\"Entry at {path} is not a dictionary\")\n        return self._create_storage_entry(entry)\n\n    def _create_storage_entry(self, file: dict[str, Any]) -> StorageEntry:\n        name, size = file.get(\"name\"), file.get(\"size\")\n        if name is None or size is None:\n            LOGGER.debug(\n                \"File is missing required fields: name=%s, size=%s\",",
-      "snippet_start_line": 332,
-      "snippet_end_line": 360
-    },
-    {
-      "file_path": "marimo/_data/get_datasets.py",
-      "function_name": "_db_type_to_data_type",
-      "line_start": 531,
-      "line_end": 578,
-      "pattern": "P1",
-      "labels": [
-        "unknown",
-        "integer",
-        "number",
-        "boolean",
-        "string",
-        "date",
-        "time",
-        "datetime"
-      ],
-      "label_cardinality": 8,
-      "regime": "narrow",
-      "fit_score": 5.0,
-      "snippet": "    \"row\",\n    \"geometry\",\n    # Null type (can occur when attaching databases or with unknown column types)\n    \"null\",\n    '\"null\"',\n}\n\n\ndef _db_type_to_data_type(db_type: str) -> DataType:\n    \"\"\"Convert a DuckDB type to a Marimo data type.\n    Reference: https://duckdb.org/docs/stable/sql/data_types/overview\n    Latest types: https://github.com/marimo-team/codemirror-sql/blob/caa7c664135988b634f55a3e57a1327a5ffeede2/src/dialects/duckdb/duckdb.ts\n    \"\"\"\n    db_type = db_type.lower()\n\n    # Check for exact matches first, then patterns\n\n    if db_type in _INTEGER_TYPES or db_type.startswith(\"uint\"):\n        return \"integer\"\n\n    if db_type in _NUMERIC_TYPES or db_type.startswith((\"decimal\", \"float\")):\n        return \"number\"\n\n    if db_type in _BOOLEAN_TYPES:\n        return \"boolean\"\n\n    if db_type in _STRING_TYPES:\n        return \"string\"\n\n    if db_type == \"date\":\n        return \"date\"\n    if db_type in _TIME_TYPES:\n        return \"time\"\n    if db_type in _DATETIME_TYPES or db_type.startswith(\"timestamp\"):\n        return \"datetime\"\n\n    # Binary types (represented as string)\n    if db_type in _BINARY_TYPES:\n        return \"string\"\n\n    # Enum types (represented as string)\n    if db_type == \"enum\" or db_type.startswith(\"enum\"):\n        return \"string\"\n\n    # Nested types\n    if db_type.startswith(\n        (\"union\", \"map\", \"struct\", \"list\", \"array\", \"json\")\n    ) or (\"[\" in db_type and \"]\" in db_type):\n        return \"unknown\"\n\n    # Other special types\n    if db_type in _UNKNOWN_TYPES:\n        return \"unknown\"\n\n    LOGGER.warning(\"Unknown DuckDB type: %s\", db_type)\n    return \"unknown\"\n\n\ndef _quote_identifier(identifier: str) -> str:\n    \"\"\"\n    Quote a DuckDB identifier with double quotes, escaping embedded double quotes.\n    This prevents errors when the identifier contains special characters which need to be escaped.\n    Eg. table.name -> \"table.name\"\n\n    https://duckdb.org/docs/stable/sql/dialect/keywords_and_identifiers\n    \"\"\"\n    from marimo._sql.sql_quoting import quote_sql_identifier\n",
-      "snippet_start_line": 523,
-      "snippet_end_line": 590
-    },
-    {
-      "file_path": "marimo/_messaging/msgspec_encoder.py",
-      "function_name": "enc_hook",
-      "line_start": 26,
-      "line_end": 266,
-      "pattern": "P1",
-      "labels": [
-        "Infinity",
-        "-Infinity",
-        "NaN"
-      ],
-      "label_cardinality": 3,
-      "regime": "narrow",
-      "fit_score": 5.0,
-      "snippet": "from marimo import _loggers\nfrom marimo._dependencies.dependencies import DependencyManager\nfrom marimo._plugins.core.media import io_to_data_url\nfrom marimo._utils.methods import getcallable\n\nLOGGER = _loggers.marimo_logger()\n\n\ndef enc_hook(obj: Any) -> Any:\n    \"\"\"Custom encoding hook for marimo types.\"\"\"\n\n    if serialize := getcallable(obj, \"_marimo_serialize_\"):\n        return serialize()\n\n    if mime := getcallable(obj, \"_mime_\"):\n        mimetype, data = mime()\n        return {\"mimetype\": mimetype, \"data\": data}\n\n    if isinstance(obj, range):\n        return list(obj)\n\n    if isinstance(\n        obj,\n        (complex, fractions.Fraction, decimal.Decimal, PurePath, uuid.UUID),\n    ):\n        return str(obj)\n\n    if DependencyManager.numpy.imported():\n        import numpy as np\n\n        if isinstance(\n            obj, (np.datetime64, np.timedelta64, np.complexfloating)\n        ):\n            return str(obj)\n        if isinstance(obj, np.integer):\n            return int(obj)\n        if isinstance(obj, np.floating):\n            return float(obj)\n        if isinstance(obj, np.bool_):\n            return bool(obj)\n        if isinstance(obj, (np.bytes_, np.str_)):\n            return str(obj)\n        if isinstance(obj, np.ndarray):\n            if any(\n                np.issubdtype(obj.dtype, dtype)\n                for dtype in (\n                    np.datetime64,\n                    np.timedelta64,\n                    np.complexfloating,\n                )\n            ):\n                return obj.astype(str).tolist()\n            return obj.tolist()\n        if isinstance(obj, np.dtype):\n            return str(obj)\n\n    if DependencyManager.pandas.imported():\n        import pandas as pd\n\n        if isinstance(obj, pd.DataFrame):\n            return obj.to_dict(\"records\")\n        if isinstance(obj, pd.Series):\n            return obj.to_list()\n        if isinstance(obj, pd.Categorical):\n            return obj.tolist()\n        if isinstance(\n            obj,\n            (\n                pd.CategoricalDtype,\n                pd.Timestamp,\n                pd.Timedelta,\n                pd.Interval,\n                pd.Period,\n            ),\n        ):\n            return str(obj)\n        if obj is pd.NaT:\n            return str(obj)\n        if isinstance(\n            obj,\n            (\n                pd.TimedeltaIndex,\n                pd.DatetimeIndex,\n                pd.IntervalIndex,\n                pd.PeriodIndex,\n            ),\n        ):\n            return obj.astype(str).tolist()\n        if isinstance(obj, pd.MultiIndex):\n            return obj.to_list()\n        if isinstance(obj, pd.Index):\n            return obj.to_list()\n\n        # Catch-all for other pandas objects\n        try:\n            if isinstance(obj, pd.core.base.PandasObject):  # type: ignore\n                import json\n\n                return json.loads(obj.to_json(date_format=\"iso\"))\n        except AttributeError:\n            pass\n\n    # Handle shapely geometry objects from geopandas\n    if DependencyManager.geopandas.imported():\n        try:\n            # Check if it's a shapely geometry object\n            # shapely.geometry.base.BaseGeometry is the base class\n            from shapely.geometry.base import BaseGeometry  # type: ignore\n\n            if isinstance(obj, BaseGeometry):\n                # Convert to WKT (Well-Known Text) string representation\n                return str(obj)\n        except (ImportError, AttributeError):\n            pass\n\n    if DependencyManager.polars.imported():\n        import polars as pl\n\n        if isinstance(obj, pl.DataFrame):\n            return obj.to_dict()\n        if isinstance(obj, pl.LazyFrame):\n            return obj.collect().to_dict()\n        if isinstance(obj, pl.Series):\n            return obj.to_list()\n\n        # Handle Polars data types\n        if hasattr(pl, \"datatypes\") and hasattr(obj, \"__class__\"):\n            # Check if it's a Polars data type\n            if hasattr(pl.datatypes, \"DataType\") and isinstance(\n                obj, pl.datatypes.DataType\n            ):\n                return str(obj)\n\n    # Handle Pillow images\n    if DependencyManager.pillow.imported():\n        try:\n            from PIL import Image\n\n            if isinstance(obj, Image.Image):\n                return io_to_data_url(obj, \"image/png\")\n        except Exception:\n            LOGGER.debug(\"Unable to convert image to data URL\", exc_info=True)\n\n    # Handle Matplotlib figures\n    if DependencyManager.matplotlib.imported():\n        try:\n            import matplotlib.figure\n            from matplotlib.axes import Axes\n\n            from marimo._output.formatting import as_html\n            from marimo._plugins.stateless.flex import vstack\n\n            if isinstance(obj, matplotlib.figure.Figure):\n                html = as_html(vstack([str(obj), obj]))\n                mimetype, data = html._mime_()\n                return {\"mimetype\": mimetype, \"data\": data}\n\n            if isinstance(obj, Axes):\n                html = as_html(vstack([str(obj), obj]))\n                mimetype, data = html._mime_()\n                return {\"mimetype\": mimetype, \"data\": data}\n        except Exception:\n            LOGGER.debug(\n                \"Error converting matplotlib figures to HTML\",\n                exc_info=True,\n            )\n\n    # Handle objects with __slots__\n    # Check on type(obj) to avoid triggering __getattr__ on objects that\n    # implement it\n    slots = getattr(type(obj), \"__slots__\", None)\n    if slots is not None:\n        try:\n            slots = iter(slots)\n        except TypeError:\n            pass  # Fall through to __dict__ handling\n        else:\n            # Convert to dict using msgspec.to_builtins for proper handling\n            result = {}\n            for slot in slots:\n                if hasattr(obj, slot):\n                    attr_value = getattr(obj, slot)\n                    # Use msgspec.to_builtins which properly handles nested structures\n                    result[slot] = msgspec.to_builtins(\n                        attr_value, enc_hook=enc_hook\n                    )\n            return result\n\n    # Handle custom objects with `__dict__`\n    if hasattr(obj, \"__dict__\"):\n        # Convert the __dict__ using msgspec.to_builtins for proper handling\n        return msgspec.to_builtins(obj.__dict__, enc_hook=enc_hook)\n\n    # Handle collections types\n    if isinstance(obj, (list, tuple, set, frozenset)):\n        return [enc_hook(item) for item in obj]\n\n    if isinstance(obj, collections.deque):\n        return [enc_hook(item) for item in obj]\n\n    # Handle dict and dict-like types\n    if isinstance(\n        obj,\n        (\n            dict,\n            collections.defaultdict,\n            collections.OrderedDict,\n            collections.Counter,\n        ),\n    ):\n        return {enc_hook(k): enc_hook(v) for k, v in obj.items()}\n\n    # Handle float('inf'), float('nan'), float('-inf')\n    if isinstance(obj, float):\n        if obj == float(\"inf\"):\n            return \"Infinity\"\n        if obj == float(\"-inf\"):\n            return \"-Infinity\"\n        if isnan(obj):\n            return \"NaN\"\n        return obj\n\n    # Handle bytes objects\n    if isinstance(obj, memoryview):\n        obj = obj.tobytes()\n\n    if isinstance(obj, bytes):\n        try:\n            return obj.decode(\"utf-8\")\n        except UnicodeDecodeError:\n            # Fallback to latin1\n            return obj.decode(\"latin1\")\n\n    # Handle primitive types\n    if isinstance(obj, (int, str, bool)):\n        return obj\n\n    # Handle datetime types\n    if isinstance(\n        obj,\n        (datetime.datetime, datetime.timedelta, datetime.date, datetime.time),\n    ):\n        return str(obj)\n\n    # Handle None\n    if obj is None:\n        return None\n\n    return repr(obj)\n\n\n_encoder = msgspec.json.Encoder(enc_hook=enc_hook, decimal_format=\"number\")\n\n\ndef encode_json_bytes(obj: Any) -> bytes:\n    \"\"\"\n    Encode an object as JSON and return the result as bytes.\n    \"\"\"\n    return _encoder.encode(obj)\n\n",
-      "snippet_start_line": 18,
-      "snippet_end_line": 278
     },
     {
       "file_path": "marimo/_output/formatters/structures.py",
@@ -153,7 +107,10 @@
       ],
       "label_cardinality": 2,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
       "snippet": ") -> bool:\n    return formatter is formatting.get_formatter(())\n\n\n_KEY_STR_PREFIX = \"text/plain+\"\n_KEY_STR_ESCAPE = \"text/plain+str:\"\n\n\ndef _key_formatter(k: object) -> object:\n    \"\"\"Encode a dict key so it survives a JSON round-trip without colliding.\n\n    JSON object keys are always strings, so a Python dict key that is a\n    non-string primitive (e.g. `2`, `True`) stringifies to something that\n    can collide with an equal-looking `str` key (`\"2\"`, `\"true\"`) \u2014 and\n    `JSON.parse` on the frontend silently drops duplicates.\n\n    Non-string keys are encoded with a mimetype prefix so the frontend\n    renderer can restore the original type. String keys that happen to\n    start with our prefix are escaped so they round-trip unchanged.\n    \"\"\"\n    # bool is an int subclass in Python; check it first.\n    if isinstance(k, bool):\n        return f\"text/plain+bool:{k}\"\n    if isinstance(k, str):\n        if k.startswith(_KEY_STR_PREFIX):\n            return f\"{_KEY_STR_ESCAPE}{k}\"\n        return k\n    if k is None:\n        return \"text/plain+none:\"\n    if isinstance(k, int):\n        # No bigint/int split for keys: the numeric payload lives inside\n        # a string, so there's no JS `Number` precision concern.\n        return f\"text/plain+int:{k}\"\n    if isinstance(k, float):\n        # Cover the JSON-spec-violating NaN/Inf cases; json.dumps would\n        # emit bare `NaN`/`Infinity` which `JSON.parse` rejects.\n        import math\n\n        if math.isnan(k):\n            return \"text/plain+float:nan\"\n        if math.isinf(k):\n            return \"text/plain+float:inf\" if k > 0 else \"text/plain+float:-inf\"\n        return f\"text/plain+float:{k}\"\n    if isinstance(k, tuple):\n        try:\n            return f\"text/plain+tuple:{json.dumps(list(k))}\"\n        except TypeError:\n            return _escape_fallback(str(k))\n    if isinstance(k, frozenset):\n        try:\n            return f\"text/plain+frozenset:{json.dumps(list(k))}\"\n        except TypeError:\n            return _escape_fallback(str(k))\n    return _escape_fallback(str(k))\n\n\ndef _escape_fallback(s: str) -> str:\n    \"\"\"Prevent a stringified fallback key from decoding as a typed key.\n\n    The fallback path runs `str(k)` on unusual key types (non-JSON-safe\n    tuple contents, custom hashables, etc.). If that happens to produce\n    a string starting with `text/plain+`, the frontend would decode it\n    as a typed key. Apply the same escape we use for literal string keys.\n    \"\"\"\n    if s.startswith(_KEY_STR_PREFIX):\n        return f\"{_KEY_STR_ESCAPE}{s}\"",
       "snippet_start_line": 24,
       "snippet_end_line": 89
@@ -170,7 +127,10 @@
       ],
       "label_cardinality": 2,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
       "snippet": "        )\n\n        rename_code = f'{df_name} = {df_name}.rename(**{{f\"{{col}}_{agg_func}\": col for col in {df_name}.columns if col not in {_list_of_strings(index_column_ids)}}})'\n        return f\"{pivot_code}\\n{rename_code}\"\n\n    assert_never(transform.type)\n\n\ndef _as_literal(value: Any) -> str:\n    if isinstance(value, str):\n        # escape backslashes\n        value = value.replace(\"\\\\\", \"\\\\\\\\\")\n        # convert newlines to spaces\n        value = value.replace(\"\\n\", \" \")\n        # convert \\r to spaces\n        value = value.replace(\"\\r\", \" \")\n        # escape double quotes\n        value = value.replace('\"', '\\\\\"')\n        # remove null bytes\n        value = value.replace(\"\\x00\", \"\")\n        return f'\"{value}\"'\n    if value == \"inf\":\n        return \"float('inf')\"\n    if value == \"-inf\":\n        return \"float('-inf')\"\n    return f\"{value}\"\n\n\ndef _list_of_strings(value: list[Any] | Any) -> str:\n    if isinstance(value, list):\n        return f\"[{', '.join(_as_literal(v) for v in value)}]\"\n    return _as_literal(value)\n\n\ndef _args_list(*args: str) -> str:\n    return \", \".join(arg for arg in args if arg)",
       "snippet_start_line": 721,
       "snippet_end_line": 756
@@ -189,7 +149,10 @@
       ],
       "label_cardinality": 4,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
       "snippet": "    except ContextNotInitializedError:\n        return False\n    else:\n        from marimo._runtime.context.kernel_context import KernelRuntimeContext\n\n        return isinstance(ctx, KernelRuntimeContext)\n\n\ndef get_mode() -> RunMode | None:\n    \"\"\"Returns the current mode of the marimo app.\n\n    Returns:\n        Optional[Literal[\"run\", \"edit\", \"script\", \"test\"]]: The current mode,\n        or None if marimo has no context initialized.\n    \"\"\"\n    try:\n        from marimo._runtime.context.kernel_context import KernelRuntimeContext\n        from marimo._runtime.context.script_context import ScriptRuntimeContext\n\n        context = get_context()\n        if isinstance(context, KernelRuntimeContext):\n            if context.session_mode == SessionMode.RUN:\n                return \"run\"\n            elif context.session_mode == SessionMode.EDIT:\n                return \"edit\"\n            else:\n                assert_never(context.session_mode)\n\n        if isinstance(context, ScriptRuntimeContext):\n            return \"script\"\n    except ContextNotInitializedError:\n        pass\n\n    # This is a fallback, it's possible to be in pytest mode and have a context,\n    # as in native marimo tests.\n    if \"PYTEST_CURRENT_TEST\" in os.environ:\n        return \"test\"\n\n    return None",
       "snippet_start_line": 21,
       "snippet_end_line": 59
@@ -207,27 +170,13 @@
       ],
       "label_cardinality": 3,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
       "snippet": "                    syntax_error[0].find(\"line\") :\n                ]\n\n                lineno = getattr(e, \"lineno\", None)\n                if isinstance(e, ImportStarError):\n                    error = MarimoImportStarError(msg=str(e), lineno=lineno)\n                else:\n\n                    def _get_syntax_hints(broken_line: str) -> str:\n                        if broken_line.startswith(\"!\"):\n                            if \"pip\" in broken_line:\n                                return \"\\nTo install packages, use the package manager panel.\"\n                            return \"\\nTo run shell commands, use os.subprocess(...)\"\n                        elif broken_line.startswith(\"%\"):\n                            return (\n                                \"\\nIPython magic commands (starting with %) are not supported.\"\n                                \"\\nSee: https://links.marimo.app/from-jupyter-magics\"\n                            )\n                        return \"\"\n\n                    hint = \"\"\n                    if len(syntax_error) > 1:\n                        hint = _get_syntax_hints(syntax_error[1].strip())\n                    error = MarimoSyntaxError(\n                        msg=\"\\n\".join(syntax_error) + hint, lineno=lineno\n                    )\n            else:\n                tmpio = io.StringIO()\n                traceback.print_exc(file=tmpio)\n                tmpio.seek(0)\n                error = UnknownError(msg=tmpio.read())",
       "snippet_start_line": 885,
       "snippet_end_line": 915
-    },
-    {
-      "file_path": "marimo/_server/export/exporter.py",
-      "function_name": "_slide_type_for_cell",
-      "line_start": 558,
-      "line_end": 567,
-      "pattern": "P1",
-      "labels": [
-        "skip",
-        "slide"
-      ],
-      "label_cardinality": 2,
-      "regime": "narrow",
-      "fit_score": 5.0,
-      "snippet": "    @staticmethod\n    def _to_file_uri(path: str) -> str:\n        import os\n        from urllib.request import pathname2url\n\n        return f\"file://{pathname2url(os.path.abspath(path))}\"\n\n    @staticmethod\n    def _slide_type_for_cell(cell: Any, include_inputs: bool) -> str:\n        if include_inputs:\n            return \"slide\"\n        cell_type = str(cell.get(\"cell_type\", \"\"))\n        if cell_type != \"code\":\n            return \"slide\"\n        outputs = cell.get(\"outputs\", [])\n        if isinstance(outputs, list) and outputs:\n            return \"slide\"\n        return \"skip\"\n\n    @staticmethod\n    async def _export_slides_as_pdf(\n        notebook: Any,\n        include_inputs: bool,\n    ) -> bytes | None:\n        \"\"\"Render slides notebook to PDF using Playwright async API.\"\"\"\n        import os\n        import tempfile\n\n        from nbconvert import SlidesExporter\n",
-      "snippet_start_line": 550,
-      "snippet_end_line": 579
     },
     {
       "file_path": "marimo/_server/lsp.py",
@@ -242,7 +191,10 @@
       ],
       "label_cardinality": 3,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
       "snippet": "    async def restart_server(self) -> AlertNotification | None:\n        \"\"\"Stop and restart this LSP server.\"\"\"\n        self._startup_failed = False\n        self._started_at = None\n        self.stop()\n        await asyncio.sleep(0.5)  # Brief delay for cleanup\n        return await self.start()\n\n    def _get_status(self) -> LspServerStatus:\n        \"\"\"Determine the current status of the server.\"\"\"\n        if self.has_failed():\n            return \"crashed\"\n        if not self.is_running():\n            return \"stopped\"\n        # Process is running - will need to check responsiveness externally\n        return \"running\"\n\n    async def get_health(self) -> LspHealthResponse:\n        \"\"\"Get health status of this single LSP server.\"\"\"\n        is_running = self.is_running()\n\n        # Determine server status\n        server_status: LspServerStatus\n        last_ping_ms: float | None = None\n\n        if self.has_failed():\n            server_status = \"crashed\"\n        elif not is_running:",
       "snippet_start_line": 267,
       "snippet_end_line": 294
@@ -259,7 +211,10 @@
       ],
       "label_cardinality": 2,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
       "snippet": "        # pylsp is not required, so we don't want to alert or fail if it is not installed\n        if not DependencyManager.pylsp.has():\n            LOGGER.info(\n                \"pylsp is not installed. Skipping LSP server. Install with: pip install python-lsp-server\"\n            )\n            return None\n        return await super().start()\n\n    def validate_requirements(self) -> str | Literal[True]:\n        if not DependencyManager.pylsp.has():\n            return \"pylsp is missing. Install it with `pip install python-lsp-server`.\"\n\n        # Try actually running pylsp to validate it works\n        import sys\n\n        try:\n            result = subprocess.run(\n                [sys.executable, \"-m\", \"pylsp\", \"--version\"],\n                capture_output=True,\n                text=True,\n                timeout=5,\n            )\n            if result.returncode != 0:\n                error_msg = result.stderr or result.stdout or \"Unknown error\"\n                return f\"pylsp is installed but failed to run: {error_msg}. Check for dependency conflicts (e.g., jedi version compatibility).\"\n            return True\n        except subprocess.TimeoutExpired:\n            return \"pylsp command timed out. The server may be unresponsive.\"\n        except Exception as e:\n            return f\"Failed to validate pylsp: {e}\"\n\n    def get_command(self) -> list[str]:\n        import sys\n\n        return [\n            sys.executable,\n            \"-m\",\n            \"pylsp\",\n            \"--ws\",\n            \"-v\",\n            \"--port\",\n            str(self.port),",
       "snippet_start_line": 583,
       "snippet_end_line": 624
@@ -276,7 +231,10 @@
       ],
       "label_cardinality": 2,
       "regime": "narrow",
-      "fit_score": 5.0,
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
       "snippet": "\n    async def start(self) -> AlertNotification | None:\n        # basedpyright is not required, so we don't want to alert or fail if it is not installed\n        if not DependencyManager.basedpyright.has():\n            LOGGER.debug(\"basedpyright is not installed. Skipping LSP server.\")\n            return None\n        return await super().start()\n\n    def validate_requirements(self) -> str | Literal[True]:\n        if not DependencyManager.basedpyright.has():\n            return \"basedpyright is missing. Install it with `pip install basedpyright`.\"\n\n        if not DependencyManager.which(\"node\"):\n            return \"node.js binary is missing. Install node at https://nodejs.org/.\"\n\n        return True\n\n    def get_command(self) -> list[str]:\n        lsp_bin = marimo_package_path() / \"_lsp\" / \"index.cjs\"\n\n        return [\n            \"node\",\n            str(lsp_bin),\n            \"--port\",\n            str(self.port),\n            \"--lsp\",\n            \"basedpyright:basedpyright-langserver\",\n            \"--log-file\",",
       "snippet_start_line": 644,
       "snippet_end_line": 671
@@ -293,7 +251,13 @@
       ],
       "label_cardinality": 2,
       "regime": "narrow",
-      "fit_score": 5.0
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "\n    async def start(self) -> AlertNotification | None:\n        # ty is not required, so we don't want to alert or fail if it is not installed\n        if not DependencyManager.ty.has():\n            LOGGER.debug(\"ty is not installed. Skipping LSP server.\")\n            return None\n        return await super().start()\n\n    def validate_requirements(self) -> str | Literal[True]:\n        if not DependencyManager.ty.has():\n            return \"ty is missing. Install it with `pip install ty`.\"\n\n        if not DependencyManager.which(\"node\"):\n            return \"node.js binary is missing. Install node at https://nodejs.org/.\"\n\n        return True\n\n    def get_command(self) -> list[str]:\n        from ty.__main__ import find_ty_bin  # type: ignore\n\n        lsp_bin = marimo_package_path() / \"_lsp\" / \"index.cjs\"\n\n        # Use typed format to avoid quoting issues: ty:<binary_path>\n        ty_command = f\"ty:{find_ty_bin()}\"\n\n        return [\n            \"node\",\n            str(lsp_bin),",
+      "snippet_start_line": 689,
+      "snippet_end_line": 716
     },
     {
       "file_path": "marimo/_server/lsp.py",
@@ -307,7 +271,13 @@
       ],
       "label_cardinality": 2,
       "regime": "narrow",
-      "fit_score": 5.0
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "\n    async def start(self) -> AlertNotification | None:\n        # Pyrefly is not required, so we don't want to alert or fail if it is not installed\n        if not DependencyManager.pyrefly.has():\n            LOGGER.debug(\"Pyrefly is not installed. Skipping LSP server.\")\n            return None\n        return await super().start()\n\n    def validate_requirements(self) -> str | Literal[True]:\n        if not DependencyManager.pyrefly.has():\n            return \"Pyrefly is missing. Install it with `pip install pyrefly`.\"\n        if not DependencyManager.which(\"node\"):\n            return \"node.js binary is missing. Install node at https://nodejs.org/.\"\n        return True\n\n    def get_command(self) -> list[str]:\n        from pyrefly.__main__ import get_pyrefly_bin  # type: ignore\n\n        lsp_bin = marimo_package_path() / \"_lsp\" / \"index.cjs\"\n        pyrefly_command = f\"pyrefly:{get_pyrefly_bin()}\"\n        return [\n            \"node\",\n            str(lsp_bin),\n            \"--port\",\n            str(self.port),\n            \"--lsp\",",
+      "snippet_start_line": 739,
+      "snippet_end_line": 764
     },
     {
       "file_path": "marimo/_smoke_tests/forms.py",
@@ -322,7 +292,13 @@
       ],
       "label_cardinality": 3,
       "regime": "narrow",
-      "fit_score": 5.0
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "\n\n@app.cell\ndef _(mo):\n    years_experience = mo.ui.slider(1, 10, value=3)\n    fn = mo.ui.text()\n    ln = mo.ui.text()\n\n    def validate(value):\n        if \"first_name\" not in value or len(value[\"first_name\"]) == 0:\n            return \"Missing first name\"\n        if \"last_name\" not in value or len(value[\"last_name\"]) == 0:\n            return \"Missing last name\"\n        if value[\"years_experience\"] < 4:\n            return \"Must have at least 4 years experience\"\n\n    form_2 = (\n        mo.md(\n            \"\"\"\n        First name: {first_name}\n\n        Last name: {last_name}\n\n        Years Experience: {years_experience}\n        \"\"\"\n        )\n        .batch(",
+      "snippet_start_line": 70,
+      "snippet_end_line": 96
     },
     {
       "file_path": "marimo/_sql/engines/adbc.py",
@@ -336,26 +312,13 @@
       ],
       "label_cardinality": 2,
       "regime": "narrow",
-      "fit_score": 5.0
-    },
-    {
-      "file_path": "marimo/_sql/engines/adbc.py",
-      "function_name": "_schema_field_to_data_type",
-      "line_start": 109,
-      "line_end": 124,
-      "pattern": "P1",
-      "labels": [
-        "string",
-        "boolean",
-        "integer",
-        "number",
-        "datetime",
-        "date",
-        "time"
-      ],
-      "label_cardinality": 7,
-      "regime": "narrow",
-      "fit_score": 5.0
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "\n    def adbc_get_table_schema(\n        self, table_name: str, *, db_schema_filter: str | None = None\n    ) -> pa.Schema: ...\n\n    def adbc_get_info(self) -> dict[str | int, Any]: ...\n\n\ndef _resolve_table_type(table_type: str) -> DataTableType:\n    if \"view\" in table_type.lower():\n        return \"view\"\n    return \"table\"\n\n\ndef _adbc_info_to_dialect(*, info: dict[str | int, Any]) -> str:\n    \"\"\"Infer marimo's dialect identifier from ADBC metadata.\n\n    Notes:\n    ADBC DB-API wrappers expose driver/database metadata via ``adbc_get_info()``,\n    including a ``vendor_name`` and ``driver_name`` (see ADBC quickstart:\n    https://arrow.apache.org/adbc/current/python/quickstart.html).\n\n    In marimo, ``engine.dialect`` is used primarily for editor/formatter dialect\n    selection and for display in the UI.",
+      "snippet_start_line": 74,
+      "snippet_end_line": 97
     },
     {
       "file_path": "marimo/_sql/engines/ibis.py",
@@ -375,7 +338,538 @@
       ],
       "label_cardinality": 8,
       "regime": "narrow",
-      "fit_score": 5.0
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "marimo/_utils/strings.py",
+      "function_name": "_quote_for_cmd",
+      "line_start": 25,
+      "line_end": 53,
+      "pattern": "P5",
+      "labels": [
+        "\\^\""
+      ],
+      "label_cardinality": 1,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 2.1,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "marimo/_utils/strings.py",
+      "function_name": "f",
+      "line_start": 37,
+      "line_end": 51,
+      "pattern": "P5",
+      "labels": [
+        "\\^\""
+      ],
+      "label_cardinality": 1,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 2.1,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "marimo/_utils/strings.py",
+      "function_name": "_mslex_quote",
+      "line_start": 56,
+      "line_end": 84,
+      "pattern": "P5",
+      "labels": [
+        "\"\""
+      ],
+      "label_cardinality": 1,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 2.1,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "examples/ai/chat/bedrock_example.py",
+      "function_name": "create_chat",
+      "line_start": 172,
+      "line_end": 219,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "examples/ai/chat/custom.py",
+      "function_name": "_",
+      "line_start": 34,
+      "line_end": 51,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "examples/ai/chat/custom.py",
+      "function_name": "_",
+      "line_start": 70,
+      "line_end": 84,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "examples/ai/chat/pydantic-ai-chat.py",
+      "function_name": "_",
+      "line_start": 179,
+      "line_end": 192,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "examples/ai/chat/pydantic-ai-chat.py",
+      "function_name": "_",
+      "line_start": 210,
+      "line_end": 277,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "examples/ai/chat/recipe_bot.py",
+      "function_name": "_",
+      "line_start": 16,
+      "line_end": 30,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "examples/misc/pokemon_stats.py",
+      "function_name": "_",
+      "line_start": 244,
+      "line_end": 266,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "examples/ui/chat.py",
+      "function_name": "_",
+      "line_start": 15,
+      "line_end": 25,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "frontend/public/files/wasm-intro.py",
+      "function_name": "__",
+      "line_start": 397,
+      "line_end": 489,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "marimo/_ai/llm/_impl.py",
+      "function_name": "__call__",
+      "line_start": 139,
+      "line_end": 207,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "marimo/_ai/llm/_impl.py",
+      "function_name": "__call__",
+      "line_start": 279,
+      "line_end": 318,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "marimo/_ai/llm/_impl.py",
+      "function_name": "__call__",
+      "line_start": 507,
+      "line_end": 538,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "marimo/_plugins/stateless/inspect.py",
+      "function_name": "__init__",
+      "line_start": 38,
+      "line_end": 220,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "marimo/_plugins/ui/_impl/chat/chat.py",
+      "function_name": "_send_prompt",
+      "line_start": 367,
+      "line_end": 403,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "marimo/_smoke_tests/ai/openai_responses.py",
+      "function_name": "_",
+      "line_start": 48,
+      "line_end": 63,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "marimo/_smoke_tests/ai/openai_responses.py",
+      "function_name": "_",
+      "line_start": 73,
+      "line_end": 83,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "marimo/_smoke_tests/chat/chatbot.py",
+      "function_name": "_",
+      "line_start": 37,
+      "line_end": 50,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "marimo/_smoke_tests/chat/chatbot.py",
+      "function_name": "_",
+      "line_start": 60,
+      "line_end": 70,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "marimo/_smoke_tests/chat/chatbot.py",
+      "function_name": "_",
+      "line_start": 80,
+      "line_end": 90,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "marimo/_smoke_tests/chat/chatbot.py",
+      "function_name": "_",
+      "line_start": 244,
+      "line_end": 247,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "marimo/_smoke_tests/code_editor.py",
+      "function_name": "_",
+      "line_start": 51,
+      "line_end": 64,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "marimo/_sql/engines/sqlalchemy.py",
+      "function_name": "get_default_database",
+      "line_start": 233,
+      "line_end": 285,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "marimo/_tutorials/dataflow.py",
+      "function_name": "_",
+      "line_start": 502,
+      "line_end": 600,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "marimo/_tutorials/intro.py",
+      "function_name": "_",
+      "line_start": 354,
+      "line_end": 461,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "marimo/_data/_external_storage/storage.py",
+      "function_name": "_identify_kind",
+      "line_start": 340,
+      "line_end": 348,
+      "pattern": "P1",
+      "labels": [
+        "file",
+        "directory"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 341,
+          "reason": "Line 341 binds 'entry_type' from entry_type.strip().lower(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If entry_type.strip().lower supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "marimo/_data/get_datasets.py",
+      "function_name": "_db_type_to_data_type",
+      "line_start": 531,
+      "line_end": 578,
+      "pattern": "P1",
+      "labels": [
+        "unknown",
+        "integer",
+        "number",
+        "boolean",
+        "string",
+        "date",
+        "time",
+        "datetime"
+      ],
+      "label_cardinality": 8,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 536,
+          "reason": "Line 536 binds 'db_type' from db_type.lower(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If db_type.lower supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "marimo/_messaging/msgspec_encoder.py",
+      "function_name": "enc_hook",
+      "line_start": 26,
+      "line_end": 266,
+      "pattern": "P1",
+      "labels": [
+        "Infinity",
+        "-Infinity",
+        "NaN"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 188,
+          "reason": "getattr(...) at line 188 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 199,
+          "reason": "getattr(...) at line 199 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "marimo/_server/export/exporter.py",
+      "function_name": "_slide_type_for_cell",
+      "line_start": 558,
+      "line_end": 567,
+      "pattern": "P1",
+      "labels": [
+        "skip",
+        "slide"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 564,
+          "reason": "Line 564 binds 'outputs' from cell.get(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If cell.get supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "marimo/_sql/engines/adbc.py",
+      "function_name": "_schema_field_to_data_type",
+      "line_start": 109,
+      "line_end": 124,
+      "pattern": "P1",
+      "labels": [
+        "string",
+        "boolean",
+        "integer",
+        "number",
+        "datetime",
+        "date",
+        "time"
+      ],
+      "label_cardinality": 7,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 111,
+          "reason": "Line 111 binds 't' from external_type.lower(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If external_type.lower supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
     },
     {
       "file_path": "marimo/_sql/engines/redshift.py",
@@ -389,7 +883,18 @@
       ],
       "label_cardinality": 2,
       "regime": "narrow",
-      "fit_score": 5.0
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 409,
+          "reason": "Line 409 binds 'data_type' from data_type.lower(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If data_type.lower supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
     },
     {
       "file_path": "marimo/_sql/utils.py",
@@ -408,57 +913,18 @@
       ],
       "label_cardinality": 7,
       "regime": "narrow",
-      "fit_score": 5.0
-    },
-    {
-      "file_path": "marimo/_utils/strings.py",
-      "function_name": "_quote_for_cmd",
-      "line_start": 25,
-      "line_end": 53,
-      "pattern": "P5",
-      "labels": [
-        "\\^\""
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 214,
+          "reason": "Line 214 binds 'type_str' from type_str.lower(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If type_str.lower supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
       ],
-      "label_cardinality": 1,
-      "regime": "narrow",
-      "fit_score": 3.0
-    },
-    {
-      "file_path": "marimo/_utils/strings.py",
-      "function_name": "_mslex_quote",
-      "line_start": 56,
-      "line_end": 84,
-      "pattern": "P5",
-      "labels": [
-        "\"\""
-      ],
-      "label_cardinality": 1,
-      "regime": "narrow",
-      "fit_score": 3.0
-    },
-    {
-      "file_path": "marimo/_utils/strings.py",
-      "function_name": "f",
-      "line_start": 37,
-      "line_end": 51,
-      "pattern": "P5",
-      "labels": [
-        "\\^\""
-      ],
-      "label_cardinality": 1,
-      "regime": "narrow",
-      "fit_score": 3.0
-    },
-    {
-      "file_path": "docs/hooks.py",
-      "function_name": "_extract_description",
-      "line_start": 35,
-      "line_end": 131,
-      "pattern": "P5",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0
+      "lift_status": "refused"
     },
     {
       "file_path": "examples/ai/chat/anthropic_example.py",
@@ -469,7 +935,18 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 54,
+          "reason": "Function '_' takes 2 args but 2 have no type annotation: key, mo. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def _(key: str, mo: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
     },
     {
       "file_path": "examples/ai/chat/bedrock_example.py",
@@ -480,40 +957,18 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
-    },
-    {
-      "file_path": "examples/ai/chat/bedrock_example.py",
-      "function_name": "create_chat",
-      "line_start": 172,
-      "line_end": 219,
-      "pattern": "P6",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0
-    },
-    {
-      "file_path": "examples/ai/chat/custom.py",
-      "function_name": "_",
-      "line_start": 34,
-      "line_end": 51,
-      "pattern": "P6",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0
-    },
-    {
-      "file_path": "examples/ai/chat/custom.py",
-      "function_name": "_",
-      "line_start": 70,
-      "line_end": 84,
-      "pattern": "P6",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 170,
+          "reason": "Function '_' takes 4 args but 4 have no type annotation: config_form, max_tokens, mo, temperature. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def _(config_form: str, max_tokens: str, mo: str, temperature: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
     },
     {
       "file_path": "examples/ai/chat/dagger_code_interpreter.py",
@@ -524,7 +979,18 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 220,
+          "reason": "Function '_' takes 2 args but 2 have no type annotation: mo, my_model. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def _(mo: str, my_model: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
     },
     {
       "file_path": "examples/ai/chat/deepseek_example.py",
@@ -535,7 +1001,18 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 70,
+          "reason": "Function '_' takes 2 args but 2 have no type annotation: key, mo. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def _(key: str, mo: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
     },
     {
       "file_path": "examples/ai/chat/gemini.py",
@@ -546,7 +1023,18 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 54,
+          "reason": "Function '_' takes 2 args but 2 have no type annotation: key, mo. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def _(key: str, mo: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
     },
     {
       "file_path": "examples/ai/chat/generative_ui.py",
@@ -557,7 +1045,18 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 71,
+          "reason": "Function '_' takes 5 args but 5 have no type annotation: chart_data, df, ell, filter_dataset, mo. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def _(chart_data: str, df: str, ell: str, filter_dataset: str, mo: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
     },
     {
       "file_path": "examples/ai/chat/groq_example.py",
@@ -568,7 +1067,18 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 71,
+          "reason": "Function '_' takes 2 args but 2 have no type annotation: key, mo. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def _(key: str, mo: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
     },
     {
       "file_path": "examples/ai/chat/llm_datasette.py",
@@ -579,7 +1089,18 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 40,
+          "reason": "Function '_' takes 2 args but 2 have no type annotation: llm, mo. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def _(llm: str, mo: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
     },
     {
       "file_path": "examples/ai/chat/mlx_chat.py",
@@ -590,7 +1111,18 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 146,
+          "reason": "Function '_' takes 7 args but 7 have no type annotation: generate, max_tokens, mo, model, system_message, temp_slider, tokenizer. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def _(generate: str, max_tokens: str, mo: str, model: str, system_message: str, temp_slider: str, tokenizer: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
     },
     {
       "file_path": "examples/ai/chat/openai_example.py",
@@ -601,40 +1133,18 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
-    },
-    {
-      "file_path": "examples/ai/chat/pydantic-ai-chat.py",
-      "function_name": "_",
-      "line_start": 179,
-      "line_end": 192,
-      "pattern": "P6",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0
-    },
-    {
-      "file_path": "examples/ai/chat/pydantic-ai-chat.py",
-      "function_name": "_",
-      "line_start": 210,
-      "line_end": 277,
-      "pattern": "P6",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0
-    },
-    {
-      "file_path": "examples/ai/chat/recipe_bot.py",
-      "function_name": "_",
-      "line_start": 16,
-      "line_end": 30,
-      "pattern": "P6",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 54,
+          "reason": "Function '_' takes 2 args but 2 have no type annotation: mo, openai_key. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def _(mo: str, openai_key: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
     },
     {
       "file_path": "examples/ai/chat/simplemind_example.py",
@@ -645,7 +1155,18 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 53,
+          "reason": "Function '_' takes 2 args but 2 have no type annotation: set_logs, sm. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def _(set_logs: str, sm: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
     },
     {
       "file_path": "examples/ai/chat/simplemind_example.py",
@@ -656,7 +1177,18 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 82,
+          "reason": "Function '_' takes 3 args but 3 have no type annotation: LoggingPlugin, mo, sm. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def _(LoggingPlugin: str, mo: str, sm: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
     },
     {
       "file_path": "examples/ai/chat/streaming_custom.py",
@@ -667,7 +1199,18 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 35,
+          "reason": "Function '_' takes 2 args but 2 have no type annotation: asyncio, mo. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def _(asyncio: str, mo: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
     },
     {
       "file_path": "examples/ai/tools/chat_with_tools.py",
@@ -678,7 +1221,18 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 279,
+          "reason": "Function '_' takes 2 args but 2 have no type annotation: mo, model. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def _(mo: str, model: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
     },
     {
       "file_path": "examples/ai/tools/code_interpreter.py",
@@ -689,18 +1243,18 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
-    },
-    {
-      "file_path": "examples/misc/pokemon_stats.py",
-      "function_name": "_",
-      "line_start": 244,
-      "line_end": 266,
-      "pattern": "P3",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 186,
+          "reason": "Function '_' takes 2 args but 2 have no type annotation: mo, my_model. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def _(mo: str, my_model: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
     },
     {
       "file_path": "examples/third_party/aframe/aframe_example.py",
@@ -711,7 +1265,18 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 51,
+          "reason": "Function '_' takes 2 args but 2 have no type annotation: a, mo. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def _(a: str, mo: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
     },
     {
       "file_path": "examples/third_party/huggingface/chatbot.py",
@@ -722,7 +1287,18 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 50,
+          "reason": "Function '_' takes 2 args but 2 have no type annotation: mo, respond. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def _(mo: str, respond: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
     },
     {
       "file_path": "examples/third_party/sage/chat_with_github_repo.py",
@@ -733,7 +1309,18 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 228,
+          "reason": "Function '_' takes 2 args but 2 have no type annotation: mo, predict. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def _(mo: str, predict: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
     },
     {
       "file_path": "examples/third_party/unsloth/llama_3_1_8b_2x_faster_finetuning.py",
@@ -744,18 +1331,18 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
-    },
-    {
-      "file_path": "examples/ui/chat.py",
-      "function_name": "_",
-      "line_start": 15,
-      "line_end": 25,
-      "pattern": "P6",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 334,
+          "reason": "Function '_' takes 6 args but 6 have no type annotation: FastLanguageModel, alpaca_prompt, inf_instr_inp, mo, model, tokenizer. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def _(FastLanguageModel: str, alpaca_prompt: str, inf_instr_inp: str, mo: str, model: str, tokenizer: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
     },
     {
       "file_path": "frontend/e2e-tests/py/kitchen_sink.py",
@@ -766,84 +1353,18 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
-    },
-    {
-      "file_path": "frontend/public/files/wasm-intro.py",
-      "function_name": "__",
-      "line_start": 397,
-      "line_end": 489,
-      "pattern": "P3",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0
-    },
-    {
-      "file_path": "marimo/_ai/llm/_impl.py",
-      "function_name": "__call__",
-      "line_start": 139,
-      "line_end": 207,
-      "pattern": "P6",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0
-    },
-    {
-      "file_path": "marimo/_ai/llm/_impl.py",
-      "function_name": "__call__",
-      "line_start": 279,
-      "line_end": 318,
-      "pattern": "P6",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0
-    },
-    {
-      "file_path": "marimo/_ai/llm/_impl.py",
-      "function_name": "__call__",
-      "line_start": 507,
-      "line_end": 538,
-      "pattern": "P6",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0
-    },
-    {
-      "file_path": "marimo/_cli/development/commands.py",
-      "function_name": "_enrich_branded_types",
-      "line_start": 27,
-      "line_end": 215,
-      "pattern": "P3",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0
-    },
-    {
-      "file_path": "marimo/_plugins/stateless/inspect.py",
-      "function_name": "__init__",
-      "line_start": 38,
-      "line_end": 220,
-      "pattern": "P3",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0
-    },
-    {
-      "file_path": "marimo/_runtime/patches.py",
-      "function_name": "patch_jedi_parameter_completion",
-      "line_start": 260,
-      "line_end": 460,
-      "pattern": "P5",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 895,
+          "reason": "Function '_' takes 2 args but 2 have no type annotation: create_wrapper, mo. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def _(create_wrapper: str, mo: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
     },
     {
       "file_path": "marimo/_smoke_tests/ai/chat-variations.py",
@@ -854,7 +1375,18 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 43,
+          "reason": "Function '_' takes 2 args but 2 have no type annotation: mo, model. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def _(mo: str, model: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
     },
     {
       "file_path": "marimo/_smoke_tests/ai/github_model_check.py",
@@ -865,62 +1397,18 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
-    },
-    {
-      "file_path": "marimo/_smoke_tests/ai/openai_responses.py",
-      "function_name": "_",
-      "line_start": 48,
-      "line_end": 63,
-      "pattern": "P6",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0
-    },
-    {
-      "file_path": "marimo/_smoke_tests/ai/openai_responses.py",
-      "function_name": "_",
-      "line_start": 73,
-      "line_end": 83,
-      "pattern": "P6",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0
-    },
-    {
-      "file_path": "marimo/_smoke_tests/chat/chatbot.py",
-      "function_name": "_",
-      "line_start": 37,
-      "line_end": 50,
-      "pattern": "P6",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0
-    },
-    {
-      "file_path": "marimo/_smoke_tests/chat/chatbot.py",
-      "function_name": "_",
-      "line_start": 60,
-      "line_end": 70,
-      "pattern": "P6",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0
-    },
-    {
-      "file_path": "marimo/_smoke_tests/chat/chatbot.py",
-      "function_name": "_",
-      "line_start": 80,
-      "line_end": 90,
-      "pattern": "P6",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 75,
+          "reason": "Function '_' takes 3 args but 3 have no type annotation: client, ids, run_button. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def _(client: str, ids: str, run_button: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
     },
     {
       "file_path": "marimo/_smoke_tests/chat/chatbot.py",
@@ -931,7 +1419,18 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 138,
+          "reason": "Function '_' takes 3 args but 3 have no type annotation: client, ell, mo. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def _(client: str, ell: str, mo: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
     },
     {
       "file_path": "marimo/_smoke_tests/chat/chatbot.py",
@@ -942,29 +1441,18 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
-    },
-    {
-      "file_path": "marimo/_smoke_tests/chat/chatbot.py",
-      "function_name": "_",
-      "line_start": 244,
-      "line_end": 247,
-      "pattern": "P6",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0
-    },
-    {
-      "file_path": "marimo/_smoke_tests/code_editor.py",
-      "function_name": "_",
-      "line_start": 51,
-      "line_end": 64,
-      "pattern": "P3",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 234,
+          "reason": "Function '_' takes 4 args but 4 have no type annotation: cars, get_sample_prompts, mo, my_complex_model. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def _(cars: str, get_sample_prompts: str, mo: str, my_complex_model: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
     },
     {
       "file_path": "marimo/_smoke_tests/tables/rich_elements.py",
@@ -975,7 +1463,18 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 25,
+          "reason": "Function '_' takes 3 args but 3 have no type annotation: alt, mo, pd. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def _(alt: str, mo: str, pd: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
     },
     {
       "file_path": "marimo/_snippets/data/openai-0.py",
@@ -986,7 +1485,18 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 34,
+          "reason": "Function '_' takes 2 args but 2 have no type annotation: OpenAI, api_key. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def _(OpenAI: str, api_key: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
     },
     {
       "file_path": "marimo/_snippets/data/openai-1.py",
@@ -997,40 +1507,112 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 34,
+          "reason": "Function '_' takes 2 args but 2 have no type annotation: api_key, mo. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def _(api_key: str, mo: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
     },
     {
-      "file_path": "marimo/_sql/engines/sqlalchemy.py",
-      "function_name": "get_default_database",
-      "line_start": 233,
-      "line_end": 285,
+      "file_path": "docs/hooks.py",
+      "function_name": "_extract_description",
+      "line_start": 35,
+      "line_end": 131,
+      "pattern": "P5",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 124,
+          "reason": "Line 124 binds 'text' from re.sub('\\\\s+', ' ', text).strip(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If re.sub('\\\\s+', ' ', text).strip supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "marimo/_cli/development/commands.py",
+      "function_name": "_enrich_branded_types",
+      "line_start": 27,
+      "line_end": 215,
       "pattern": "P3",
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 77,
+          "reason": "getattr(...) at line 77 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
     },
     {
-      "file_path": "marimo/_tutorials/dataflow.py",
-      "function_name": "_",
-      "line_start": 502,
-      "line_end": 600,
-      "pattern": "P3",
+      "file_path": "marimo/_runtime/patches.py",
+      "function_name": "patch_jedi_parameter_completion",
+      "line_start": 260,
+      "line_end": 460,
+      "pattern": "P5",
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
-    },
-    {
-      "file_path": "marimo/_tutorials/intro.py",
-      "function_name": "_",
-      "line_start": 354,
-      "line_end": 461,
-      "pattern": "P3",
-      "labels": [],
-      "label_cardinality": 0,
-      "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 457,
+          "reason": "getattr(...) at line 457 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 459,
+          "reason": "getattr(...) at line 459 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 295,
+          "reason": "getattr(...) at line 295 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 448,
+          "reason": "getattr(...) at line 448 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 453,
+          "reason": "getattr(...) at line 453 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
     },
     {
       "file_path": "marimo/_utils/docs.py",
@@ -1041,7 +1623,18 @@
       "labels": [],
       "label_cardinality": 0,
       "regime": "unknown",
-      "fit_score": 2.0
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 23,
+          "reason": "Line 23 binds 'docstring_lines' from docstring.splitlines(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If docstring.splitlines supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
     }
   ],
   "errors": [
