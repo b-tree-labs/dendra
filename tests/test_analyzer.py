@@ -538,6 +538,104 @@ class TestPriorityScore:
         assert _compute_priority_score(5.0, "hot", "already_dendrified") == 0.0
 
 
+class TestInternalSwitchWraps:
+    """Dendra-on-Dendra: ``_classify_pattern`` and ``_classify_lift_status``
+    are wrapped with ``@ml_switch`` at Phase.RULE.
+
+    Behavior at Phase.RULE must be bit-for-bit identical to the inline
+    code these wraps replaced — same inputs → same labels.
+    """
+
+    def test_classify_pattern_p1_match(self):
+        import ast as _ast
+
+        from dendra.analyzer import _classify_pattern
+
+        node = _ast.parse(
+            "def triage(t):\n"
+            "    if 'crash' in t: return 'bug'\n"
+            "    if 'feat' in t: return 'feature'\n"
+            "    return 'other'\n"
+        ).body[0]
+        assert _classify_pattern(node) == "P1"
+
+    def test_classify_pattern_no_match_for_non_classifier(self):
+        import ast as _ast
+
+        from dendra.analyzer import _classify_pattern
+
+        node = _ast.parse("def add(a, b):\n    return a + b\n").body[0]
+        assert _classify_pattern(node) == "no_match"
+
+    def test_classify_pattern_is_ml_switch_wrapped(self):
+        from dendra.analyzer import _classify_pattern
+
+        # Exposes the LearnedSwitch surface — proves the @ml_switch
+        # decorator is applied (not just a plain function).
+        assert hasattr(_classify_pattern, "status")
+        st = _classify_pattern.status()
+        assert st.name == "_classify_pattern"
+        assert str(st.phase) == "Phase.RULE"
+
+    def test_classify_lift_status_auto_when_no_hazards(self):
+        from dendra.analyzer import _classify_lift_status
+
+        assert _classify_lift_status([]) == "auto_liftable"
+
+    def test_classify_lift_status_refused_on_error_hazard(self):
+        from dendra.analyzer import Hazard, _classify_lift_status
+
+        hazards = [
+            Hazard(
+                category="side_effect_evidence",
+                line=10,
+                reason="mutates self",
+                suggested_fix="refactor",
+                severity="error",
+            )
+        ]
+        assert _classify_lift_status(hazards) == "refused"
+
+    def test_classify_lift_status_needs_annotation_on_warning(self):
+        from dendra.analyzer import Hazard, _classify_lift_status
+
+        hazards = [
+            Hazard(
+                category="dynamic_dispatch",
+                line=10,
+                reason="dispatch via getattr",
+                suggested_fix="add @evidence_inputs",
+                severity="warn",
+            )
+        ]
+        assert _classify_lift_status(hazards) == "needs_annotation"
+
+    def test_classify_lift_status_is_ml_switch_wrapped(self):
+        from dendra.analyzer import _classify_lift_status
+
+        assert hasattr(_classify_lift_status, "status")
+        st = _classify_lift_status.status()
+        assert st.name == "_classify_lift_status"
+        assert str(st.phase) == "Phase.RULE"
+
+    def test_dendra_repo_scan_finds_internal_switches_already_wrapped(self, tmp_path):
+        """Scanning the analyzer module itself surfaces both internal
+        switches in ``already_dendrified`` — the dogfood story.
+        """
+        from pathlib import Path as _Path
+
+        from dendra.analyzer import analyze
+
+        # Find the real analyzer.py by inspecting the import
+        import dendra.analyzer as _a
+
+        analyzer_path = _Path(_a.__file__)
+        report = analyze(analyzer_path)
+        names = {fn for (_path, fn, _line) in report.already_dendrified}
+        assert "_classify_pattern" in names
+        assert "_classify_lift_status" in names
+
+
 class TestSortSites:
     """``AnalyzerReport.sort_sites`` orders by the requested key."""
 

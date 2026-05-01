@@ -45,6 +45,12 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+# Internal-switch wrapping (Dendra-on-Dendra dogfood). Direct imports
+# from sub-modules — going through ``dendra.__init__`` would create a
+# circular import since the package init imports analyzer.
+from dendra.core import Phase
+from dendra.decorator import ml_switch
+
 # ---------------------------------------------------------------------------
 # Results
 # ---------------------------------------------------------------------------
@@ -497,6 +503,71 @@ def _compute_priority_score(
 
 
 # ---------------------------------------------------------------------------
+# Dendra-on-Dendra: two analyzer decisions wrapped with @ml_switch
+#
+# These are the analyzer's own classification decisions, exposed as
+# Dendra switches so the company instance dogfoods its own primitive.
+# Both stay at Phase.RULE so behavior is bit-for-bit identical to the
+# pre-wrap inline code; the wrap accumulates audit-chain outcomes that
+# (a) make these visible to ``_has_ml_switch_decorator`` detection
+# when scanning the dendra repo, and (b) populate the cohort signal
+# from B-Tree Labs's own deployment from day-1.
+#
+# Storage defaults to BoundedInMemoryStorage (process-local, capped),
+# so a fresh ``pip install dendra`` doesn't write to disk on import.
+# Hypothesis files at ``dendra/hypotheses/_classify_pattern.md`` and
+# ``dendra/hypotheses/_classify_lift_status.md`` are pre-committed.
+# ---------------------------------------------------------------------------
+
+
+_PATTERN_LABELS = ["P1", "P2", "P3", "P4", "P5", "P6", "no_match"]
+_LIFT_STATUS_LABELS = ["refused", "needs_annotation", "auto_liftable"]
+
+
+@ml_switch(
+    labels=_PATTERN_LABELS,
+    author="@b-tree-labs:dendra-internal",
+    name="_classify_pattern",
+    starting_phase=Phase.RULE,
+)
+def _classify_pattern(node: ast.AST) -> str:
+    """Dispatch over the registered pattern detectors.
+
+    Returns the matched pattern name (``"P1"``..``"P6"``) or
+    ``"no_match"`` when no detector recognises the function. Detectors
+    that raise are silently skipped — a buggy detector must not abort
+    the whole analyze run.
+    """
+    for pattern_name, detector in _PATTERNS:
+        try:
+            if detector(node):
+                return pattern_name
+        except Exception:  # noqa: BLE001 — detector failures must not kill the run
+            continue
+    return "no_match"
+
+
+@ml_switch(
+    labels=_LIFT_STATUS_LABELS,
+    author="@b-tree-labs:dendra-internal",
+    name="_classify_lift_status",
+    starting_phase=Phase.RULE,
+)
+def _classify_lift_status(hazards: list[Hazard]) -> str:
+    """Verdict from the hazard list.
+
+    - Any error-severity hazard → ``"refused"``.
+    - Otherwise any hazard → ``"needs_annotation"``.
+    - Empty hazards → ``"auto_liftable"``.
+    """
+    if any(h.severity == "error" for h in hazards):
+        return "refused"
+    if hazards:
+        return "needs_annotation"
+    return "auto_liftable"
+
+
+# ---------------------------------------------------------------------------
 # Test-site detection (mirrors scripts/enrich_landing_corpus.py)
 #
 # Sites in test directories or with pytest/unittest naming conventions are
@@ -646,15 +717,8 @@ def _analyze_file(
             continue
         if node.lineno in switch_method_lines:
             continue
-        matched_pattern: str | None = None
-        for pattern_name, detector in _PATTERNS:
-            try:
-                if detector(node):
-                    matched_pattern = pattern_name
-                    break
-            except Exception:  # noqa: BLE001 - detector failures must not kill the run
-                continue
-        if matched_pattern is None:
+        matched_pattern = _classify_pattern(node)
+        if matched_pattern == "no_match":
             continue
 
         labels = _collect_return_strings(node)
@@ -694,12 +758,7 @@ def _analyze_file(
                     severity="error",
                 )
             )
-        if any(h.severity == "error" for h in node_hazards):
-            lift_status = LiftStatus.REFUSED.value
-        elif node_hazards:
-            lift_status = LiftStatus.NEEDS_ANNOTATION.value
-        else:
-            lift_status = LiftStatus.AUTO_LIFTABLE.value
+        lift_status = _classify_lift_status(node_hazards)
 
         gate_fit = _compute_gate_fit(labels, matched_pattern)
         volume_estimate = _compute_volume_estimate(node, rel_path_str)
