@@ -23,7 +23,6 @@ from __future__ import annotations
 import datetime as _dt
 import hashlib
 from pathlib import Path
-from typing import Any
 
 # Customer-facing defaults — used when cohort data isn't available.
 # Mirror BAKED_IN_DEFAULTS in dendra.insights.tuned_defaults; we don't
@@ -131,7 +130,11 @@ def _render_template(
         site_line = f"`{file_location}:{function_name}`"
     elif file_location:
         site_line = f"`{file_location}`"
-    fp_line = f"Fingerprint: `{site_fingerprint}`" if site_fingerprint else "Fingerprint: (not yet computed)"
+    fp_line = (
+        f"Fingerprint: `{site_fingerprint}`"
+        if site_fingerprint
+        else "Fingerprint: (not yet computed)"
+    )
 
     cohort_basis = (
         f"Cohort model, regime={regime}, n={cohort_size} deployments"
@@ -160,12 +163,12 @@ def _render_template(
     lines.append("## 1. Unit of decision")
     lines.append("")
     lines.append(
-        f"This single classification call site, identified by the "
-        f"fingerprint above. The site fingerprint is a blake2b digest "
-        f"over the function's normalized AST (with identifiers and "
-        f"literals stripped); refactors that don't change shape "
-        f"preserve the fingerprint, so this hypothesis survives "
-        f"variable renames and reformatting."
+        "This single classification call site, identified by the "
+        "fingerprint above. The site fingerprint is a blake2b digest "
+        "over the function's normalized AST (with identifiers and "
+        "literals stripped); refactors that don't change shape "
+        "preserve the fingerprint, so this hypothesis survives "
+        "variable renames and reformatting."
     )
     lines.append("")
 
@@ -182,9 +185,7 @@ def _render_template(
 
     lines.append("## 3. Expected n at graduation")
     lines.append("")
-    lines.append(
-        f"**{pred_low}–{pred_high} outcomes** (90% CI). Source: {cohort_basis}."
-    )
+    lines.append(f"**{pred_low}–{pred_high} outcomes** (90% CI). Source: {cohort_basis}.")
     if pattern or label_cardinality is not None or priority_score is not None:
         lines.append("")
         lines.append("Site-shape inputs to the prediction:")
@@ -210,9 +211,7 @@ def _render_template(
 
     lines.append("## 5. Truth source")
     lines.append("")
-    lines.append(
-        "**Primary truth source:** *(to be filled in)*. Suggestions:"
-    )
+    lines.append("**Primary truth source:** *(to be filled in)*. Suggestions:")
     lines.append("")
     lines.append("- Synchronous callable (Python function returning correct/incorrect)")
     lines.append("- LLM judge with self-judgment-bias guardrail")
@@ -226,8 +225,7 @@ def _render_template(
     )
     lines.append("")
     lines.append(
-        "**Tie-breaker:** *(optional)*. The source consulted when "
-        "primary and secondary disagree."
+        "**Tie-breaker:** *(optional)*. The source consulted when primary and secondary disagree."
     )
     lines.append("")
 
@@ -258,9 +256,7 @@ def _render_template(
     lines.append(
         f"| Graduation depth: {pred_low}–{pred_high} outcomes | (in flight) | (in flight) |"
     )
-    lines.append(
-        f"| Effect size: ≥ {effect_size_pp:.1f} pp | (in flight) | (in flight) |"
-    )
+    lines.append(f"| Effect size: ≥ {effect_size_pp:.1f} pp | (in flight) | (in flight) |")
     lines.append(f"| p < {alpha} at first clear | (in flight) | (in flight) |")
     lines.append(
         "| Drift handling: auto-rollback on AST mismatch | (no events yet) | (in flight) |"

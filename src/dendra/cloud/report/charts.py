@@ -115,8 +115,7 @@ def transition_curve(
         for cp in metrics.checkpoints
     ]
     ml_acc = [
-        cp.ml_accuracy * 100 if cp.ml_accuracy is not None else None
-        for cp in metrics.checkpoints
+        cp.ml_accuracy * 100 if cp.ml_accuracy is not None else None for cp in metrics.checkpoints
     ]
 
     if any(a is not None for a in rule_acc):
@@ -219,10 +218,19 @@ def pvalue_trajectory(
 
     xs, ys = zip(*valid_pairs, strict=False)
     ax.plot(
-        xs, ys, color=_COLOR_ML, linewidth=2.0, marker="o", markersize=5,
+        xs,
+        ys,
+        color=_COLOR_ML,
+        linewidth=2.0,
+        marker="o",
+        markersize=5,
     )
     ax.axhline(
-        alpha, color=_COLOR_INK, linewidth=1.0, linestyle="--", alpha=0.6,
+        alpha,
+        color=_COLOR_INK,
+        linewidth=1.0,
+        linestyle="--",
+        alpha=0.6,
     )
     ax.text(
         xs[0],
@@ -287,11 +295,9 @@ def cost_trajectory(
     # plot outcome count on the x-axis labeled accordingly.
     use_days = bool(metrics.phase_history) and estimated_calls_per_day
     if use_days:
-        first_ts = metrics.phase_history[0][1]
         x_label = "Days since switch wrapped"
         xs = [
-            (cp.outcome_count / max(1, estimated_calls_per_day or 1))
-            for cp in metrics.checkpoints
+            (cp.outcome_count / max(1, estimated_calls_per_day or 1)) for cp in metrics.checkpoints
         ]
         graduation_x = (
             metrics.gate_fire_outcome / max(1, estimated_calls_per_day or 1)

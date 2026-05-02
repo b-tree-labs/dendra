@@ -118,7 +118,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: cloud/collector
-          command: rollback --env production --message "auto-rollback: post-deploy smoke failed"
+          command: 'rollback --env production --message "auto-rollback after smoke failure"'
       - name: Notify on rollback
         run: |
           echo "::error::Production deploy was auto-rolled-back after smoke test failure."

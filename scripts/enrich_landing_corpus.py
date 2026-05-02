@@ -241,12 +241,8 @@ def enrich_one(slug: str, gh_path: str, branch: str, subpath: str = "") -> int:
     # so file_path (relative to the analyzed root) still resolves on
     # github.com.
     blob_suffix = f"/{subpath}" if subpath else ""
-    data["raw_url_prefix"] = (
-        f"https://raw.githubusercontent.com/{gh_path}/{branch}{blob_suffix}"
-    )
-    data["github_blob_prefix"] = (
-        f"https://github.com/{gh_path}/blob/{branch}{blob_suffix}"
-    )
+    data["raw_url_prefix"] = f"https://raw.githubusercontent.com/{gh_path}/{branch}{blob_suffix}"
+    data["github_blob_prefix"] = f"https://github.com/{gh_path}/blob/{branch}{blob_suffix}"
 
     sites = data.get("sites", [])
     pre_filter = len(sites)

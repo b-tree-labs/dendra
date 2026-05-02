@@ -280,16 +280,14 @@ def _try_generate_hypothesis(
         # filesystem permission, disk full. Print a one-line note and
         # continue — the wrap itself succeeded; hypothesis is a nicety.
         print(
-            f"  (hypothesis file not written: {type(e).__name__}; "
-            f"the wrap is still in place)",
+            f"  (hypothesis file not written: {type(e).__name__}; the wrap is still in place)",
             file=sys.stderr,
         )
         return
 
     if was_created:
         print(
-            f"  pre-registered hypothesis: {out_path} "
-            f"(content hash: {content_hash[:12]}…)",
+            f"  pre-registered hypothesis: {out_path} (content hash: {content_hash[:12]}…)",
             file=sys.stderr,
         )
         print(
@@ -577,9 +575,7 @@ def cmd_insights_status(args: argparse.Namespace) -> int:
     # cache is already fresh (within the freshness window).
     if not getattr(args, "no_fetch", False):
         refreshed = refresh_if_stale()
-        refreshed_msg = (
-            "  (just-refreshed from cohort endpoint)" if refreshed is not None else ""
-        )
+        refreshed_msg = "  (just-refreshed from cohort endpoint)" if refreshed is not None else ""
     else:
         refreshed_msg = "  (--no-fetch; cache only)"
 
@@ -919,9 +915,7 @@ def cmd_report(args: argparse.Namespace) -> int:
         project_name = Path.cwd().name or "(this project)"
         markdown = render_project_summary(summary, project_name=project_name)
 
-        out_path = (
-            Path(args.out) if args.out else Path("dendra/results/_summary.md")
-        )
+        out_path = Path(args.out) if args.out else Path("dendra/results/_summary.md")
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(markdown, encoding="utf-8")
         print(f"Wrote {out_path}")
@@ -939,9 +933,7 @@ def cmd_report(args: argparse.Namespace) -> int:
         alpha=args.alpha,
     )
 
-    out_path = (
-        Path(args.out) if args.out else Path("dendra/results") / f"{args.switch}.md"
-    )
+    out_path = Path(args.out) if args.out else Path("dendra/results") / f"{args.switch}.md"
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Try to generate PNG charts if matplotlib is installed and the
@@ -1661,7 +1653,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     p_analyze.add_argument(
         "--report-out",
         default=None,
-        help="Override the output path for --report (default: dendra/results/_initial-analysis.md).",
+        help=(
+            "Override the output path for --report (default: dendra/results/_initial-analysis.md)."
+        ),
     )
     p_analyze.add_argument(
         "--cost-per-call",
@@ -1964,7 +1958,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "insights",
         help="Manage Dendra Insights — opt-in cohort flywheel (enroll/leave/status).",
     )
-    p_insights.set_defaults(fn=lambda _a: (p_insights.print_help() or 0))
+    p_insights.set_defaults(fn=lambda _a: p_insights.print_help() or 0)
     insights_sub = p_insights.add_subparsers(dest="insights_cmd")
 
     p_insights_enroll = insights_sub.add_parser(

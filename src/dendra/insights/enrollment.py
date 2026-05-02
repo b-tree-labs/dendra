@@ -21,8 +21,8 @@ from typing import Final
 
 from dendra.insights._paths import (
     dendra_home,
-    ensure_dendra_home,
     enrollment_path,
+    ensure_dendra_home,
 )
 
 #: Schema version for the enrollment record. Bump when the structure

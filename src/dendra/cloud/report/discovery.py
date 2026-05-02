@@ -105,8 +105,10 @@ def render_discovery_report(
         Override the default regime-keyed graduation intervals. Used
         for the Insights-cohort path.
     """
-    cost = cost_per_call if cost_per_call is not None else _DEFAULT_COST_PER_CALL.get(
-        llm_provider_hint, _DEFAULT_COST_PER_CALL["default"]
+    cost = (
+        cost_per_call
+        if cost_per_call is not None
+        else _DEFAULT_COST_PER_CALL.get(llm_provider_hint, _DEFAULT_COST_PER_CALL["default"])
     )
 
     sites = _rank_sites(
@@ -155,7 +157,8 @@ def render_discovery_report(
                 f"at `{top.file_path}:{top.line_start}` — "
                 f"highest fit, {top.regime} regime ({top.label_cardinality} labels), "
                 f"cohort-predicted graduation in "
-                f"~{(top.predicted_graduation_low + top.predicted_graduation_high) // 2} outcomes.\n"
+                f"~{(top.predicted_graduation_low + top.predicted_graduation_high) // 2}"
+                " outcomes.\n"
                 f">\n> Run `dendra init "
                 f"{top.file_path}:{top.function_name}` to wrap your first site."
             )
@@ -285,9 +288,8 @@ def _resolve_predicted_interval(
     explicit_low: dict[str, int] | None,
     explicit_high: dict[str, int] | None,
 ) -> tuple[int, int]:
-    if explicit_low and explicit_high:
-        if regime in explicit_low and regime in explicit_high:
-            return explicit_low[regime], explicit_high[regime]
+    if explicit_low and explicit_high and regime in explicit_low and regime in explicit_high:
+        return explicit_low[regime], explicit_high[regime]
     defaults = {
         "narrow": (200, 400),
         "medium": (400, 800),
@@ -300,13 +302,12 @@ def _resolve_predicted_interval(
 def _opportunities_table(sites: list[OpportunitySite], cost_per_call: float) -> str:
     """The ranked-sites table — the centerpiece of the discovery report."""
     rows = [
-        "| # | Site | Pattern | Regime | Vol | Priority | Cohort grad time | Est. $/mo savings | Action |",
+        "| # | Site | Pattern | Regime | Vol | Priority | Cohort grad time"
+        " | Est. $/mo savings | Action |",
         "|---:|---|---|---|---|---:|---|---:|---|",
     ]
     for i, s in enumerate(sites[:15], start=1):  # cap top-15 for readability
-        regime_str = (
-            f"{s.regime} ({s.label_cardinality})" if s.label_cardinality else s.regime
-        )
+        regime_str = f"{s.regime} ({s.label_cardinality})" if s.label_cardinality else s.regime
         grad_str = f"~{(s.predicted_graduation_low + s.predicted_graduation_high) // 2} outcomes"
         savings_str = (
             f"**${s.estimated_monthly_savings_usd:,.0f}**"
@@ -343,21 +344,18 @@ def _refused_table(refused: list[OpportunitySite]) -> str:
         "|---|---|---|",
     ]
     remediation_map = {
-        "side_effect_evidence": (
-            "Refactor to make state-mutation explicit, then re-analyze"
-        ),
+        "side_effect_evidence": ("Refactor to make state-mutation explicit, then re-analyze"),
         "dynamic_dispatch": "Add `@evidence_inputs(...)` annotation",
-        "not_a_classifier": "Confirm this isn't really a classifier; if it is, rename out of test path",
+        "not_a_classifier": (
+            "Confirm this isn't really a classifier; if it is, rename out of test path"
+        ),
         "not_top_level": "v1.5 lifters reach class methods; defer or refactor to module-level",
         "multi_arg_no_annotation": "Add `@evidence_inputs(...)` to bind args",
     }
     for s in refused:
         primary = s.hazard_categories[0] if s.hazard_categories else "(unspecified)"
         fix = remediation_map.get(primary, "See report card details")
-        rows.append(
-            f"| `{s.file_path}:{s.line_start} {s.function_name}` | "
-            f"{primary} | {fix} |"
-        )
+        rows.append(f"| `{s.file_path}:{s.line_start} {s.function_name}` | {primary} | {fix} |")
     return "\n".join(rows)
 
 
@@ -368,21 +366,19 @@ def _recommended_sequence(auto_liftable: list[OpportunitySite]) -> str:
         auto_liftable,
         key=lambda s: (s.predicted_graduation_low, -s.priority_score),
     )
-    lines = [
-        "To maximize *learning per graduation*, wrap in approximately this order:\n"
-    ]
+    lines = ["To maximize *learning per graduation*, wrap in approximately this order:\n"]
     for i, s in enumerate(ordered[:5], start=1):
         if i == 1:
             rationale = (
-                f"highest-priority. Narrow regime, lowest risk; use it to "
-                f"validate the methodology on your codebase + traffic shape."
+                "highest-priority. Narrow regime, lowest risk; use it to "
+                "validate the methodology on your codebase + traffic shape."
             )
         elif i == 2:
             rationale = "reinforces the pattern from #1."
         elif i == 3:
             rationale = "adds a different shape; verifies the methodology generalizes."
         else:
-            rationale = f"after #{i-1} graduates, the discipline is dialed in."
+            rationale = f"after #{i - 1} graduates, the discipline is dialed in."
         lines.append(
             f"{i}. **`{s.function_name}`** at `{s.file_path}:{s.line_start}` — {rationale} "
             f"Predicted graduation: ~"
@@ -390,7 +386,7 @@ def _recommended_sequence(auto_liftable: list[OpportunitySite]) -> str:
         )
     if len(ordered) > 5:
         lines.append(
-            f"{len(ordered)-5} additional auto-liftable sites can ship in parallel "
+            f"{len(ordered) - 5} additional auto-liftable sites can ship in parallel "
             "after the first three graduate."
         )
     return "\n".join(lines)

@@ -26,9 +26,10 @@ import logging
 import threading
 import urllib.error
 import urllib.request
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
-from typing import Any, Final, Iterator
+from typing import Any, Final
 
 from dendra.insights._paths import (
     ensure_dendra_home,
@@ -53,9 +54,7 @@ FLUSH_TIMEOUT_SECONDS: Final[float] = 2.0
 EVENT_SCHEMA_VERSION: Final[int] = 1
 
 #: Allowed event types — anything else is rejected at queue time.
-EVENT_TYPES: Final[frozenset[str]] = frozenset(
-    {"analyze", "init_attempt", "bench_phase_advance"}
-)
+EVENT_TYPES: Final[frozenset[str]] = frozenset({"analyze", "init_attempt", "bench_phase_advance"})
 
 
 @dataclass(frozen=True)
@@ -266,9 +265,7 @@ def flush_queue(
     try:
         path = queue_path()
         if tail:
-            text = "".join(
-                json.dumps(asdict(e), separators=(",", ":")) + "\n" for e in tail
-            )
+            text = "".join(json.dumps(asdict(e), separators=(",", ":")) + "\n" for e in tail)
             path.write_text(text, encoding="utf-8")
         else:
             path.unlink(missing_ok=True)

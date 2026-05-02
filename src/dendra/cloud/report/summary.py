@@ -152,10 +152,7 @@ def render_project_summary(
         parts.append("No drift events detected across any switch in this project.\n")
 
     # ---- Pending hypotheses ---------------------------------------------
-    pending = [
-        s for s in summary.switches
-        if s.gate_fire_outcome is None and s.total_outcomes > 0
-    ]
+    pending = [s for s in summary.switches if s.gate_fire_outcome is None and s.total_outcomes > 0]
     if pending:
         parts.append("## Pending hypotheses (gate-fire awaited)\n")
         parts.append(_pending_table(pending))
@@ -197,9 +194,7 @@ def _cockpit_blockquote(summary: ProjectSummary) -> str:
     if not_started > 0:
         bullets.append(f"**{not_started}** wrapped but no outcomes yet")
 
-    status_line = (
-        " | ".join(bullets) if bullets else "all switches in initial state"
-    )
+    status_line = " | ".join(bullets) if bullets else "all switches in initial state"
 
     drift_line = ""
     if summary.drift_count:
@@ -253,20 +248,14 @@ def _per_switch_table(summary: ProjectSummary) -> str:
                 else "—"
             )
             effect = ""
-            if (
-                m.rule_accuracy_final is not None
-                and m.ml_accuracy_final is not None
-            ):
+            if m.rule_accuracy_final is not None and m.ml_accuracy_final is not None:
                 pp = (m.ml_accuracy_final - m.rule_accuracy_final) * 100
                 effect = f"+{pp:.1f}pp"
-            status = (
-                "**GRADUATED**" if not m.drift_events else "**DRIFT**"
-            )
+            status = "**GRADUATED**" if not m.drift_events else "**DRIFT**"
         elif m.total_outcomes > 0:
             p_str = (
                 f"{m.checkpoints[-1].paired_p_value:.3f}"
-                if m.checkpoints
-                and m.checkpoints[-1].paired_p_value is not None
+                if m.checkpoints and m.checkpoints[-1].paired_p_value is not None
                 else "—"
             )
             effect = "—"
@@ -277,9 +266,7 @@ def _per_switch_table(summary: ProjectSummary) -> str:
             status = "wrapped, no data"
 
         link = f"[`{m.switch_name}`]({m.switch_name}.md)"
-        rows.append(
-            f"| {link} | {phase_str} | {outcomes_str} | {p_str} | {effect} | {status} |"
-        )
+        rows.append(f"| {link} | {phase_str} | {outcomes_str} | {p_str} | {effect} | {status} |")
     return "\n".join(rows)
 
 
@@ -302,8 +289,7 @@ def _hypothesis_rollup(summary: ProjectSummary) -> str:
         f"{in_flight} | {not_started} | {total} |",
         f"| Effect size ≥ pre-registered threshold | {confirmed} | "
         f"{in_flight} | {not_started} | {total} |",
-        f"| Gate cleared at α = 0.01 | {confirmed} | "
-        f"{in_flight} | {not_started} | {total} |",
+        f"| Gate cleared at α = 0.01 | {confirmed} | {in_flight} | {not_started} | {total} |",
         f"| Drift handling (auto-rollback worked) | {summary.drift_count} | "
         f"0 | {total - summary.drift_count} | {total} |",
     ]
@@ -345,14 +331,13 @@ def _pending_table(pending: list[SwitchMetrics]) -> str:
             else None
         )
         p_str = (
-            f"{last_p:.3f}" if last_p is not None and last_p >= 1e-4
-            else f"{last_p:.2e}" if last_p is not None
+            f"{last_p:.3f}"
+            if last_p is not None and last_p >= 1e-4
+            else f"{last_p:.2e}"
+            if last_p is not None
             else "—"
         )
-        rows.append(
-            f"| [`{m.switch_name}`]({m.switch_name}.md) | "
-            f"{m.total_outcomes:,} | {p_str} |"
-        )
+        rows.append(f"| [`{m.switch_name}`]({m.switch_name}.md) | {m.total_outcomes:,} | {p_str} |")
     return "\n".join(rows)
 
 

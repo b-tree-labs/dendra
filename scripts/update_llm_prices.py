@@ -23,8 +23,7 @@ import urllib.request
 from pathlib import Path
 
 LITELLM_URL = (
-    "https://raw.githubusercontent.com/BerriAI/litellm/main/"
-    "model_prices_and_context_window.json"
+    "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json"
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -38,13 +37,18 @@ CURATED: list[dict] = [
         "id": "anthropic_opus_47",
         "litellm_key": "claude-opus-4-7",
         "label": "Anthropic Claude Opus 4.7",
-        "notes": "Anthropic's flagship reasoning model. Common premium classifier choice for high-stakes labels.",
+        "notes": (
+            "Anthropic's flagship reasoning model. "
+            "Common premium classifier choice for high-stakes labels."
+        ),
     },
     {
         "id": "anthropic_sonnet_46",
         "litellm_key": "claude-sonnet-4-6",
         "label": "Anthropic Claude Sonnet 4.6",
-        "notes": "Anthropic's workhorse. The most-used production classifier across the Anthropic line.",
+        "notes": (
+            "Anthropic's workhorse. The most-used production classifier across the Anthropic line."
+        ),
     },
     {
         "id": "anthropic_haiku_45",
@@ -62,19 +66,28 @@ CURATED: list[dict] = [
         "id": "openai_gpt54_mini",
         "litellm_key": "gpt-5.4-mini",
         "label": "OpenAI GPT-5.4 mini",
-        "notes": "OpenAI's cheap frontier-tier. Strong classifier accuracy at a fraction of GPT-5.5's per-call cost.",
+        "notes": (
+            "OpenAI's cheap frontier-tier. Strong classifier accuracy "
+            "at a fraction of GPT-5.5's per-call cost."
+        ),
     },
     {
         "id": "google_gemini_31_pro",
         "litellm_key": "gemini/gemini-3.1-pro-preview",
         "label": "Google Gemini 3.1 Pro",
-        "notes": "Google's current frontier (preview). Strong long-context for classifier prompts with retrieval.",
+        "notes": (
+            "Google's current frontier (preview). "
+            "Strong long-context for classifier prompts with retrieval."
+        ),
     },
     {
         "id": "google_gemini_3_flash",
         "litellm_key": "gemini/gemini-3-flash-preview",
         "label": "Google Gemini 3 Flash",
-        "notes": "Google's cheap-and-fast frontier tier. Often the lowest cost-per-call from a frontier lab.",
+        "notes": (
+            "Google's cheap-and-fast frontier tier. "
+            "Often the lowest cost-per-call from a frontier lab."
+        ),
     },
     {
         "id": "xai_grok_420_reasoning",
@@ -86,7 +99,10 @@ CURATED: list[dict] = [
         "id": "deepseek_v32",
         "litellm_key": "deepseek/deepseek-v3.2",
         "label": "DeepSeek V3.2",
-        "notes": "Open-weights frontier with aggressive pricing. Common cheap baseline for high-volume classifiers.",
+        "notes": (
+            "Open-weights frontier with aggressive pricing. "
+            "Common cheap baseline for high-volume classifiers."
+        ),
     },
     # Local inference is not in LiteLLM's pricing catalog (no per-token
     # billing). Hand-entered: notional electricity cost on Apple Silicon.

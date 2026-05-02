@@ -85,10 +85,7 @@ class HypothesisVerdict:
     def graduation_within_predicted_interval(self) -> bool | None:
         if self.observed_graduation_outcome is None:
             return None
-        if (
-            self.predicted_graduation_low is None
-            or self.predicted_graduation_high is None
-        ):
+        if self.predicted_graduation_low is None or self.predicted_graduation_high is None:
             return None
         return (
             self.predicted_graduation_low

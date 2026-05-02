@@ -1,10 +1,11 @@
+# Copyright (c) 2026 B-Tree Ventures, LLC
+# SPDX-License-Identifier: LicenseRef-BSL-1.1
 # AUTO-GENERATED — DO NOT EDIT.
-# Generated from src/dendra/analyzer.py by
-# scripts/build_browser_analyzer.py.
-# Loaded into Pyodide at runtime by landing/scripts/paste-analyzer.js
-# so visitors can analyze pasted Python without installing anything
-# locally. Two dendra-internal imports stripped + replaced with
-# inline no-op stubs so this is a single self-contained .py file.
+# Generated from src/dendra/analyzer.py by scripts/build_browser_analyzer.py.
+# Loaded into Pyodide at runtime by landing/scripts/paste-analyzer.js so
+# visitors can analyze pasted Python without installing anything locally.
+# Two dendra-internal imports stripped + replaced with inline no-op stubs
+# so this is a single self-contained .py file.
 
 # Copyright (c) 2026 B-Tree Ventures, LLC
 # SPDX-License-Identifier: LicenseRef-BSL-1.1
@@ -128,9 +129,7 @@ class AnalyzerReport:
     def by_priority_desc(self) -> list[ClassificationSite]:
         return self.sort_sites(key="priority")
 
-    def sort_sites(
-        self, key: str = "priority", reverse: bool = False
-    ) -> list[ClassificationSite]:
+    def sort_sites(self, key: str = "priority", reverse: bool = False) -> list[ClassificationSite]:
         """Return sites sorted by the given key.
 
         Supported keys (default ``priority``):
@@ -155,9 +154,7 @@ class AnalyzerReport:
         elif key == "location":
             sites = sorted(self.sites, key=lambda s: (s.file_path, s.line_start))
         elif key == "pattern":
-            sites = sorted(
-                self.sites, key=lambda s: (s.pattern, -s.priority_score)
-            )
+            sites = sorted(self.sites, key=lambda s: (s.pattern, -s.priority_score))
         elif key == "regime":
             regime_order = {"narrow": 0, "medium": 1, "high": 2, "unknown": 3}
             sites = sorted(
@@ -183,8 +180,7 @@ class AnalyzerReport:
             )
         else:
             raise ValueError(
-                f"unknown sort key {key!r}; choose from "
-                "priority, location, pattern, regime, lift"
+                f"unknown sort key {key!r}; choose from priority, location, pattern, regime, lift"
             )
         return list(reversed(sites)) if reverse else sites
 
@@ -470,11 +466,24 @@ def _compute_gate_fit(labels: list[str], pattern: str) -> float:
 # These names are matched against the rightmost dotted attribute of a
 # decorator (e.g. ``@app.post`` → "post", ``@router.get`` → "get") or
 # the bare name (``@route``).
-_HOT_ROUTE_DECORATORS = frozenset({
-    "get", "post", "put", "patch", "delete", "head", "options",
-    "route", "api_route", "websocket", "page", "endpoint",
-    "method", "view",
-})
+_HOT_ROUTE_DECORATORS = frozenset(
+    {
+        "get",
+        "post",
+        "put",
+        "patch",
+        "delete",
+        "head",
+        "options",
+        "route",
+        "api_route",
+        "websocket",
+        "page",
+        "endpoint",
+        "method",
+        "view",
+    }
+)
 
 # Substrings inside the (POSIX) file path that indicate a likely-cold
 # call site: CLI entrypoints, schema migrations, one-off scripts.
@@ -512,9 +521,7 @@ def _compute_volume_estimate(node: ast.FunctionDef, file_path: str) -> str:
     return "warm"
 
 
-def _compute_priority_score(
-    gate_fit: float, volume_estimate: str, lift_status: str
-) -> float:
+def _compute_priority_score(gate_fit: float, volume_estimate: str, lift_status: str) -> float:
     """Composite ``priority_score`` (0-5) shown to users.
 
     Multiplies the graduation-fitness heuristic by volume + lift
@@ -522,9 +529,7 @@ def _compute_priority_score(
     first?", not just "is this site shaped right?".
     """
     return round(
-        gate_fit
-        * _VOLUME_FACTOR.get(volume_estimate, 0.7)
-        * _LIFT_FACTOR.get(lift_status, 1.0),
+        gate_fit * _VOLUME_FACTOR.get(volume_estimate, 0.7) * _LIFT_FACTOR.get(lift_status, 1.0),
         2,
     )
 
@@ -799,9 +804,7 @@ def _analyze_file(
             label_cardinality=len(labels),
             regime=_classify_regime(len(labels)),
             volume_estimate=volume_estimate,
-            priority_score=_compute_priority_score(
-                gate_fit, volume_estimate, lift_status
-            ),
+            priority_score=_compute_priority_score(gate_fit, volume_estimate, lift_status),
             hazards=node_hazards,
             lift_status=lift_status,
         )
@@ -911,9 +914,7 @@ def analyze(
             rel_parts = py_file.relative_to(root).parts
             if any(part in ignore for part in rel_parts):
                 continue
-            if any(
-                worktree in py_file.parents for worktree in nested_worktree_roots
-            ):
+            if any(worktree in py_file.parents for worktree in nested_worktree_roots):
                 continue
             if (
                 skip_dendra_src
@@ -1000,11 +1001,53 @@ def render_text(
         if count:
             lines.append(f"  {regime:>8}: {count}")
     lines.append("")
+
+    # Cohort-comparison line. Best-effort: silently suppressed when
+    # there isn't enough cohort signal yet (cohort_size < 10) or the
+    # median field hasn't been populated server-side. As enrollment
+    # grows past launch, this line unfurls naturally.
+    cohort_line = _format_cohort_comparison(report)
+    if cohort_line:
+        lines.append(cohort_line)
+        lines.append("")
+
     lines.append(
         "Next step: `dendra init <file>:<function> --author @you:team` "
         "to wrap the highest-priority site."
     )
     return "\n".join(lines)
+
+
+def _format_cohort_comparison(report: AnalyzerReport) -> str | None:
+    """Render a one-line cohort comparison, or ``None`` to suppress.
+
+    Suppresses when cohort signal is too thin (< 10 deployments) or the
+    median field isn't set yet — the latter is the launch state, the
+    former covers early-cohort weeks. Both conditions resolve naturally
+    as enrollment grows; no code change needed.
+    """
+    try:
+        from dendra.insights import load_cached_or_baked_in
+
+        defaults = load_cached_or_baked_in()
+    except Exception:  # noqa: BLE001 — never fail analyze on a cohort fetch
+        return None
+    if defaults.cohort_size < 10:
+        return None
+    median = defaults.median_high_priority_density
+    if median is None:
+        return None
+    n = len(report.sites)
+    if n == 0:
+        return None
+    high_priority = sum(1 for s in report.sites if s.priority_score >= 4.0)
+    your_density = high_priority / n
+    direction = "above" if your_density > median else "at or below"
+    return (
+        f"Cohort comparison (n={defaults.cohort_size:,} deployments):\n"
+        f"  high-priority density: {your_density:.0%} "
+        f"(cohort median: {median:.0%}) — {direction} median."
+    )
 
 
 def render_json(
@@ -1019,9 +1062,7 @@ def render_json(
             "root": report.root,
             "files_scanned": report.files_scanned,
             "total_sites": report.total_sites(),
-            "sites": [
-                asdict(s) for s in report.sort_sites(key=sort_key, reverse=reverse)
-            ],
+            "sites": [asdict(s) for s in report.sort_sites(key=sort_key, reverse=reverse)],
             "errors": report.errors,
             "already_dendrified_count": report.already_dendrified_count(),
             "already_dendrified": [
@@ -1039,9 +1080,9 @@ def render_json(
 
 
 _VOLUME_TO_MONTHLY_CALLS = {
-    "cold": 300_000,    # script / migration / cli — bursty, low total
+    "cold": 300_000,  # script / migration / cli — bursty, low total
     "warm": 1_300_000,  # default mid-market internal classifier
-    "hot": 3_000_000,   # web-route or scheduled hot path
+    "hot": 3_000_000,  # web-route or scheduled hot path
 }
 
 
@@ -1173,9 +1214,7 @@ def render_markdown(
 
     lines.append("## Sites ranked by wrap priority")
     lines.append("")
-    lines.append(
-        "| File:Line | Function | Pattern | Labels | Regime | Volume | Priority |"
-    )
+    lines.append("| File:Line | Function | Pattern | Labels | Regime | Volume | Priority |")
     lines.append("|---|---|---|---:|---|---|---:|")
     for s in report.sort_sites(key=sort_key, reverse=reverse):
         file_label = f"`{s.file_path}:{s.line_start}`"

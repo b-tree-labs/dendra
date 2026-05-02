@@ -38,9 +38,9 @@ import argparse
 import hashlib
 import sys
 import urllib.request
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 # ---------------------------------------------------------------------------
 # Source-of-truth registry — mirrors `src/dendra/bundled.py:_REGISTRY` but
@@ -92,9 +92,7 @@ def _download(url: str, dest: Path, *, chunk_size: int = 1024 * 1024) -> int:
     scratch.
     """
     dest.parent.mkdir(parents=True, exist_ok=True)
-    req = urllib.request.Request(
-        url, headers={"User-Agent": "dendra-cdn-prep/1.0"}
-    )
+    req = urllib.request.Request(url, headers={"User-Agent": "dendra-cdn-prep/1.0"})
     with urllib.request.urlopen(req) as resp:  # noqa: S310 — HTTPS only
         total = int(resp.headers.get("Content-Length", 0))
         written = 0
@@ -152,11 +150,11 @@ def _render_registry_block(prepared: Iterable[PreparedModel]) -> str:
         lines.extend(
             [
                 f"    {p.spec.role!r}: {{",
-                f"        \"filename\": {p.spec.canonical_filename!r},",
-                f"        \"size_bytes\": {p.size_bytes},",
-                f"        \"sha256\": {p.sha256!r},",
-                f"        \"ollama_fallback\": {ollama_fallback!r},",
-                f"        \"description\": {p.spec.description!r},",
+                f'        "filename": {p.spec.canonical_filename!r},',
+                f'        "size_bytes": {p.size_bytes},',
+                f'        "sha256": {p.sha256!r},',
+                f'        "ollama_fallback": {ollama_fallback!r},',
+                f'        "description": {p.spec.description!r},',
                 "    },",
             ]
         )
@@ -217,8 +215,7 @@ def main() -> int:
     parser.add_argument(
         "--bucket",
         default="dendra-models",
-        help="Cloudflare R2 bucket name for the rendered upload commands "
-        "(default: dendra-models).",
+        help="Cloudflare R2 bucket name for the rendered upload commands (default: dendra-models).",
     )
     args = parser.parse_args()
 
@@ -247,9 +244,7 @@ def main() -> int:
         print(f"  Hashing {local} ...")
         sha = _sha256_file(local)
         size = local.stat().st_size
-        prepared.append(
-            PreparedModel(spec=spec, local_path=local, size_bytes=size, sha256=sha)
-        )
+        prepared.append(PreparedModel(spec=spec, local_path=local, size_bytes=size, sha256=sha))
         print(f"  ✓ {size / 1e9:.2f} GB  sha256={sha[:32]}…")
         print()
 
@@ -279,9 +274,7 @@ def main() -> int:
     print("=" * 72)
     print()
     for p in prepared:
-        print(
-            f"  curl -I https://models.dendra.run/{p.spec.canonical_filename}"
-        )
+        print(f"  curl -I https://models.dendra.run/{p.spec.canonical_filename}")
     print()
     print("Expected: 200 OK with Content-Length matching size above.")
     print()

@@ -486,9 +486,7 @@ class TestVolumeEstimate:
     def test_hot_via_route_decorator_attribute(self):
         from dendra.analyzer import _compute_volume_estimate
 
-        fn = self._parse_fn(
-            "@app.post('/triage')\ndef triage(req):\n    return 'bug'\n"
-        )
+        fn = self._parse_fn("@app.post('/triage')\ndef triage(req):\n    return 'bug'\n")
         assert _compute_volume_estimate(fn, "src/svc/api.py") == "hot"
 
     def test_hot_via_route_decorator_bare_name(self):
@@ -704,10 +702,9 @@ class TestInternalSwitchWraps:
         """
         from pathlib import Path as _Path
 
-        from dendra.analyzer import analyze
-
         # Find the real analyzer.py by inspecting the import
         import dendra.analyzer as _a
+        from dendra.analyzer import analyze
 
         analyzer_path = _Path(_a.__file__)
         report = analyze(analyzer_path)
@@ -723,21 +720,42 @@ class TestSortSites:
         from dendra.analyzer import AnalyzerReport, ClassificationSite
 
         a = ClassificationSite(
-            file_path="z_last.py", function_name="a", line_start=10,
-            line_end=20, pattern="P3", labels=["x", "y"], label_cardinality=2,
-            regime="medium", volume_estimate="cold", priority_score=1.5,
+            file_path="z_last.py",
+            function_name="a",
+            line_start=10,
+            line_end=20,
+            pattern="P3",
+            labels=["x", "y"],
+            label_cardinality=2,
+            regime="medium",
+            volume_estimate="cold",
+            priority_score=1.5,
             lift_status="refused",
         )
         b = ClassificationSite(
-            file_path="a_first.py", function_name="b", line_start=5,
-            line_end=15, pattern="P1", labels=["x", "y", "z"],
-            label_cardinality=3, regime="narrow", volume_estimate="hot",
-            priority_score=5.0, lift_status="auto_liftable",
+            file_path="a_first.py",
+            function_name="b",
+            line_start=5,
+            line_end=15,
+            pattern="P1",
+            labels=["x", "y", "z"],
+            label_cardinality=3,
+            regime="narrow",
+            volume_estimate="hot",
+            priority_score=5.0,
+            lift_status="auto_liftable",
         )
         c = ClassificationSite(
-            file_path="m_mid.py", function_name="c", line_start=1,
-            line_end=8, pattern="P2", labels=["x"], label_cardinality=1,
-            regime="narrow", volume_estimate="warm", priority_score=3.0,
+            file_path="m_mid.py",
+            function_name="c",
+            line_start=1,
+            line_end=8,
+            pattern="P2",
+            labels=["x"],
+            label_cardinality=1,
+            regime="narrow",
+            volume_estimate="warm",
+            priority_score=3.0,
             lift_status="needs_annotation",
         )
         return AnalyzerReport(root="/r", files_scanned=3, sites=[a, b, c])
@@ -1101,11 +1119,7 @@ class TestSelfHostProjectSelfBlacklist:
         # User code in another tree should still be scanned.
         _write(
             tmp_path / "examples" / "x.py",
-            (
-                "def my_rule(t):\n"
-                "    if t == 'a': return 'a'\n"
-                "    return 'b'\n"
-            ),
+            ("def my_rule(t):\n    if t == 'a': return 'a'\n    return 'b'\n"),
         )
         report = analyze(tmp_path)
         assert report.total_sites() == 1

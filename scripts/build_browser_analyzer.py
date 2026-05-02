@@ -32,7 +32,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SOURCE = REPO_ROOT / "src" / "dendra" / "analyzer.py"
 OUTPUT = REPO_ROOT / "landing" / "wasm" / "dendra_analyzer.py"
 
-_STUBS = '''\
+_STUBS = """\
 # ----- Inlined stubs (browser-only) ---------------------------------------
 # The browser bundle doesn't need real LearnedSwitch behavior — these
 # stubs make ``@ml_switch(...)`` a no-op decorator and ``Phase.RULE`` a
@@ -56,7 +56,7 @@ def ml_switch(**_kwargs):
 
 
 # --------------------------------------------------------------------------
-'''
+"""
 
 
 def build() -> int:
@@ -86,10 +86,7 @@ def build() -> int:
         if "Internal-switch wrapping (Dendra-on-Dendra dogfood)." in stripped:
             # Skip this comment line + the next 3 follow-up comment lines.
             continue
-        if (
-            "Direct imports" in stripped
-            and "going through" in stripped
-        ):
+        if "Direct imports" in stripped and "going through" in stripped:
             continue
         if "circular import since the package init imports analyzer." in stripped:
             continue
@@ -102,13 +99,14 @@ def build() -> int:
         out_lines.insert(20, _STUBS)
 
     header = (
+        "# Copyright (c) 2026 B-Tree Ventures, LLC\n"
+        "# SPDX-License-Identifier: LicenseRef-BSL-1.1\n"
         "# AUTO-GENERATED — DO NOT EDIT.\n"
-        "# Generated from src/dendra/analyzer.py by\n"
-        "# scripts/build_browser_analyzer.py.\n"
-        "# Loaded into Pyodide at runtime by landing/scripts/paste-analyzer.js\n"
-        "# so visitors can analyze pasted Python without installing anything\n"
-        "# locally. Two dendra-internal imports stripped + replaced with\n"
-        "# inline no-op stubs so this is a single self-contained .py file.\n"
+        "# Generated from src/dendra/analyzer.py by scripts/build_browser_analyzer.py.\n"
+        "# Loaded into Pyodide at runtime by landing/scripts/paste-analyzer.js so\n"
+        "# visitors can analyze pasted Python without installing anything locally.\n"
+        "# Two dendra-internal imports stripped + replaced with inline no-op stubs\n"
+        "# so this is a single self-contained .py file.\n"
         "\n"
     )
 

@@ -22,10 +22,8 @@ the markdown still reads cleanly.
 from __future__ import annotations
 
 import datetime as _dt
-from typing import Any
 
-from dendra.cloud.report.aggregator import Checkpoint, HypothesisVerdict, SwitchMetrics
-from dendra.core import Phase
+from dendra.cloud.report.aggregator import HypothesisVerdict, SwitchMetrics
 
 # ---------------------------------------------------------------------------
 # Public entry point
@@ -180,16 +178,11 @@ def _status_banner(metrics: SwitchMetrics, *, gate_name: str, alpha: float) -> s
             else "—"
         )
         effect_pp = None
-        if (
-            metrics.rule_accuracy_final is not None
-            and metrics.ml_accuracy_final is not None
-        ):
+        if metrics.rule_accuracy_final is not None and metrics.ml_accuracy_final is not None:
             effect_pp = (metrics.ml_accuracy_final - metrics.rule_accuracy_final) * 100
         effect_str = f"+{effect_pp:.1f} pp" if effect_pp else "—"
         p_str = (
-            _format_p(metrics.gate_fire_p_value)
-            if metrics.gate_fire_p_value is not None
-            else "—"
+            _format_p(metrics.gate_fire_p_value) if metrics.gate_fire_p_value is not None else "—"
         )
         return (
             f"> **Phase: {phase_str}** — graduated at outcome {metrics.gate_fire_outcome}.\n"
@@ -253,20 +246,13 @@ def _render_phase_timeline_mermaid(metrics: SwitchMetrics) -> str:
         if i + 1 < len(sorted_phases):
             next_ts = sorted_phases[i + 1][1]
             duration_days = max(1, int((next_ts - ts) / 86400))
-            lines.append(
-                f"    {phase.value.upper():<24}:done, p{i}, "
-                f"{date_str}, {duration_days}d"
-            )
+            lines.append(f"    {phase.value.upper():<24}:done, p{i}, {date_str}, {duration_days}d")
         else:
             # Last phase is currently-active
-            now_ts = (
-                metrics.last_record_timestamp
-                or _dt.datetime.now(_dt.UTC).timestamp()
-            )
+            now_ts = metrics.last_record_timestamp or _dt.datetime.now(_dt.UTC).timestamp()
             duration_days = max(1, int((now_ts - ts) / 86400))
             lines.append(
-                f"    {phase.value.upper():<24}:active, p{i}, "
-                f"{date_str}, {duration_days}d"
+                f"    {phase.value.upper():<24}:active, p{i}, {date_str}, {duration_days}d"
             )
     lines.append("```")
     return "\n".join(lines)
@@ -283,8 +269,7 @@ def _render_cost_table(
     rows = [
         "| | Pre-graduation | Post-graduation | Reduction |",
         "|---|---:|---:|---:|",
-        f"| Per call | ${cost_per_call:.6f} | ${cost_post_graduation:.6f} | "
-        f"{reduction_pct:.2f}% |",
+        f"| Per call | ${cost_per_call:.6f} | ${cost_post_graduation:.6f} | {reduction_pct:.2f}% |",
     ]
     if estimated_calls_per_month:
         pre_month = cost_per_call * estimated_calls_per_month
@@ -335,11 +320,7 @@ def _render_hypothesis_table(verdict: HypothesisVerdict, *, switch_name: str) ->
         )
         meets = verdict.effect_size_meets_threshold()
         verdict_str = (
-            "✓ Met"
-            if meets is True
-            else "✗ Below threshold"
-            if meets is False
-            else "(in flight)"
+            "✓ Met" if meets is True else "✗ Below threshold" if meets is False else "(in flight)"
         )
         rows.append(
             f"| Effect size: ≥ {verdict.predicted_effect_size_pp:.1f} pp "
@@ -362,17 +343,14 @@ def _render_checkpoint_table(metrics: SwitchMetrics) -> str:
         "|---:|---:|---:|---:|---|",
     ]
     for cp in metrics.checkpoints:
-        rule_str = (
-            f"{cp.rule_accuracy * 100:.1f}%" if cp.rule_accuracy is not None else "—"
-        )
+        rule_str = f"{cp.rule_accuracy * 100:.1f}%" if cp.rule_accuracy is not None else "—"
         ml_str = f"{cp.ml_accuracy * 100:.1f}%" if cp.ml_accuracy is not None else "—"
         p_str = _format_p(cp.paired_p_value) if cp.paired_p_value is not None else "—"
         phase_str = cp.phase_at_checkpoint.value.upper()
 
         # Bold the gate-fire row so the eye lands on it
         is_gate_fire = (
-            metrics.gate_fire_outcome is not None
-            and cp.outcome_count == metrics.gate_fire_outcome
+            metrics.gate_fire_outcome is not None and cp.outcome_count == metrics.gate_fire_outcome
         )
         if is_gate_fire:
             rows.append(
@@ -380,9 +358,7 @@ def _render_checkpoint_table(metrics: SwitchMetrics) -> str:
                 f"**{p_str}** | **{phase_str}** ← gate |"
             )
         else:
-            rows.append(
-                f"| {cp.outcome_count} | {rule_str} | {ml_str} | {p_str} | {phase_str} |"
-            )
+            rows.append(f"| {cp.outcome_count} | {rule_str} | {ml_str} | {p_str} | {phase_str} |")
     return "\n".join(rows)
 
 

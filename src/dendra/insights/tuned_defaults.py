@@ -119,16 +119,10 @@ class TunedDefaults:
             median_outcomes_to_graduation=_dict_int_or(
                 defaults_block.get("median_outcomes_to_graduation"), {}
             ),
-            suggested_min_outcomes=_dict_int_or(
-                defaults_block.get("suggested_min_outcomes"), {}
-            ),
+            suggested_min_outcomes=_dict_int_or(defaults_block.get("suggested_min_outcomes"), {}),
             suggested_alpha=_float_or(defaults_block.get("suggested_alpha"), None),
-            pattern_frequencies=_dict_float_or(
-                defaults_block.get("pattern_frequencies"), {}
-            ),
-            top_refusal_categories=_list_str_or(
-                defaults_block.get("top_refusal_categories"), []
-            ),
+            pattern_frequencies=_dict_float_or(defaults_block.get("pattern_frequencies"), {}),
+            top_refusal_categories=_list_str_or(defaults_block.get("top_refusal_categories"), []),
             median_high_priority_density=_float_or(
                 defaults_block.get("median_high_priority_density"), None
             ),

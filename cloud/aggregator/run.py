@@ -59,7 +59,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-
 # Baked-in default values — same as src/dendra/insights/tuned_defaults.py
 # BAKED_IN_DEFAULTS. The aggregator MAY override these in v1.1+ once we
 # have signal-extraction logic; for v1.0 they pass through unchanged
@@ -137,13 +136,10 @@ def aggregate(database: str, env_flag: str) -> dict[str, Any]:
     # --- cohort size: distinct account_hash (excluding NULLs) ---
     cohort_rows = query_d1(
         database,
-        "SELECT COUNT(DISTINCT account_hash) AS n FROM events "
-        "WHERE account_hash IS NOT NULL",
+        "SELECT COUNT(DISTINCT account_hash) AS n FROM events WHERE account_hash IS NOT NULL",
         env_flag=env_flag,
     )
-    cohort_size = (
-        int(cohort_rows[0].get("n", 0)) if cohort_rows else 0
-    )
+    cohort_size = int(cohort_rows[0].get("n", 0)) if cohort_rows else 0
 
     # --- event totals + by-type breakdown ---
     total_rows = query_d1(
