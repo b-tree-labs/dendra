@@ -78,7 +78,7 @@ should feel like members of the same typographic family.
 ## Paper / LaTeX
 
 Dendra papers use the B-Tree Labs preamble at
-`b-tree-labs/.github/brand/templates/axiom-labs-preamble.tex`
+`b-tree-labs/.github/brand/templates/b-tree-labs-preamble.tex`
 — serif body in TeX Gyre Pagella, Space Grotesk for figure labels
 and titles. Academic-convention-compliant body + branded display.
 
