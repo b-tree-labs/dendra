@@ -108,7 +108,7 @@ when embedded in documents, emails, slides, and web pages.
 | Horizontal wordmark | `Dendra` |
 | Stacked wordmark | `Dendra` |
 | Sub-brand lockup (e.g. Cloud) | `Dendra Cloud` |
-| Social card | `Dendra: The classification primitive every production codebase is missing` |
+| Social card | `Dendra: software that's smarter every month than the day you shipped it` |
 | Favicon / tile | usually omitted (favicons are decorative context for the page title) |
 | Animated mark | `Dendra mark (animated)` — include the (animated) hint for screen-reader users |
 

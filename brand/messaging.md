@@ -9,25 +9,43 @@ the canonical copy verbatim rather than paraphrasing.
 
 ## Primary tagline
 
-> **The classification primitive every production codebase is missing.**
+> **Software that's smarter every month than the day you shipped it.**
+
+(Internal codename: "closer #9" — landed 2026-04-29 after iteration on
+nine candidates. The rationale: it states the value (compounding
+quality) without claiming the mechanism, doesn't require knowing the
+"primitive" framing to land, and reads cleanly without product
+context. Passes the calibration test in `voice.md` — pairs with
+site-level scoping naturally.)
 
 Use on:
 - Landing page hero (`landing/index.html`).
-- README.md hero.
+- README.md H1.
 - PyPI project description.
-- Open Graph / Twitter card titles.
+- Open Graph / Twitter card descriptions.
 - Social-media bio.
+- Pitch deck cover (when one exists).
 
 Do not shorten, re-order, or paraphrase without noting the new
 form in this doc.
 
 ## Secondary taglines (contextual alternates)
 
+- **Developer-action subtitle** (paired under the primary): "*Drop a
+  rule. Drop a verifier. Watch your classifier get smarter
+  automatically.*" Used as the action sub-tagline on the README hero.
+- **Category descriptor** (where "primitive" framing matters): "*The
+  classification primitive every production codebase is missing.*"
+  Was the primary through 2026-04-29; retained for footer-style
+  category framings.
 - **Research audience:** "*When should a rule learn?*" (matches
   the paper title; works on arXiv description + academic blog).
-- **Developer audience:** "*One decorator. Six phases. A safety floor.*"
-- **Enterprise / safety audience:** "*Graduated autonomy, with a statistical safety bound.*"
-- **Concise label** (for navigation, short slots): "*The graduated-autonomy primitive.*"
+- **Developer audience (short):** "*One decorator. Six phases. A
+  safety floor.*"
+- **Enterprise / safety audience:** "*Graduated autonomy, with a
+  statistical safety bound.*"
+- **Concise label** (for navigation, short slots): "*The
+  graduated-autonomy primitive.*"
 
 Use the primary tagline wherever space permits. Secondaries are
 for contexts where the primary is too long or the audience is
