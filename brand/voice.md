@@ -67,7 +67,7 @@ list.
 
 - **Short before long.** One idea per sentence. Break up compound
   claims. Subject-verb-object; active voice.
-- **Numbers over adjectives.** "0.62 µs p50" not "lightning fast."
+- **Numbers over adjectives.** "1.00 µs p50 at Phase.RULE" not "lightning fast."
   "4.3:1" not "plenty of contrast." "four benchmarks at p < 0.01"
   not "rigorously tested."
 - **Examples over explanations.** A six-line code block usually

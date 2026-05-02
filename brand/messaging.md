@@ -83,8 +83,8 @@ threshold when you advance. We measured this on four public
 classification benchmarks (ATIS, HWU64, Banking77, CLINC150) at
 p < 0.01. Transition depths range from 250 outcomes for narrow
 domains to 1,500 for high-cardinality domains. Latency overhead
-at Phase 0 is 0.62 µs p50 — five times a bare function call,
-well inside any production budget. Dendra ships Apache 2.0 on
+at Phase.RULE is ~1 µs p50 — fast enough that any production hot
+path is dominated by the caller's logic, not Dendra's. Dendra ships Apache 2.0 on
 the client SDK, Business Source License 1.1 on the analyzer and
 operated components (Change Date 2030-05-01 → Apache 2.0).
 Filed US provisional patent. Paper under submission. Built by
@@ -165,8 +165,10 @@ benefit] / unlike [alternatives] / [differentiator].*
 
 | Claim | Number | Source |
 |---|---|---|
-| Phase-0 switch overhead | 0.62 µs p50 | `tests/test_latency.py` |
-| Rule overhead vs bare call | ~5× | `tests/test_latency.py` |
+| Phase.RULE classify p50 | 0.96 µs | `docs/benchmarks/perf-baselines-2026-05-01.md` |
+| Phase.RULE dispatch p50 | 1.00 µs | `docs/benchmarks/perf-baselines-2026-05-01.md` |
+| Switch overhead vs bare call | ~24× (42 ns → 1 µs) | `docs/benchmarks/perf-baselines-2026-05-01.md` |
+| FileStorage batched throughput | 245K writes/sec | `docs/benchmarks/perf-baselines-2026-05-01.md` |
 | Benchmarks measured | 4 (ATIS, HWU64, Banking77, CLINC150) | `src/dendra/benchmarks/` |
 | Paired-test threshold | p < 0.01 | `docs/papers/...` |
 | ATIS transition depth | ≤ 250 outcomes | paper results |
