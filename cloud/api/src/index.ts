@@ -16,6 +16,7 @@
 
 import { Hono } from 'hono';
 import { authMiddleware, requireAuth, type ApiEnv } from './auth';
+import { usageMiddleware } from './usage';
 import { admin, type AdminEnv } from './admin';
 
 const app = new Hono<{ Bindings: AdminEnv }>();
@@ -38,6 +39,8 @@ app.get('/health', (c) => {
 const v1 = new Hono<{ Bindings: ApiEnv }>();
 v1.use('*', authMiddleware());
 
+// /whoami is auth-gated but does NOT count toward usage — it's a probe,
+// SDKs call it on connect to verify the key.
 v1.get('/whoami', (c) => {
   const auth = requireAuth(c);
   return c.json({
@@ -47,11 +50,15 @@ v1.get('/whoami', (c) => {
   });
 });
 
-// Week 2 will land /verdicts, /switches/:name/report, /judge here.
-// Stubs return 501 so SDKs hitting them get a recognizable signal.
-v1.post('/verdicts', (c) => c.json({ error: 'not_implemented' }, 501));
-v1.get('/switches/:name/report', (c) => c.json({ error: 'not_implemented' }, 501));
-v1.post('/judge', (c) => c.json({ error: 'not_implemented' }, 501));
+// Billable routes — wrap with usageMiddleware so each call increments
+// the monthly counter and enforces tier caps before reaching the
+// (week 2) handlers.
+const billable = new Hono<{ Bindings: ApiEnv }>();
+billable.use('*', usageMiddleware());
+billable.post('/verdicts', (c) => c.json({ error: 'not_implemented' }, 501));
+billable.get('/switches/:name/report', (c) => c.json({ error: 'not_implemented' }, 501));
+billable.post('/judge', (c) => c.json({ error: 'not_implemented' }, 501));
+v1.route('/', billable);
 
 app.route('/v1', v1);
 
