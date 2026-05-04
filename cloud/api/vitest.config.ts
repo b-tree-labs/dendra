@@ -18,6 +18,8 @@ export default defineWorkersConfig({
             ENVIRONMENT: 'test',
             API_KEY_PEPPER: 'test-pepper-32-bytes-of-pseudo-entropy-yo',
             DASHBOARD_SERVICE_TOKEN: 'test-service-token-for-dashboard',
+            STRIPE_SECRET_KEY: 'sk_test_dummy',
+            STRIPE_WEBHOOK_SECRET: 'whsec_dummy',
           },
         },
       },

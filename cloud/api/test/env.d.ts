@@ -11,6 +11,8 @@ declare module 'cloudflare:test' {
     ENVIRONMENT: string;
     API_KEY_PEPPER: string;
     DASHBOARD_SERVICE_TOKEN: string;
+    STRIPE_SECRET_KEY: string;
+    STRIPE_WEBHOOK_SECRET: string;
   }
 }
 

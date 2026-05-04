@@ -1,0 +1,57 @@
+// Copyright (c) 2026 B-Tree Labs
+// SPDX-License-Identifier: LicenseRef-BSL-1.1
+//
+// POST /api/billing/checkout
+//
+// Creates a Stripe Checkout session for the requested tier and returns
+// the redirect URL. The dashboard billing page hits this then sends the
+// browser to session.url; Stripe handles the rest. After success Stripe
+// redirects back to /dashboard/billing?status=success&session_id=…,
+// where we read the session, persist stripe_customer_id on the user row,
+// and let the webhook receiver complete the subscription bookkeeping.
+
+import { NextRequest, NextResponse } from "next/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
+import { upsertUser } from "../../../../lib/dendra-api";
+import { stripe, priceIdForTier, checkoutReturnUrls } from "../../../../lib/stripe";
+
+const ALLOWED_TIERS = new Set(["hosted_pro", "hosted_scale", "hosted_business"]);
+
+export async function POST(req: NextRequest) {
+  try {
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    const u = await currentUser();
+    const email = u?.emailAddresses?.[0]?.emailAddress;
+    if (!email) return NextResponse.json({ error: "no_email" }, { status: 400 });
+
+    const body = (await req.json().catch(() => ({}))) as { tier_id?: string };
+    if (!body.tier_id || !ALLOWED_TIERS.has(body.tier_id)) {
+      return NextResponse.json({ error: "invalid_tier_id" }, { status: 400 });
+    }
+
+    const dendraUser = await upsertUser(userId, email);
+    const baseUrl = req.nextUrl.origin;
+    const session = await stripe().checkout.sessions.create({
+      mode: "subscription",
+      payment_method_types: ["card"],
+      line_items: [{ price: priceIdForTier(body.tier_id), quantity: 1 }],
+      customer_email: email,
+      // Bind subscription rows back to our user row via Stripe metadata —
+      // the webhook will key off subscription.metadata or look up by
+      // stripe_customer_id (set on the user row at first checkout).
+      subscription_data: {
+        metadata: {
+          dendra_user_id: String(dendraUser.user_id),
+          dendra_tier_id: body.tier_id,
+        },
+      },
+      ...checkoutReturnUrls(baseUrl),
+    });
+
+    return NextResponse.json({ url: session.url });
+  } catch (e) {
+    console.error("POST /api/billing/checkout", e);
+    return NextResponse.json({ error: "internal_error" }, { status: 500 });
+  }
+}

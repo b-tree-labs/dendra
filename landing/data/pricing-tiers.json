@@ -48,7 +48,8 @@
       "key_features": "30-day retention, unlimited dashboard users, audit-chain export",
       "is_enterprise": false,
       "cta_label": "Subscribe",
-      "cta_href": "https://app.dendra.run/billing"
+      "cta_href": "https://app.dendra.run/billing",
+      "stripe_product_lookup_key": "dendra_hosted_pro"
     },
     {
       "id": "hosted_scale",
@@ -62,7 +63,8 @@
       "key_features": "90-day retention, webhooks, SSO, priority email",
       "is_enterprise": false,
       "cta_label": "Subscribe",
-      "cta_href": "https://app.dendra.run/billing"
+      "cta_href": "https://app.dendra.run/billing",
+      "stripe_product_lookup_key": "dendra_hosted_scale"
     },
     {
       "id": "hosted_business",
@@ -76,7 +78,8 @@
       "key_features": "1-year retention, SOC 2 attestation, 99.9% SLA, BAA available, dedicated Slack",
       "is_enterprise": false,
       "cta_label": "Contact sales",
-      "cta_href": "mailto:sales@dendra.run?subject=Hosted+Business+inquiry"
+      "cta_href": "mailto:sales@dendra.run?subject=Hosted+Business+inquiry",
+      "stripe_product_lookup_key": "dendra_hosted_business"
     },
     {
       "id": "enterprise_financial",

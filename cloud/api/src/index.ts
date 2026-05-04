@@ -18,8 +18,10 @@ import { Hono } from 'hono';
 import { authMiddleware, requireAuth, type ApiEnv } from './auth';
 import { usageMiddleware } from './usage';
 import { admin, type AdminEnv } from './admin';
+import { webhook, type WebhookEnv } from './webhook';
 
-const app = new Hono<{ Bindings: AdminEnv }>();
+type Env = AdminEnv & WebhookEnv;
+const app = new Hono<{ Bindings: Env }>();
 
 // ---------------------------------------------------------------------------
 // Public: liveness probe. Used by Better Stack + smoke tests. No auth.
@@ -69,6 +71,12 @@ app.route('/v1', v1);
 // token; routes are defined in admin.ts.
 // ---------------------------------------------------------------------------
 app.route('/admin', admin);
+
+// ---------------------------------------------------------------------------
+// Stripe webhooks. POST /webhook/stripe — body verified via Stripe-Signature.
+// Updates users.current_tier in response to subscription state changes.
+// ---------------------------------------------------------------------------
+app.route('/webhook', webhook);
 
 // ---------------------------------------------------------------------------
 // Catch-all: 404 with a recognizable shape so client SDKs can surface it.

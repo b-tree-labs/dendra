@@ -30,6 +30,19 @@ export default async function DashboardPage() {
           Manage keys
         </Link>
       </section>
+
+      <section className="mt-6 rounded-lg border border-neutral-200 p-6">
+        <h2 className="text-lg font-medium">Billing</h2>
+        <p className="mt-2 text-sm text-neutral-600">
+          Choose a plan, view invoices, or update payment details.
+        </p>
+        <Link
+          href="/dashboard/billing"
+          className="mt-4 inline-block rounded-md border border-neutral-300 px-4 py-2 text-sm hover:bg-neutral-50"
+        >
+          Open billing
+        </Link>
+      </section>
     </main>
   );
 }
