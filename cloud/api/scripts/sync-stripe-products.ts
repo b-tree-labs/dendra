@@ -30,7 +30,7 @@ const stripe = new Stripe(STRIPE_KEY);
 
 interface Tier {
   id: string;
-  name: string;
+  label: string;
   price_per_month_usd: number | null;
   stripe_product_lookup_key?: string;
   classifications_per_month: number | null;
@@ -54,7 +54,7 @@ async function findOrCreateProduct(t: Tier): Promise<Stripe.Product> {
     return search.data[0]!;
   }
   const created = await stripe.products.create({
-    name: t.name,
+    name: t.label,
     metadata: {
       lookup_key: t.stripe_product_lookup_key!,
       tier_id: t.id,
@@ -98,7 +98,7 @@ async function main() {
   console.log(`Syncing ${billable.length} billable tiers to Stripe...`);
   const out: Record<string, string> = {};
   for (const t of billable) {
-    console.log(`\n# ${t.name} (${t.id})`);
+    console.log(`\n# ${t.label} (${t.id})`);
     const product = await findOrCreateProduct(t);
     const price = await findOrCreatePrice(t, product.id);
     out[t.id] = price.id;
