@@ -37,6 +37,10 @@ export async function POST(req: NextRequest) {
       payment_method_types: ["card"],
       line_items: [{ price: priceIdForTier(body.tier_id), quantity: 1 }],
       customer_email: email,
+      // Lets Stripe show a "Have a promo code?" field on the Checkout
+      // page. We use this for the FRIEND2026 trial-discount code during
+      // shadow launch. Stripe handles redemption + cap accounting.
+      allow_promotion_codes: true,
       // Bind subscription rows back to our user row via Stripe metadata —
       // the webhook will key off subscription.metadata or look up by
       // stripe_customer_id (set on the user row at first checkout).
