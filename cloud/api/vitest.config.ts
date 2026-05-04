@@ -20,6 +20,10 @@ export default defineWorkersConfig({
             DASHBOARD_SERVICE_TOKEN: 'test-service-token-for-dashboard',
             STRIPE_SECRET_KEY: 'sk_test_dummy',
             STRIPE_WEBHOOK_SECRET: 'whsec_dummy',
+            // Deterministic Ed25519 32-byte private key (hex) for tests.
+            // Real keys are generated per-env via scripts/generate-license-key.ts.
+            LICENSE_SIGNING_PRIVATE_KEY:
+              '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
           },
         },
       },

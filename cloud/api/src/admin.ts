@@ -14,10 +14,12 @@
 
 import { Hono, type MiddlewareHandler } from 'hono';
 import { generateKey, type KeyEnvironment } from './keys';
+import { signLicense, type LicenseClaims } from './license';
 import type { ApiEnv } from './auth';
 
 export interface AdminEnv extends ApiEnv {
   DASHBOARD_SERVICE_TOKEN: string;
+  LICENSE_SIGNING_PRIVATE_KEY?: string;
 }
 
 /**
@@ -170,6 +172,57 @@ admin.get('/keys', async (c) => {
     .all();
 
   return c.json({ keys: rows.results ?? [] });
+});
+
+// ---------------------------------------------------------------------------
+// POST /admin/licenses/issue — sign a license token for a user.
+// Body: { user_id: number, ttl_days?: number, max_seats?: number | null }
+// Returns: { token, claims }. The plaintext token must be stored by the
+// dashboard / handed to the customer; we don't persist it (only the
+// license_id claim, which lets us revoke at lookup time later).
+// ---------------------------------------------------------------------------
+admin.post('/licenses/issue', async (c) => {
+  const priv = c.env.LICENSE_SIGNING_PRIVATE_KEY;
+  if (!priv) {
+    return c.json({ error: 'license_signing_not_configured' }, 500);
+  }
+
+  const body = await c.req.json<{
+    user_id?: number;
+    ttl_days?: number;
+    max_seats?: number | null;
+  }>().catch(() => null);
+
+  if (!body?.user_id || !Number.isInteger(body.user_id)) {
+    return c.json({ error: 'missing_user_id' }, 400);
+  }
+  const ttlDays = Number.isFinite(body.ttl_days) && (body.ttl_days ?? 0) > 0
+    ? Math.min(Math.floor(body.ttl_days as number), 365 * 3)
+    : 30;
+  const maxSeats =
+    body.max_seats === undefined || body.max_seats === null
+      ? null
+      : Number.isInteger(body.max_seats) && (body.max_seats as number) > 0
+        ? (body.max_seats as number)
+        : null;
+
+  const user = await c.env.DB.prepare(
+    `SELECT id, current_tier, account_hash FROM users WHERE id = ? LIMIT 1`,
+  )
+    .bind(body.user_id)
+    .first<{ id: number; current_tier: LicenseClaims['tier']; account_hash: string }>();
+  if (!user) return c.json({ error: 'user_not_found' }, 404);
+
+  const { token, claims } = await signLicense({
+    privateKeyHex: priv,
+    user_id: user.id,
+    tier: user.current_tier,
+    account_hash: user.account_hash,
+    ttlSeconds: ttlDays * 86400,
+    max_seats: maxSeats,
+  });
+
+  return c.json({ token, claims });
 });
 
 // ---------------------------------------------------------------------------

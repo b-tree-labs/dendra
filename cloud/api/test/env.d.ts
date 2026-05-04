@@ -13,6 +13,7 @@ declare module 'cloudflare:test' {
     DASHBOARD_SERVICE_TOKEN: string;
     STRIPE_SECRET_KEY: string;
     STRIPE_WEBHOOK_SECRET: string;
+    LICENSE_SIGNING_PRIVATE_KEY: string;
   }
 }
 
