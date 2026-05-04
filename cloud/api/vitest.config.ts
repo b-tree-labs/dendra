@@ -18,12 +18,12 @@ export default defineWorkersConfig({
             ENVIRONMENT: 'test',
             API_KEY_PEPPER: 'test-pepper-32-bytes-of-pseudo-entropy-yo',
             DASHBOARD_SERVICE_TOKEN: 'test-service-token-for-dashboard',
-            STRIPE_SECRET_KEY: 'sk_test_dummy',
-            STRIPE_WEBHOOK_SECRET: 'whsec_dummy',
+            STRIPE_SECRET_KEY: 'sk_test_dummy', // pragma: allowlist secret
+            STRIPE_WEBHOOK_SECRET: 'whsec_dummy', // pragma: allowlist secret
             // Deterministic Ed25519 32-byte private key (hex) for tests.
             // Real keys are generated per-env via scripts/generate-license-key.ts.
             LICENSE_SIGNING_PRIVATE_KEY:
-              '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+              '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef', // pragma: allowlist secret
           },
         },
       },

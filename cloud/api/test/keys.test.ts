@@ -46,7 +46,7 @@ describe('generateKey', () => {
 
 describe('parseBearer', () => {
   it('extracts dndr_live_… from a well-formed header', () => {
-    const k = 'dndr_live_abcdefghijklmnopqrstuvwxyz12345A';
+    const k = 'dndr_live_abcdefghijklmnopqrstuvwxyz12345A'; // pragma: allowlist secret
     expect(parseBearer(`Bearer ${k}`)).toBe(k);
   });
 
@@ -60,7 +60,7 @@ describe('parseBearer', () => {
   });
 
   it('rejects no Bearer prefix', () => {
-    expect(parseBearer('dndr_live_abcdefghijklmnopqrstuvwxyz12345A')).toBeNull();
+    expect(parseBearer('dndr_live_abcdefghijklmnopqrstuvwxyz12345A')).toBeNull(); // pragma: allowlist secret
   });
 
   it('rejects wrong prefix', () => {
