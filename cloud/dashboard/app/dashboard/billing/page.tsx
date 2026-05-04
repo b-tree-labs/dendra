@@ -6,6 +6,8 @@ import { redirect } from "next/navigation";
 import { upsertUser } from "../../../lib/dendra-api";
 import BillingClient from "./billing-client";
 
+export const runtime = "edge";
+
 export default async function BillingPage({
   searchParams,
 }: {

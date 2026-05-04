@@ -12,6 +12,8 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { upsertUser } from "../../../../lib/dendra-api";
 import { stripe } from "../../../../lib/stripe";
 
+export const runtime = "edge";
+
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await auth();

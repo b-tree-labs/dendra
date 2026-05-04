@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 
+export const runtime = "edge";
+
 export default function Home() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-16">

@@ -15,6 +15,8 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { upsertUser } from "../../../../lib/dendra-api";
 import { stripe, priceIdForTier, checkoutReturnUrls } from "../../../../lib/stripe";
 
+export const runtime = "edge";
+
 const ALLOWED_TIERS = new Set(["hosted_pro", "hosted_scale", "hosted_business"]);
 
 export async function POST(req: NextRequest) {

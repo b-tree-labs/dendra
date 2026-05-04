@@ -6,6 +6,8 @@ import { redirect } from "next/navigation";
 import { upsertUser, listKeys } from "../../../lib/dendra-api";
 import KeysClient from "./keys-client";
 
+export const runtime = "edge";
+
 export default async function KeysPage() {
   const { userId } = await auth();
   if (!userId) redirect("/");

@@ -16,6 +16,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { upsertUser, issueKey } from "../../../lib/dendra-api";
 
+export const runtime = "edge";
+
 export async function POST(req: NextRequest) {
   let body: { code?: string; name?: string } = {};
   try {

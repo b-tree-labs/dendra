@@ -10,6 +10,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { upsertUser, revokeKey } from "../../../../lib/dendra-api";
 
+export const runtime = "edge";
+
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
