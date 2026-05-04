@@ -51,7 +51,7 @@ describe('parseBearer', () => {
   });
 
   it('extracts dndr_test_… too', () => {
-    const k = 'dndr_test_abcdefghijklmnopqrstuvwxyz12345A';
+    const k = 'dndr_test_abcdefghijklmnopqrstuvwxyz12345A'; // pragma: allowlist secret
     expect(parseBearer(`Bearer ${k}`)).toBe(k);
   });
 

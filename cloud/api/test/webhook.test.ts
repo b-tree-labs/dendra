@@ -13,7 +13,7 @@ import migration0002 from '../../collector/migrations/0002_leads.sql?raw';
 import migration0003 from '../../collector/migrations/0003_saas.sql?raw';
 
 const SERVICE_TOKEN = 'test-service-token-for-dashboard';
-const WEBHOOK_SECRET = 'whsec_dummy';
+const WEBHOOK_SECRET = 'whsec_dummy'; // pragma: allowlist secret
 const BASE = 'https://api.test';
 
 const adminHeaders = {
