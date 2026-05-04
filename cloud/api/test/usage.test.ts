@@ -10,6 +10,7 @@ import { env, SELF } from 'cloudflare:test';
 import migration0001 from '../../collector/migrations/0001_initial.sql?raw';
 import migration0002 from '../../collector/migrations/0002_leads.sql?raw';
 import migration0003 from '../../collector/migrations/0003_saas.sql?raw';
+import migration0004 from '../../collector/migrations/0004_verdicts.sql?raw';
 import { recordUsage, periodOf, secondsUntilNextPeriod } from '../src/usage';
 
 const SERVICE_TOKEN = 'test-service-token-for-dashboard';
@@ -42,6 +43,7 @@ beforeAll(async () => {
   await applySql(migration0001);
   await applySql(migration0002);
   await applySql(migration0003);
+  await applySql(migration0004);
 });
 
 describe('periodOf / secondsUntilNextPeriod', () => {
@@ -199,7 +201,7 @@ describe('usageMiddleware via /v1 surface', () => {
     expect(after?.n).toBe(before?.n);
   });
 
-  it('billable routes return 501 for now but increment usage', async () => {
+  it('billable POST /v1/verdicts increments usage', async () => {
     const before = await env.DB.prepare(
       `SELECT COALESCE(SUM(classifications_count), 0) AS n FROM usage_metrics WHERE api_key_id = (SELECT id FROM api_keys WHERE key_prefix = ?)`,
     ).bind(plaintext.slice(10, 18)).first<{ n: number }>();
@@ -207,10 +209,9 @@ describe('usageMiddleware via /v1 surface', () => {
     const res = await SELF.fetch(`${BASE}/v1/verdicts`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${plaintext}`, 'Content-Type': 'application/json' },
-      body: '{}',
+      body: JSON.stringify({ switch_name: 'usage_probe' }),
     });
-    // not_implemented is the handler's response — middleware ran first.
-    expect(res.status).toBe(501);
+    expect(res.status).toBe(201);
 
     const after = await env.DB.prepare(
       `SELECT COALESCE(SUM(classifications_count), 0) AS n FROM usage_metrics WHERE api_key_id = (SELECT id FROM api_keys WHERE key_prefix = ?)`,

@@ -19,6 +19,8 @@ import { authMiddleware, requireAuth, type ApiEnv } from './auth';
 import { usageMiddleware } from './usage';
 import { admin, type AdminEnv } from './admin';
 import { webhook, type WebhookEnv } from './webhook';
+import { recordVerdictHandler } from './verdicts';
+import { renderReportHandler } from './report';
 
 type Env = AdminEnv & WebhookEnv;
 const app = new Hono<{ Bindings: Env }>();
@@ -57,8 +59,8 @@ v1.get('/whoami', (c) => {
 // (week 2) handlers.
 const billable = new Hono<{ Bindings: ApiEnv }>();
 billable.use('*', usageMiddleware());
-billable.post('/verdicts', (c) => c.json({ error: 'not_implemented' }, 501));
-billable.get('/switches/:name/report', (c) => c.json({ error: 'not_implemented' }, 501));
+billable.post('/verdicts', recordVerdictHandler);
+billable.get('/switches/:name/report', renderReportHandler);
 billable.post('/judge', (c) => c.json({ error: 'not_implemented' }, 501));
 v1.route('/', billable);
 
