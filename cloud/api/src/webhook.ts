@@ -62,7 +62,7 @@ webhook.post('/stripe', async (c) => {
     case 'customer.subscription.updated':
     case 'customer.subscription.deleted': {
       const sub = event.data.object as Stripe.Subscription;
-      await handleSubscriptionEvent(c.env.DB, stripe, event, sub);
+      await handleSubscriptionEvent(c.env.DB, event, sub);
       break;
     }
     default:
@@ -75,7 +75,6 @@ webhook.post('/stripe', async (c) => {
 
 async function handleSubscriptionEvent(
   db: D1Database,
-  stripe: Stripe,
   event: Stripe.Event,
   sub: Stripe.Subscription,
 ) {
@@ -103,17 +102,30 @@ async function handleSubscriptionEvent(
     return;
   }
 
-  // Determine the tier and period from the first item. Stripe API version
-  // 2025+ moved current_period_{start,end} from the Subscription onto each
-  // SubscriptionItem; we read item-level fields and treat the subscription
-  // as having a single billing item (which our Pro/Scale/Business products do).
+  // Determine the tier and period from the first item. The subscription
+  // event already embeds the full price object on item.price, so we don't
+  // need a separate stripe.prices.retrieve round-trip — that would also
+  // cross-fault if the Worker's secret key is for a different sandbox
+  // than the one that issued the price (e.g. after rolling test keys).
+  // Stripe API 2025+ moved current_period_{start,end} from the Subscription
+  // onto each SubscriptionItem; we read item-level fields and treat the
+  // subscription as having a single billing item (which our Pro / Scale /
+  // Business products do).
   const item = sub.items.data[0];
-  const priceId = item?.price.id;
   let tier: AuthContext['tier'] = 'free';
-  if (priceId) {
-    const price = await stripe.prices.retrieve(priceId);
-    const productLookup =
-      price.lookup_key?.replace(/_monthly_usd$/, '') ?? price.metadata?.lookup_key;
+  const price = item?.price;
+  if (price) {
+    // Lookup-key shape produced by scripts/sync-stripe-products.ts is
+    //   dendra_hosted_pro_monthly_usd
+    // The TIER_MAP keys match the tier id in pricing-tiers.json
+    // (hosted_pro etc), so we strip both the dendra_ prefix and the
+    // _monthly_usd suffix before lookup.
+    const raw =
+      price.lookup_key ??
+      (typeof price.metadata?.lookup_key === 'string' ? price.metadata.lookup_key : null);
+    const productLookup = raw
+      ? raw.replace(/^dendra_/, '').replace(/_monthly_usd$/, '')
+      : null;
     if (productLookup && TIER_MAP[productLookup]) {
       tier = TIER_MAP[productLookup]!;
     }
