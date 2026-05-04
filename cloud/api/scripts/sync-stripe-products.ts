@@ -3,7 +3,7 @@
 //
 // Idempotent Stripe product + price sync.
 //
-// Usage:
+// Usage (from cloud/api/):
 //   STRIPE_SECRET_KEY=sk_test_… npx tsx scripts/sync-stripe-products.ts
 //
 // What it does, per tier in landing/data/pricing-tiers.json with a
@@ -26,7 +26,7 @@ if (!STRIPE_KEY) {
   process.exit(1);
 }
 
-const stripe = new Stripe(STRIPE_KEY, { apiVersion: '2024-12-18.acacia' });
+const stripe = new Stripe(STRIPE_KEY);
 
 interface Tier {
   id: string;
@@ -36,7 +36,8 @@ interface Tier {
   classifications_per_month: number | null;
 }
 
-const tiersPath = resolve(__dirname, '../landing/data/pricing-tiers.json');
+// __dirname is cloud/api/scripts/; go up three to repo root.
+const tiersPath = resolve(__dirname, '../../../landing/data/pricing-tiers.json');
 const all = JSON.parse(readFileSync(tiersPath, 'utf-8')) as { tiers: Tier[] };
 
 const billable = all.tiers.filter(
