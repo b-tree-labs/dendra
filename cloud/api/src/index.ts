@@ -16,8 +16,9 @@
 
 import { Hono } from 'hono';
 import { authMiddleware, requireAuth, type ApiEnv } from './auth';
+import { admin, type AdminEnv } from './admin';
 
-const app = new Hono<{ Bindings: ApiEnv }>();
+const app = new Hono<{ Bindings: AdminEnv }>();
 
 // ---------------------------------------------------------------------------
 // Public: liveness probe. Used by Better Stack + smoke tests. No auth.
@@ -53,6 +54,14 @@ v1.get('/switches/:name/report', (c) => c.json({ error: 'not_implemented' }, 501
 v1.post('/judge', (c) => c.json({ error: 'not_implemented' }, 501));
 
 app.route('/v1', v1);
+
+// ---------------------------------------------------------------------------
+// Admin: dashboard-only endpoints (key issuance / revocation, user upsert).
+// Mounted at /admin (not /v1/admin) to keep it unambiguously distinct
+// from the Bearer-authenticated public surface. Auth is by service
+// token; routes are defined in admin.ts.
+// ---------------------------------------------------------------------------
+app.route('/admin', admin);
 
 // ---------------------------------------------------------------------------
 // Catch-all: 404 with a recognizable shape so client SDKs can surface it.
