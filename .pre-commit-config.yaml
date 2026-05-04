@@ -12,7 +12,10 @@ repos:
     rev: v4.6.0
     hooks:
       - id: check-added-large-files
-        args: ['--maxkb=500']
+        # 2000 KB allows the rendered paper PDF (~1.1 MB) + sample
+        # report-card PDFs without letting accidental multi-MB
+        # binaries (videos, datasets) slip in unnoticed.
+        args: ['--maxkb=2000']
       - id: check-merge-conflict
       - id: check-toml
       - id: check-yaml
