@@ -34,8 +34,9 @@ import base64
 import json
 import os
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Mapping
+from typing import Any
 
 # --------------------------------------------------------------------------- #
 # Public key registry. Multiple keys here means we can rotate without
@@ -72,7 +73,7 @@ class LicenseClaims:
     license_id: str
 
     @classmethod
-    def from_dict(cls, d: Mapping[str, Any]) -> "LicenseClaims":
+    def from_dict(cls, d: Mapping[str, Any]) -> LicenseClaims:
         try:
             return cls(
                 iss=str(d["iss"]),
@@ -135,8 +136,8 @@ def verify_license(token: str, *, now: float | None = None) -> LicenseClaims:
         (use ``pip install dendra[license]``).
     """
     try:
-        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
         from cryptography.exceptions import InvalidSignature
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
     except ImportError as e:
         raise ImportError(
             "License verification requires the 'cryptography' package. "
@@ -188,9 +189,7 @@ def verify_license(token: str, *, now: float | None = None) -> LicenseClaims:
 
     t = now if now is not None else time.time()
     if claims.exp < t:
-        raise LicenseInvalid(
-            f"license expired at {claims.exp}; current time is {int(t)}"
-        )
+        raise LicenseInvalid(f"license expired at {claims.exp}; current time is {int(t)}")
     if claims.iat > t + 60:
         raise LicenseInvalid("license issued in the future (clock skew?)")
 
