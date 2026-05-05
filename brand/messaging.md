@@ -88,7 +88,7 @@ path is dominated by the caller's logic, not Dendra's. Dendra ships Apache 2.0 o
 the client SDK, Business Source License 1.1 on the analyzer and
 operated components (Change Date 2030-05-01 → Apache 2.0).
 Filed US provisional patent. Paper under submission. Built by
-B-Tree Labs — a B-Tree Ventures, LLC DBA.
+B-Tree Labs — a B-Tree Labs DBA.
 
 ## Audience-specific framings
 

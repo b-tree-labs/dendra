@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (c) 2026 B-Tree Ventures, LLC
+# Copyright (c) 2026 B-Tree Labs
 # SPDX-License-Identifier: Apache-2.0
 """Profile FileStorage under 4-thread concurrent write workload.
 

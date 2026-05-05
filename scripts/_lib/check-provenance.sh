@@ -1,8 +1,8 @@
-# Copyright (c) 2026 B-Tree Ventures, LLC
+# Copyright (c) 2026 B-Tree Labs
 # SPDX-License-Identifier: Apache-2.0
 #!/usr/bin/env bash
 #
-# Mirrors the provenance-scan job in axiom-labs-os/.github python-ci.yml@v1.
+# Mirrors the provenance-scan job in b-tree-labs/.github python-ci.yml@v1.
 # The shared CI is configured (see .github/workflows/ci.yml) with:
 #   provenance-forbidden-patterns: 'utexas|UT Austin|bbooth@'
 #   provenance-paths: src/ tests/ docs/ examples/ landing/ README.md

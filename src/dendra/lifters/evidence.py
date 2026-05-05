@@ -1,4 +1,4 @@
-# Copyright (c) 2026 B-Tree Ventures, LLC
+# Copyright (c) 2026 B-Tree Labs
 # SPDX-License-Identifier: LicenseRef-BSL-1.1
 """Evidence lifter (Phase 3 of auto-lift).
 

@@ -1,8 +1,9 @@
-# Dendra dashboard (`app.dendra.ai`)
+# Dendra dashboard (`app.dendra.run`)
 
-Next.js 14 app that handles sign-in (Clerk), API-key issuance, and the
+Next.js 15 app that handles sign-in (Clerk), API-key issuance, and the
 CLI device-flow exchange. Pairs with the `dendra` Python CLI in the
-parent repo.
+parent repo. Deployed to Cloudflare Pages via the `@cloudflare/next-on-pages`
+adapter (see `wrangler.toml`).
 
 ## Local development
 
@@ -55,8 +56,9 @@ Set `DATABASE_URL` in `.env.local` to your Supabase connection string.
 vercel --prod
 ```
 
-Set the same `.env.example` variables in the Vercel project settings.
-Point `app.dendra.ai` at the Vercel deployment.
+Set the same `.env.example` variables in the Cloudflare Pages project
+settings (or via `wrangler pages secret put` for the secrets). Point
+`app.dendra.run` at the Pages project as a custom domain.
 
 ## Architecture notes
 

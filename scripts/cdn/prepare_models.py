@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2026 B-Tree Ventures, LLC
+# Copyright (c) 2026 B-Tree Labs
 # SPDX-License-Identifier: Apache-2.0
 
 """Download bundled GGUF models from HuggingFace, checksum, and prep for upload.

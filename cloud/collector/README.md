@@ -3,10 +3,10 @@
 Cloudflare Worker that ingests anonymized cohort telemetry events
 into a D1 database. Two routes: `POST /v1/events` and `GET /health`.
 
-Privacy posture per
-[`docs/working/telemetry-program-design-2026-04-28.md`](../../docs/working/telemetry-program-design-2026-04-28.md):
-shape-only, no source code, no labels, no prompt content. Server-side
-key whitelist enforces the schema even if a client sends extra fields.
+Privacy posture: shape-only telemetry — no source code, no labels,
+no prompt content. Server-side key whitelist enforces the schema even
+if a client sends extra fields. See `TRADEMARKS.md` and the in-repo
+license for the full data-handling stance.
 
 ## Layout
 
@@ -35,8 +35,7 @@ wrangler d1 create dendra-events
 ```
 
 Each command prints a `database_id`. Paste them into the corresponding
-`database_id = "..."` lines in `wrangler.toml` (currently commented out
-with `TODO-fill-in-after-create`).
+`database_id = "..."` lines in `wrangler.toml`.
 
 ### 2. Apply the migrations
 

@@ -114,7 +114,7 @@ becomes ®. Current: pre-registration, use ™.
 ## Relationship to the parent brand
 
 Dendra is a product of **B-Tree Labs**, which is the commercial
-vehicle of B-Tree Ventures, LLC. The Dendra mark is a distinct
+vehicle of B-Tree Labs. The Dendra mark is a distinct
 glyph in B-Tree Labs' visual language — same palette, same
 34-px square-capped stroke weight, same 28-r node measurement
 (used here as a ring rather than a dot). The two marks share
@@ -128,5 +128,5 @@ minimum 2× clear space between them.
 ## Trademarks
 
 DENDRA and B-TREE LABS are trademarks (or pending trademarks) of
-B-Tree Ventures, LLC. The mark and wordmark are subject to the
+B-Tree Labs. The mark and wordmark are subject to the
 trademark policy at `TRADEMARKS.md` in the repository root.
