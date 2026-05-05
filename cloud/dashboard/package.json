@@ -32,6 +32,7 @@
   "overrides": {
     "undici": "^6.23.1",
     "cookie": "^0.7.2",
+    "esbuild": "^0.25.12",
     "next": {
       "postcss": "^8.5.10"
     }
