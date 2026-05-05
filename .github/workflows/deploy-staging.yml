@@ -31,8 +31,7 @@ jobs:
         with:
           python-version: "3.13"
           cache: pip
-      - run: pip install -e .[viz,bench,train]
-      - run: pip install pytest pytest-timeout
+      - run: pip install -e .[dev,viz,bench,train]
       - run: pytest --timeout=60
 
   deploy-landing:
