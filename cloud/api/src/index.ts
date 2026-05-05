@@ -21,6 +21,11 @@ import { admin, type AdminEnv } from './admin';
 import { webhook, type WebhookEnv } from './webhook';
 import { recordVerdictHandler } from './verdicts';
 import { renderReportHandler } from './report';
+import {
+  shareCorpusHandler,
+  fetchCorpusHandler,
+  contributeHandler,
+} from './cloud_features';
 
 type Env = AdminEnv & WebhookEnv;
 const app = new Hono<{ Bindings: Env }>();
@@ -62,6 +67,9 @@ billable.use('*', usageMiddleware());
 billable.post('/verdicts', recordVerdictHandler);
 billable.get('/switches/:name/report', renderReportHandler);
 billable.post('/judge', (c) => c.json({ error: 'not_implemented' }, 501));
+billable.post('/team-corpus', shareCorpusHandler);
+billable.get('/team-corpus/:id', fetchCorpusHandler);
+billable.post('/registry/contribute', contributeHandler);
 v1.route('/', billable);
 
 app.route('/v1', v1);

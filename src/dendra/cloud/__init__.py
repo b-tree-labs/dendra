@@ -12,7 +12,7 @@
 # Additional Use Grant: see LICENSE-BSL. Production use is
 # permitted; offering a competing hosted service is not.
 
-"""Dendra cloud features (v1 stubs).
+"""Dendra cloud features.
 
 Three opt-in modules sit alongside the OSS package:
 
@@ -22,9 +22,10 @@ Three opt-in modules sit alongside the OSS package:
   public registry.
 
 All three require a logged-in account (see ``dendra.auth``) and raise
-:class:`NotLoggedInError` when no credentials are present. v1 ships
-with HTTP stubs that talk to ``app.dendra.ai/api/*``; the real backend
-implementation is tracked separately.
+:class:`NotLoggedInError` when no credentials are present. The HTTP
+endpoints they hit are mounted on the production api Worker at
+``api.dendra.run/v1/*``. Override the base URL with the
+``DENDRA_CLOUD_API_BASE`` environment variable for local dev.
 """
 
 from __future__ import annotations
@@ -34,7 +35,7 @@ __all__ = ["API_BASE_URL", "NotLoggedInError", "__version__"]
 __version__ = "0.1.0"
 
 # Override with ``DENDRA_CLOUD_API_BASE`` for local dashboard dev.
-API_BASE_URL = "https://app.dendra.ai/api"
+API_BASE_URL = "https://api.dendra.run/v1"
 
 
 class NotLoggedInError(RuntimeError):
