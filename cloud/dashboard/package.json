@@ -25,8 +25,15 @@
     "autoprefixer": "^10.4.19",
     "eslint": "^9.0.0",
     "eslint-config-next": "^15.5.15",
-    "postcss": "^8.4.39",
+    "postcss": "^8.5.6",
     "tailwindcss": "^3.4.7",
     "typescript": "^5.5.4"
+  },
+  "overrides": {
+    "undici": "^6.23.1",
+    "cookie": "^0.7.2",
+    "next": {
+      "postcss": "^8.5.10"
+    }
   }
 }
