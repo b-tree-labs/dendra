@@ -124,7 +124,7 @@ def _render_template(
     effect_size_pp: float,
     alpha: float,
 ) -> str:
-    today = _dt.datetime.now(_dt.UTC).strftime("%Y-%m-%d")
+    today = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d")
     site_line = ""
     if file_location and function_name:
         site_line = f"`{file_location}:{function_name}`"

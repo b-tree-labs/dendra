@@ -160,7 +160,7 @@ def queue_event(
     payload = _strip_payload(event_type, payload or {})
     event = InsightsEvent(
         event_type=event_type,
-        timestamp=_dt.datetime.now(_dt.UTC).isoformat(),
+        timestamp=_dt.datetime.now(_dt.timezone.utc).isoformat(),
         schema_version=EVENT_SCHEMA_VERSION,
         site_fingerprint=site_fingerprint,
         payload=payload,

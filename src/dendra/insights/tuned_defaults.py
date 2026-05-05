@@ -239,7 +239,7 @@ def write_cache(defaults: TunedDefaults) -> None:
                 "top_refusal_categories": defaults.top_refusal_categories,
             },
             "signature": defaults.signature,
-            "_cached_at": _dt.datetime.now(_dt.UTC).isoformat(),
+            "_cached_at": _dt.datetime.now(_dt.timezone.utc).isoformat(),
         }
         path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     except OSError as e:
@@ -264,7 +264,7 @@ def cache_is_fresh(path: Path | None = None) -> bool:
     if not p.exists():
         return False
     try:
-        age = _dt.datetime.now(_dt.UTC).timestamp() - p.stat().st_mtime
+        age = _dt.datetime.now(_dt.timezone.utc).timestamp() - p.stat().st_mtime
     except OSError:
         return False
     return age < CACHE_FRESHNESS_HOURS * 3600

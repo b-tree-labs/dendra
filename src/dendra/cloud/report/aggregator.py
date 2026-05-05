@@ -173,7 +173,7 @@ def aggregate_switch(
             site_fingerprint=site_fingerprint,
             current_phase=current_phase or Phase.RULE,
             total_outcomes=0,
-            generated_at=_dt.datetime.now(_dt.UTC).isoformat(),
+            generated_at=_dt.datetime.now(_dt.timezone.utc).isoformat(),
         )
 
     # ---- Final accuracies -------------------------------------------------
@@ -268,7 +268,7 @@ def aggregate_switch(
         phase_history=phase_history,
         drift_events=drift_events,
         last_record_timestamp=records[-1].timestamp,
-        generated_at=_dt.datetime.now(_dt.UTC).isoformat(),
+        generated_at=_dt.datetime.now(_dt.timezone.utc).isoformat(),
     )
 
 

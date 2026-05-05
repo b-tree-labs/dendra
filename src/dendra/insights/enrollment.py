@@ -60,7 +60,7 @@ def write_enrollment(
     ensure_dendra_home()
     state = EnrollmentState(
         enrolled=True,
-        enrolled_at=_dt.datetime.now(_dt.UTC).isoformat(),
+        enrolled_at=_dt.datetime.now(_dt.timezone.utc).isoformat(),
         schema_version=ENROLLMENT_SCHEMA_VERSION,
         account_hash=account_hash,
         consent_text_sha256=consent_text_sha256,

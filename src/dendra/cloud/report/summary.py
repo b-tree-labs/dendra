@@ -88,7 +88,7 @@ def aggregate_project(
         graduated_count=graduated,
         pre_graduation_count=pre_grad,
         drift_count=drift,
-        generated_at=_dt.datetime.now(_dt.UTC).isoformat(),
+        generated_at=_dt.datetime.now(_dt.timezone.utc).isoformat(),
     )
 
 
@@ -305,7 +305,7 @@ def _drift_table(drift_switches: list[SwitchMetrics]) -> str:
         first_drift = m.drift_events[0] if m.drift_events else None
         if first_drift:
             ts, reason = first_drift
-            ts_str = _dt.datetime.fromtimestamp(ts, _dt.UTC).strftime("%Y-%m-%d %H:%M UTC")
+            ts_str = _dt.datetime.fromtimestamp(ts, _dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
             rows.append(
                 f"| [`{m.switch_name}`]({m.switch_name}.md) | "
                 f"{ts_str}: {reason} | "
@@ -348,7 +348,7 @@ def _pending_table(pending: list[SwitchMetrics]) -> str:
 
 def _format_timestamp(iso: str) -> str:
     if not iso:
-        return _dt.datetime.now(_dt.UTC).strftime("%Y-%m-%d %H:%M UTC")
+        return _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     try:
         return _dt.datetime.fromisoformat(iso).strftime("%Y-%m-%d %H:%M UTC")
     except (ValueError, TypeError):

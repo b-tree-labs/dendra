@@ -130,7 +130,7 @@ def render_discovery_report(
     # ---- Header ----------------------------------------------------------
     parts.append("# Initial Analysis — what `dendra analyze` found in this codebase\n")
     parts.append(
-        f"Generated {_dt.datetime.now(_dt.UTC).strftime('%Y-%m-%d %H:%M UTC')}. "
+        f"Generated {_dt.datetime.now(_dt.timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}. "
         f"**No switches wrapped yet.**\n"
         f"Project root: `{analyze_report.root}`. "
         f"{analyze_report.files_scanned:,} Python file"

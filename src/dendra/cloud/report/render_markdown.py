@@ -242,14 +242,14 @@ def _render_phase_timeline_mermaid(metrics: SwitchMetrics) -> str:
     ]
     sorted_phases = sorted(metrics.phase_history, key=lambda x: x[1])
     for i, (phase, ts) in enumerate(sorted_phases):
-        date_str = _dt.datetime.fromtimestamp(ts, _dt.UTC).strftime("%Y-%m-%d")
+        date_str = _dt.datetime.fromtimestamp(ts, _dt.timezone.utc).strftime("%Y-%m-%d")
         if i + 1 < len(sorted_phases):
             next_ts = sorted_phases[i + 1][1]
             duration_days = max(1, int((next_ts - ts) / 86400))
             lines.append(f"    {phase.value.upper():<24}:done, p{i}, {date_str}, {duration_days}d")
         else:
             # Last phase is currently-active
-            now_ts = metrics.last_record_timestamp or _dt.datetime.now(_dt.UTC).timestamp()
+            now_ts = metrics.last_record_timestamp or _dt.datetime.now(_dt.timezone.utc).timestamp()
             duration_days = max(1, int((now_ts - ts) / 86400))
             lines.append(
                 f"    {phase.value.upper():<24}:active, p{i}, {date_str}, {duration_days}d"
@@ -375,7 +375,7 @@ def _humanize(switch_name: str) -> str:
 def _format_timestamp(iso: str) -> str:
     """ISO-8601 → human-readable UTC stamp like ``2026-04-29 22:15 UTC``."""
     if not iso:
-        return _dt.datetime.now(_dt.UTC).strftime("%Y-%m-%d %H:%M UTC")
+        return _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     try:
         ts = _dt.datetime.fromisoformat(iso)
         return ts.strftime("%Y-%m-%d %H:%M UTC")
