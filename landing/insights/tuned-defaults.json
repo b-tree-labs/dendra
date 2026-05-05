@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "generated_at": "2026-04-29T00:00:00+00:00",
+  "cohort_size": 0,
+  "defaults": {
+    "median_outcomes_to_graduation": {
+      "narrow": 250,
+      "medium": 500,
+      "high": 1000
+    },
+    "suggested_min_outcomes": {
+      "narrow": 250,
+      "medium": 500,
+      "high": 1000
+    },
+    "suggested_alpha": null,
+    "pattern_frequencies": {},
+    "top_refusal_categories": []
+  },
+  "signature": null,
+  "_note": "Hand-curated cohort defaults bootstrapping the Dendra Insights flywheel. Cohort size 0 means these are the baked-in defaults wrapped in the public JSON envelope so the fetch pipe works end-to-end before any seed deployments emit. Once SoilMetrix + UT begin emitting and the nightly aggregator runs, this file is replaced by aggregator output and signed."
+}

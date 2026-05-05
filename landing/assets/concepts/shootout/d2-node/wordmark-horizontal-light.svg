@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- D2' · Node — horizontal wordmark, light ground. Mark scale 0.391 at left; "DENDRA" in Space Grotesk Medium 108 px at tracking 0.18em (same typographic system as the Axiom Labs horizontal wordmark). -->
+<!-- D2' · Node — horizontal wordmark, light ground. Mark scale 0.391 at left; "DENDRA" in Space Grotesk Medium 108 px at tracking 0.18em (same typographic system as the B-Tree Labs horizontal wordmark). -->
 <svg viewBox="0 0 1200 300" xmlns="http://www.w3.org/2000/svg">
   <rect width="1200" height="300" fill="#f8f6f1"/>
   <g transform="translate(50, 50) scale(0.391)">

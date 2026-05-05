@@ -67,7 +67,7 @@ list.
 
 - **Short before long.** One idea per sentence. Break up compound
   claims. Subject-verb-object; active voice.
-- **Numbers over adjectives.** "0.62 µs p50" not "lightning fast."
+- **Numbers over adjectives.** "1.00 µs p50 at Phase.RULE" not "lightning fast."
   "4.3:1" not "plenty of contrast." "four benchmarks at p < 0.01"
   not "rigorously tested."
 - **Examples over explanations.** A six-line code block usually
@@ -82,7 +82,7 @@ list.
 
 - **Second person** for instructions. "Wrap your classifier," not
   "The user wraps a classifier."
-- **First person plural** ("we") for Dendra/Axiom Labs claims.
+- **First person plural** ("we") for Dendra/B-Tree Labs claims.
   "We measured this on four benchmarks," not "Dendra was measured
   on four benchmarks" (passive) or "I measured this" (too
   personal). Reserve "I" for author blog posts only.
@@ -187,7 +187,7 @@ Internal docs and commit messages are signed:
 - Commit trailers: `Co-Authored-By:` for AI / pair programming.
   `Signed-off-by:` per DCO for every non-bot commit.
 - Public-facing content (blog, landing, paper) is attributed to
-  **Dendra** or **Axiom Labs** as appropriate. Individual
+  **Dendra** or **B-Tree Labs** as appropriate. Individual
   attribution (Benjamin Booth as author) appears in the paper,
   patent filings, and select first-person blog posts only.
 

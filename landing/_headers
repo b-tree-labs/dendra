@@ -7,9 +7,15 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: geolocation=(), camera=(), microphone=(), payment=()
   Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'
+  X-Robots-Tag: noindex, nofollow, noarchive, nosnippet
 
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+/insights/tuned-defaults.json
+  Cache-Control: public, max-age=3600, must-revalidate
+  Access-Control-Allow-Origin: *
+  Content-Type: application/json; charset=utf-8
 
 /*.css
   Cache-Control: public, max-age=3600, must-revalidate

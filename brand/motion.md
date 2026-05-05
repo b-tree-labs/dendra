@@ -2,7 +2,7 @@
 
 How Dendra animates. Which moves are on-brand and which aren't.
 
-The Axiom Labs `usage.md` rule is "no animation beyond hover."
+The B-Tree Labs `usage.md` rule is "no animation beyond hover."
 Dendra extends this narrowly: the mark has exactly **one
 on-brand animation** — the accent rising through the gate — and
 it is reserved for contexts where the animation does semantic

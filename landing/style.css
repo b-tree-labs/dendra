@@ -3,7 +3,7 @@
  *
  * Paired with brand-tokens.css. Keep layout concerns here; keep the
  * design-system tokens (palette, type, scale) in brand-tokens.css so
- * both can be audited against the upstream Axiom Labs brand kit.
+ * both can be audited against the upstream B-Tree Labs brand kit.
  *
  * Aesthetic target: quiet technical. No animations beyond hover
  * states. No decoration. Code is the hero.
@@ -327,6 +327,25 @@ section:first-of-type {
   font-style: italic;
 }
 
+.proof-broker-strap {
+  margin: var(--space-8) 0 0;
+  padding-top: var(--space-6);
+  border-top: var(--border);
+  font-size: var(--size-caption);
+  color: var(--ink-soft);
+  max-width: var(--max-prose);
+  line-height: 1.55;
+}
+
+.proof-broker-strap strong {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.proof-broker-strap a {
+  color: var(--accent);
+}
+
 @media (max-width: 768px) {
   .proof-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -465,6 +484,11 @@ section:first-of-type {
   color: var(--ink-soft);
 }
 
+.terminal .ok {
+  color: var(--accent);
+  font-weight: 500;
+}
+
 /* Pricing table */
 .pricing-table {
   width: 100%;
@@ -497,6 +521,278 @@ section:first-of-type {
 
 .pricing-table tbody tr:hover {
   background: var(--ground-soft);
+}
+
+/* Tier table — rendered from pricing-tiers.json. */
+.pricing-grid {
+  margin: var(--space-6) 0;
+}
+
+.pricing-table--tiers th:nth-child(2),
+.pricing-table--tiers td:nth-child(2),
+.pricing-table--tiers th:nth-child(3),
+.pricing-table--tiers td:nth-child(3) {
+  text-align: left;
+  white-space: nowrap;
+}
+
+.pricing-table--tiers th:nth-child(4),
+.pricing-table--tiers td:nth-child(4) {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.pricing-table--tiers tr.pricing-tier--enterprise td {
+  background: color-mix(in oklab, var(--ground-soft) 60%, transparent);
+}
+
+.pricing-tier__headline {
+  display: block;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+  margin-top: 2px;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1.4;
+}
+
+.pricing-tier__features {
+  display: inline-block;
+  font-size: 0.8125rem;
+  color: var(--ink-soft);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.pricing-tier__cta {
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+/* Pricing calculator — fed by pricing-tiers.json + llm-prices.json. */
+.pricing-calculator {
+  margin-top: var(--space-8);
+  padding: var(--space-6);
+  border: var(--border);
+  border-radius: var(--radius-lg, 12px);
+  background: var(--ground-soft);
+}
+
+.pricing-calculator h3 {
+  margin: 0 0 var(--space-2);
+}
+
+.pricing-calculator__inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4) var(--space-6);
+  margin: var(--space-5) 0;
+}
+
+.pricing-calculator__inputs .select select {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: var(--border);
+  border-radius: 6px;
+  background: var(--ground);
+  font-family: inherit;
+  font-size: 0.9375rem;
+  color: var(--ink);
+}
+
+.pricing-calculator__output {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+  margin: var(--space-5) 0;
+}
+
+.pricing-calculator__rec {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pricing-calculator__rec strong {
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.pricing-calculator__rec--savings strong.pricing-calculator__savings--positive {
+  color: var(--accent, #2da44e);
+}
+
+.pricing-calculator__rec--savings strong.pricing-calculator__savings--negative {
+  color: var(--ink-soft);
+}
+
+@media (max-width: 768px) {
+  .pricing-calculator__inputs,
+  .pricing-calculator__output {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Paste-your-code Pyodide demo. */
+.paste-demo {
+  background: var(--ground-soft);
+}
+
+.paste-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+  margin-top: var(--space-6);
+}
+
+.paste-label {
+  display: block;
+  font-family: var(--font-display);
+  font-size: var(--size-caption);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: var(--space-2);
+}
+
+.paste-input textarea {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  padding: var(--space-4);
+  border: var(--border);
+  border-radius: 8px;
+  background: var(--ground);
+  color: var(--ink);
+  resize: vertical;
+  min-height: 320px;
+  tab-size: 4;
+}
+
+.paste-input textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.paste-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.paste-hint {
+  font-size: 0.8125rem;
+}
+
+.paste-status {
+  margin-top: var(--space-2);
+  min-height: 1.25em;
+}
+
+.paste-status[data-kind="loading"] {
+  color: var(--accent);
+}
+
+.paste-status[data-kind="success"] {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.paste-status[data-kind="error"] {
+  color: #c0392b;
+}
+
+.paste-results {
+  min-height: 200px;
+}
+
+.paste-results-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.paste-results-table th,
+.paste-results-table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: var(--border);
+  text-align: left;
+}
+
+.paste-results-table th {
+  font-family: var(--font-display);
+  font-weight: 500;
+  color: var(--ink-soft);
+  font-size: var(--size-caption);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.paste-results-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.paste-snippet-row td {
+  padding: 0 var(--space-3) var(--space-3);
+  border-bottom: var(--border);
+}
+
+.paste-snippet {
+  background: var(--ground);
+  padding: var(--space-3);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  margin: 0;
+  overflow-x: auto;
+  border: var(--border);
+}
+
+.paste-share {
+  margin-top: var(--space-6);
+  padding: var(--space-5);
+  border: var(--border);
+  border-radius: 8px;
+  background: var(--ground);
+}
+
+.paste-share-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.paste-share-form input {
+  padding: var(--space-2) var(--space-3);
+  border: var(--border);
+  border-radius: 6px;
+  background: var(--ground);
+  font-family: inherit;
+  font-size: 0.9375rem;
+}
+
+.paste-share-status {
+  margin-top: var(--space-3);
+  min-height: 1.25em;
+}
+
+@media (max-width: 768px) {
+  .paste-grid {
+    grid-template-columns: 1fr;
+  }
+  .paste-share-form {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Category list */

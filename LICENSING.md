@@ -70,7 +70,7 @@ thumb:
 
 ## Trademarks
 
-DENDRA, TRANSITION CURVES, and AXIOM LABS are trademarks of
+DENDRA and B-TREE LABS are trademarks (or pending trademarks) of
 B-Tree Ventures, LLC. The licenses above do not grant rights to
 use these marks. See [`TRADEMARKS.md`](./TRADEMARKS.md) for
 fair-use and attribution guidance.

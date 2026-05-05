@@ -1,0 +1,57 @@
+# Copyright (c) 2026 B-Tree Ventures, LLC
+# SPDX-License-Identifier: LicenseRef-BSL-1.1
+#
+# Cloudflare Worker config — Dendra Insights collector.
+#
+# Two environments: staging (default) + production.
+# Deploy with:
+#   wrangler deploy                          # → staging (default env)
+#   wrangler deploy --env production         # → production
+#
+# Apply migrations:
+#   wrangler d1 migrations apply dendra-events-staging
+#   wrangler d1 migrations apply dendra-events --env production --remote
+
+name = "dendra-collector-staging"
+main = "src/index.ts"
+compatibility_date = "2026-04-01"
+workers_dev = false
+
+# Custom domain (auto-creates DNS record + provisions TLS at the edge).
+# Production env (below) uses the same mechanism for collector.dendra.run.
+[[routes]]
+pattern = "staging-collector.dendra.run"
+custom_domain = true
+
+# D1 binding — the Worker accesses the events database via env.DB.
+[[d1_databases]]
+binding = "DB"
+database_name = "dendra-events-staging"
+database_id = "77ac4e6c-a09f-486a-9f40-bed39d209e2c"
+migrations_dir = "migrations"
+
+# Public-facing observability — Sentry DSN injected as a secret, not here.
+# Set with: wrangler secret put SENTRY_DSN
+[vars]
+ENVIRONMENT = "staging"
+
+# ---------------------------------------------------------------------------
+# Production environment
+# ---------------------------------------------------------------------------
+
+[env.production]
+name = "dendra-collector"
+workers_dev = false
+
+[[env.production.routes]]
+pattern = "collector.dendra.run"
+custom_domain = true
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "dendra-events"
+database_id = "d8f78857-de29-4ee2-a449-b78c95c6ad67"
+migrations_dir = "migrations"
+
+[env.production.vars]
+ENVIRONMENT = "production"

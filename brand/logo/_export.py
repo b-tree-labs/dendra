@@ -4,7 +4,7 @@
 
 Run: `python brand/logo/_export.py`. Requires `cairosvg` (`pip install
 cairosvg`). Writes PNGs next to the source SVGs using the
-``<stem>-<size>.png`` naming convention that matches the Axiom Labs
+``<stem>-<size>.png`` naming convention that matches the B-Tree Labs
 brand-kit convention.
 
 Favicon + mark sizes deliberately match what the landing page, README,

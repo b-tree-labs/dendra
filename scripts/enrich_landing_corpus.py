@@ -4,8 +4,8 @@
 
 """Enrich landing/data/analyze-*.json with source snippets per site.
 
-For each detected classification site (top N by fit_score), reads the
-cloned source file from /tmp/dendra-corpus/<repo>/<file_path> and
+For each detected classification site (top N by priority_score), reads
+the cloned source file from /tmp/dendra-corpus/<repo>/<file_path> and
 captures lines [line_start - 3, line_end + 3] as `source_snippet`.
 Also captures repo-level metadata (default branch, raw URL prefix)
 so the landing UI can deep-link to GitHub.
@@ -45,13 +45,29 @@ from dendra.analyzer import analyze  # noqa: E402
 LANDING_DATA = _REPO_ROOT / "landing" / "data"
 CORPUS_ROOT = Path("/tmp/dendra-corpus")
 
-# (preset slug, github org/repo, default branch). Used to build raw.githubusercontent
-# URLs so the UI can deep-link to the actual file at the line.
+# (preset slug, github org/repo, default branch, repo_subpath). The
+# subpath defaults to "" (analyze the clone root); LiteLLM is the
+# exception: pointing the analyzer at the monorepo root yields zero
+# sites because the top level is non-Python infra. Pointing one level
+# deeper at the package directory recovers the 155 real sites (per the
+# 2026-04-28 leads study).
 REPOS = {
-    "fastapi": ("tiangolo/fastapi", "master"),
-    "requests": ("psf/requests", "main"),
-    "dvc": ("iterative/dvc", "main"),
-    "marimo": ("marimo-team/marimo", "main"),
+    # LLM broker libraries — the v1.5 launch audience.
+    "langchain": ("langchain-ai/langchain", "master", ""),
+    "llama_index": ("run-llama/llama_index", "main", ""),
+    "haystack": ("deepset-ai/haystack", "main", ""),
+    "autogen": ("microsoft/autogen", "main", ""),
+    "crewai": ("crewAIInc/crewAI", "main", ""),
+    "dspy": ("stanfordnlp/dspy", "main", ""),
+    "litellm": ("BerriAI/litellm", "main", "litellm"),
+    "instructor": ("567-labs/instructor", "main", ""),
+    # Reference Python codebases — show what "no classifier patterns"
+    # looks like (the analyzer doesn't hallucinate sites where there
+    # aren't any).
+    "fastapi": ("tiangolo/fastapi", "master", ""),
+    "requests": ("psf/requests", "main", ""),
+    "marimo": ("marimo-team/marimo", "main", ""),
+    "dvc": ("iterative/dvc", "main", ""),
 }
 
 ENRICH_TOP_N = 15  # match the UI's row cap with a buffer
@@ -202,14 +218,15 @@ def _run_analyzer(repo_root: Path) -> dict:
         "root": report.root,
         "files_scanned": report.files_scanned,
         "total_sites": report.total_sites(),
-        "sites": [asdict(s) for s in report.by_score_desc()],
+        "sites": [asdict(s) for s in report.by_priority_desc()],
         "errors": report.errors,
     }
 
 
-def enrich_one(slug: str, gh_path: str, branch: str) -> int:
+def enrich_one(slug: str, gh_path: str, branch: str, subpath: str = "") -> int:
     json_path = LANDING_DATA / f"analyze-{slug}.json"
-    repo_root = CORPUS_ROOT / slug
+    clone_root = CORPUS_ROOT / slug
+    repo_root = clone_root / subpath if subpath else clone_root
     if not repo_root.exists():
         print(f"  skip {slug}: no clone at {repo_root}")
         return 0
@@ -220,15 +237,19 @@ def enrich_one(slug: str, gh_path: str, branch: str) -> int:
     data["repo_label"] = slug
     data["github_path"] = gh_path
     data["github_branch"] = branch
-    data["raw_url_prefix"] = f"https://raw.githubusercontent.com/{gh_path}/{branch}"
-    data["github_blob_prefix"] = f"https://github.com/{gh_path}/blob/{branch}"
+    # When we analyzed a subpath, prepend it to GitHub deep-link prefixes
+    # so file_path (relative to the analyzed root) still resolves on
+    # github.com.
+    blob_suffix = f"/{subpath}" if subpath else ""
+    data["raw_url_prefix"] = f"https://raw.githubusercontent.com/{gh_path}/{branch}{blob_suffix}"
+    data["github_blob_prefix"] = f"https://github.com/{gh_path}/blob/{branch}{blob_suffix}"
 
     sites = data.get("sites", [])
     pre_filter = len(sites)
     sites, _counts = filter_test_sites(sites, repo_root, slug=slug)
     post_filter = len(sites)
 
-    sites_sorted = sorted(sites, key=lambda s: s["fit_score"], reverse=True)
+    sites_sorted = sorted(sites, key=lambda s: s["priority_score"], reverse=True)
     enriched = 0
 
     for site in sites_sorted[:ENRICH_TOP_N]:
@@ -239,7 +260,7 @@ def enrich_one(slug: str, gh_path: str, branch: str) -> int:
             site.update(snippet_info)
             enriched += 1
 
-    # Sort sites back by fit_score so the JSON order matches what UI expects.
+    # Sort sites back by priority_score so the JSON order matches what UI expects.
     data["sites"] = sites_sorted
     data["total_sites"] = post_filter
 
@@ -254,8 +275,13 @@ def enrich_one(slug: str, gh_path: str, branch: str) -> int:
 def main() -> int:
     print(f"Enriching corpus in {LANDING_DATA}")
     total = 0
-    for slug, (gh_path, branch) in REPOS.items():
-        total += enrich_one(slug, gh_path, branch)
+    for slug, spec in REPOS.items():
+        if len(spec) == 3:
+            gh_path, branch, subpath = spec
+        else:
+            gh_path, branch = spec
+            subpath = ""
+        total += enrich_one(slug, gh_path, branch, subpath)
     print(f"Done: {total} sites enriched across {len(REPOS)} repos.")
     return 0
 

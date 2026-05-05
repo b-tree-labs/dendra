@@ -1,6 +1,6 @@
+#!/usr/bin/env bash
 # Copyright (c) 2026 B-Tree Ventures, LLC
 # SPDX-License-Identifier: Apache-2.0
-#!/usr/bin/env bash
 #
 # ship-check — local mirror of every GitHub Actions workflow that runs on
 # push or pull_request to main. Refuses to declare green unless every
@@ -43,6 +43,10 @@ fi
 declare -A WAIVERS=(
   [release.yml]="tag-only — fires on 'git push --tags', not branch pushes"
   [security.yml]="upstream reusable broken (grype DB / gitleaks org-license / REUSE split-license); quarantined to schedule-only"
+  [aggregator.yml]="cron-only (03:00 UTC nightly) — runs against staging/production D1 + commits to main; not locally mirrorable"
+  [deploy-staging.yml]="deploys to Cloudflare staging on push:main; smoke tests live at tests/smoke/, but the deploy step itself runs against real Cloudflare infra"
+  [deploy-production.yml]="tag-only (release-* tags); same Cloudflare-infra rationale as deploy-staging"
+  [refresh-llm-prices.yml]="cron-only (Mondays 14:00 UTC) + workflow_dispatch; opens a PR if upstream LiteLLM JSON diffs"
 )
 
 # ─── mirror registry ───────────────────────────────────────────────────────

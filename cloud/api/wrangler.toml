@@ -1,0 +1,55 @@
+# Copyright (c) 2026 B-Tree Labs
+# SPDX-License-Identifier: LicenseRef-BSL-1.1
+#
+# Cloudflare Worker config — Dendra hosted API.
+#
+# Two environments: staging (default) + production.
+# Deploy with:
+#   wrangler deploy                          # → staging (default env)
+#   wrangler deploy --env production         # → production
+#
+# Required secrets (set with `wrangler secret put <NAME>`):
+#   API_KEY_PEPPER         — 32-byte random hex; HMAC pepper for key hashing
+#   SENTRY_DSN             — error reporting
+#
+# Migrations live with the collector (cloud/collector/migrations/) since
+# both Workers share the same D1 database (users + api_keys + events).
+
+name = "dendra-api-staging"
+main = "src/index.ts"
+compatibility_date = "2026-04-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = false
+
+# Custom domain for staging.
+[[routes]]
+pattern = "staging-api.dendra.run"
+custom_domain = true
+
+# Shared D1 database with the collector.
+[[d1_databases]]
+binding = "DB"
+database_name = "dendra-events-staging"
+database_id = "77ac4e6c-a09f-486a-9f40-bed39d209e2c"
+
+[vars]
+ENVIRONMENT = "staging"
+
+# ---------------------------------------------------------------------------
+# Production environment
+# ---------------------------------------------------------------------------
+
+[env.production]
+name = "dendra-api"
+
+[[env.production.routes]]
+pattern = "api.dendra.run"
+custom_domain = true
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "dendra-events"
+database_id = "d8f78857-de29-4ee2-a449-b78c95c6ad67"
+
+[env.production.vars]
+ENVIRONMENT = "production"

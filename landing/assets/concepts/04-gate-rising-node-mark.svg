@@ -4,10 +4,10 @@
 
   D2' with a hollow ink ring at the threshold-crossing point —
   where the accent passes through the lintel. The ring uses the
-  28 r node measurement from the Axiom Labs origin mark but renders
+  28 r node measurement from the B-Tree Labs origin mark but renders
   as an outline (stroke 12) so it doesn't cover the accent.
   Visually marks the threshold-crossing moment without interrupting
-  the rising gesture. Ties Dendra's mark to Axiom Labs' node
+  the rising gesture. Ties Dendra's mark to B-Tree Labs' node
   vocabulary without becoming the same glyph.
 -->
 <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
@@ -27,7 +27,7 @@
   <line x1="256" y1="448" x2="256" y2="96"
         stroke="#BF5700" stroke-width="34" stroke-linecap="square"/>
 
-  <!-- Threshold-crossing ring — same 28 r as Axiom Labs center node -->
+  <!-- Threshold-crossing ring — same 28 r as B-Tree Labs center node -->
   <circle cx="256" cy="200" r="28"
           fill="none" stroke="#1a1a1f" stroke-width="12"/>
 </svg>

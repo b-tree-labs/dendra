@@ -102,21 +102,21 @@ light-ground only.
 When DENDRA alone is used (no sub-brand), it refers to:
 - The library (`pip install dendra`)
 - The primitive / the method / the theorem
-- The company (as a proxy for Axiom Labs' Dendra division)
+- The company (as a proxy for B-Tree Labs' Dendra division)
 
 When the sub-brand is used, the product is named explicitly. The
 typographic hierarchy makes the parent-product relationship
 legible without requiring a sibling-explanation.
 
-## Co-branding with Axiom Labs
+## Co-branding with B-Tree Labs
 
-When Dendra and Axiom Labs appear together (portfolio pages,
+When Dendra and B-Tree Labs appear together (portfolio pages,
 investor decks, press releases introducing Dendra as "from Axiom
 Labs"), follow the parent-subsidiary convention:
 
-- Use the Axiom Labs horizontal wordmark in the footer / masthead.
+- Use the B-Tree Labs horizontal wordmark in the footer / masthead.
 - Use the Dendra horizontal wordmark in the hero / product area.
-- Do not combine them into a single lockup ("AXIOM LABS · DENDRA"
+- Do not combine them into a single lockup ("B-TREE LABS · DENDRA"
   or similar) — they are meant to read as parent + product, not
   as a joint entity.
 - Minimum 2× the mark's height of clear space between them.

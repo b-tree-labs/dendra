@@ -1,0 +1,125 @@
+# Deploy to production on tag push (release-x.y.z).
+# Manual gate: production never auto-deploys from main; you tag intentionally.
+# Tag format: release-1.0.0 / release-1.0.0rc1 / release-1.1.0-beta1 etc.
+
+name: Deploy to production
+
+on:
+  push:
+    tags:
+      - "release-*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to deploy (e.g. release-1.0.0)"
+        required: true
+
+permissions:
+  contents: read
+  deployments: write
+
+concurrency:
+  # Don't allow concurrent production deploys.
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -e .[viz,bench,train]
+      - run: pip install pytest pytest-timeout
+      - run: pytest --timeout=60
+
+  deploy-landing:
+    name: Deploy landing → dendra.run
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish to Cloudflare Pages (production)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy landing --project-name=dendra-run --branch=main
+
+  deploy-collector:
+    name: Deploy collector Worker → production
+    needs: test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cloud/collector
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install
+      - name: Apply D1 migrations (production)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: cloud/collector
+          command: d1 migrations apply dendra-events --env production --remote
+      - name: Deploy Worker (production env)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: cloud/collector
+          command: deploy --env production
+
+  smoke:
+    name: Smoke tests against production
+    needs: [deploy-landing, deploy-collector]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -e .
+      - run: pip install pytest pytest-timeout
+      - name: Wait briefly for deploy propagation
+        run: sleep 15
+      - name: Run smoke tests (read-only against production)
+        env:
+          DENDRA_SMOKE_BASE_URL: https://dendra.run
+          DENDRA_SMOKE_MODELS_URL: https://models.dendra.run
+          DENDRA_SMOKE_COLLECTOR_URL: https://collector.dendra.run
+        run: pytest -m smoke --timeout=60
+
+  rollback-on-failure:
+    name: Rollback Worker if smoke failed
+    needs: smoke
+    if: failure()
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cloud/collector
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install
+      - name: Rollback collector Worker (production)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: cloud/collector
+          command: 'rollback --env production --message "auto-rollback after smoke failure"'
+      - name: Notify on rollback
+        run: |
+          echo "::error::Production deploy was auto-rolled-back after smoke test failure."
+          echo "Investigate: tag=${{ github.ref_name }}, run=${{ github.run_id }}"

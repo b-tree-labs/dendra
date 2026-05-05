@@ -1,7 +1,7 @@
 # Dendra · usage rules
 
 Dendra-specific rules for the mark, wordmark, and brand assets.
-Inherits all non-specified rules from `axiom-labs-os/.github/brand/usage.md`.
+Inherits all non-specified rules from `b-tree-labs/.github/brand/usage.md`.
 
 ## The mark
 
@@ -22,7 +22,7 @@ Composition semantics:
 - **Accent stroke** = evidence; the thing being measured; the
   thing that rises through the gate when the threshold is cleared.
 
-The ring uses the same 28-r measurement as the Axiom Labs origin
+The ring uses the same 28-r measurement as the B-Tree Labs origin
 mark's center node — this is the portfolio-sibling kinship tie.
 Do not resize the ring independent of the rest of the mark; it
 carries a specific structural relationship.
@@ -74,7 +74,7 @@ For print, embroidery, single-color rendering contexts:
 Monochrome loses the accent-as-evidence semantic layer — the mark
 still reads as a gate-with-a-crossing, but without the
 accent-vs-structure argument. This is an accepted trade-off per
-Axiom Labs precedent. Do not substitute a second color (e.g.
+B-Tree Labs precedent. Do not substitute a second color (e.g.
 accent-in-gray-tone) to try to preserve the distinction — mono
 means mono.
 
@@ -113,20 +113,20 @@ becomes ®. Current: pre-registration, use ™.
 
 ## Relationship to the parent brand
 
-Dendra is a product of **Axiom Labs**, which is the commercial
+Dendra is a product of **B-Tree Labs**, which is the commercial
 vehicle of B-Tree Ventures, LLC. The Dendra mark is a distinct
-glyph in Axiom Labs' visual language — same palette, same
+glyph in B-Tree Labs' visual language — same palette, same
 34-px square-capped stroke weight, same 28-r node measurement
 (used here as a ring rather than a dot). The two marks share
 ancestry but are not variations of one another.
 
 When the two brands appear together (co-branded content,
 portfolio pages), use the horizontal wordmark for Dendra and the
-Axiom Labs horizontal wordmark at the same baseline, with a
+B-Tree Labs horizontal wordmark at the same baseline, with a
 minimum 2× clear space between them.
 
 ## Trademarks
 
-DENDRA, TRANSITION CURVES, and AXIOM LABS are trademarks of
+DENDRA and B-TREE LABS are trademarks (or pending trademarks) of
 B-Tree Ventures, LLC. The mark and wordmark are subject to the
 trademark policy at `TRADEMARKS.md` in the repository root.

@@ -19,10 +19,10 @@ research runners) ships in submodules — import directly:
 ``from dendra.analyzer import analyze``, ``from dendra.roi import
 compute_switch_roi``, etc.
 
-See README.md and https://dendra.dev.
+See README.md and https://dendra.run.
 """
 
-__version__ = "0.2.0"
+__version__ = "1.0.0rc1"
 
 from dendra.autoresearch import (
     CandidateHarness,

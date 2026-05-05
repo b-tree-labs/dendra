@@ -108,7 +108,7 @@ when embedded in documents, emails, slides, and web pages.
 | Horizontal wordmark | `Dendra` |
 | Stacked wordmark | `Dendra` |
 | Sub-brand lockup (e.g. Cloud) | `Dendra Cloud` |
-| Social card | `Dendra: The classification primitive every production codebase is missing` |
+| Social card | `Dendra: software that's smarter every month than the day you shipped it` |
 | Favicon / tile | usually omitted (favicons are decorative context for the page title) |
 | Animated mark | `Dendra mark (animated)` — include the (animated) hint for screen-reader users |
 
@@ -193,6 +193,6 @@ Markdown docs in this repo target:
 ---
 
 **If you find an accessibility issue with a brand asset**, file
-it at https://github.com/axiom-labs-os/dendra/issues with the
+it at https://github.com/b-tree-labs/dendra/issues with the
 `a11y` label. Explicit, reproducible bug reports are strongly
 preferred over vague "this is hard to see" reports.

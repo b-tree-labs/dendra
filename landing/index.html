@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet" />
     <meta
       name="theme-color"
       content="#f8f6f1"
@@ -10,36 +11,36 @@
     />
 
     <title>
-      Dendra — When should your rule learn? Dendra answers with a p-value.
+      Dendra — Software that's smarter every month than the day you shipped it.
     </title>
     <meta
       name="description"
-      content="A classification primitive that turns any decision site in your codebase into a self-improving lifecycle: rule today, LLM in shadow tomorrow, a sub-millisecond ML head when evidence has earned it. Your rule stays as the safety floor."
+      content="Dendra is a Python primitive that wraps any classification decision in your codebase with a self-improving lifecycle: rule today, LLM in shadow tomorrow, a sub-millisecond ML head when evidence has earned it. Your rule stays as the safety floor."
     />
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Dendra" />
     <meta
       property="og:title"
-      content="Dendra — When should your rule learn? Answered with a p-value."
+      content="Dendra — Software that's smarter every month than the day you shipped it."
     />
     <meta
       property="og:description"
-      content="Self-improving classifiers in your codebase: rule → LLM → in-process ML head. Graduations are evidence-gated and the rule stays behind everything as the safety floor."
+      content="A Python primitive that graduates rule-based classifiers to ML through a paired-McNemar gate. Rule stays as the safety floor; cost-per-call drops to microseconds."
     />
-    <meta property="og:url" content="https://dendra.dev" />
-    <meta property="og:image" content="https://dendra.dev/assets/social-card.png" />
+    <meta property="og:url" content="https://dendra.run" />
+    <meta property="og:image" content="https://dendra.run/assets/social-card.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="Dendra mark + wordmark + tagline + pip install command + dendra.dev URL" />
+    <meta property="og:image:alt" content="Dendra mark + wordmark + tagline + pip install command + dendra.run URL" />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Dendra" />
+    <meta name="twitter:title" content="Dendra — smarter every month than the day you shipped it" />
     <meta
       name="twitter:description"
-      content="The classification primitive every production codebase is missing."
+      content="A Python primitive that graduates rule-based classifiers to ML through a paired-McNemar gate. Rule stays behind it as the safety floor."
     />
-    <meta name="twitter:image" content="https://dendra.dev/assets/social-card.png" />
+    <meta name="twitter:image" content="https://dendra.run/assets/social-card.png" />
 
     <link
       rel="preconnect"
@@ -61,6 +62,8 @@
     <script defer src="./scripts/analyzer-demo.js?v=20260428-1100"></script>
     <script defer src="./scripts/copy-buttons.js?v=20260428-1100"></script>
     <script defer src="./scripts/code-resize.js?v=20260428-1100"></script>
+    <script defer src="./scripts/pricing.js?v=20260501-1500"></script>
+    <script defer src="./scripts/paste-analyzer.js?v=20260501-2200"></script>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
@@ -79,7 +82,8 @@
           <a href="#how">How it works</a>
           <a href="#results">Proof</a>
           <a href="#pricing">Pricing</a>
-          <a href="https://github.com/axiom-labs-os/dendra">GitHub</a>
+          <a href="https://github.com/b-tree-labs/dendra/tree/main/docs">Docs</a>
+          <a href="https://github.com/b-tree-labs/dendra">GitHub</a>
         </nav>
       </div>
     </header>
@@ -118,7 +122,7 @@
           </p>
           <div class="secondary-links">
             <a href="#results">See the proof</a>
-            <a href="https://github.com/axiom-labs-os/dendra">View the code</a>
+            <a href="https://github.com/b-tree-labs/dendra">View the code</a>
             <a href="#how">How it works</a>
             <a href="#pricing">Pricing</a>
           </div>
@@ -149,6 +153,19 @@
               <span>Apache SDK · BSL&nbsp;→&nbsp;Apache 2030 · patent-pending.</span>
             </div>
           </div>
+          <p class="proof-broker-strap">
+            Already audited the eight LLM-broker libraries enterprise teams build on:
+            <strong>LangChain, LlamaIndex, Haystack, AutoGen, CrewAI, DSPy, LiteLLM, Instructor</strong>.
+            10,889 files scanned, 919 classification sites surfaced. To re-derive on any of them,
+            <code>pip install dendra &amp;&amp; dendra analyze /path/to/repo</code>.
+          </p>
+          <aside class="closer-bet" aria-label="Performance bet">
+            <p>
+              <strong>The bet.</strong> If your AI bill is more than $1M/yr and Dendra is
+              in your stack, that bill will be 30% smaller in 12 months. Public benchmark,
+              or you get every dollar of consulting back.
+            </p>
+          </aside>
         </div>
       </section>
 
@@ -223,7 +240,7 @@
                     <th>pattern<span class="th-info" tabindex="0" role="button" aria-label="What pattern means" title="Pattern — the shape of the classification site Dendra detected. P0: dict/registry dispatch. P1: if/elif ladder. P2: match statement. P3: signal-routed handler. Higher patterns are more elaborate (and benefit more from being wrapped).">?</span></th>
                     <th>labels<span class="th-info" tabindex="0" role="button" aria-label="What labels means" title="Labels — distinct return values found at the site. This is the candidate label set Dendra graduates the rule → model → ML head over. More labels usually means more LLM cost to amortize.">?</span></th>
                     <th>regime<span class="th-info" tabindex="0" role="button" aria-label="What regime means" title="Regime — workload class. narrow: small fixed label set (3–10), best fit. high_card: many labels or open-ended (suggests an embedding head). unknown: ambiguous from static analysis alone.">?</span></th>
-                    <th>fit<span class="th-info" tabindex="0" role="button" aria-label="What fit means" title="Fit — heuristic score 0.0–5.0 weighing pattern type, label count, regime, and call-site shape. ≥4.0 = strong candidate to wrap now. Lower scores still work; they just have less savings headroom.">?</span></th>
+                    <th>priority<span class="th-info" tabindex="0" role="button" aria-label="What priority means" title="Priority — composite score 0.00–5.00 blending graduation-fitness (regime, labels, pattern), volume estimate (cold/warm/hot from AST signals), and lift status (auto-liftable / needs-annotation / refused). ≥3.0 = strong candidate to wrap now. Lower scores still work; they just have less savings headroom or need refactors first.">?</span></th>
                   </tr>
                 </thead>
                 <tbody data-results-target>
@@ -236,7 +253,7 @@
               <div class="try-roi__head">
                 <h3>If this repo's LLM bill looked like…</h3>
                 <p class="caption">
-                  Sliders are your inputs; <strong>the savings number is what graduating to in-process ML heads recovers</strong>, weighted by how many of the detected sites are realistically Dendra-fit (score ≥ 3.0).
+                  Sliders are your inputs; <strong>the savings number is what graduating to in-process ML heads recovers</strong>, weighted by how many of the detected sites are realistically high-priority (score ≥ 2.0 on the composite).
                 </p>
               </div>
 
@@ -289,7 +306,7 @@
                 </div>
                 <div class="try-roi__stat">
                   <strong data-savings="sites">—</strong>
-                  <span>Sites Dendra-fit (score ≥ 3.0)</span>
+                  <span>Sites high-priority (score ≥ 2.0)</span>
                 </div>
               </div>
 
@@ -300,6 +317,84 @@
               <div class="try-roi__cta-row">
                 <a class="button" href="#install">Install in 5 minutes →</a>
                 <span class="try-roi__cta-aside">no upload · no signup · no GPU</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!--
+        PASTE-YOUR-CODE — Pyodide-side analyzer. ~10 s from arrival to
+        personalized signal, no install, no account. Pasted source
+        stays in the browser; only "email me" / "send to teammate"
+        on explicit click hits the wire.
+      -->
+      <section id="paste" class="paste-demo" data-paste-root>
+        <div class="container">
+          <p class="eyebrow">10 seconds to your own analysis</p>
+          <h2>Paste a Python file. See its priority table.</h2>
+          <p class="caption">
+            Drop a function or a whole file (under 200 KB) below. Dendra's
+            static analyzer runs entirely in your browser via Pyodide —
+            <strong>your code never leaves this tab</strong>. Detected
+            classification sites get the same priority + volume + lift
+            scoring you'd see from <code>dendra analyze</code> locally.
+          </p>
+
+          <div class="paste-grid">
+            <div class="paste-input">
+              <label class="paste-label" for="paste-textarea">Your Python source</label>
+              <textarea
+                id="paste-textarea"
+                data-paste-textarea
+                spellcheck="false"
+                rows="14"
+                placeholder="def triage(ticket: dict) -> str:&#10;    title = (ticket.get('title') or '').lower()&#10;    if 'crash' in title or 'error' in title:&#10;        return 'bug'&#10;    if 'how do i' in title or '?' in title:&#10;        return 'question'&#10;    return 'feature_request'"
+              ></textarea>
+              <div class="paste-controls">
+                <button class="button" data-paste-run type="button">
+                  Analyze ↵
+                </button>
+                <span class="paste-hint dim">
+                  ⌘/Ctrl + Enter to run · first run loads Pyodide (~5 s)
+                </span>
+              </div>
+              <p class="paste-status caption" data-paste-status></p>
+            </div>
+
+            <div class="paste-output">
+              <div class="paste-results" data-paste-results>
+                <p class="dim caption">
+                  Results render here — function name, pattern, labels,
+                  regime, volume, priority, lift status, and the matched
+                  source range. Same shape as the local CLI output.
+                </p>
+              </div>
+
+              <div class="paste-share" data-paste-share hidden>
+                <p class="caption">
+                  <strong>Save this analysis or send it to a teammate.</strong>
+                  We'll email a Markdown copy with the <code>dendra init</code>
+                  commands for each top site. Your snippet is not stored
+                  — only the email + the result counts.
+                </p>
+                <form class="paste-share-form" data-leads-form>
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="you@yourcompany.com"
+                    required
+                    autocomplete="email"
+                  />
+                  <input
+                    type="email"
+                    name="teammate_email"
+                    placeholder="teammate@yourcompany.com (optional)"
+                    autocomplete="off"
+                  />
+                  <button type="submit" class="button secondary">Email results</button>
+                </form>
+                <p class="paste-share-status caption dim" data-leads-status></p>
               </div>
             </div>
           </div>
@@ -338,7 +433,7 @@
                 <button class="copy-btn" data-copy-source aria-label="Copy command">Copy</button>
               </div>
               <div class="step__out">
-                <pre><code>Successfully installed dendra-0.2.0</code></pre>
+                <pre><code>Successfully installed dendra-1.0.0</code></pre>
               </div>
               <p class="step__cap">
                 ~30s on a warm pip cache, up to a minute cold. <code>uv pip install dendra</code> works too if you've moved on.
@@ -364,7 +459,7 @@ Root:           /Users/you/myapp
 Files scanned:  84
 Sites found:    7
 
-file:line                  function          ptn   labels   regime  fit
+file:line                  function          ptn   labels   regime  vol  priority
 ------------------------------------------------------------------------
 src/triage.py:14           triage_ticket      P1        3   narrow  5.0
 src/router.py:88           route_intent       P1        7   narrow  4.5
@@ -543,9 +638,9 @@ Total projected annual value: $14,400 - $45,600</code></pre>
           <div class="install-cta">
             <p>That's it. The same path runs on every classifier in your codebase.</p>
             <div class="secondary-links">
-              <a href="https://github.com/axiom-labs-os/dendra#install">Full docs on GitHub →</a>
+              <a href="https://github.com/b-tree-labs/dendra#install">Full docs on GitHub →</a>
               <a href="#try">Or browse OSS repos first</a>
-              <a href="https://github.com/axiom-labs-os/dendra/blob/main/docs/FAQ.md">FAQ</a>
+              <a href="https://github.com/b-tree-labs/dendra/blob/main/docs/FAQ.md">FAQ</a>
             </div>
           </div>
         </div>
@@ -558,38 +653,57 @@ Total projected annual value: $14,400 - $45,600</code></pre>
       -->
       <section id="prove" class="prove">
         <div class="container">
-          <p class="eyebrow">Close the loop</p>
-          <h2>Prove the savings on your data.</h2>
+          <p class="eyebrow">The launch artifact</p>
+          <h2>The report card is the audit trail.</h2>
           <div class="prove-grid">
             <div class="prove-grid__copy">
               <p>
-                Dendra ships a benchmark + report harness that turns
-                projected savings into <em>measured</em> savings on
-                your repo, with your data. Run
-                <code>dendra benchmark &lt;site&gt;</code> after every
-                change to a switch (rule edit, label add, evidence
-                tweak); <code>dendra report</code> rolls every recorded
-                run up into a per-switch timeseries (phase transitions,
-                cost per call, cumulative dollars saved).
+                Every wrapped switch produces a markdown report card —
+                what the gate saw, when it fired, the cost trajectory,
+                the drift posture. Same artifact for compliance, your
+                CFO, and your on-call engineer. <strong>No separate
+                dashboard. No SaaS lock-in for the evidence.</strong>
               </p>
               <p>
-                The same JSON the report emits is what
-                <code>--json</code> returns, so you can pipe it into
-                whatever dashboard your team already runs. Nothing
-                leaves your machine.
+                Three commands, three cards. The discovery card from
+                <code>dendra analyze --report</code> shows you what's
+                wrappable on day 0. The per-switch card from
+                <code>dendra report &lt;switch&gt;</code> ships at
+                graduation. The project rollup from
+                <code>dendra report --summary</code> is the cockpit
+                view across everything you've wrapped.
+              </p>
+              <p>
+                <a class="button secondary" href="https://github.com/b-tree-labs/dendra/tree/main/docs/sample-reports">See the full sample report cards →</a>
               </p>
             </div>
             <div class="prove-grid__terminal">
-<pre class="terminal" aria-label="Example dendra benchmark and report output"><span class="prompt">$</span> dendra benchmark src/triage.py:triage_ticket
-3 passed in 0.04s
-triage_ticket: first run (phase=RULE, cost $0.00002-$0.00032/call)
+<pre class="terminal" aria-label="Example dendra report output">
+<span class="prompt">$</span> dendra report triage_rule
 
-<span class="prompt">$</span> dendra report
-Dendra report - 1 switch, 14 days of data
+# Triage Rule — Graduation Report Card
+Generated 2026-04-29 22:15 UTC.
+Site: <span class="dim">src/triage.py:triage_rule</span>.
+Fingerprint: <span class="dim">a1b2c3d4ef567890</span>.
 
-triage_ticket  RULE -&gt; MODEL_PRIMARY 2026-05-04 (after 312 verdicts)
-               cost: $0.0042 -&gt; $0.00031/call (-92%)
-               estimated saved this week: $128</pre>
+## Status
+
+<span class="ok">Phase: ML_PRIMARY</span> — graduated 2026-04-25 at outcome 312.
+Gate (McNemarGate, α = 0.01) fired with <span class="ok">p = 4.2 × 10⁻⁴</span>.
+Effect size: rule 78.4% → ML 87.2% (<span class="ok">+8.8 pp</span>).
+
+## Cost trajectory
+
+                Pre-grad   Post-grad   Reduction
+Per call       $0.0042   $0.000003     <span class="ok">99.93%</span>
+Per 1M calls   $4,200       $3.00      $4,197 saved
+Latency p50      412 ms      0.8 ms     <span class="ok">99.81%</span>
+
+## Drift posture
+
+<span class="ok">Green</span>. Last check 2026-05-01 03:00 UTC.
+Re-evaluation triggers if accuracy drops >2pp over a 7-day window.
+</pre>
             </div>
           </div>
         </div>
@@ -875,7 +989,7 @@ triage_ticket(ticket)  <span class="c"># classifies AND fires the matching handl
 
           <div class="secondary-links">
             <a
-              href="https://github.com/axiom-labs-os/dendra#cli"
+              href="https://github.com/b-tree-labs/dendra#cli"
               >Reproduce with <code>dendra bench</code> →</a
             >
             <span class="secondary-note">
@@ -959,7 +1073,7 @@ triage_ticket(ticket)  <span class="c"># classifies AND fires the matching handl
           <p class="caption">
             Runs entirely locally. No upload. No signup. Walks your
             Python source, identifies classification decision points
-            via six AST patterns, scores each for Dendra-fit, and
+            via six AST patterns, scores each for wrap priority, and
             outputs a JSON artifact for CI diff tracking.
           </p>
 
@@ -968,12 +1082,12 @@ triage_ticket(ticket)  <span class="c"># classifies AND fires the matching handl
 Scanned 12,408 Python files; found 7 classification sites.
 
   src/support/triage.py:42  — 5 labels, medium cardinality
-    Dendra-fit: 4.5/5
+    Volume: hot · Lift: auto-liftable · Priority: 4.50/5
     Regime: narrow-domain rule-viable (ATIS-like)
     Estimated: rule accuracy ~70%; ML would add ~15-20pp after ~500 outcomes
 
   src/mod/content_score.py:88  — 3 labels, binary-ish
-    Dendra-fit: 4/5
+    Volume: warm · Lift: needs-annotation · Priority: 2.80/5
     Regime: safety-critical boundary
     Recommend: Phase 4 cap (ML_WITH_FALLBACK, never ML_PRIMARY)
 
@@ -982,7 +1096,7 @@ Scanned 12,408 Python files; found 7 classification sites.
 Report written to <span class="dim">.dendra/analyze-2026-04-22.json</span></pre>
 
           <p style="margin-top: var(--space-6)">
-            <a class="button secondary" href="https://github.com/axiom-labs-os/dendra#cli">Get the analyzer →</a>
+            <a class="button secondary" href="https://github.com/b-tree-labs/dendra#cli">Get the analyzer →</a>
           </p>
         </div>
       </section>
@@ -994,62 +1108,90 @@ Report written to <span class="dim">.dendra/analyze-2026-04-22.json</span></pre>
       <section id="pricing">
         <div class="container">
           <h2>Volume-based pricing. No per-seat fees. Free forever for the library.</h2>
-          <table class="pricing-table">
-            <thead>
-              <tr>
-                <th>Tier</th>
-                <th>Price</th>
-                <th>Classifications / mo</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><strong>OSS library</strong></td>
-                <td><a href="#install">Free — install now →</a></td>
-                <td>unlimited (self-hosted)</td>
-              </tr>
-              <tr>
-                <td><strong>Free hosted</strong></td>
-                <td>$0</td>
-                <td>10,000</td>
-              </tr>
-              <tr>
-                <td><strong>Solo</strong></td>
-                <td>$19/mo</td>
-                <td>100,000</td>
-              </tr>
-              <tr>
-                <td><strong>Team</strong></td>
-                <td>$99/mo</td>
-                <td>1,000,000</td>
-              </tr>
-              <tr>
-                <td><strong>Pro</strong></td>
-                <td>$499/mo</td>
-                <td>10,000,000</td>
-              </tr>
-              <tr>
-                <td><strong>Scale</strong></td>
-                <td>$2,499/mo</td>
-                <td>100,000,000</td>
-              </tr>
-              <tr>
-                <td><strong>Metered</strong></td>
-                <td>$0.01 / 1k</td>
-                <td>above Scale</td>
-              </tr>
-              <tr>
-                <td><strong>Enterprise</strong></td>
-                <td>Custom</td>
-                <td>Custom</td>
-              </tr>
-            </tbody>
-          </table>
+
+          <!--
+            Tier table + calculator are JS-rendered from
+            landing/data/pricing-tiers.json (single source of truth)
+            and landing/data/llm-prices.json (provider rates). Edit
+            those files; the page updates on next load.
+          -->
+          <div class="pricing-grid" data-pricing-tiers>
+            <p class="caption dim">Loading tier data…</p>
+          </div>
+
           <p class="caption">
             Every paid tier has a published price. No "contact us"
             gating below Enterprise. Volume-priced so adding another
             classifier doesn't cost you another seat. Cancel anytime.
           </p>
+          <p class="caption">
+            <strong>Design partner</strong> = first reference customer
+            for an industry. We co-build the compliance artifacts (BAA,
+            SOC 2 Type II, FedRAMP, FDA SaMD) with you; you become the
+            named anchor; pricing reflects scope.
+          </p>
+
+          <div class="pricing-calculator" data-pricing-calculator hidden>
+            <h3>Find your tier · estimate your savings</h3>
+            <p class="caption">
+              Drag your monthly classification volume; pick your current
+              LLM. We recommend the smallest hosted tier that fits, and
+              project your post-graduation cost (assuming half your
+              sites graduate to in-process ML at <code>~$3 per million
+              calls</code>). Your inputs only — nothing is sent.
+            </p>
+
+            <div class="pricing-calculator__inputs">
+              <label class="slider">
+                <span class="slider__label">Monthly classifications</span>
+                <input
+                  data-pc-input="calls"
+                  type="range"
+                  min="10000"
+                  max="100000000"
+                  step="10000"
+                  value="1000000"
+                />
+                <output data-pc-input-output="calls">1M</output>
+              </label>
+
+              <label class="select">
+                <span class="slider__label">Current LLM provider</span>
+                <select data-pc-input="provider">
+                  <option>Loading…</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="pricing-calculator__output">
+              <div class="pricing-calculator__rec">
+                <span class="caption dim">Recommended tier</span>
+                <strong data-pc-output="tier">—</strong>
+                <span data-pc-output="tier-detail" class="caption dim"></span>
+              </div>
+              <div class="pricing-calculator__rec">
+                <span class="caption dim">Today's LLM bill</span>
+                <strong data-pc-output="baseline">—</strong>
+                <span class="caption dim">/ month</span>
+              </div>
+              <div class="pricing-calculator__rec">
+                <span class="caption dim">With Dendra (post-graduation)</span>
+                <strong data-pc-output="dendra">—</strong>
+                <span class="caption dim">/ month — incl. tier fee</span>
+              </div>
+              <div class="pricing-calculator__rec pricing-calculator__rec--savings">
+                <span class="caption dim">Net savings</span>
+                <strong data-pc-output="savings">—</strong>
+                <span class="caption dim">/ month</span>
+              </div>
+            </div>
+
+            <p class="caption dim" data-pc-output="footnote">
+              Assumes 50% of detected classification sites graduate to
+              in-process ML within 90 days. Your actual share will vary
+              with the report card.
+            </p>
+          </div>
         </div>
       </section>
 
@@ -1073,7 +1215,7 @@ Report written to <span class="dim">.dendra/analyze-2026-04-22.json</span></pre>
           </ul>
           <p class="caption">
             Four more categories in the
-            <a href="https://github.com/axiom-labs-os/dendra/blob/main/docs/marketing/industry-applicability.md">full list</a>.
+            <a href="https://github.com/b-tree-labs/dendra/blob/main/docs/marketing/industry-applicability.md">full list</a>.
           </p>
         </div>
       </section>
@@ -1170,7 +1312,7 @@ Report written to <span class="dim">.dendra/analyze-2026-04-22.json</span></pre>
           <p style="margin-top: var(--space-4)">
             The classification primitive every production codebase is
             missing. Built by
-            <a href="https://github.com/axiom-labs-os">Axiom Labs</a>
+            <a href="https://github.com/b-tree-labs">B-Tree Labs</a>
             (a B-Tree Ventures, LLC DBA).
           </p>
         </div>
@@ -1190,23 +1332,26 @@ Report written to <span class="dim">.dendra/analyze-2026-04-22.json</span></pre>
         <div>
           <h4>Resources</h4>
           <ul>
-            <li><a href="https://github.com/axiom-labs-os/dendra">GitHub</a></li>
-            <li><a href="https://github.com/axiom-labs-os/dendra/tree/main/examples">Examples</a></li>
-            <li><a href="https://github.com/axiom-labs-os/dendra/blob/main/docs/FAQ.md">FAQ</a></li>
-            <li><a href="https://github.com/axiom-labs-os/dendra/blob/main/SUPPORT.md">Support</a></li>
-            <li><a href="https://github.com/axiom-labs-os/dendra/blob/main/LICENSING.md">Licensing</a></li>
+            <li><a href="https://github.com/b-tree-labs/dendra">GitHub</a></li>
+            <li><a href="https://github.com/b-tree-labs/dendra/tree/main/docs">Docs</a></li>
+            <li><a href="https://github.com/b-tree-labs/dendra/tree/main/examples">Examples</a></li>
+            <li><a href="https://github.com/b-tree-labs/dendra/blob/main/docs/FAQ.md">FAQ</a></li>
+            <li><a href="https://github.com/b-tree-labs/dendra/blob/main/SUPPORT.md">Support</a></li>
+            <li><a href="https://github.com/b-tree-labs/dendra/blob/main/LICENSING.md">Licensing</a></li>
+            <li><a href="https://github.com/b-tree-labs/dendra/blob/main/docs/methodology/test-driven-product-development.md">Methodology</a></li>
           </ul>
         </div>
       </div>
 
       <div class="container">
         <p class="legal">
-          © 2026 B-Tree Ventures, LLC (dba Axiom Labs). Split-licensed
+          © 2026 B-Tree Ventures, LLC (dba B-Tree Labs). Split-licensed
           — Apache 2.0 on the client SDK, BSL 1.1 on Dendra-operated
           components (Change Date 2030-05-01 → Apache 2.0).
-          DENDRA™ and AXIOM LABS™ are trademarks of B-Tree Ventures,
-          LLC. Patent pending: U.S. Provisional Patent Application
-          No. 64/045,809, filed 2026-04-21.
+          DENDRA and B-TREE LABS are trademarks (or pending
+          trademarks) of B-Tree Ventures, LLC. Patent pending:
+          U.S. Provisional Patent Application No. 64/045,809,
+          filed 2026-04-21.
         </p>
       </div>
     </footer>

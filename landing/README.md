@@ -1,4 +1,4 @@
-# Dendra landing page (`dendra.dev`)
+# Dendra landing page (`dendra.run`)
 
 Static single-page site. No build step. Deploy the `landing/`
 directory as-is to any static host.
@@ -9,7 +9,7 @@ directory as-is to any static host.
 landing/
 ├── index.html              # the page
 ├── style.css               # layout (imports brand-tokens.css)
-├── brand-tokens.css        # Axiom Labs design system — palette, type, scale
+├── brand-tokens.css        # B-Tree Labs design system — palette, type, scale
 ├── _headers                # Cloudflare Pages / Netlify security + caching
 ├── README.md               # this file
 └── assets/
@@ -22,8 +22,8 @@ landing/
 
 ## Design system
 
-Tokens and type-scale come from the Axiom Labs brand kit at
-[`axiom-labs-os/.github/brand/`](https://github.com/axiom-labs-os/.github/tree/main/brand).
+Tokens and type-scale come from the B-Tree Labs brand kit at
+[`b-tree-labs/.github/brand/`](https://github.com/b-tree-labs/.github/tree/main/brand).
 See `brand-tokens.css` for the semantic CSS-variable expression.
 
 The Dendra mark is finalized — the **D2' · Node** glyph (a rule
@@ -44,7 +44,7 @@ wrangler pages deploy . --project-name=dendra-dev
 ```
 
 Or drag-and-drop the `landing/` directory into the Cloudflare
-dashboard. Point the project at the `dendra.dev` domain under
+dashboard. Point the project at the `dendra.run` domain under
 Custom Domains.
 
 Cloudflare Pages auto-picks up `_headers` and `_redirects`.
@@ -132,5 +132,5 @@ The landing page is a living artifact. Review quarterly:
 
 ---
 
-_Copyright (c) 2026 B-Tree Ventures, LLC (dba Axiom Labs).
+_Copyright (c) 2026 B-Tree Ventures, LLC (dba B-Tree Labs).
 Licensed CC-BY 4.0; site content copy-safe for adaptation._

@@ -1,0 +1,3332 @@
+{
+  "root": "/private/tmp/dendra-corpus/litellm/litellm",
+  "files_scanned": 1777,
+  "total_sites": 157,
+  "sites": [
+    {
+      "file_path": "cost_calculator.py",
+      "function_name": "_infer_call_type",
+      "line_start": 823,
+      "line_end": 851,
+      "pattern": "P1",
+      "labels": [
+        "completion",
+        "embedding",
+        "transcription",
+        "speech",
+        "rerank",
+        "image_generation",
+        "text_completion",
+        "send_message"
+      ],
+      "label_cardinality": 8,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "        isinstance(usage_obj, litellm.Usage)\n        or isinstance(usage_obj, ResponseAPIUsage)\n        or TranscriptionUsageObjectTransformation.is_transcription_usage_object(\n            usage_obj\n        )\n    )\n\n\ndef _infer_call_type(\n    call_type: Optional[CallTypesLiteral], completion_response: Any\n) -> Optional[CallTypesLiteral]:\n    if call_type is not None:\n        return call_type\n\n    if completion_response is None:\n        return None\n\n    if isinstance(completion_response, ModelResponse) or isinstance(\n        completion_response, ModelResponseStream\n    ):\n        return \"completion\"\n    elif isinstance(completion_response, EmbeddingResponse):\n        return \"embedding\"\n    elif isinstance(completion_response, TranscriptionResponse):\n        return \"transcription\"\n    elif isinstance(completion_response, HttpxBinaryResponseContent):\n        return \"speech\"\n    elif isinstance(completion_response, RerankResponse):\n        return \"rerank\"\n    elif isinstance(completion_response, ImageResponse):\n        return \"image_generation\"\n    elif isinstance(completion_response, TextCompletionResponse):\n        return \"text_completion\"\n    elif isinstance(completion_response, LiteLLMSendMessageResponse):\n        return \"send_message\"\n\n    return call_type\n\n\ndef _apply_cost_discount(\n    base_cost: float,\n    custom_llm_provider: Optional[str],\n) -> Tuple[float, float, float]:\n    \"\"\"\n    Apply provider-specific cost discount from module-level config.\n\n    Args:\n        base_cost: The base cost before discount\n        custom_llm_provider: The LLM provider name",
+      "snippet_start_line": 815,
+      "snippet_end_line": 863
+    },
+    {
+      "file_path": "integrations/datadog/datadog_llm_obs.py",
+      "function_name": "_get_datadog_span_kind",
+      "line_start": 438,
+      "line_end": 539,
+      "pattern": "P1",
+      "labels": [
+        "llm",
+        "embedding",
+        "tool",
+        "retrieval",
+        "task"
+      ],
+      "label_cardinality": 5,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "                    if choices and len(choices) > 0 and \"message\" in choices[0]:\n                        return [choices[0][\"message\"]]\n                return []\n            except (KeyError, IndexError, TypeError):\n                # In case of any error accessing the response structure, return empty list\n                return []\n        return []\n\n    def _get_datadog_span_kind(\n        self, call_type: Optional[str], parent_id: Optional[str] = None\n    ) -> Literal[\"llm\", \"tool\", \"task\", \"embedding\", \"retrieval\"]:\n        \"\"\"\n        Map liteLLM call_type to appropriate DataDog LLM Observability span kind.\n\n        Available DataDog span kinds: \"llm\", \"tool\", \"task\", \"embedding\", \"retrieval\"\n        see: https://docs.datadoghq.com/ja/llm_observability/terms/\n        \"\"\"\n        # Non llm/workflow/agent kinds cannot be root spans, so fallback to \"llm\" when parent metadata is missing\n        if call_type is None or parent_id is None:\n            return \"llm\"\n\n        # Embedding operations\n        if call_type in [CallTypes.embedding.value, CallTypes.aembedding.value]:\n            return \"embedding\"\n\n        # LLM completion operations\n        if call_type in [\n            CallTypes.completion.value,\n            CallTypes.acompletion.value,\n            CallTypes.text_completion.value,\n            CallTypes.atext_completion.value,\n            CallTypes.generate_content.value,\n            CallTypes.agenerate_content.value,\n            CallTypes.generate_content_stream.value,\n            CallTypes.agenerate_content_stream.value,\n            CallTypes.anthropic_messages.value,\n            CallTypes.responses.value,\n            CallTypes.aresponses.value,\n        ]:\n            return \"llm\"\n\n        # Tool operations\n        if call_type in [CallTypes.call_mcp_tool.value]:\n            return \"tool\"\n\n        # Retrieval operations\n        if call_type in [\n            CallTypes.get_assistants.value,\n            CallTypes.aget_assistants.value,\n            CallTypes.get_thread.value,\n            CallTypes.aget_thread.value,\n            CallTypes.get_messages.value,\n            CallTypes.aget_messages.value,\n            CallTypes.afile_retrieve.value,\n            CallTypes.file_retrieve.value,\n            CallTypes.afile_list.value,\n            CallTypes.file_list.value,\n            CallTypes.afile_content.value,\n            CallTypes.file_content.value,\n            CallTypes.retrieve_batch.value,\n            CallTypes.aretrieve_batch.value,\n            CallTypes.retrieve_fine_tuning_job.value,\n            CallTypes.aretrieve_fine_tuning_job.value,\n            CallTypes.alist_input_items.value,\n        ]:\n            return \"retrieval\"\n\n        # Task operations (batch, fine-tuning, file operations, etc.)\n        if call_type in [\n            CallTypes.create_batch.value,\n            CallTypes.acreate_batch.value,\n            CallTypes.create_fine_tuning_job.value,\n            CallTypes.acreate_fine_tuning_job.value,\n            CallTypes.cancel_fine_tuning_job.value,\n            CallTypes.acancel_fine_tuning_job.value,\n            CallTypes.list_fine_tuning_jobs.value,\n            CallTypes.alist_fine_tuning_jobs.value,\n            CallTypes.create_assistants.value,\n            CallTypes.acreate_assistants.value,\n            CallTypes.delete_assistant.value,\n            CallTypes.adelete_assistant.value,\n            CallTypes.create_thread.value,\n            CallTypes.acreate_thread.value,\n            CallTypes.add_message.value,\n            CallTypes.a_add_message.value,\n            CallTypes.run_thread.value,\n            CallTypes.arun_thread.value,\n            CallTypes.run_thread_stream.value,\n            CallTypes.arun_thread_stream.value,\n            CallTypes.file_delete.value,\n            CallTypes.afile_delete.value,\n            CallTypes.create_file.value,\n            CallTypes.acreate_file.value,\n            CallTypes.image_generation.value,\n            CallTypes.aimage_generation.value,\n            CallTypes.image_edit.value,\n            CallTypes.aimage_edit.value,\n            CallTypes.moderation.value,\n            CallTypes.amoderation.value,\n            CallTypes.transcription.value,\n            CallTypes.atranscription.value,\n            CallTypes.speech.value,\n            CallTypes.aspeech.value,\n            CallTypes.rerank.value,\n            CallTypes.arerank.value,\n        ]:\n            return \"task\"\n\n        # Default fallback for unknown or passthrough operations\n        return \"llm\"\n\n    def _ensure_string_content(\n        self, messages: Optional[Union[str, List[Any], Dict[Any, Any]]]\n    ) -> List[Any]:\n        if messages is None:\n            return []\n        if isinstance(messages, str):\n            return [messages]\n        elif isinstance(messages, list):\n            return [message for message in messages]\n        elif isinstance(messages, dict):\n            return [str(messages.get(\"content\", \"\"))]",
+      "snippet_start_line": 430,
+      "snippet_end_line": 551
+    },
+    {
+      "file_path": "litellm_core_utils/llm_cost_calc/utils.py",
+      "function_name": "select_cost_metric_for_model",
+      "line_start": 48,
+      "line_end": 62,
+      "pattern": "P1",
+      "labels": [
+        "cost_per_character",
+        "cost_per_token"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "    \"\"\"\n    Returns the number of billable input tokens.\n    Subtracts cached tokens from prompt tokens if applicable.\n    \"\"\"\n    details = _parse_prompt_tokens_details(usage)\n    return usage.prompt_tokens - details[\"cache_hit_tokens\"]\n\n\ndef select_cost_metric_for_model(\n    model_info: ModelInfo,\n) -> Literal[\"cost_per_character\", \"cost_per_token\"]:\n    \"\"\"\n    Select 'cost_per_character' if model_info has 'input_cost_per_character'\n    Select 'cost_per_token' if model_info has 'input_cost_per_token'\n    \"\"\"\n    if model_info.get(\"input_cost_per_character\"):\n        return \"cost_per_character\"\n    elif model_info.get(\"input_cost_per_token\"):\n        return \"cost_per_token\"\n    else:\n        raise ValueError(\n            f\"Model {model_info['key']} does not have 'input_cost_per_character' or 'input_cost_per_token'\"\n        )\n\n\ndef _generic_cost_per_character(\n    model: str,\n    custom_llm_provider: str,\n    prompt_characters: float,\n    completion_characters: float,\n    custom_prompt_cost: Optional[float],\n    custom_completion_cost: Optional[float],\n) -> Tuple[Optional[float], Optional[float]]:\n    \"\"\"\n    Calculates cost per character for aspeech/speech calls.",
+      "snippet_start_line": 40,
+      "snippet_end_line": 74
+    },
+    {
+      "file_path": "litellm_core_utils/prompt_templates/factory.py",
+      "function_name": "infer_protocol_value",
+      "line_start": 1207,
+      "line_end": 1231,
+      "pattern": "P1",
+      "labels": [
+        "unknown",
+        "null_value",
+        "number_value",
+        "string_value",
+        "bool_value",
+        "struct_value",
+        "list_value"
+      ],
+      "label_cardinality": 7,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "                if isinstance(content, dict) and content.get(\"type\") == \"image_url\":\n                    _azure_image_url_helper(content)  # type: ignore\n    return messages\n\n\n# ------------------------------------------------------------------------------\n\n\ndef infer_protocol_value(\n    value: Any,\n) -> Literal[\n    \"string_value\",\n    \"number_value\",\n    \"bool_value\",\n    \"struct_value\",\n    \"list_value\",\n    \"null_value\",\n    \"unknown\",\n]:\n    if value is None:\n        return \"null_value\"\n    if isinstance(value, int) or isinstance(value, float):\n        return \"number_value\"\n    if isinstance(value, str):\n        return \"string_value\"\n    if isinstance(value, bool):\n        return \"bool_value\"\n    if isinstance(value, dict):\n        return \"struct_value\"\n    if isinstance(value, list):\n        return \"list_value\"\n\n    return \"unknown\"\n\n\ndef _gemini_tool_call_invoke_helper(\n    function_call_params: ChatCompletionToolCallFunctionChunk,\n) -> Optional[VertexFunctionCall]:\n    name = function_call_params.get(\"name\", \"\") or \"\"\n    arguments = function_call_params.get(\"arguments\", \"\")\n    if (\n        isinstance(arguments, str) and len(arguments) == 0\n    ):  # pass empty dict, if arguments is empty string - prevents call from failing\n        arguments_dict = {\n            \"type\": \"object\",",
+      "snippet_start_line": 1199,
+      "snippet_end_line": 1243
+    },
+    {
+      "file_path": "litellm_core_utils/prompt_templates/factory.py",
+      "function_name": "select_anthropic_content_block_type_for_file",
+      "line_start": 1961,
+      "line_end": 1969,
+      "pattern": "P1",
+      "labels": [
+        "document",
+        "image",
+        "container_upload"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "                media_type=image_chunk[\"media_type\"],\n                data=image_chunk[\"data\"],\n            ),\n        )\n\n    return _anthropic_content_element\n\n\ndef select_anthropic_content_block_type_for_file(\n    format: str,\n) -> Literal[\"document\", \"image\", \"container_upload\"]:\n    if format == \"application/pdf\" or format == \"text/plain\":\n        return \"document\"\n    elif format in [\"image/jpeg\", \"image/png\", \"image/gif\", \"image/webp\"]:\n        return \"image\"\n    else:\n        return \"container_upload\"\n\n\ndef anthropic_infer_file_id_content_type(\n    file_id: str,\n) -> Literal[\"document_url\", \"container_upload\"]:\n    \"\"\"\n    Use when 'format' not provided.\n\n    - URL's - assume are document_url\n    - Else - assume is container_upload\n    \"\"\"\n    if file_id.startswith(\"http\") or file_id.startswith(\"https\"):",
+      "snippet_start_line": 1953,
+      "snippet_end_line": 1981
+    },
+    {
+      "file_path": "litellm_core_utils/prompt_templates/factory.py",
+      "function_name": "anthropic_infer_file_id_content_type",
+      "line_start": 1972,
+      "line_end": 1984,
+      "pattern": "P1",
+      "labels": [
+        "document_url",
+        "container_upload"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "    if format == \"application/pdf\" or format == \"text/plain\":\n        return \"document\"\n    elif format in [\"image/jpeg\", \"image/png\", \"image/gif\", \"image/webp\"]:\n        return \"image\"\n    else:\n        return \"container_upload\"\n\n\ndef anthropic_infer_file_id_content_type(\n    file_id: str,\n) -> Literal[\"document_url\", \"container_upload\"]:\n    \"\"\"\n    Use when 'format' not provided.\n\n    - URL's - assume are document_url\n    - Else - assume is container_upload\n    \"\"\"\n    if file_id.startswith(\"http\") or file_id.startswith(\"https\"):\n        return \"document_url\"\n    else:\n        return \"container_upload\"\n\n\ndef anthropic_process_openai_file_message(\n    message: ChatCompletionFileObject,\n) -> Union[\n    AnthropicMessagesDocumentParam,\n    AnthropicMessagesImageParam,\n    AnthropicMessagesContainerUploadParam,\n]:\n    file_message = cast(ChatCompletionFileObject, message)\n    file_data = file_message[\"file\"].get(\"file_data\")\n    file_id = file_message[\"file\"].get(\"file_id\")",
+      "snippet_start_line": 1964,
+      "snippet_end_line": 1996
+    },
+    {
+      "file_path": "litellm_core_utils/safe_json_dumps.py",
+      "function_name": "_serialize",
+      "line_start": 15,
+      "line_end": 56,
+      "pattern": "P1",
+      "labels": [
+        "MaxDepthExceeded",
+        "CircularReference Detected",
+        "Unserializable Object"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "\n\ndef safe_dumps(data: Any, max_depth: int = DEFAULT_MAX_RECURSE_DEPTH) -> str:\n    \"\"\"\n    Recursively serialize data while detecting circular references.\n    If a circular reference is detected then a marker string is returned.\n    \"\"\"\n\n    def _serialize(obj: Any, seen: set, depth: int) -> Any:\n        # Check for maximum depth.\n        if depth > max_depth:\n            return \"MaxDepthExceeded\"\n        # Base-case: if it is a primitive, simply return it.\n        if isinstance(obj, (str, int, float, bool, type(None))):\n            return obj\n        # Check for circular reference.\n        if id(obj) in seen:\n            return \"CircularReference Detected\"\n        seen.add(id(obj))\n        result: Union[dict, list, tuple, set, str]\n        if isinstance(obj, dict):\n            result = {}\n            for k, v in obj.items():\n                if isinstance(k, (str)):\n                    result[k] = _serialize(v, seen, depth + 1)\n            seen.remove(id(obj))\n            return result\n        elif isinstance(obj, list):\n            result = [_serialize(item, seen, depth + 1) for item in obj]\n            seen.remove(id(obj))\n            return result\n        elif isinstance(obj, tuple):\n            result = tuple(_serialize(item, seen, depth + 1) for item in obj)\n            seen.remove(id(obj))\n            return result\n        elif isinstance(obj, set):\n            result = sorted([_serialize(item, seen, depth + 1) for item in obj])\n            seen.remove(id(obj))\n            return result\n        elif isinstance(obj, BaseModel):\n            dumped = obj.model_dump()\n            result = _serialize(dumped, seen, depth + 1)\n            seen.remove(id(obj))\n            return result\n        else:\n            # Fall back to string conversion for non-serializable objects.\n            try:\n                return str(obj)\n            except Exception:\n                return \"Unserializable Object\"\n\n    safe_data = _serialize(data, set(), 0)\n    return json.dumps(safe_data, default=str)",
+      "snippet_start_line": 7,
+      "snippet_end_line": 59
+    },
+    {
+      "file_path": "litellm_core_utils/token_counter.py",
+      "function_name": "get_image_type",
+      "line_start": 179,
+      "line_end": 199,
+      "pattern": "P1",
+      "labels": [
+        "png",
+        "gif",
+        "jpeg",
+        "heic",
+        "webp"
+      ],
+      "label_cardinality": 5,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "    tile_height=MAX_TILE_HEIGHT,\n):\n    tiles_across = (resized_width + tile_width - 1) // tile_width\n    tiles_down = (resized_height + tile_height - 1) // tile_height\n    total_tiles = tiles_across * tiles_down\n    return total_tiles\n\n\ndef get_image_type(image_data: bytes) -> Union[str, None]:\n    \"\"\"take an image (really only the first ~100 bytes max are needed)\n    and return 'png' 'gif' 'jpeg' 'webp' 'heic' or None. method added to\n    allow deprecation of imghdr in 3.13\"\"\"\n\n    if image_data[0:8] == b\"\\x89\\x50\\x4e\\x47\\x0d\\x0a\\x1a\\x0a\":\n        return \"png\"\n\n    if image_data[0:4] == b\"GIF8\" and image_data[5:6] == b\"a\":\n        return \"gif\"\n\n    if image_data[0:3] == b\"\\xff\\xd8\\xff\":\n        return \"jpeg\"\n\n    if image_data[4:8] == b\"ftyp\":\n        return \"heic\"\n\n    if image_data[0:4] == b\"RIFF\" and image_data[8:12] == b\"WEBP\":\n        return \"webp\"\n\n    return None\n\n\ndef get_image_dimensions(\n    data: str,\n) -> Tuple[int, int]:\n    \"\"\"\n    Async Function to get the dimensions of an image from a URL or base64 encoded string.\n\n    Args:\n        data (str): The URL or base64 encoded string of the image.\n\n    Returns:",
+      "snippet_start_line": 171,
+      "snippet_end_line": 211
+    },
+    {
+      "file_path": "llms/anthropic/experimental_pass_through/adapters/transformation.py",
+      "function_name": "translate_anthropic_tool_choice_to_openai",
+      "line_start": 771,
+      "line_end": 793,
+      "pattern": "P1",
+      "labels": [
+        "required",
+        "auto",
+        "none"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "                        \"reasoning_effort\": {\n                            \"effort\": reasoning_effort,\n                            \"summary\": \"detailed\",\n                        }\n                    }\n                return {\"reasoning_effort\": reasoning_effort}\n            return {}\n\n    def translate_anthropic_tool_choice_to_openai(\n        self, tool_choice: AnthropicMessagesToolChoice\n    ) -> ChatCompletionToolChoiceValues:\n        if tool_choice[\"type\"] == \"any\":\n            return \"required\"\n        elif tool_choice[\"type\"] == \"auto\":\n            return \"auto\"\n        elif tool_choice[\"type\"] == \"tool\":\n            # Truncate tool name if it exceeds OpenAI's 64-char limit\n            original_name = tool_choice.get(\"name\", \"\")\n            truncated_name = truncate_tool_name(original_name)\n            tc_function_param = ChatCompletionToolChoiceFunctionParam(\n                name=truncated_name\n            )\n            return ChatCompletionToolChoiceObjectParam(\n                type=\"function\", function=tc_function_param\n            )\n        elif tool_choice[\"type\"] == \"none\":\n            return \"none\"\n        else:\n            raise ValueError(\n                \"Incompatible tool choice param submitted - {}\".format(tool_choice)\n            )\n\n    def translate_anthropic_tools_to_openai(\n        self, tools: List[AllAnthropicToolsValues], model: Optional[str] = None\n    ) -> Tuple[List[ChatCompletionToolParam], Dict[str, str]]:\n        \"\"\"\n        Translate Anthropic tools to OpenAI format.\n\n        Returns:\n            Tuple of (translated_tools, tool_name_mapping)\n            - tool_name_mapping maps truncated names back to original names\n              for tools that exceeded OpenAI's 64-char limit\n        \"\"\"",
+      "snippet_start_line": 763,
+      "snippet_end_line": 805
+    },
+    {
+      "file_path": "llms/anthropic/experimental_pass_through/adapters/transformation.py",
+      "function_name": "_translate_openai_finish_reason_to_anthropic",
+      "line_start": 1308,
+      "line_end": 1317,
+      "pattern": "P1",
+      "labels": [
+        "end_turn",
+        "max_tokens",
+        "tool_use"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "                    if provider_specific_fields:\n                        tool_use_block.provider_specific_fields = (\n                            provider_specific_fields\n                        )\n                    new_content.append(tool_use_block.model_dump())\n\n        return new_content\n\n    def _translate_openai_finish_reason_to_anthropic(\n        self, openai_finish_reason: str\n    ) -> AnthropicFinishReason:\n        if openai_finish_reason == \"stop\":\n            return \"end_turn\"\n        elif openai_finish_reason == \"length\":\n            return \"max_tokens\"\n        elif openai_finish_reason == \"tool_calls\":\n            return \"tool_use\"\n        return \"end_turn\"\n\n    def translate_openai_response_to_anthropic(\n        self,\n        response: ModelResponse,\n        tool_name_mapping: Optional[Dict[str, str]] = None,\n    ) -> AnthropicMessagesResponse:\n        \"\"\"\n        Translate OpenAI response to Anthropic format.\n\n        Args:\n            response: The OpenAI ModelResponse\n            tool_name_mapping: Optional mapping of truncated tool names to original names.",
+      "snippet_start_line": 1300,
+      "snippet_end_line": 1329
+    },
+    {
+      "file_path": "llms/anthropic/experimental_pass_through/utils.py",
+      "function_name": "normalize_reasoning_effort_value",
+      "line_start": 16,
+      "line_end": 57,
+      "pattern": "P1",
+      "labels": [
+        "medium",
+        "high",
+        "max",
+        "xhigh",
+        "low",
+        "minimal"
+      ],
+      "label_cardinality": 6,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "def is_reasoning_auto_summary_enabled() -> bool:\n    \"\"\"Check whether the default 'summary: detailed' injection is enabled (opt-in).\"\"\"\n    return (\n        litellm.reasoning_auto_summary\n        or os.getenv(\"LITELLM_REASONING_AUTO_SUMMARY\", \"false\").lower() == \"true\"\n    )\n\n\ndef normalize_reasoning_effort_value(\n    effort: str,\n    model: str,\n    custom_llm_provider: Optional[str] = None,\n) -> str:\n    \"\"\"\n    Normalize a reasoning effort value based on model capabilities.\n\n    Degradation chains:\n    - \"max\"     \u2192 max / xhigh / high\n    - \"xhigh\"   \u2192 xhigh / high\n    - \"minimal\" \u2192 minimal / low\n    - other values pass through unchanged\n    \"\"\"\n    if effort not in (\"max\", \"xhigh\", \"minimal\"):\n        return effort\n\n    from litellm.utils import get_model_info\n\n    model_info: Optional[ModelInfo] = None\n    try:\n        model_info = get_model_info(\n            model=model, custom_llm_provider=custom_llm_provider\n        )\n    except Exception:\n        model_info = None\n\n    if effort == \"max\":\n        if model_info and model_info.get(\"supports_max_reasoning_effort\"):\n            return \"max\"\n        if model_info and model_info.get(\"supports_xhigh_reasoning_effort\"):\n            return \"xhigh\"\n        return \"high\"\n    elif effort == \"xhigh\":\n        if model_info and model_info.get(\"supports_xhigh_reasoning_effort\"):\n            return \"xhigh\"\n        return \"high\"\n    elif effort == \"minimal\":\n        if model_info and model_info.get(\"supports_minimal_reasoning_effort\"):\n            return \"minimal\"\n        return \"low\"\n    return \"medium\"",
+      "snippet_start_line": 8,
+      "snippet_end_line": 57
+    },
+    {
+      "file_path": "llms/azure_ai/embed/cohere_transformation.py",
+      "function_name": "_map_azure_model_group",
+      "line_start": 24,
+      "line_end": 30,
+      "pattern": "P1",
+      "labels": [
+        "Cohere-embed-v3-multilingual",
+        "Cohere-embed-v3-english"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "from litellm.types.utils import EmbeddingResponse, Usage\nfrom litellm.utils import is_base64_encoded\n\n\nclass AzureAICohereConfig:\n    def __init__(self) -> None:\n        pass\n\n    def _map_azure_model_group(self, model: str) -> str:\n        if model == \"offer-cohere-embed-multili-paygo\":\n            return \"Cohere-embed-v3-multilingual\"\n        elif model == \"offer-cohere-embed-english-paygo\":\n            return \"Cohere-embed-v3-english\"\n\n        return model\n\n    def _transform_request_image_embeddings(\n        self, input: List[str], optional_params: dict\n    ) -> ImageEmbeddingRequest:\n        \"\"\"\n        Assume all str in list is base64 encoded string\n        \"\"\"\n        image_input: List[ImageEmbeddingInput] = []\n        for i in input:\n            embedding_input = ImageEmbeddingInput(image=i)\n            image_input.append(embedding_input)\n        return ImageEmbeddingRequest(input=image_input, **optional_params)",
+      "snippet_start_line": 16,
+      "snippet_end_line": 42
+    },
+    {
+      "file_path": "llms/azure_ai/rerank/transformation.py",
+      "function_name": "_get_base_model",
+      "line_start": 118,
+      "line_end": 125,
+      "pattern": "P1",
+      "labels": [
+        "azure_ai/cohere-rerank-v3-multilingual",
+        "azure_ai/cohere-rerank-v3-english"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "            litellm_params=litellm_params,\n        )\n        base_model = self._get_base_model(\n            rerank_response._hidden_params.get(\"llm_provider-azureml-model-group\")\n        )\n        rerank_response._hidden_params[\"model\"] = base_model\n        return rerank_response\n\n    def _get_base_model(self, azure_model_group: Optional[str]) -> Optional[str]:\n        if azure_model_group is None:\n            return None\n        if azure_model_group == \"offer-cohere-rerank-mul-paygo\":\n            return \"azure_ai/cohere-rerank-v3-multilingual\"\n        if azure_model_group == \"offer-cohere-rerank-eng-paygo\":\n            return \"azure_ai/cohere-rerank-v3-english\"\n        return azure_model_group",
+      "snippet_start_line": 110,
+      "snippet_end_line": 125
+    },
+    {
+      "file_path": "llms/bedrock/common_utils.py",
+      "function_name": "get_bedrock_base_model",
+      "line_start": 529,
+      "line_end": 566,
+      "pattern": "P1",
+      "labels": [
+        "amazon.nova-2-custom",
+        "amazon.nova-custom"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "    # Keep the model:version part, strip the :throughput suffix\n    model = re.sub(r\"(:\\d+):\\d+k$\", r\"\\1\", model)\n    # Strip context window suffixes like [1m], [200k], etc.\n    # e.g. \"us.anthropic.claude-opus-4-6-v1[1m]\" -> \"us.anthropic.claude-opus-4-6-v1\"\n    model = re.sub(r\"\\[\\w+\\]$\", \"\", model)\n    return model\n\n\ndef get_bedrock_base_model(model: str) -> str:\n    \"\"\"\n    Get the base model from the given model name.\n\n    Handle model names like:\n    - \"us.meta.llama3-2-11b-instruct-v1:0\" -> \"meta.llama3-2-11b-instruct-v1\"\n    - \"bedrock/converse/model\" -> \"model\"\n    - \"anthropic.claude-3-5-sonnet-20241022-v2:0:51k\" -> \"anthropic.claude-3-5-sonnet-20241022-v2:0\"\n    - \"bedrock/nova-2/arn:aws:...\" -> \"amazon.nova-2-custom\"\n    - \"bedrock/nova/arn:aws:...\" -> \"amazon.nova-custom\"\n    \"\"\"\n    # Detect nova spec prefixes before stripping them\n    stripped = model\n    for rp in [\"bedrock/converse/\", \"bedrock/\", \"converse/\"]:\n        if stripped.startswith(rp):\n            stripped = stripped[len(rp) :]\n            break\n    if stripped.startswith(\"nova-2/\"):\n        return \"amazon.nova-2-custom\"\n    elif stripped.startswith(\"nova/\"):\n        return \"amazon.nova-custom\"\n\n    model = strip_bedrock_routing_prefix(model)\n    model = extract_model_name_from_bedrock_arn(model)\n    model = strip_bedrock_throughput_suffix(model)\n\n    potential_region = model.split(\".\", 1)[0]\n    alt_potential_region = model.split(\"/\", 1)[0]\n\n    if potential_region in get_bedrock_cross_region_inference_regions():\n        return model.split(\".\", 1)[1]\n    elif (\n        alt_potential_region in _get_all_bedrock_regions()\n        and len(model.split(\"/\", 1)) > 1\n    ):\n        return model.split(\"/\", 1)[1]\n\n    return model\n\n\ndef is_claude_4_5_on_bedrock(model: str) -> bool:\n    \"\"\"\n    Check if the model is a Claude 4.5 model on Bedrock.\n    Claude 4.5 models support prompt caching with '5m' and '1h' TTL on Bedrock.\n    \"\"\"\n    model_lower = model.lower()\n    claude_4_5_patterns = [\n        \"sonnet-4.5\",\n        \"sonnet_4.5\",\n        \"sonnet-4-5\",",
+      "snippet_start_line": 521,
+      "snippet_end_line": 578
+    },
+    {
+      "file_path": "llms/bedrock/count_tokens/transformation.py",
+      "function_name": "_detect_input_type",
+      "line_start": 25,
+      "line_end": 41,
+      "pattern": "P1",
+      "labels": [
+        "invokeModel",
+        "converse"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "    Configuration and transformation logic for AWS Bedrock CountTokens API.\n\n    AWS Bedrock CountTokens API Specification:\n    - Endpoint: POST /model/{modelId}/count-tokens\n    - Input formats: 'invokeModel' or 'converse'\n    - Response: {\"inputTokens\": <number>}\n    \"\"\"\n\n    def _detect_input_type(self, request_data: Dict[str, Any]) -> str:\n        \"\"\"\n        Detect whether to use 'converse' or 'invokeModel' input format.\n\n        Args:\n            request_data: The original request data\n\n        Returns:\n            'converse' or 'invokeModel'\n        \"\"\"\n        # If the request has messages in the expected Anthropic format, use converse\n        if \"messages\" in request_data and isinstance(request_data[\"messages\"], list):\n            return \"converse\"\n\n        # For raw text or other formats, use invokeModel\n        # This handles cases where the input is prompt-based or already in raw Bedrock format\n        return \"invokeModel\"\n\n    def transform_anthropic_to_bedrock_count_tokens(\n        self,\n        request_data: Dict[str, Any],\n    ) -> Dict[str, Any]:\n        \"\"\"\n        Transform request to Bedrock CountTokens format.\n        Supports both Converse and InvokeModel input types.\n\n        Input (Anthropic format):\n        {\n            \"model\": \"claude-3-5-sonnet\",",
+      "snippet_start_line": 17,
+      "snippet_end_line": 53
+    },
+    {
+      "file_path": "llms/cohere/common_utils.py",
+      "function_name": "get_cohere_route",
+      "line_start": 71,
+      "line_end": 86,
+      "pattern": "P1",
+      "labels": [
+        "v2",
+        "v1"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/fal_ai/image_generation/bria_transformation.py",
+      "function_name": "_map_aspect_ratio",
+      "line_start": 93,
+      "line_end": 148,
+      "pattern": "P1",
+      "labels": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4",
+        "3:2",
+        "2:3",
+        "5:4",
+        "4:5"
+      ],
+      "label_cardinality": 9,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/fal_ai/image_generation/flux_pro_v11_ultra_transformation.py",
+      "function_name": "_map_aspect_ratio",
+      "line_start": 93,
+      "line_end": 152,
+      "pattern": "P1",
+      "labels": [
+        "16:9",
+        "1:1",
+        "21:9",
+        "4:3",
+        "3:2",
+        "3:4",
+        "2:3",
+        "9:16",
+        "9:21"
+      ],
+      "label_cardinality": 9,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/fal_ai/image_generation/imagen4_transformation.py",
+      "function_name": "_map_aspect_ratio",
+      "line_start": 94,
+      "line_end": 146,
+      "pattern": "P1",
+      "labels": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "label_cardinality": 5,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/gemini/videos/transformation.py",
+      "function_name": "_convert_size_to_resolution",
+      "line_start": 171,
+      "line_end": 189,
+      "pattern": "P1",
+      "labels": [
+        "720p",
+        "1080p"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/gigachat/chat/transformation.py",
+      "function_name": "_map_tool_choice",
+      "line_start": 219,
+      "line_end": 259,
+      "pattern": "P1",
+      "labels": [
+        "none",
+        "auto"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/github_copilot/responses/transformation.py",
+      "function_name": "_get_initiator",
+      "line_start": 238,
+      "line_end": 272,
+      "pattern": "P1",
+      "labels": [
+        "user",
+        "agent"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/openai/cost_calculation.py",
+      "function_name": "cost_router",
+      "line_start": 14,
+      "line_end": 18,
+      "pattern": "P1",
+      "labels": [
+        "cost_per_second",
+        "cost_per_token"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/triton/completion/transformation.py",
+      "function_name": "_get_triton_llm_type",
+      "line_start": 162,
+      "line_end": 168,
+      "pattern": "P1",
+      "labels": [
+        "generate",
+        "infer"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/vertex_ai/cost_calculator.py",
+      "function_name": "cost_router",
+      "line_start": 30,
+      "line_end": 56,
+      "pattern": "P1",
+      "labels": [
+        "cost_per_character",
+        "cost_per_token"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/vertex_ai/gemini/vertex_and_google_ai_studio_gemini.py",
+      "function_name": "_check_finish_reason",
+      "line_start": 1960,
+      "line_end": 1973,
+      "pattern": "P1",
+      "labels": [
+        "function_call",
+        "tool_calls",
+        "stop"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/vertex_ai/vertex_ai_partner_models/count_tokens/handler.py",
+      "function_name": "_get_publisher_for_model",
+      "line_start": 24,
+      "line_end": 44,
+      "pattern": "P1",
+      "labels": [
+        "anthropic",
+        "mistralai",
+        "meta"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "proxy/_experimental/mcp_server/mcp_debug.py",
+      "function_name": "resolve_auth_resolution",
+      "line_start": 148,
+      "line_end": 177,
+      "pattern": "P1",
+      "labels": [
+        "no-auth",
+        "per-request-header",
+        "m2m-client-credentials",
+        "static-token",
+        "oauth2-passthrough"
+      ],
+      "label_cardinality": 5,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "proxy/client/cli/commands/models.py",
+      "function_name": "_import_models_get_table_title",
+      "line_start": 426,
+      "line_end": 430,
+      "pattern": "P1",
+      "labels": [
+        "Models that would be imported if [yellow]--dry-run[/yellow] was not provided",
+        "Models Imported"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "proxy/guardrails/guardrail_endpoints.py",
+      "function_name": "_get_field_type_from_annotation",
+      "line_start": 1573,
+      "line_end": 1621,
+      "pattern": "P1",
+      "labels": [
+        "string",
+        "array",
+        "dict",
+        "select",
+        "number",
+        "boolean",
+        "object"
+      ],
+      "label_cardinality": 7,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "proxy/guardrails/guardrail_hooks/bedrock_guardrails.py",
+      "function_name": "_get_bedrock_guardrail_response_status",
+      "line_start": 578,
+      "line_end": 605,
+      "pattern": "P1",
+      "labels": [
+        "guardrail_failed_to_respond",
+        "success",
+        "guardrail_intervened"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "proxy/guardrails/usage_endpoints.py",
+      "function_name": "_status_from_fail_rate",
+      "line_start": 77,
+      "line_end": 82,
+      "pattern": "P1",
+      "labels": [
+        "healthy",
+        "critical",
+        "warning"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "proxy/guardrails/usage_endpoints.py",
+      "function_name": "_trend_from_comparison",
+      "line_start": 85,
+      "line_end": 93,
+      "pattern": "P1",
+      "labels": [
+        "stable",
+        "up",
+        "down"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "proxy/hooks/mcp_semantic_filter/hook.py",
+      "function_name": "_get_metadata_variable_name",
+      "line_start": 126,
+      "line_end": 129,
+      "pattern": "P1",
+      "labels": [
+        "metadata",
+        "litellm_metadata"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "proxy/litellm_pre_call_utils.py",
+      "function_name": "_get_metadata_variable_name",
+      "line_start": 108,
+      "line_end": 124,
+      "pattern": "P1",
+      "labels": [
+        "metadata",
+        "litellm_metadata"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "proxy/mcp_tools.py",
+      "function_name": "get_current_time",
+      "line_start": 4,
+      "line_end": 18,
+      "pattern": "P1",
+      "labels": [
+        "10:30:45 AM",
+        "10:30 AM"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "proxy/mcp_tools.py",
+      "function_name": "get_current_date",
+      "line_start": 21,
+      "line_end": 35,
+      "pattern": "P1",
+      "labels": [
+        "October 15, 2023",
+        "Oct 15"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "proxy/pass_through_endpoints/llm_provider_handlers/assembly_passthrough_logging_handler.py",
+      "function_name": "_get_assembly_base_url_from_region",
+      "line_start": 325,
+      "line_end": 333,
+      "pattern": "P1",
+      "labels": [
+        "https://api.assemblyai.com",
+        "https://api.eu.assemblyai.com"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "proxy/pass_through_endpoints/llm_provider_handlers/vertex_passthrough_logging_handler.py",
+      "function_name": "_get_vertex_publisher_or_api_spec_from_url",
+      "line_start": 559,
+      "line_end": 569,
+      "pattern": "P1",
+      "labels": [
+        "mistralai",
+        "anthropic",
+        "ai21",
+        "openapi"
+      ],
+      "label_cardinality": 4,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "proxy/spend_tracking/spend_tracking_utils.py",
+      "function_name": "_convert_to_json_serializable_dict",
+      "line_start": 702,
+      "line_end": 763,
+      "pattern": "P1",
+      "labels": [
+        "<max_depth_exceeded>",
+        "<circular_reference>"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "proxy/spend_tracking/spend_tracking_utils.py",
+      "function_name": "_get_status_for_spend_log",
+      "line_start": 924,
+      "line_end": 935,
+      "pattern": "P1",
+      "labels": [
+        "success",
+        "failure"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "responses/litellm_completion_transformation/transformation.py",
+      "function_name": "_transform_tool_choice",
+      "line_start": 106,
+      "line_end": 155,
+      "pattern": "P1",
+      "labels": [
+        "auto",
+        "none",
+        "required"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "responses/litellm_completion_transformation/transformation.py",
+      "function_name": "_get_chat_completion_request_content_type",
+      "line_start": 1310,
+      "line_end": 1340,
+      "pattern": "P1",
+      "labels": [
+        "text",
+        "input_audio"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "responses/litellm_completion_transformation/transformation.py",
+      "function_name": "_map_chat_completion_finish_reason_to_responses_status",
+      "line_start": 1524,
+      "line_end": 1549,
+      "pattern": "P1",
+      "labels": [
+        "completed",
+        "incomplete"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "responses/litellm_completion_transformation/transformation.py",
+      "function_name": "_map_finish_reason_to_image_generation_status",
+      "line_start": 1888,
+      "line_end": 1905,
+      "pattern": "P1",
+      "labels": [
+        "completed",
+        "incomplete",
+        "failed"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "router_utils/batch_utils.py",
+      "function_name": "_get_router_metadata_variable_name",
+      "line_start": 128,
+      "line_end": 150,
+      "pattern": "P1",
+      "labels": [
+        "litellm_metadata",
+        "metadata"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "utils.py",
+      "function_name": "_infer_model_region",
+      "line_start": 4967,
+      "line_end": 5011,
+      "pattern": "P4",
+      "labels": [
+        "eu",
+        "us"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "completion_extras/litellm_responses_transformation/transformation.py",
+      "function_name": "_map_responses_status_to_finish_reason",
+      "line_start": 1050,
+      "line_end": 1062,
+      "pattern": "P3",
+      "labels": [
+        "stop"
+      ],
+      "label_cardinality": 1,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 2.1,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "google_genai/adapters/transformation.py",
+      "function_name": "_map_finish_reason",
+      "line_start": 762,
+      "line_end": 775,
+      "pattern": "P3",
+      "labels": [
+        "STOP"
+      ],
+      "label_cardinality": 1,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 2.1,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/fal_ai/image_generation/recraft_v3_transformation.py",
+      "function_name": "_map_image_size",
+      "line_start": 93,
+      "line_end": 133,
+      "pattern": "P3",
+      "labels": [
+        "square_hd"
+      ],
+      "label_cardinality": 1,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 2.1,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/fal_ai/image_generation/stable_diffusion_transformation.py",
+      "function_name": "_map_image_size",
+      "line_start": 130,
+      "line_end": 170,
+      "pattern": "P3",
+      "labels": [
+        "landscape_4_3"
+      ],
+      "label_cardinality": 1,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 2.1,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/vertex_ai/common_utils.py",
+      "function_name": "get_vertex_base_url",
+      "line_start": 227,
+      "line_end": 245,
+      "pattern": "P5",
+      "labels": [
+        "https://aiplatform.googleapis.com"
+      ],
+      "label_cardinality": 1,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 2.1,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "proxy/pass_through_endpoints/llm_passthrough_endpoints.py",
+      "function_name": "get_vertex_base_url",
+      "line_start": 1529,
+      "line_end": 1543,
+      "pattern": "P5",
+      "labels": [
+        "https://aiplatform.googleapis.com/"
+      ],
+      "label_cardinality": 1,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 2.1,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "router_strategy/adaptive_router/bandit.py",
+      "function_name": "pick_best",
+      "line_start": 117,
+      "line_end": 142,
+      "pattern": "P4",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 2.1,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "router_strategy/least_busy.py",
+      "function_name": "_get_available_deployments",
+      "line_start": 192,
+      "line_end": 220,
+      "pattern": "P4",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 2.1,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "utils.py",
+      "function_name": "_map_openai_size_to_vertex_ai_aspect_ratio",
+      "line_start": 3073,
+      "line_end": 3089,
+      "pattern": "P3",
+      "labels": [
+        "1:1"
+      ],
+      "label_cardinality": 1,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 2.1,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "proxy/health_endpoints/_health_endpoints.py",
+      "function_name": "health_readiness_options",
+      "line_start": 1350,
+      "line_end": 1359,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "hot",
+      "priority_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "proxy/health_endpoints/_health_endpoints.py",
+      "function_name": "health_liveliness_options",
+      "line_start": 1370,
+      "line_end": 1379,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "hot",
+      "priority_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "proxy/management_endpoints/usage_endpoints/endpoints.py",
+      "function_name": "usage_ai_chat",
+      "line_start": 36,
+      "line_end": 65,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "hot",
+      "priority_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "proxy/proxy_server.py",
+      "function_name": "token_counter",
+      "line_start": 9368,
+      "line_end": 9480,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "hot",
+      "priority_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "proxy/ui_crud_endpoints/proxy_setting_endpoints.py",
+      "function_name": "update_sso_settings",
+      "line_start": 751,
+      "line_end": 872,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "hot",
+      "priority_score": 2.0,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "__init__.py",
+      "function_name": "__getattr__",
+      "line_start": 2004,
+      "line_end": 2199,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "google_genai/adapters/transformation.py",
+      "function_name": "_transform_google_genai_tool_config_to_openai",
+      "line_start": 352,
+      "line_end": 363,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "integrations/arize/arize_phoenix_prompt_manager.py",
+      "function_name": "render_template",
+      "line_start": 150,
+      "line_end": 184,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "integrations/opik/opik_payload_builder/extractors.py",
+      "function_name": "normalize_provider_name",
+      "line_start": 9,
+      "line_end": 34,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "integrations/opik/opik_payload_builder/extractors.py",
+      "function_name": "extract_and_build_metadata",
+      "line_start": 154,
+      "line_end": 221,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "integrations/websearch_interception/handler.py",
+      "function_name": "_execute_agentic_loop",
+      "line_start": 724,
+      "line_end": 764,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "integrations/websearch_interception/handler.py",
+      "function_name": "_execute_chat_completion_agentic_loop",
+      "line_start": 944,
+      "line_end": 973,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "litellm_core_utils/json_validation_rule.py",
+      "function_name": "normalize_json_schema_types",
+      "line_start": 7,
+      "line_end": 80,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "litellm_core_utils/litellm_logging.py",
+      "function_name": "get_chat_completion_prompt",
+      "line_start": 700,
+      "line_end": 740,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "litellm_core_utils/litellm_logging.py",
+      "function_name": "async_get_chat_completion_prompt",
+      "line_start": 742,
+      "line_end": 786,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "litellm_core_utils/prompt_templates/common_utils.py",
+      "function_name": "infer_content_type_from_url_and_content",
+      "line_start": 938,
+      "line_end": 1031,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/anthropic/chat/transformation.py",
+      "function_name": "filter_anthropic_output_schema",
+      "line_start": 252,
+      "line_end": 363,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/azure/assistants.py",
+      "function_name": "async_get_messages",
+      "line_start": 306,
+      "line_end": 331,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/azure/azure.py",
+      "function_name": "make_sync_azure_openai_chat_completion_request",
+      "line_start": 135,
+      "line_end": 155,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/azure/azure.py",
+      "function_name": "make_azure_openai_chat_completion_request",
+      "line_start": 158,
+      "line_end": 185,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/azure/azure.py",
+      "function_name": "get_headers",
+      "line_start": 1391,
+      "line_end": 1462,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/bedrock/vector_stores/transformation.py",
+      "function_name": "_map_operator_to_aws",
+      "line_start": 54,
+      "line_end": 82,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/custom_httpx/llm_http_handler.py",
+      "function_name": "_execute_anthropic_agentic_plan",
+      "line_start": 4585,
+      "line_end": 4648,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/custom_httpx/llm_http_handler.py",
+      "function_name": "_execute_chat_completion_agentic_plan",
+      "line_start": 4650,
+      "line_end": 4702,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/gemini/image_edit/transformation.py",
+      "function_name": "_map_size_to_aspect_ratio",
+      "line_start": 161,
+      "line_end": 169,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/gemini/image_generation/transformation.py",
+      "function_name": "_map_size_to_aspect_ratio",
+      "line_start": 64,
+      "line_end": 76,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/gemini/realtime/transformation.py",
+      "function_name": "get_audio_mime_type",
+      "line_start": 131,
+      "line_end": 138,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/github_copilot/authenticator.py",
+      "function_name": "_get_github_headers",
+      "line_start": 200,
+      "line_end": 224,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/openai/openai.py",
+      "function_name": "make_openai_chat_completion_request",
+      "line_start": 423,
+      "line_end": 461,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/openai/openai.py",
+      "function_name": "make_sync_openai_chat_completion_request",
+      "line_start": 464,
+      "line_end": 503,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/openai/openai.py",
+      "function_name": "async_get_messages",
+      "line_start": 2610,
+      "line_end": 2631,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/openrouter/image_edit/transformation.py",
+      "function_name": "_map_size_to_aspect_ratio",
+      "line_start": 274,
+      "line_end": 291,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/openrouter/image_edit/transformation.py",
+      "function_name": "_map_quality_to_image_size",
+      "line_start": 293,
+      "line_end": 308,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/openrouter/image_generation/transformation.py",
+      "function_name": "_map_size_to_aspect_ratio",
+      "line_start": 123,
+      "line_end": 162,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/openrouter/image_generation/transformation.py",
+      "function_name": "_map_quality_to_image_size",
+      "line_start": 164,
+      "line_end": 188,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/runwayml/videos/transformation.py",
+      "function_name": "_map_runway_status",
+      "line_start": 286,
+      "line_end": 301,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/vertex_ai/image_edit/vertex_gemini_transformation.py",
+      "function_name": "_map_size_to_aspect_ratio",
+      "line_start": 245,
+      "line_end": 254,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/vertex_ai/image_edit/vertex_imagen_transformation.py",
+      "function_name": "_map_size_to_aspect_ratio",
+      "line_start": 254,
+      "line_end": 263,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/vertex_ai/image_generation/vertex_gemini_transformation.py",
+      "function_name": "_map_size_to_aspect_ratio",
+      "line_start": 85,
+      "line_end": 96,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/vertex_ai/image_generation/vertex_imagen_transformation.py",
+      "function_name": "_map_size_to_aspect_ratio",
+      "line_start": 71,
+      "line_end": 82,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/vertex_ai/realtime/transformation.py",
+      "function_name": "get_audio_mime_type",
+      "line_start": 89,
+      "line_end": 95,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "llms/vertex_ai/videos/transformation.py",
+      "function_name": "_convert_size_to_aspect_ratio",
+      "line_start": 150,
+      "line_end": 166,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "proxy/_types.py",
+      "function_name": "description",
+      "line_start": 141,
+      "line_end": 153,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "proxy/_types.py",
+      "function_name": "ui_label",
+      "line_start": 156,
+      "line_end": 168,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "proxy/client/cli/commands/keys.py",
+      "function_name": "_import_keys_to_destination",
+      "line_start": 311,
+      "line_end": 337,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "proxy/guardrails/guardrail_hooks/hiddenlayer/hiddenlayer.py",
+      "function_name": "_call_hiddenlayer",
+      "line_start": 226,
+      "line_end": 286,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "proxy/guardrails/guardrail_hooks/hiddenlayer/hiddenlayer.py",
+      "function_name": "_call_hiddenlayer",
+      "line_start": 457,
+      "line_end": 510,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "responses/mcp/chat_completions_handler.py",
+      "function_name": "_process_tool_calls",
+      "line_start": 423,
+      "line_end": 460,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "responses/mcp/chat_completions_handler.py",
+      "function_name": "_prepare_follow_up_call",
+      "line_start": 462,
+      "line_end": 505,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "responses/streaming_iterator.py",
+      "function_name": "_store_event",
+      "line_start": 820,
+      "line_end": 832,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "responses/streaming_iterator.py",
+      "function_name": "_log_messages",
+      "line_start": 881,
+      "line_end": 888,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "router.py",
+      "function_name": "async_get_available_deployment",
+      "line_start": 9593,
+      "line_end": 9754,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "router.py",
+      "function_name": "async_get_available_deployment_for_pass_through",
+      "line_start": 9756,
+      "line_end": 9902,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "compression/content_detection.py",
+      "function_name": "detect_content_type",
+      "line_start": 14,
+      "line_end": 45,
+      "pattern": "P1",
+      "labels": [
+        "text",
+        "code",
+        "json"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 20,
+          "reason": "Line 20 binds 'stripped' from content.strip(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If content.strip supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        },
+        {
+          "category": "side_effect_evidence",
+          "line": 36,
+          "reason": "Line 36 binds 'lines' from sample.split(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If sample.split supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "integrations/langfuse/langfuse_otel_attributes.py",
+      "function_name": "get_output_content_by_type",
+      "line_start": 31,
+      "line_end": 82,
+      "pattern": "P1",
+      "labels": [
+        "embedding-output",
+        "speech-output"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 64,
+          "reason": "Line 64 binds 'call_type' from kwargs.get(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If kwargs.get supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "litellm_core_utils/token_counter.py",
+      "function_name": "_format_type",
+      "line_start": 801,
+      "line_end": 822,
+      "pattern": "P1",
+      "labels": [
+        "string",
+        "number",
+        "boolean",
+        "null",
+        "any"
+      ],
+      "label_cardinality": 5,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 802,
+          "reason": "Line 802 binds 'type' from props.get(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If props.get supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        },
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 801,
+          "reason": "Function '_format_type' takes 2 args but 2 have no type annotation: props, indent. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def _format_type(props: str, indent: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "llms/anthropic/experimental_pass_through/adapters/transformation.py",
+      "function_name": "translate_anthropic_thinking_to_reasoning_effort",
+      "line_start": 669,
+      "line_end": 707,
+      "pattern": "P1",
+      "labels": [
+        "high",
+        "medium",
+        "low",
+        "minimal"
+      ],
+      "label_cardinality": 4,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 687,
+          "reason": "Line 687 binds 'thinking_type' from thinking.get(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If thinking.get supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "llms/azure_ai/common_utils.py",
+      "function_name": "get_azure_ai_route",
+      "line_start": 16,
+      "line_end": 38,
+      "pattern": "P1",
+      "labels": [
+        "default",
+        "agents",
+        "model_router"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 30,
+          "reason": "Line 30 binds 'model_lower' from model.lower(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If model.lower supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "llms/bedrock/common_utils.py",
+      "function_name": "get_bedrock_route",
+      "line_start": 689,
+      "line_end": 746,
+      "pattern": "P1",
+      "labels": [
+        "invoke",
+        "converse"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 733,
+          "reason": "Line 733 binds '_model_after_bedrock' from model.replace(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If model.replace supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        },
+        {
+          "category": "side_effect_evidence",
+          "line": 739,
+          "reason": "Line 739 binds 'base_model' from BedrockModelInfo.get_base_model(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If BedrockModelInfo.get_base_model supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        },
+        {
+          "category": "side_effect_evidence",
+          "line": 740,
+          "reason": "Line 740 binds 'alt_model' from BedrockModelInfo.get_non_litellm_routing_model_name(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If BedrockModelInfo.get_non_litellm_routing_model_name supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "llms/chatgpt/common_utils.py",
+      "function_name": "_terminal_user_agent",
+      "line_start": 152,
+      "line_end": 200,
+      "pattern": "P1",
+      "labels": [
+        "unknown",
+        "iTerm.app",
+        "Apple_Terminal",
+        "kitty",
+        "Alacritty",
+        "gnome-terminal",
+        "WindowsTerminal"
+      ],
+      "label_cardinality": 7,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 153,
+          "reason": "Line 153 binds 'term_program' from os.getenv(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If os.getenv supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        },
+        {
+          "category": "side_effect_evidence",
+          "line": 159,
+          "reason": "Line 159 binds 'wezterm_version' from os.getenv(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If os.getenv supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        },
+        {
+          "category": "side_effect_evidence",
+          "line": 180,
+          "reason": "Line 180 binds 'konsole_version' from os.getenv(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If os.getenv supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        },
+        {
+          "category": "side_effect_evidence",
+          "line": 188,
+          "reason": "Line 188 binds 'vte_version' from os.getenv(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If os.getenv supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        },
+        {
+          "category": "side_effect_evidence",
+          "line": 196,
+          "reason": "Line 196 binds 'term' from os.getenv(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If os.getenv supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "llms/fireworks_ai/cost_calculator.py",
+      "function_name": "get_base_model_for_pricing",
+      "line_start": 19,
+      "line_end": 54,
+      "pattern": "P1",
+      "labels": [
+        "fireworks-ai-default",
+        "fireworks-ai-moe-up-to-56b",
+        "fireworks-ai-up-to-4b",
+        "fireworks-ai-56b-to-176b",
+        "fireworks-ai-4.1b-to-16b",
+        "fireworks-ai-above-16b"
+      ],
+      "label_cardinality": 6,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 31,
+          "reason": "Line 31 binds 'moe_match' from re.search(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If re.search supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        },
+        {
+          "category": "side_effect_evidence",
+          "line": 40,
+          "reason": "Line 40 binds 're_params_match' from re.search(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If re.search supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "llms/runwayml/image_generation/transformation.py",
+      "function_name": "_check_task_status",
+      "line_start": 162,
+      "line_end": 194,
+      "pattern": "P1",
+      "labels": [
+        "succeeded",
+        "running"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 177,
+          "reason": "Line 177 binds 'status' from response_data.get('status', '').upper(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If response_data.get('status', '').upper supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "llms/runwayml/text_to_speech/transformation.py",
+      "function_name": "_check_task_status",
+      "line_start": 252,
+      "line_end": 284,
+      "pattern": "P1",
+      "labels": [
+        "succeeded",
+        "running"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 267,
+          "reason": "Line 267 binds 'status' from response_data.get('status', '').upper(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If response_data.get('status', '').upper supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "proxy/auth/route_checks.py",
+      "function_name": "_placeholder_to_regex",
+      "line_start": 410,
+      "line_end": 415,
+      "pattern": "P1",
+      "labels": [
+        "[^/]+",
+        "[^:]+"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 411,
+          "reason": "Line 411 binds 'placeholder' from match.group(0).strip(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If match.group(0).strip supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "proxy/guardrails/usage_tracking.py",
+      "function_name": "_guardrail_status_to_action",
+      "line_start": 15,
+      "line_end": 24,
+      "pattern": "P1",
+      "labels": [
+        "passed",
+        "blocked",
+        "flagged"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 19,
+          "reason": "Line 19 binds 's' from (status or '').lower(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If (status or '').lower supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "proxy/management_endpoints/mcp_management_endpoints.py",
+      "function_name": "_get_user_mcp_management_mode",
+      "line_start": 749,
+      "line_end": 757,
+      "pattern": "P1",
+      "labels": [
+        "restricted",
+        "view_all"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 754,
+          "reason": "Line 754 binds 'mode' from proxy_general_settings.get(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If proxy_general_settings.get supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "litellm_core_utils/litellm_logging.py",
+      "function_name": "failure_handler",
+      "line_start": 2931,
+      "line_end": 3128,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 2931,
+          "reason": "Function 'failure_handler' takes 4 args but 4 have no type annotation: exception, traceback_exception, start_time, end_time. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def failure_handler(exception: str, traceback_exception: str, start_time: str, end_time: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
+    },
+    {
+      "file_path": "llms/azure/assistants.py",
+      "function_name": "get_messages",
+      "line_start": 369,
+      "line_end": 407,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 369,
+          "reason": "Function 'get_messages' takes 10 args but 2 have no type annotation: client, aget_messages. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def get_messages(thread_id: str, api_key: str, api_base: str, api_version: str, azure_ad_token: str, timeout: str, max_retries: str, client: str, aget_messages: str, litellm_params: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
+    },
+    {
+      "file_path": "llms/openai/openai.py",
+      "function_name": "aimage_generation",
+      "line_start": 1399,
+      "line_end": 1444,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 1399,
+          "reason": "Function 'aimage_generation' takes 11 args but 2 have no type annotation: client, max_retries. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def aimage_generation(prompt: str, data: str, model_response: str, timeout: str, logging_obj: str, api_key: str, api_base: str, client: str, max_retries: str, organization: str, headers: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
+    },
+    {
+      "file_path": "llms/openai/openai.py",
+      "function_name": "get_messages",
+      "line_start": 2665,
+      "line_end": 2697,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 2665,
+          "reason": "Function 'get_messages' takes 8 args but 2 have no type annotation: client, aget_messages. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def get_messages(thread_id: str, api_key: str, api_base: str, timeout: str, max_retries: str, organization: str, client: str, aget_messages: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
+    },
+    {
+      "file_path": "llms/petals/completion/handler.py",
+      "function_name": "completion",
+      "line_start": 19,
+      "line_end": 144,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 19,
+          "reason": "Function 'completion' takes 12 args but 5 have no type annotation: encoding, logging_obj, stream, litellm_params, logger_fn. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def completion(model: str, messages: str, api_base: str, model_response: str, print_verbose: str, encoding: str, logging_obj: str, optional_params: str, stream: str, litellm_params: str, logger_fn: str, client: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
+    },
+    {
+      "file_path": "llms/vllm/completion/handler.py",
+      "function_name": "completion",
+      "line_start": 39,
+      "line_end": 110,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 39,
+          "reason": "Function 'completion' takes 10 args but 5 have no type annotation: encoding, logging_obj, custom_prompt_dict, litellm_params, logger_fn. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def completion(model: str, messages: str, model_response: str, print_verbose: str, encoding: str, logging_obj: str, optional_params: str, custom_prompt_dict: str, litellm_params: str, logger_fn: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
+    },
+    {
+      "file_path": "llms/vllm/completion/handler.py",
+      "function_name": "batch_completions",
+      "line_start": 113,
+      "line_end": 190,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.98,
+      "hazards": [
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 113,
+          "reason": "Function 'batch_completions' takes 4 args but 2 have no type annotation: optional_params, custom_prompt_dict. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def batch_completions(model: str, messages: str, optional_params: str, custom_prompt_dict: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "needs_annotation"
+    },
+    {
+      "file_path": "proxy/auth/route_checks.py",
+      "function_name": "_route_matches_pattern",
+      "line_start": 392,
+      "line_end": 422,
+      "pattern": "P5",
+      "labels": [
+        "[^/]+",
+        "[^:]+"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 0.84,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 417,
+          "reason": "Line 417 binds 'pattern' from re.sub(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If re.sub supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "proxy/pass_through_endpoints/llm_provider_handlers/gemini_passthrough_logging_handler.py",
+      "function_name": "extract_model_from_url",
+      "line_start": 214,
+      "line_end": 219,
+      "pattern": "P5",
+      "labels": [
+        "unknown"
+      ],
+      "label_cardinality": 1,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 0.63,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 216,
+          "reason": "Line 216 binds 'match' from re.search(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If re.search supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "proxy/pass_through_endpoints/llm_provider_handlers/vertex_passthrough_logging_handler.py",
+      "function_name": "extract_model_from_url",
+      "line_start": 519,
+      "line_end": 524,
+      "pattern": "P5",
+      "labels": [
+        "unknown"
+      ],
+      "label_cardinality": 1,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 0.63,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 521,
+          "reason": "Line 521 binds 'match' from re.search(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If re.search supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "types/integrations/prometheus.py",
+      "function_name": "_sanitize_prometheus_label_name",
+      "line_start": 10,
+      "line_end": 39,
+      "pattern": "P5",
+      "labels": [
+        "_"
+      ],
+      "label_cardinality": 1,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 0.63,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 29,
+          "reason": "Line 29 binds 'sanitized' from re.sub(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If re.sub supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "proxy/guardrails/guardrail_endpoints.py",
+      "function_name": "apply_guardrail",
+      "line_start": 2176,
+      "line_end": 2228,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "hot",
+      "priority_score": 0.6,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 2210,
+          "reason": "getattr(...) at line 2210 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "proxy/spend_tracking/spend_management_endpoints.py",
+      "function_name": "calculate_spend",
+      "line_start": 1537,
+      "line_end": 1672,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "hot",
+      "priority_score": 0.6,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 1668,
+          "reason": "getattr(...) at line 1668 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 1669,
+          "reason": "getattr(...) at line 1669 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 1670,
+          "reason": "getattr(...) at line 1670 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 1671,
+          "reason": "getattr(...) at line 1671 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 1661,
+          "reason": "getattr(...) at line 1661 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 1662,
+          "reason": "getattr(...) at line 1662 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 1663,
+          "reason": "getattr(...) at line 1663 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 1664,
+          "reason": "getattr(...) at line 1664 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "litellm_core_utils/streaming_handler.py",
+      "function_name": "__next__",
+      "line_start": 1829,
+      "line_end": 2001,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 1974,
+          "reason": "getattr(...) at line 1974 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 1935,
+          "reason": "getattr(...) at line 1935 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "litellm_core_utils/streaming_handler.py",
+      "function_name": "__anext__",
+      "line_start": 2021,
+      "line_end": 2260,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 2191,
+          "reason": "getattr(...) at line 2191 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 2183,
+          "reason": "getattr(...) at line 2183 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 2075,
+          "reason": "getattr(...) at line 2075 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 2164,
+          "reason": "getattr(...) at line 2164 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "llms/anthropic/batches/transformation.py",
+      "function_name": "validate_environment",
+      "line_start": 34,
+      "line_end": 60,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 45,
+          "reason": "Line 45 binds 'auth_header' from self.anthropic_model_info.get_auth_header(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self.anthropic_model_info.get_auth_header supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "llms/azure/assistants.py",
+      "function_name": "a_add_message",
+      "line_start": 182,
+      "line_end": 216,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 211,
+          "reason": "getattr(...) at line 211 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "llms/azure/assistants.py",
+      "function_name": "add_message",
+      "line_start": 256,
+      "line_end": 304,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 299,
+          "reason": "getattr(...) at line 299 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 256,
+          "reason": "Function 'add_message' takes 11 args but 1 have no type annotation: client. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def add_message(thread_id: str, message_data: str, api_key: str, api_base: str, api_version: str, azure_ad_token: str, timeout: str, max_retries: str, client: str, a_add_message: str, litellm_params: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "llms/azure/completion/handler.py",
+      "function_name": "completion",
+      "line_start": 28,
+      "line_end": 195,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 188,
+          "reason": "getattr(...) at line 188 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 189,
+          "reason": "getattr(...) at line 189 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 190,
+          "reason": "getattr(...) at line 190 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 192,
+          "reason": "getattr(...) at line 192 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 28,
+          "reason": "Function 'completion' takes 18 args but 6 have no type annotation: timeout, logging_obj, optional_params, litellm_params, logger_fn, client. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def completion(model: str, messages: str, model_response: str, api_key: str, api_base: str, api_version: str, api_type: str, azure_ad_token: str, azure_ad_token_provider: str, print_verbose: str, timeout: str, logging_obj: str, optional_params: str, litellm_params: str, logger_fn: str, acompletion: str, headers: str, client: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "llms/azure/completion/handler.py",
+      "function_name": "acompletion",
+      "line_start": 197,
+      "line_end": 260,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 253,
+          "reason": "getattr(...) at line 253 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 254,
+          "reason": "getattr(...) at line 254 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 255,
+          "reason": "getattr(...) at line 255 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 257,
+          "reason": "getattr(...) at line 257 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 197,
+          "reason": "Function 'acompletion' takes 12 args but 1 have no type annotation: client. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def acompletion(api_key: str, api_version: str, model: str, api_base: str, data: str, timeout: str, model_response: str, logging_obj: str, max_retries: str, azure_ad_token: str, client: str, litellm_params: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "llms/azure/completion/handler.py",
+      "function_name": "streaming",
+      "line_start": 262,
+      "line_end": 317,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 275,
+          "reason": "Line 275 binds 'max_retries' from data.pop(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If data.pop supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        },
+        {
+          "category": "side_effect_evidence",
+          "line": 281,
+          "reason": "Line 281 binds 'azure_client' from self.get_azure_openai_client(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self.get_azure_openai_client supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        },
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 262,
+          "reason": "Function 'streaming' takes 10 args but 2 have no type annotation: logging_obj, client. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def streaming(logging_obj: str, api_base: str, api_key: str, api_version: str, data: str, model: str, timeout: str, azure_ad_token: str, client: str, litellm_params: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "llms/azure/completion/handler.py",
+      "function_name": "async_streaming",
+      "line_start": 319,
+      "line_end": 379,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 372,
+          "reason": "getattr(...) at line 372 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 373,
+          "reason": "getattr(...) at line 373 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 374,
+          "reason": "getattr(...) at line 374 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 376,
+          "reason": "getattr(...) at line 376 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 319,
+          "reason": "Function 'async_streaming' takes 10 args but 2 have no type annotation: logging_obj, client. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def async_streaming(logging_obj: str, api_base: str, api_key: str, api_version: str, data: str, model: str, timeout: str, azure_ad_token: str, client: str, litellm_params: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "llms/fal_ai/image_generation/bytedance_transformation.py",
+      "function_name": "map_openai_params",
+      "line_start": 24,
+      "line_end": 61,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 31,
+          "reason": "Line 31 binds 'supported_params' from self.get_supported_openai_params(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self.get_supported_openai_params supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "llms/fal_ai/image_generation/flux_pro_v11_transformation.py",
+      "function_name": "map_openai_params",
+      "line_start": 29,
+      "line_end": 69,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 39,
+          "reason": "Line 39 binds 'supported_params' from self.get_supported_openai_params(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self.get_supported_openai_params supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "llms/fal_ai/image_generation/flux_pro_v11_ultra_transformation.py",
+      "function_name": "map_openai_params",
+      "line_start": 43,
+      "line_end": 91,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 58,
+          "reason": "Line 58 binds 'supported_params' from self.get_supported_openai_params(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self.get_supported_openai_params supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "llms/fal_ai/image_generation/flux_schnell_transformation.py",
+      "function_name": "map_openai_params",
+      "line_start": 29,
+      "line_end": 66,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 36,
+          "reason": "Line 36 binds 'supported_params' from self.get_supported_openai_params(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self.get_supported_openai_params supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "llms/fal_ai/image_generation/stable_diffusion_transformation.py",
+      "function_name": "map_openai_params",
+      "line_start": 80,
+      "line_end": 128,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 95,
+          "reason": "Line 95 binds 'supported_params' from self.get_supported_openai_params(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self.get_supported_openai_params supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "llms/openai/completion/handler.py",
+      "function_name": "completion",
+      "line_start": 32,
+      "line_end": 150,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 142,
+          "reason": "getattr(...) at line 142 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 143,
+          "reason": "getattr(...) at line 143 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 144,
+          "reason": "getattr(...) at line 144 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 145,
+          "reason": "getattr(...) at line 145 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 147,
+          "reason": "getattr(...) at line 147 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 32,
+          "reason": "Function 'completion' takes 16 args but 3 have no type annotation: litellm_params, logger_fn, client. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def completion(model_response: str, api_key: str, model: str, messages: str, timeout: str, custom_llm_provider: str, logging_obj: str, optional_params: str, print_verbose: str, api_base: str, acompletion: str, litellm_params: str, logger_fn: str, client: str, organization: str, headers: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "llms/openai/completion/handler.py",
+      "function_name": "acompletion",
+      "line_start": 152,
+      "line_end": 207,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 199,
+          "reason": "getattr(...) at line 199 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 200,
+          "reason": "getattr(...) at line 200 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 201,
+          "reason": "getattr(...) at line 201 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 202,
+          "reason": "getattr(...) at line 202 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 204,
+          "reason": "getattr(...) at line 204 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 152,
+          "reason": "Function 'acompletion' takes 11 args but 2 have no type annotation: logging_obj, client. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def acompletion(logging_obj: str, api_base: str, data: str, headers: str, model_response: str, api_key: str, model: str, timeout: str, max_retries: str, organization: str, client: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "llms/openai/openai.py",
+      "function_name": "image_generation",
+      "line_start": 1446,
+      "line_end": 1529,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 1526,
+          "reason": "getattr(...) at line 1526 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 1446,
+          "reason": "Function 'image_generation' takes 12 args but 2 have no type annotation: client, aimg_generation. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def image_generation(model: str, prompt: str, timeout: str, optional_params: str, logging_obj: str, api_key: str, api_base: str, model_response: str, client: str, aimg_generation: str, organization: str, headers: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "llms/openai/openai.py",
+      "function_name": "a_add_message",
+      "line_start": 2500,
+      "line_end": 2530,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 2525,
+          "reason": "getattr(...) at line 2525 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "llms/openai/openai.py",
+      "function_name": "add_message",
+      "line_start": 2566,
+      "line_end": 2608,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 2603,
+          "reason": "getattr(...) at line 2603 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "multi_arg_no_annotation",
+          "line": 2566,
+          "reason": "Function 'add_message' takes 9 args but 1 have no type annotation: client. Multi-arg auto-packing needs annotations to build the evidence dataclass schema.",
+          "suggested_fix": "Add type hints to each parameter, e.g. `def add_message(thread_id: str, message_data: str, api_key: str, api_base: str, timeout: str, max_retries: str, organization: str, client: str, a_add_message: str):`. Single-arg functions are exempt for back-compat.",
+          "severity": "warn"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "llms/vertex_ai/gemini_embeddings/batch_embed_content_transformation.py",
+      "function_name": "_infer_mime_type_from_gcs_url",
+      "line_start": 43,
+      "line_end": 75,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 67,
+          "reason": "Line 67 binds 'gcs_url_lower' from gcs_url.lower(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If gcs_url.lower supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "proxy/guardrails/usage_endpoints.py",
+      "function_name": "_input_snippet_for_log",
+      "line_start": 523,
+      "line_end": 544,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 528,
+          "reason": "getattr(...) at line 528 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "responses/mcp/chat_completions_handler.py",
+      "function_name": "acompletion_with_mcp",
+      "line_start": 80,
+      "line_end": 670,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 576,
+          "reason": "getattr(...) at line 576 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 530,
+          "reason": "getattr(...) at line 530 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 531,
+          "reason": "getattr(...) at line 531 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 532,
+          "reason": "getattr(...) at line 532 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 535,
+          "reason": "getattr(...) at line 535 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 536,
+          "reason": "getattr(...) at line 536 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 537,
+          "reason": "getattr(...) at line 537 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 270,
+          "reason": "getattr(...) at line 270 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 306,
+          "reason": "getattr(...) at line 306 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "side_effect_evidence",
+          "line": 153,
+          "reason": "Line 153 binds 'should_auto_execute' from LiteLLM_Proxy_MCP_Handler._should_auto_execute_tools(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If LiteLLM_Proxy_MCP_Handler._should_auto_execute_tools supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        },
+        {
+          "category": "side_effect_evidence",
+          "line": 180,
+          "reason": "Line 180 binds 'stream' from kwargs.get(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If kwargs.get supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        },
+        {
+          "category": "side_effect_evidence",
+          "line": 181,
+          "reason": "Line 181 binds 'mock_tool_calls' from base_call_args.pop(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If base_call_args.pop supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        },
+        {
+          "category": "side_effect_evidence",
+          "line": 618,
+          "reason": "Line 618 binds 'tool_calls' from LiteLLM_Proxy_MCP_Handler._extract_tool_calls_from_chat_response(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If LiteLLM_Proxy_MCP_Handler._extract_tool_calls_from_chat_response supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    }
+  ],
+  "errors": [],
+  "repo_label": "litellm",
+  "github_path": "BerriAI/litellm",
+  "github_branch": "main",
+  "raw_url_prefix": "https://raw.githubusercontent.com/BerriAI/litellm/main/litellm",
+  "github_blob_prefix": "https://github.com/BerriAI/litellm/blob/main/litellm"
+}

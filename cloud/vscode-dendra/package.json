@@ -3,7 +3,7 @@
   "displayName": "Dendra",
   "description": "Inline diagnostics for Dendra analyzer hazards, plus an auto-lift quick-fix.",
   "version": "1.1.0",
-  "publisher": "axiom-labs-os",
+  "publisher": "b-tree-labs",
   "license": "Apache-2.0",
   "engines": {
     "vscode": "^1.85.0"
@@ -57,8 +57,12 @@
     "@types/vscode": "^1.85.0",
     "@vscode/test-electron": "^2.3.9",
     "glob": "^13.0.6",
-    "mocha": "^10.3.0",
+    "mocha": "^11.7.5",
     "typescript": "^5.3.3",
-    "vsce": "^2.15.0"
+    "@vscode/vsce": "^3.9.1"
+  },
+  "overrides": {
+    "serialize-javascript": "^7.0.5",
+    "diff": "^9.0.0"
   }
 }

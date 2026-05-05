@@ -17,8 +17,10 @@
 The analyzer walks Python source files, parses each to an AST,
 and applies a pattern library to identify functions that look
 like classification decision points. Each match is scored for
-Dendra-fit and grouped into a regime (narrow-domain vs
-high-cardinality) so operators can prioritize sites to graduate.
+**wrap priority** — a composite of graduation-fitness (regime,
+labels, pattern), volume estimate (cold/warm/hot from AST
+signals), and lift status (auto-liftable / needs-annotation /
+refused) — so operators can prioritize sites to graduate.
 
 Six patterns ship in v1:
 
@@ -43,6 +45,12 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+# Internal-switch wrapping (Dendra-on-Dendra dogfood). Direct imports
+# from sub-modules — going through ``dendra.__init__`` would create a
+# circular import since the package init imports analyzer.
+from dendra.core import Phase
+from dendra.decorator import ml_switch
+
 # ---------------------------------------------------------------------------
 # Results
 # ---------------------------------------------------------------------------
@@ -60,7 +68,13 @@ class ClassificationSite:
     labels: list[str] = field(default_factory=list)
     label_cardinality: int = 0
     regime: str = "unknown"  # "narrow" | "medium" | "high" | "unknown"
-    fit_score: float = 0.0  # 0-5
+    # Volume estimate from AST signals (route decorators, file-path
+    # heuristics). One of "cold" | "warm" | "hot". Cohort signal in
+    # v1.1 will refine this from real call counts.
+    volume_estimate: str = "warm"
+    # Composite priority score (0-5). Combines graduation-fitness,
+    # volume estimate, and lift status. See _compute_priority_score.
+    priority_score: float = 0.0
     # Phase 5 prescriptive output: hazard list + lift status. Empty
     # hazards + AUTO_LIFTABLE means `dendra init --auto-lift` would
     # succeed cleanly. Populated by analyze() when run with hazard
@@ -77,12 +91,76 @@ class AnalyzerReport:
     files_scanned: int
     sites: list[ClassificationSite] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+    # Functions skipped because they're already wrapped by Dendra
+    # (decorated with @ml_switch / @dendra.ml_switch) or live inside a
+    # ``Switch`` subclass. Tracked so the report can show "X sites
+    # already dendrified" without recommending re-graduation. Tuples
+    # are (file_path, function_name, line_start).
+    already_dendrified: list[tuple[str, str, int]] = field(default_factory=list)
 
-    def by_score_desc(self) -> list[ClassificationSite]:
-        return sorted(self.sites, key=lambda s: s.fit_score, reverse=True)
+    def by_priority_desc(self) -> list[ClassificationSite]:
+        return self.sort_sites(key="priority")
+
+    def sort_sites(self, key: str = "priority", reverse: bool = False) -> list[ClassificationSite]:
+        """Return sites sorted by the given key.
+
+        Supported keys (default ``priority``):
+
+        - ``priority`` — composite ``priority_score`` descending; ties
+          broken by ``file_path``, ``line_start``.
+        - ``location`` — ``file_path`` ascending, then ``line_start``.
+        - ``pattern`` — pattern name (P1..P6); ``priority_score``
+          descending within each pattern.
+        - ``regime`` — narrow → medium → high → unknown; priority
+          descending within each regime.
+        - ``lift`` — auto_liftable → needs_annotation → refused →
+          already_dendrified; priority descending within each.
+
+        ``reverse=True`` flips the final order.
+        """
+        if key == "priority":
+            sites = sorted(
+                self.sites,
+                key=lambda s: (-s.priority_score, s.file_path, s.line_start),
+            )
+        elif key == "location":
+            sites = sorted(self.sites, key=lambda s: (s.file_path, s.line_start))
+        elif key == "pattern":
+            sites = sorted(self.sites, key=lambda s: (s.pattern, -s.priority_score))
+        elif key == "regime":
+            regime_order = {"narrow": 0, "medium": 1, "high": 2, "unknown": 3}
+            sites = sorted(
+                self.sites,
+                key=lambda s: (
+                    regime_order.get(s.regime, 99),
+                    -s.priority_score,
+                ),
+            )
+        elif key == "lift":
+            lift_order = {
+                "auto_liftable": 0,
+                "needs_annotation": 1,
+                "refused": 2,
+                "already_dendrified": 3,
+            }
+            sites = sorted(
+                self.sites,
+                key=lambda s: (
+                    lift_order.get(s.lift_status, 99),
+                    -s.priority_score,
+                ),
+            )
+        else:
+            raise ValueError(
+                f"unknown sort key {key!r}; choose from priority, location, pattern, regime, lift"
+            )
+        return list(reversed(sites)) if reverse else sites
 
     def total_sites(self) -> int:
         return len(self.sites)
+
+    def already_dendrified_count(self) -> int:
+        return len(self.already_dendrified)
 
 
 # ---------------------------------------------------------------------------
@@ -185,6 +263,60 @@ def _body_has_keyword_scanner(fn: ast.FunctionDef) -> bool:
     return hits >= 2
 
 
+def _body_has_dict_argmax_scanner(fn: ast.FunctionDef) -> bool:
+    """Pattern P4 (extended) — argmax over a per-label scoring loop.
+
+    Shape: ``for <label>, <kws> in <mapping>.items(): ... <tracker> = <label>``,
+    followed by ``return <tracker>``. The canonical instance is
+    :meth:`dendra.benchmarks.rules.ReferenceRule.classify`, which scores
+    each label by token-set intersection and returns the highest-scoring
+    one. Without this detector the analyzer misses real per-label
+    scoring rules whose returns are dynamic (``return best_label``)
+    rather than literal-string, surfaced as a false negative in the
+    2026-04-28 dogfood report.
+    """
+    assigned_from_loop_var: set[str] = set()
+    for node in ast.walk(fn):
+        if not isinstance(node, ast.For):
+            continue
+        iter_node = node.iter
+        if not (
+            isinstance(iter_node, ast.Call)
+            and isinstance(iter_node.func, ast.Attribute)
+            and iter_node.func.attr == "items"
+        ):
+            continue
+        target = node.target
+        if not (
+            isinstance(target, ast.Tuple)
+            and len(target.elts) == 2
+            and all(isinstance(t, ast.Name) for t in target.elts)
+        ):
+            continue
+        label_var = target.elts[0].id  # type: ignore[union-attr]
+        for inner in ast.walk(node):
+            if (
+                isinstance(inner, ast.Assign)
+                and isinstance(inner.value, ast.Name)
+                and inner.value.id == label_var
+                and len(inner.targets) == 1
+                and isinstance(inner.targets[0], ast.Name)
+            ):
+                assigned_from_loop_var.add(inner.targets[0].id)
+
+    if not assigned_from_loop_var:
+        return False
+
+    for node in ast.walk(fn):
+        if (
+            isinstance(node, ast.Return)
+            and isinstance(node.value, ast.Name)
+            and node.value.id in assigned_from_loop_var
+        ):
+            return True
+    return False
+
+
 def _body_uses_regex_dispatch(fn: ast.FunctionDef) -> bool:
     """Pattern P5 — re.match / re.search calls with string-literal returns."""
     uses_re = False
@@ -241,6 +373,7 @@ _PATTERNS: list[tuple[str, Any]] = [
     ("P2", _body_has_match_case_string_dispatch),
     ("P3", _body_is_dict_lookup),
     ("P4", _body_has_keyword_scanner),
+    ("P4", _body_has_dict_argmax_scanner),
     ("P5", _body_uses_regex_dispatch),
     ("P6", _body_is_model_prompted),
 ]
@@ -275,14 +408,18 @@ def _classify_regime(cardinality: int) -> str:
     return "high"
 
 
-def _compute_fit_score(labels: list[str], pattern: str) -> float:
-    """Heuristic 0-5 score.
+def _compute_gate_fit(labels: list[str], pattern: str) -> float:
+    """Graduation-fitness — 0-5 heuristic measuring how well-shaped
+    a site is for the McNemar gate.
 
     - 2 base points for any matched pattern.
     - +1 for having 2-30 labels (the Regime A sweet spot per paper §6).
     - +1 for narrow/medium regime.
     - +1 for pattern types with strong outcome observability
       (P1/P4 triage-like patterns score higher).
+
+    Internal-only — exposed to users via the composite ``priority_score``
+    on ``ClassificationSite`` (see :func:`_compute_priority_score`).
     """
     score = 2.0
     n = len(labels)
@@ -294,6 +431,144 @@ def _compute_fit_score(labels: list[str], pattern: str) -> float:
     if pattern in ("P1", "P4"):
         score += 1.0
     return min(5.0, score)
+
+
+# Volume estimation — coarse cold / warm / hot bucket from static AST
+# signals only. Runtime measurement (cohort signal in v1.1) will refine.
+# These names are matched against the rightmost dotted attribute of a
+# decorator (e.g. ``@app.post`` → "post", ``@router.get`` → "get") or
+# the bare name (``@route``).
+_HOT_ROUTE_DECORATORS = frozenset(
+    {
+        "get",
+        "post",
+        "put",
+        "patch",
+        "delete",
+        "head",
+        "options",
+        "route",
+        "api_route",
+        "websocket",
+        "page",
+        "endpoint",
+        "method",
+        "view",
+    }
+)
+
+# Substrings inside the (POSIX) file path that indicate a likely-cold
+# call site: CLI entrypoints, schema migrations, one-off scripts.
+_COLD_FILE_PATTERNS = ("cli.py", "__main__.py", "/migrations/", "/scripts/")
+
+# Multipliers used by the priority composite. Tuned for "fit-5 hot
+# auto-liftable" → 5.0 max; "fit-5 cold refused" → 0.6 (clearly
+# deprioritized but not zero, because the site shape is still good).
+_VOLUME_FACTOR = {"cold": 0.4, "warm": 0.7, "hot": 1.0}
+_LIFT_FACTOR = {
+    "refused": 0.3,
+    "needs_annotation": 0.7,
+    "auto_liftable": 1.0,
+    "already_dendrified": 0.0,
+}
+
+
+def _compute_volume_estimate(node: ast.FunctionDef, file_path: str) -> str:
+    """Return one of ``"cold"`` / ``"warm"`` / ``"hot"``.
+
+    Heuristic only — examines the function's decorators (web-route
+    decorators → hot) and the containing file path (cli.py /
+    migrations / scripts → cold). Defaults to warm when no signal.
+    """
+    for dec in node.decorator_list:
+        inner = dec.func if isinstance(dec, ast.Call) else dec
+        if isinstance(inner, ast.Attribute) and inner.attr in _HOT_ROUTE_DECORATORS:
+            return "hot"
+        if isinstance(inner, ast.Name) and inner.id in _HOT_ROUTE_DECORATORS:
+            return "hot"
+    fp = file_path.replace("\\", "/")
+    for pat in _COLD_FILE_PATTERNS:
+        if pat in fp:
+            return "cold"
+    return "warm"
+
+
+def _compute_priority_score(gate_fit: float, volume_estimate: str, lift_status: str) -> float:
+    """Composite ``priority_score`` (0-5) shown to users.
+
+    Multiplies the graduation-fitness heuristic by volume + lift
+    factors so the displayed number reflects "what should I wrap
+    first?", not just "is this site shaped right?".
+    """
+    return round(
+        gate_fit * _VOLUME_FACTOR.get(volume_estimate, 0.7) * _LIFT_FACTOR.get(lift_status, 1.0),
+        2,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Dendra-on-Dendra: two analyzer decisions wrapped with @ml_switch
+#
+# These are the analyzer's own classification decisions, exposed as
+# Dendra switches so the company instance dogfoods its own primitive.
+# Both stay at Phase.RULE so behavior is bit-for-bit identical to the
+# pre-wrap inline code; the wrap accumulates audit-chain outcomes that
+# (a) make these visible to ``_has_ml_switch_decorator`` detection
+# when scanning the dendra repo, and (b) populate the cohort signal
+# from B-Tree Labs's own deployment from day-1.
+#
+# Storage defaults to BoundedInMemoryStorage (process-local, capped),
+# so a fresh ``pip install dendra`` doesn't write to disk on import.
+# Hypothesis files at ``dendra/hypotheses/_classify_pattern.md`` and
+# ``dendra/hypotheses/_classify_lift_status.md`` are pre-committed.
+# ---------------------------------------------------------------------------
+
+
+_PATTERN_LABELS = ["P1", "P2", "P3", "P4", "P5", "P6", "no_match"]
+_LIFT_STATUS_LABELS = ["refused", "needs_annotation", "auto_liftable"]
+
+
+@ml_switch(
+    labels=_PATTERN_LABELS,
+    author="@b-tree-labs:dendra-internal",
+    name="_classify_pattern",
+    starting_phase=Phase.RULE,
+)
+def _classify_pattern(node: ast.AST) -> str:
+    """Dispatch over the registered pattern detectors.
+
+    Returns the matched pattern name (``"P1"``..``"P6"``) or
+    ``"no_match"`` when no detector recognises the function. Detectors
+    that raise are silently skipped — a buggy detector must not abort
+    the whole analyze run.
+    """
+    for pattern_name, detector in _PATTERNS:
+        try:
+            if detector(node):
+                return pattern_name
+        except Exception:  # noqa: BLE001 — detector failures must not kill the run
+            continue
+    return "no_match"
+
+
+@ml_switch(
+    labels=_LIFT_STATUS_LABELS,
+    author="@b-tree-labs:dendra-internal",
+    name="_classify_lift_status",
+    starting_phase=Phase.RULE,
+)
+def _classify_lift_status(hazards: list[Hazard]) -> str:
+    """Verdict from the hazard list.
+
+    - Any error-severity hazard → ``"refused"``.
+    - Otherwise any hazard → ``"needs_annotation"``.
+    - Empty hazards → ``"auto_liftable"``.
+    """
+    if any(h.severity == "error" for h in hazards):
+        return "refused"
+    if hazards:
+        return "needs_annotation"
+    return "auto_liftable"
 
 
 # ---------------------------------------------------------------------------
@@ -366,34 +641,88 @@ def _is_test_site(
 # ---------------------------------------------------------------------------
 
 
-def _analyze_file(path: Path, root: Path) -> tuple[list[ClassificationSite], list[str]]:
+def _has_ml_switch_decorator(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    """True if ``fn`` is decorated with ``@ml_switch`` / ``@dendra.ml_switch``.
+
+    Matches both the bare form (``@ml_switch``) and the call form
+    (``@ml_switch(labels=...)``), under either the bare-import alias or
+    the dotted-attribute form. Intentionally syntactic: the analyzer
+    walks ASTs without resolving imports, so a user who aliases the
+    decorator under a different name will read as un-wrapped here.
+    That matches the semantics the lifters use and is documented as a
+    known shape in the FAQ.
+    """
+    for dec in fn.decorator_list:
+        target = dec.func if isinstance(dec, ast.Call) else dec
+        if isinstance(target, ast.Name) and target.id == "ml_switch":
+            return True
+        if isinstance(target, ast.Attribute) and target.attr == "ml_switch":
+            return True
+    return False
+
+
+def _collect_switch_subclass_method_lines(tree: ast.Module) -> set[int]:
+    """Return ``lineno`` of every method on a class that subclasses ``Switch``.
+
+    The check is syntactic — a base named ``Switch`` (bare or dotted).
+    Methods of these classes are skipped entirely because the analyzer
+    cannot tell ``_rule`` apart from ``_evidence_*`` / ``_when_*`` /
+    ``_on_*`` helpers without semantic understanding of the
+    :class:`dendra.Switch` contract, and reporting any of them as
+    classification sites is a false positive (see the 2026-04-28
+    dogfood report for the smoking-gun cases).
+    """
+    lines: set[int] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ClassDef):
+            continue
+        is_switch_subclass = any(
+            (isinstance(b, ast.Name) and b.id == "Switch")
+            or (isinstance(b, ast.Attribute) and b.attr == "Switch")
+            for b in node.bases
+        )
+        if not is_switch_subclass:
+            continue
+        for child in ast.walk(node):
+            if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                lines.add(child.lineno)
+    return lines
+
+
+def _analyze_file(
+    path: Path, root: Path
+) -> tuple[list[ClassificationSite], list[str], list[tuple[str, str, int]]]:
     sites: list[ClassificationSite] = []
     errors: list[str] = []
+    already_dendrified: list[tuple[str, str, int]] = []
     try:
         source = path.read_text(encoding="utf-8")
     except (UnicodeDecodeError, OSError) as e:
         errors.append(f"{path.relative_to(root)}: read failed ({e})")
-        return sites, errors
+        return sites, errors, already_dendrified
 
     try:
         tree = ast.parse(source)
     except SyntaxError as e:
         errors.append(f"{path.relative_to(root)}: parse failed ({e.msg})")
-        return sites, errors
+        return sites, errors, already_dendrified
 
     rel_path_str = str(path.relative_to(root))
+    switch_method_lines = _collect_switch_subclass_method_lines(tree)
     for node in ast.walk(tree):
         if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
-        matched_pattern: str | None = None
-        for pattern_name, detector in _PATTERNS:
-            try:
-                if detector(node):
-                    matched_pattern = pattern_name
-                    break
-            except Exception:  # noqa: BLE001 - detector failures must not kill the run
-                continue
-        if matched_pattern is None:
+        # Already-dendrified shapes — skip detection entirely. Track
+        # decorator-wrapped functions so the report can show the
+        # surface area; Switch-subclass methods are noisier (multiple
+        # helpers per class) so they're skipped silently.
+        if _has_ml_switch_decorator(node):
+            already_dendrified.append((rel_path_str, node.name, node.lineno))
+            continue
+        if node.lineno in switch_method_lines:
+            continue
+        matched_pattern = _classify_pattern(node)
+        if matched_pattern == "no_match":
             continue
 
         labels = _collect_return_strings(node)
@@ -433,13 +762,10 @@ def _analyze_file(path: Path, root: Path) -> tuple[list[ClassificationSite], lis
                     severity="error",
                 )
             )
-        if any(h.severity == "error" for h in node_hazards):
-            lift_status = LiftStatus.REFUSED.value
-        elif node_hazards:
-            lift_status = LiftStatus.NEEDS_ANNOTATION.value
-        else:
-            lift_status = LiftStatus.AUTO_LIFTABLE.value
+        lift_status = _classify_lift_status(node_hazards)
 
+        gate_fit = _compute_gate_fit(labels, matched_pattern)
+        volume_estimate = _compute_volume_estimate(node, rel_path_str)
         site = ClassificationSite(
             file_path=rel_path_str,
             function_name=node.name,
@@ -449,13 +775,14 @@ def _analyze_file(path: Path, root: Path) -> tuple[list[ClassificationSite], lis
             labels=labels,
             label_cardinality=len(labels),
             regime=_classify_regime(len(labels)),
-            fit_score=_compute_fit_score(labels, matched_pattern),
+            volume_estimate=volume_estimate,
+            priority_score=_compute_priority_score(gate_fit, volume_estimate, lift_status),
             hazards=node_hazards,
             lift_status=lift_status,
         )
         sites.append(site)
 
-    return sites, errors
+    return sites, errors, already_dendrified
 
 
 # ---------------------------------------------------------------------------
@@ -476,6 +803,13 @@ _DEFAULT_IGNORE_DIRS = {
     "build",
     "dist",
     ".ruff_cache",
+    # Dendra's own generated companion modules — re-suggesting them for
+    # graduation creates a re-graduation cycle bug as soon as
+    # `dendra init --auto-lift` produces any file.
+    "__dendra_generated__",
+    # Agent-harness directory (Claude Code). Frequently contains nested
+    # git worktrees that mirror the repo and double every site count.
+    ".claude",
 }
 
 
@@ -497,32 +831,82 @@ def analyze(
     if ignore_dirs is not None:
         ignore |= set(ignore_dirs)
 
+    # Project-self-blacklist: when scanning the Dendra repo itself,
+    # skip its own src/ tree. Dendra's analyzer/gates/models adapter
+    # plumbing is correctly P1/P6 in shape but is library
+    # infrastructure, not customer code. The dogfood report's
+    # smoking-gun self-flag is `analyzer.py:_classify_regime` — the
+    # analyzer's own bucket function.
+    skip_dendra_src = False
+    if not root.is_file():
+        pyproject = root / "pyproject.toml"
+        if pyproject.is_file():
+            try:
+                pp_text = pyproject.read_text(encoding="utf-8", errors="replace")
+                # Match either `name = "dendra"` or `name = "dendra-..."`,
+                # tolerating arbitrary whitespace.
+                import re as _re
+
+                if _re.search(
+                    r'^\s*name\s*=\s*"dendra(?:-[a-z0-9_-]+)?"',
+                    pp_text,
+                    flags=_re.MULTILINE,
+                ):
+                    skip_dendra_src = True
+            except OSError:
+                pass
+
     files_scanned = 0
     sites: list[ClassificationSite] = []
     errors: list[str] = []
+    already_dendrified: list[tuple[str, str, int]] = []
 
     if root.is_file():
         scan_root = root.parent if root.parent.exists() else root
         if root.suffix == ".py":
-            file_sites, file_errs = _analyze_file(root, scan_root)
+            file_sites, file_errs, file_dendrified = _analyze_file(root, scan_root)
             sites.extend(file_sites)
             errors.extend(file_errs)
+            already_dendrified.extend(file_dendrified)
             files_scanned = 1
     else:
+        # Pre-compute a set of nested-worktree roots to skip. A git
+        # worktree is marked by a `.git` *file* (not a directory) at
+        # its root pointing back to the main repo's gitdir. Skipping
+        # everything under those roots prevents the parallel-worktree
+        # double-count documented in the 2026-04-28 dogfood report.
+        nested_worktree_roots: set[Path] = set()
+        for git_marker in root.rglob(".git"):
+            if git_marker.parent == root:
+                continue  # the main repo itself
+            if git_marker.is_file():
+                nested_worktree_roots.add(git_marker.parent)
+
         for py_file in sorted(root.rglob("*.py")):
             rel_parts = py_file.relative_to(root).parts
             if any(part in ignore for part in rel_parts):
                 continue
+            if any(worktree in py_file.parents for worktree in nested_worktree_roots):
+                continue
+            if (
+                skip_dendra_src
+                and len(rel_parts) >= 2
+                and rel_parts[0] == "src"
+                and rel_parts[1] == "dendra"
+            ):
+                continue
             files_scanned += 1
-            file_sites, file_errs = _analyze_file(py_file, root)
+            file_sites, file_errs, file_dendrified = _analyze_file(py_file, root)
             sites.extend(file_sites)
             errors.extend(file_errs)
+            already_dendrified.extend(file_dendrified)
 
     return AnalyzerReport(
         root=str(root),
         files_scanned=files_scanned,
         sites=sites,
         errors=errors,
+        already_dendrified=already_dendrified,
     )
 
 
@@ -531,15 +915,25 @@ def analyze(
 # ---------------------------------------------------------------------------
 
 
-def render_text(report: AnalyzerReport) -> str:
+def render_text(
+    report: AnalyzerReport,
+    *,
+    sort_key: str = "priority",
+    reverse: bool = False,
+) -> str:
     lines = [
         "Dendra static analyzer — classification sites",
         "=" * 60,
         f"Root:           {report.root}",
         f"Files scanned:  {report.files_scanned:,}",
         f"Sites found:    {report.total_sites():,}",
-        "",
     ]
+    if report.already_dendrified:
+        lines.append(
+            f"Already wrapped: {report.already_dendrified_count():,} "
+            f"(decorator-wrapped functions skipped)"
+        )
+    lines.append("")
     if report.errors:
         lines.append(f"Parse warnings ({len(report.errors)}):")
         for e in report.errors[:10]:
@@ -557,15 +951,16 @@ def render_text(report: AnalyzerReport) -> str:
         return "\n".join(lines)
 
     lines.append(
-        f"{'file:line':<40} {'function':<22} {'ptn':>4} {'labels':>8} {'regime':>8} {'fit':>4}"
+        f"{'file:line':<40} {'function':<22} {'ptn':>4} {'labels':>8} "
+        f"{'regime':>8} {'vol':>5} {'priority':>9}"
     )
-    lines.append("-" * 92)
-    for s in report.by_score_desc():
+    lines.append("-" * 102)
+    for s in report.sort_sites(key=sort_key, reverse=reverse):
         file_label = f"{s.file_path}:{s.line_start}"
         lines.append(
             f"{file_label:<40} {s.function_name:<22} "
             f"{s.pattern:>4} {s.label_cardinality:>8} "
-            f"{s.regime:>8} {s.fit_score:>4.1f}"
+            f"{s.regime:>8} {s.volume_estimate:>5} {s.priority_score:>9.2f}"
         )
     lines.append("")
 
@@ -578,22 +973,74 @@ def render_text(report: AnalyzerReport) -> str:
         if count:
             lines.append(f"  {regime:>8}: {count}")
     lines.append("")
+
+    # Cohort-comparison line. Best-effort: silently suppressed when
+    # there isn't enough cohort signal yet (cohort_size < 10) or the
+    # median field hasn't been populated server-side. As enrollment
+    # grows past launch, this line unfurls naturally.
+    cohort_line = _format_cohort_comparison(report)
+    if cohort_line:
+        lines.append(cohort_line)
+        lines.append("")
+
     lines.append(
         "Next step: `dendra init <file>:<function> --author @you:team` "
-        "to wrap the highest-fit site."
+        "to wrap the highest-priority site."
     )
     return "\n".join(lines)
 
 
-def render_json(report: AnalyzerReport) -> str:
+def _format_cohort_comparison(report: AnalyzerReport) -> str | None:
+    """Render a one-line cohort comparison, or ``None`` to suppress.
+
+    Suppresses when cohort signal is too thin (< 10 deployments) or the
+    median field isn't set yet — the latter is the launch state, the
+    former covers early-cohort weeks. Both conditions resolve naturally
+    as enrollment grows; no code change needed.
+    """
+    try:
+        from dendra.insights import load_cached_or_baked_in
+
+        defaults = load_cached_or_baked_in()
+    except Exception:  # noqa: BLE001 — never fail analyze on a cohort fetch
+        return None
+    if defaults.cohort_size < 10:
+        return None
+    median = defaults.median_high_priority_density
+    if median is None:
+        return None
+    n = len(report.sites)
+    if n == 0:
+        return None
+    high_priority = sum(1 for s in report.sites if s.priority_score >= 4.0)
+    your_density = high_priority / n
+    direction = "above" if your_density > median else "at or below"
+    return (
+        f"Cohort comparison (n={defaults.cohort_size:,} deployments):\n"
+        f"  high-priority density: {your_density:.0%} "
+        f"(cohort median: {median:.0%}) — {direction} median."
+    )
+
+
+def render_json(
+    report: AnalyzerReport,
+    *,
+    sort_key: str = "priority",
+    reverse: bool = False,
+) -> str:
     """Machine-readable report for CI diff tracking."""
     return json.dumps(
         {
             "root": report.root,
             "files_scanned": report.files_scanned,
             "total_sites": report.total_sites(),
-            "sites": [asdict(s) for s in report.by_score_desc()],
+            "sites": [asdict(s) for s in report.sort_sites(key=sort_key, reverse=reverse)],
             "errors": report.errors,
+            "already_dendrified_count": report.already_dendrified_count(),
+            "already_dendrified": [
+                {"file_path": fp, "function_name": fn, "line_start": line}
+                for fp, fn, line in report.already_dendrified
+            ],
         },
         indent=2,
     )
@@ -604,18 +1051,22 @@ def render_json(report: AnalyzerReport) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _estimate_monthly_classifications(site: ClassificationSite) -> int:
-    """Rough projection of per-site monthly traffic from static signals alone.
+_VOLUME_TO_MONTHLY_CALLS = {
+    "cold": 300_000,  # script / migration / cli — bursty, low total
+    "warm": 1_300_000,  # default mid-market internal classifier
+    "hot": 3_000_000,  # web-route or scheduled hot path
+}
 
-    The static scanner has no traffic measurement, so this is a
-    deliberately-honest placeholder — we anchor on a conservative
-    default and let the caller override in the report.
+
+def _estimate_monthly_classifications(site: ClassificationSite) -> int:
+    """Rough projection of per-site monthly traffic from static signals.
+
+    Keyed off ``site.volume_estimate`` (cold / warm / hot) which the
+    analyzer derives from AST signals (route decorators, file path).
+    The dynamic-mode measurement wrapper (v1.1) replaces this with
+    real per-site call counts from the audit chain.
     """
-    # Placeholder: 30 calls/minute = ~1.3M/month. Realistic for an
-    # internal classifier in a mid-market SaaS. The dynamic-mode
-    # measurement wrapper (future release) replaces this with real
-    # per-site call counts.
-    return 1_300_000
+    return _VOLUME_TO_MONTHLY_CALLS.get(site.volume_estimate, 1_300_000)
 
 
 @dataclass
@@ -654,7 +1105,7 @@ def project_savings(
     callers can adjust assumptions without forking this function.
     """
     projections: list[SavingsProjection] = []
-    for site in report.by_score_desc():
+    for site in report.by_priority_desc():
         vol = _estimate_monthly_classifications(site)
 
         eng_low = max(0, (baseline_weeks[0] - dendra_weeks) * eng_cost_per_week_usd)
@@ -697,12 +1148,14 @@ def render_markdown(
     report: AnalyzerReport,
     *,
     projections: list[SavingsProjection] | None = None,
+    sort_key: str = "priority",
+    reverse: bool = False,
 ) -> str:
     """Markdown report suitable for CI PR comments and the pricing page.
 
-    Produces a ranked table of classification sites with fit scores
-    and regime labels. When ``projections`` is supplied, includes
-    per-site annual savings ranges.
+    Produces a ranked table of classification sites with priority
+    scores, volume estimates, and regime labels. When ``projections``
+    is supplied, includes per-site annual savings ranges.
     """
     lines: list[str] = []
     lines.append("# Dendra analyzer report")
@@ -731,16 +1184,16 @@ def render_markdown(
         )
         return "\n".join(lines)
 
-    lines.append("## Sites ranked by Dendra-fit")
+    lines.append("## Sites ranked by wrap priority")
     lines.append("")
-    lines.append("| File:Line | Function | Pattern | Labels | Regime | Fit |")
-    lines.append("|---|---|---|---:|---|---:|")
-    for s in report.by_score_desc():
+    lines.append("| File:Line | Function | Pattern | Labels | Regime | Volume | Priority |")
+    lines.append("|---|---|---|---:|---|---|---:|")
+    for s in report.sort_sites(key=sort_key, reverse=reverse):
         file_label = f"`{s.file_path}:{s.line_start}`"
         lines.append(
             f"| {file_label} | `{s.function_name}` | "
             f"{s.pattern} | {s.label_cardinality} | "
-            f"{s.regime} | {s.fit_score:.1f} |"
+            f"{s.regime} | {s.volume_estimate} | {s.priority_score:.2f} |"
         )
     lines.append("")
 
@@ -799,7 +1252,7 @@ def render_markdown(
     lines.append("```bash\ndendra init <file>:<function> --author @you:team\n```")
     lines.append("")
     lines.append(
-        "Wrap the highest-fit site with the `@ml_switch` decorator. "
+        "Wrap the highest-priority site with the `@ml_switch` decorator. "
         "Zero behavior change at Phase 0; outcome log captures every "
         "classification for later graduation."
     )
@@ -827,9 +1280,9 @@ __all__ = [
 # ===========================================================================
 # Phase 5: prescriptive hazard detection
 #
-# The analyzer's per-site fit score answers "is this worth wrapping?". Phase
-# 5 answers "what's blocking auto-lift, and what's the minimum diff to fix
-# it?". Each detected site can be paired with a HazardAnalysis whose
+# The analyzer's per-site priority score answers "is this worth wrapping?".
+# Phase 5 answers "what's blocking auto-lift, and what's the minimum diff to
+# fix it?". Each detected site can be paired with a HazardAnalysis whose
 # `lift_status` and `hazards` drive both the CLI's prescriptive output and
 # the lifters' refusal decisions. The analyzer never silently disagrees with
 # the lifters: the detection logic here MUST stay in lockstep with
@@ -843,6 +1296,7 @@ class LiftStatus(_enum.Enum):
     AUTO_LIFTABLE = "auto_liftable"  # safe to lift today
     NEEDS_ANNOTATION = "needs_annotation"  # liftable with explicit annotation
     REFUSED = "refused"  # cannot lift; structural issue
+    ALREADY_DENDRIFIED = "already_dendrified"  # already wrapped (decorator/Switch subclass)
 
 
 @dataclass
@@ -1089,6 +1543,13 @@ def analyze_function_source(source: str, function_name: str) -> HazardAnalysis:
     if target is None:
         raise ValueError(
             f"Function {function_name!r} not found at the top level of the supplied source."
+        )
+
+    if _has_ml_switch_decorator(target):
+        return HazardAnalysis(
+            function_name=function_name,
+            lift_status=LiftStatus.ALREADY_DENDRIFIED,
+            hazards=[],
         )
 
     hazards: list[Hazard] = []

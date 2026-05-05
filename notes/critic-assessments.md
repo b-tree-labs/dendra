@@ -17,7 +17,7 @@ carries. Unanimous vetoes on **A3 (Canopy)**, **C1 (Curve · 5 dots)**,
 and **C3 (Curve · tick marks)**. The semiotics critic proposes a
 fifth direction none of the four explored: **a 2×2 contingency
 table** — the paper's actual McNemar matrix, one cell accent —
-which pairs orthogonally with the Axiom Labs cross and is the only
+which pairs orthogonally with the B-Tree Labs cross and is the only
 concept in the set whose geometry is the product's literal math.
 
 Round 3 (applied after these assessments): a refined D1 with
@@ -43,7 +43,7 @@ Contingency mark built from Critic 3's proposal.
    (more torii, less TV-set).
 2. Break the lintel-post joint perception — either inset the lintel
    by one stroke-width on each side, or commit to a butt-join with
-   a tiny pin at each corner (echoing Axiom Labs' center-node
+   a tiny pin at each corner (echoing B-Tree Labs' center-node
    vocabulary). The latter gives Dendra *its own joint grammar*
    while staying in the family.
 3. Thin the accent stroke by ~20% — currently reads as heavy as
@@ -78,7 +78,7 @@ step away from a wellness-brand logo"), C1 + C3 (curve variants —
 > identity designer — Hoodzpah, Character, or a solo like Mackey
 > Saturday — for two weeks of refinement."
 
-**Portfolio-fit ranking (best to worst fit alongside Axiom Labs):**
+**Portfolio-fit ranking (best to worst fit alongside B-Tree Labs):**
 
 1. D1 — Gate · original
 2. D2 — Gate · rising
@@ -103,7 +103,7 @@ step away from a wellness-brand logo"), C1 + C3 (curve variants —
 
 > "The only mark in the set that is architecturally defensible as a
 > standalone glyph. The Π form is closed, symmetrical, and legible
-> as a single silhouette — it owns a shape the way the Axiom Labs
+> as a single silhouette — it owns a shape the way the B-Tree Labs
 > cross owns a shape."
 
 **Three specific production-readiness fixes:**
@@ -111,7 +111,7 @@ step away from a wellness-brand logo"), C1 + C3 (curve variants —
 1. **Tighten the accent.** The orange tick runs from y=200 to y=96
    (104 px) — the same length as the posts' upper half. Shorten to
    ~72 px (y=200 → y=128) so it reads as "a short extension past
-   threshold," matching the Axiom Labs origin's +30 px accent
+   threshold," matching the B-Tree Labs origin's +30 px accent
    proportion. Right now the tick over-dominates.
 2. **Resolve the corner joins.** At the four inside corners where
    posts meet lintel, three 34-px square-capped strokes butt
@@ -119,7 +119,7 @@ step away from a wellness-brand logo"), C1 + C3 (curve variants —
    of each corner. Solve by merging the three strokes into a single
    polyline with `stroke-linejoin="miter"`.
 3. **Add a 28 r graphite center node at the lintel midpoint.** The
-   Axiom Labs origin has a 28 r center dot; Dendra's brief insists
+   B-Tree Labs origin has a 28 r center dot; Dendra's brief insists
    on "same visual language." A node at (256, 200) becomes the
    threshold-crossing point and gives the accent tick something to
    emerge from instead of floating on the lintel stroke. This
@@ -278,7 +278,7 @@ Real disagreement: D1 (craft-mature, silhouette-holds) vs D2
 1. **D2-refined** if the mark should carry the theorem — semiotically
    strongest, now also production-clean.
 2. **D1-refined** if the mark should prioritize craft and
-   portfolio-sibling-grammar — most system-coherent with Axiom Labs.
+   portfolio-sibling-grammar — most system-coherent with B-Tree Labs.
 3. **E · Contingency** if the mark should be genuinely
    category-defining — the only one of the set whose geometry is
    the product's actual math.

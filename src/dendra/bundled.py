@@ -72,7 +72,7 @@ from dendra.verdicts import JudgeSource
 # until production CDN is up). The default is intentionally a placeholder
 # that resolves to a clear "models not hosted yet" error so anyone running
 # the bundled path before launch sees a useful failure.
-_DEFAULT_CDN_BASE = "https://models.dendra.dev"
+_DEFAULT_CDN_BASE = "https://models.dendra.run"
 
 
 def cdn_base() -> str:
@@ -98,15 +98,15 @@ def cache_dir() -> Path:
 _REGISTRY: dict[str, dict[str, Any]] = {
     "judge": {
         "filename": "qwen2.5-7b-instruct-q4_k_m.gguf",
-        "size_bytes": 0,  # set when CDN goes live
-        "sha256": None,  # filled when CDN goes live
+        "size_bytes": 4683074240,
+        "sha256": "65b8fcd92af6b4fefa935c625d1ac27ea29dcb6ee14589c55a8f115ceaaa1423",  # noqa: E501  # pragma: allowlist secret
         "ollama_fallback": "qwen2.5:7b",
         "description": "Qwen2.5-7B-Instruct (Q4_K_M) — judge default",
     },
     "classifier": {
         "filename": "gemma-2-2b-instruct-q4_k_m.gguf",
-        "size_bytes": 0,
-        "sha256": None,
+        "size_bytes": 1708582752,
+        "sha256": "e0aee85060f168f0f2d8473d7ea41ce2f3230c1bc1374847505ea599288a7787",  # noqa: E501  # pragma: allowlist secret
         "ollama_fallback": "gemma2:2b",
         "description": "Gemma-2-2B-Instruct (Q4_K_M) — classifier default",
     },

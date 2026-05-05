@@ -222,6 +222,98 @@ def _try_emit_benchmarks(
     )
 
 
+def _try_generate_hypothesis(
+    *,
+    switch_name: str,
+    file_path: str,
+    function_name: str,
+    labels: list[str] | None,
+) -> None:
+    """Auto-generate dendra/hypotheses/<switch>.md after a successful init.
+
+    Idempotent — if the file already exists, we don't overwrite. Failures
+    here never fail the init; the hypothesis file is a nicety, not a
+    correctness requirement.
+    """
+    try:
+        from dendra.cloud.report.hypotheses import generate_hypothesis_file
+    except ImportError:
+        return
+
+    # Try to fetch cohort-tuned defaults for the prediction interval.
+    # This is best-effort; if the insights cache isn't warm, we fall
+    # back to regime defaults inside generate_hypothesis_file.
+    cohort_size = 0
+    cohort_low = None
+    cohort_high = None
+    try:
+        from dendra.insights import load_cached_or_baked_in
+
+        defaults = load_cached_or_baked_in()
+        cohort_size = defaults.cohort_size
+        # Regime "unknown" until the analyzer has scored this site;
+        # for now use narrow as the most-common shape for newly-init'd
+        # sites. The user edits the hypothesis file if their site is
+        # actually medium/high.
+        narrow_median = defaults.median_outcomes_to_graduation.get("narrow")
+        if narrow_median:
+            cohort_low = int(narrow_median * 0.7)
+            cohort_high = int(narrow_median * 1.4)
+    except Exception:  # noqa: BLE001 — never fail init on insights errors
+        pass
+
+    label_count = len(labels) if labels else None
+
+    try:
+        out_path, content_hash, was_created = generate_hypothesis_file(
+            switch_name=switch_name,
+            file_location=file_path,
+            function_name=function_name,
+            label_cardinality=label_count,
+            regime=_regime_from_cardinality(label_count),
+            cohort_size=cohort_size,
+            cohort_predicted_low=cohort_low,
+            cohort_predicted_high=cohort_high,
+        )
+    except Exception as e:  # noqa: BLE001 — hypothesis file is best-effort
+        # Common reasons: write blocked by sandbox (in tests),
+        # filesystem permission, disk full. Print a one-line note and
+        # continue — the wrap itself succeeded; hypothesis is a nicety.
+        print(
+            f"  (hypothesis file not written: {type(e).__name__}; the wrap is still in place)",
+            file=sys.stderr,
+        )
+        return
+
+    if was_created:
+        print(
+            f"  pre-registered hypothesis: {out_path} (content hash: {content_hash[:12]}…)",
+            file=sys.stderr,
+        )
+        print(
+            "  → review and commit before evidence accumulates "
+            "(edits change the hash; the hash is recorded in every "
+            "subsequent gate evaluation)",
+            file=sys.stderr,
+        )
+    else:
+        print(
+            f"  (hypothesis file already exists at {out_path}; preserving)",
+            file=sys.stderr,
+        )
+
+
+def _regime_from_cardinality(n: int | None) -> str:
+    """Map a label count to a regime string (matches analyzer convention)."""
+    if n is None or n == 0:
+        return "unknown"
+    if n < 30:
+        return "narrow"
+    if n <= 60:
+        return "medium"
+    return "high"
+
+
 def _try_auto_lift(
     *,
     source_path: Path,
@@ -401,6 +493,122 @@ def cmd_whoami(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_insights_enroll(args: argparse.Namespace) -> int:
+    """Opt in to Dendra Insights — show disclosure, prompt, write flag."""
+    from dendra.insights import (
+        DISCLOSURE_TEXT,
+        disclosure_text_sha256,
+        is_enrolled,
+        write_enrollment,
+    )
+
+    if is_enrolled():
+        print("Already enrolled in Dendra Insights.")
+        print("Run `dendra insights status` for details, or `dendra insights leave` to opt out.")
+        return 0
+
+    print(DISCLOSURE_TEXT, end="")
+    if getattr(args, "yes", False):
+        answer = "y"
+        print("y  (auto-confirmed via --yes)")
+    else:
+        try:
+            answer = input().strip().lower()
+        except EOFError:
+            answer = ""
+
+    if answer not in ("y", "yes"):
+        print("\nNot enrolled. The OSS path remains telemetry-free.")
+        return 0
+
+    creds = auth.load_credentials() if hasattr(auth, "load_credentials") else None
+    account_hash = None
+    if creds and creds.get("api_key"):
+        # Hash the API key client-side so we never write the raw key
+        # to the enrollment record. Server-side hashing is layered on
+        # top by the collector.
+        import hashlib
+
+        account_hash = hashlib.sha256(creds["api_key"].encode("utf-8")).hexdigest()
+
+    state = write_enrollment(
+        account_hash=account_hash,
+        consent_text_sha256=disclosure_text_sha256(),
+    )
+    print()
+    print(f"Enrolled at {state.enrolled_at}.")
+    print("Telemetry events will be queued and flushed best-effort on next CLI runs.")
+    print("Leave at any time with: dendra insights leave")
+    return 0
+
+
+def cmd_insights_leave(args: argparse.Namespace) -> int:
+    """Opt out of Dendra Insights — remove flag, stop emitting."""
+    from dendra.insights import is_enrolled, write_unenrollment
+
+    if not is_enrolled():
+        print("Not currently enrolled in Dendra Insights.")
+        return 0
+    write_unenrollment()
+    print("Unenrolled. No further telemetry will be queued.")
+    print(
+        "Any events still in the local queue at "
+        "~/.dendra/insights-queue.jsonl have NOT been uploaded; "
+        "delete that file to discard them."
+    )
+    return 0
+
+
+def cmd_insights_status(args: argparse.Namespace) -> int:
+    """Show enrollment state + cached cohort defaults; refresh if --refresh."""
+    from dendra.insights import (
+        get_tuned_defaults_url,
+        load_cached_or_baked_in,
+        read_enrollment,
+        read_queue,
+        refresh_if_stale,
+    )
+    from dendra.insights.tuned_defaults import cache_is_fresh
+
+    # When the user invokes ``dendra insights status`` they want a real
+    # answer, not the stale cache. Refresh synchronously unless the
+    # cache is already fresh (within the freshness window).
+    if not getattr(args, "no_fetch", False):
+        refreshed = refresh_if_stale()
+        refreshed_msg = "  (just-refreshed from cohort endpoint)" if refreshed is not None else ""
+    else:
+        refreshed_msg = "  (--no-fetch; cache only)"
+
+    state = read_enrollment()
+    defaults = load_cached_or_baked_in()
+    queue = read_queue()
+
+    print("Dendra Insights — status")
+    print("=" * 40)
+    if state.enrolled:
+        print(f"Enrolled:        yes (since {state.enrolled_at})")
+        print(f"Schema version:  {state.schema_version}")
+        if state.account_hash:
+            print(f"Account hash:    {state.account_hash[:16]}…")
+    else:
+        print("Enrolled:        no  (OSS path is telemetry-free)")
+    print()
+    print(f"Cohort defaults{refreshed_msg}:")
+    print(f"  URL:           {get_tuned_defaults_url()}")
+    print(f"  Version:       {defaults.version}")
+    print(f"  Cohort size:   {defaults.cohort_size}")
+    if defaults.generated_at:
+        print(f"  Generated at:  {defaults.generated_at}")
+    print(f"  Cache fresh:   {'yes' if cache_is_fresh() else 'no'}")
+    if defaults.median_outcomes_to_graduation:
+        print("  Median outcomes to graduation:")
+        for regime, n in sorted(defaults.median_outcomes_to_graduation.items()):
+            print(f"    {regime:>8}: {n}")
+    print()
+    print(f"Pending events in queue: {len(queue)}")
+    return 0
+
+
 _BENCHMARKS = {
     "banking77": "load_banking77",
     "clinc150": "load_clinc150",
@@ -436,6 +644,8 @@ def cmd_bench(args: argparse.Namespace) -> int:
         ds.train,
         seed_size=args.seed_size,
         keywords_per_label=args.kw_per_label,
+        shuffle=not args.no_shuffle,
+        shuffle_seed=args.shuffle_seed,
     ).as_callable()
     head = SklearnTextHead(min_outcomes=args.min_train_for_ml)
 
@@ -460,6 +670,8 @@ def cmd_bench(args: argparse.Namespace) -> int:
         "test_rows": len(ds.test),
         "seed_size": args.seed_size,
         "kw_per_label": args.kw_per_label,
+        "shuffle": not args.no_shuffle,
+        "shuffle_seed": args.shuffle_seed,
         "checkpoint_every": args.checkpoint_every,
         "citation": ds.citation,
     }
@@ -501,24 +713,286 @@ def cmd_analyze(args: argparse.Namespace) -> int:
         render_text,
     )
 
+    _refresh_cohort_defaults_async()
     report = analyze(args.path)
 
+    sort_key = getattr(args, "sort", "priority")
+    reverse = bool(getattr(args, "reverse", False))
+
     if args.format == "json":
-        print(render_json(report))
+        print(render_json(report, sort_key=sort_key, reverse=reverse))
+        _emit_analyze_event_if_enrolled(report)
         return 0
 
     if args.format == "markdown":
         projections = project_savings(report) if args.project_savings else None
-        print(render_markdown(report, projections=projections))
+        print(
+            render_markdown(
+                report,
+                projections=projections,
+                sort_key=sort_key,
+                reverse=reverse,
+            )
+        )
+        _emit_analyze_event_if_enrolled(report)
         return 0
 
     # Default: text.
-    print(render_text(report))
+    print(render_text(report, sort_key=sort_key, reverse=reverse))
     if args.project_savings and report.sites:
         print()
         print("Run with --format markdown for the savings projection table.")
+
+    # --report writes a discovery markdown alongside the terminal output
+    if getattr(args, "report", False):
+        _write_discovery_report(report, args)
+
     _bump_counter("analyze_count")
     _maybe_nudge_signup()
+    _emit_analyze_event_if_enrolled(report)
+    return 0
+
+
+def _write_discovery_report(report, args) -> None:
+    """Write the initial-analysis discovery report. Best-effort."""
+    try:
+        from dendra.cloud.report import render_discovery_report
+
+        cohort_size = 0
+        try:
+            from dendra.insights import load_cached_or_baked_in
+
+            defaults = load_cached_or_baked_in()
+            cohort_size = defaults.cohort_size
+        except Exception:  # noqa: BLE001
+            pass
+
+        markdown = render_discovery_report(
+            report,
+            cost_per_call=getattr(args, "cost_per_call", None),
+            llm_provider_hint=getattr(args, "llm_provider", "default"),
+            cohort_size=cohort_size,
+        )
+        out_path = (
+            Path(args.report_out)
+            if getattr(args, "report_out", None)
+            else Path("dendra/results/_initial-analysis.md")
+        )
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(markdown, encoding="utf-8")
+        print()
+        print(f"Wrote discovery report to {out_path}")
+    except Exception as e:  # noqa: BLE001 — discovery report is best-effort
+        print(f"  (discovery report not written: {type(e).__name__})", file=sys.stderr)
+
+
+def _refresh_cohort_defaults_async() -> None:
+    """Kick off a background refresh of the cohort-tuned defaults.
+
+    Non-blocking. The fetch happens on a daemon thread; if the cache
+    is fresh the call no-ops in microseconds. Available to ALL users
+    (not gated on enrollment) — receiving aggregate cohort wisdom
+    doesn't require sharing data, only contributing back does.
+
+    Disabled by ``DENDRA_NO_INSIGHTS_FETCH=1`` for air-gapped or
+    privacy-paranoid users. The flag is documented but not surfaced
+    as a CLI arg (this is "configuration of last resort," not a UX).
+    """
+    import os
+
+    if os.environ.get("DENDRA_NO_INSIGHTS_FETCH"):
+        return
+    try:
+        from dendra.insights import refresh_if_stale_async
+    except ImportError:
+        return
+    try:
+        refresh_if_stale_async()
+    except Exception:  # noqa: BLE001 — telemetry must never break the CLI
+        return
+
+
+def _emit_analyze_event_if_enrolled(report) -> None:
+    """Queue an analyze event for the cohort, no-op if not enrolled.
+
+    Failures are silent — telemetry must never break the analyze command.
+    Run-level histograms only; no per-site granularity (privacy posture).
+    """
+    try:
+        from dendra.insights import flush_queue_async, is_enrolled, queue_event
+    except ImportError:
+        return
+    if not is_enrolled():
+        return
+    try:
+        pattern_hist: dict[str, int] = {}
+        regime_hist: dict[str, int] = {}
+        lift_status_hist: dict[str, int] = {}
+        hazard_hist: dict[str, int] = {}
+        for site in report.sites:
+            pattern_hist[site.pattern] = pattern_hist.get(site.pattern, 0) + 1
+            regime_hist[site.regime] = regime_hist.get(site.regime, 0) + 1
+            lift_status_hist[site.lift_status] = lift_status_hist.get(site.lift_status, 0) + 1
+            for h in site.hazards:
+                hazard_hist[h.category] = hazard_hist.get(h.category, 0) + 1
+        queue_event(
+            "analyze",
+            payload={
+                "files_scanned": report.files_scanned,
+                "total_sites": report.total_sites(),
+                "already_dendrified_count": report.already_dendrified_count(),
+                "pattern_histogram": pattern_hist,
+                "regime_histogram": regime_hist,
+                "lift_status_histogram": lift_status_hist,
+                "hazard_category_histogram": hazard_hist,
+            },
+        )
+        # Best-effort flush in the background. Daemon thread, no join.
+        flush_queue_async()
+    except Exception:  # noqa: BLE001 — telemetry must never break the CLI
+        return
+
+
+def cmd_report(args: argparse.Namespace) -> int:
+    """Generate a graduation report card.
+
+    Two modes:
+      - ``dendra report <switch>``: per-switch card matching the
+        locked sample at docs/working/sample-reports/triage_rule.md.
+      - ``dendra report --summary``: project-level rollup matching
+        docs/working/sample-reports/_summary.md.
+    """
+    from pathlib import Path
+
+    from dendra.cloud.report import (
+        aggregate_project,
+        aggregate_switch,
+        render_project_summary,
+        render_switch_card,
+    )
+
+    if not args.summary and not args.switch:
+        print(
+            "dendra report: provide a switch name or pass --summary",
+            file=sys.stderr,
+        )
+        return 2
+    if args.summary and args.switch:
+        print(
+            "dendra report: --summary and <switch> are mutually exclusive",
+            file=sys.stderr,
+        )
+        return 2
+
+    storage_path = Path(args.storage_path)
+    if args.storage == "file":
+        from dendra.storage import FileStorage
+
+        storage_path.mkdir(parents=True, exist_ok=True)
+        storage = FileStorage(storage_path)
+    elif args.storage == "sqlite":
+        from dendra.storage import SqliteStorage
+
+        storage = SqliteStorage(storage_path)
+    else:  # memory
+        from dendra.storage import InMemoryStorage
+
+        storage = InMemoryStorage()
+
+    # ---- Project summary path -----------------------------------------
+    if args.summary:
+        try:
+            summary = aggregate_project(storage, alpha=args.alpha)
+        except AttributeError as e:
+            print(
+                f"dendra report --summary: {e}\n"
+                f"Hint: --storage memory has no switch_names() method; "
+                f"use file or sqlite storage.",
+                file=sys.stderr,
+            )
+            return 2
+
+        project_name = Path.cwd().name or "(this project)"
+        markdown = render_project_summary(summary, project_name=project_name)
+
+        out_path = Path(args.out) if args.out else Path("dendra/results/_summary.md")
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(markdown, encoding="utf-8")
+        print(f"Wrote {out_path}")
+        print(f"  switches:         {len(summary.switches)}")
+        print(f"  graduated:        {summary.graduated_count}")
+        print(f"  in-flight:        {summary.pre_graduation_count}")
+        print(f"  drift events:     {summary.drift_count}")
+        print(f"  total outcomes:   {summary.total_outcomes:,}")
+        return 0
+
+    # ---- Per-switch path ----------------------------------------------
+    metrics = aggregate_switch(
+        storage,
+        args.switch,
+        alpha=args.alpha,
+    )
+
+    out_path = Path(args.out) if args.out else Path("dendra/results") / f"{args.switch}.md"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Try to generate PNG charts if matplotlib is installed and the
+    # switch has at least one checkpoint. Failures fall back to the
+    # text-only placeholders that render_switch_card emits when no
+    # chart paths are supplied.
+    transition_path: str | None = None
+    pvalue_path: str | None = None
+    cost_path: str | None = None
+    if metrics.checkpoints:
+        try:
+            from dendra.cloud.report import charts
+
+            base = out_path.parent / args.switch
+            transition_path = str(
+                charts.transition_curve(metrics, base.with_suffix(".transition.png")).name
+            )
+            pvalue_path = str(
+                charts.pvalue_trajectory(
+                    metrics, base.with_suffix(".pvalue.png"), alpha=args.alpha
+                ).name
+            )
+            if args.cost_per_call is not None:
+                cost_path = str(
+                    charts.cost_trajectory(
+                        metrics,
+                        base.with_suffix(".cost.png"),
+                        cost_per_call=args.cost_per_call,
+                    ).name
+                )
+        except ImportError:
+            print("  (install dendra[viz] to generate chart PNGs)")
+        except Exception as e:  # noqa: BLE001 — never fail the report on chart errors
+            print(f"  (chart rendering skipped: {e})")
+
+    markdown = render_switch_card(
+        metrics,
+        alpha=args.alpha,
+        cost_per_call=args.cost_per_call,
+        estimated_calls_per_month=args.calls_per_month,
+        transition_chart_path=transition_path,
+        pvalue_chart_path=pvalue_path,
+        cost_chart_path=cost_path,
+    )
+
+    out_path.write_text(markdown, encoding="utf-8")
+    print(f"Wrote {out_path}")
+    print(f"  switch:           {args.switch}")
+    print(f"  outcomes:         {metrics.total_outcomes}")
+    print(f"  current phase:    {metrics.current_phase.value}")
+    if metrics.gate_fire_outcome is not None:
+        print(
+            f"  gate fired at:    outcome {metrics.gate_fire_outcome} "
+            f"(p = {metrics.gate_fire_p_value:.4g})"
+        )
+    elif metrics.total_outcomes == 0:
+        print("  status:           wrapped, no outcomes yet — will fill in over time")
+    else:
+        print("  status:           accumulating evidence (gate not yet fired)")
     return 0
 
 
@@ -576,6 +1050,15 @@ def cmd_init(args: argparse.Namespace) -> int:
         f"{len(result.labels)} labels "
         f"({'inferred' if result.inferred_labels else 'supplied'})",
         file=sys.stderr,
+    )
+
+    # Auto-generate the pre-registered hypothesis file. Idempotent —
+    # if the user already has one for this switch, skip.
+    _try_generate_hypothesis(
+        switch_name=function_name,
+        file_path=file_path,
+        function_name=function_name,
+        labels=result.labels,
     )
 
     # --auto-lift: run the lifters on the (now-wrapped) source and emit
@@ -687,16 +1170,15 @@ def cmd_quickstart(args: argparse.Namespace) -> int:
 
     filename, desc = _QUICKSTART_EXAMPLES[args.example]
 
-    # Locate the example. Two cases:
+    # Locate the example. Three cases, tried in order:
     #  1. Editable install / source checkout - examples/ sits next to src/
-    #  2. Wheel install - examples aren't packaged; fetch from GitHub raw.
-    #
-    # We try the local path first; if it isn't there, fall back to a
-    # tagged release on GitHub. Failure is honest - the user gets a
-    # clear "neither path worked" message with both URLs.
+    #  2. Wheel install - examples bundled under dendra/_examples/
+    #  3. Last-ditch fallback - fetch from public repo (only works
+    #     post-launch, requires network)
     here = Path(__file__).resolve()
     repo_root = here.parent.parent.parent
     local_example = repo_root / "examples" / filename
+    bundled_example = here.parent / "_examples" / filename
 
     target_dir = Path(args.target).resolve()
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -709,12 +1191,18 @@ def cmd_quickstart(args: argparse.Namespace) -> int:
         if local_stubs.exists():
             shutil.copy2(local_stubs, target_dir / "_stubs.py")
         source = f"local source ({local_example})"
+    elif bundled_example.exists():
+        shutil.copy2(bundled_example, target_file)
+        bundled_stubs = here.parent / "_examples" / "_stubs.py"
+        if bundled_stubs.exists():
+            shutil.copy2(bundled_stubs, target_dir / "_stubs.py")
+        source = f"bundled with dendra package ({bundled_example})"
     else:
         import urllib.error
         import urllib.request
 
-        # Wheel install - fetch from the public repo.
-        url_base = "https://raw.githubusercontent.com/axiom-labs-os/dendra/main/examples"
+        # Last-ditch: fetch from public repo (requires repo to be public + network).
+        url_base = "https://raw.githubusercontent.com/b-tree-labs/dendra/main/examples"
         url = f"{url_base}/{filename}"
         try:
             urllib.request.urlretrieve(url, target_file)
@@ -728,7 +1216,7 @@ def cmd_quickstart(args: argparse.Namespace) -> int:
             print(
                 f"Could not fetch example from {url}: {e}\n"
                 f"Recovery: clone the repo "
-                f"(git clone https://github.com/axiom-labs-os/dendra) "
+                f"(git clone https://github.com/b-tree-labs/dendra) "
                 f"and run `python examples/{filename}` directly.",
                 file=sys.stderr,
             )
@@ -1024,7 +1512,7 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
     return rc
 
 
-def cmd_report(args: argparse.Namespace) -> int:
+def cmd_bench_report(args: argparse.Namespace) -> int:
     """Walk runtime/dendra/*/benchmarks/*.jsonl and print the report."""
     from dendra.benchmarks import aggregate_report, format_report
 
@@ -1048,7 +1536,14 @@ def cmd_plot(args: argparse.Namespace) -> int:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    from dendra import __version__
+
     parser = argparse.ArgumentParser(prog="dendra")
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"dendra {__version__}",
+    )
     # Bare `dendra` (no subcommand) routes to cmd_status - the soft entry
     # point for new users. Subcommands are still discoverable via --help.
     parser.set_defaults(fn=cmd_status, cmd=None)
@@ -1070,6 +1565,28 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Training examples used to construct the rule (paper §4.2).",
     )
     p_bench.add_argument("--kw-per-label", type=int, default=5, help="Keywords selected per label.")
+    p_bench.add_argument(
+        "--no-shuffle",
+        action="store_true",
+        help=(
+            "Disable the deterministic shuffle of the training stream "
+            "before the seed window is taken. The default shuffles with "
+            "seed 0 so label-sorted upstream splits (Banking77, HWU64, "
+            "CLINC150, Snips on HuggingFace) cannot collapse the rule "
+            "to a single label. Pass --no-shuffle to reproduce the v0.x "
+            "paper-as-shipped behavior."
+        ),
+    )
+    p_bench.add_argument(
+        "--shuffle-seed",
+        type=int,
+        default=0,
+        help=(
+            "Seed for the deterministic training-stream shuffle. "
+            "Repeated runs with the same seed produce the same rule. "
+            "Ignored when --no-shuffle is set."
+        ),
+    )
     p_bench.add_argument(
         "--checkpoint-every", type=int, default=250, help="Outcomes between checkpoints."
     )
@@ -1123,6 +1640,56 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help="Include per-site annual savings projection (uses dendra.roi default cost model).",
     )
+    p_analyze.add_argument(
+        "--report",
+        action="store_true",
+        help=(
+            "Write a discovery report at dendra/results/_initial-analysis.md. "
+            "Customer-facing opportunity assessment with ranked sites, "
+            "cohort-predicted graduation times, projected savings, and "
+            "recommended graduation sequence."
+        ),
+    )
+    p_analyze.add_argument(
+        "--report-out",
+        default=None,
+        help=(
+            "Override the output path for --report (default: dendra/results/_initial-analysis.md)."
+        ),
+    )
+    p_analyze.add_argument(
+        "--cost-per-call",
+        type=float,
+        default=None,
+        help=(
+            "Estimated $/LLM call for cost projections in --report. "
+            "Defaults to a frontier-LLM rate of $0.0042/call."
+        ),
+    )
+    p_analyze.add_argument(
+        "--llm-provider",
+        default="default",
+        choices=["openai", "anthropic", "haiku", "ollama", "default"],
+        help=(
+            "Hint for default --cost-per-call when not supplied explicitly. "
+            "Default: 'default' (~frontier-LLM rate)."
+        ),
+    )
+    p_analyze.add_argument(
+        "--sort",
+        choices=["priority", "location", "pattern", "regime", "lift"],
+        default="priority",
+        help=(
+            "Sort detected sites by: priority (default — composite of "
+            "graduation-fitness, volume estimate, lift status), location "
+            "(file:line), pattern (P1..P6), regime, or lift status."
+        ),
+    )
+    p_analyze.add_argument(
+        "--reverse",
+        action="store_true",
+        help="Reverse the sort order.",
+    )
     p_analyze.set_defaults(fn=cmd_analyze)
 
     # Back-compat: --json flag overrides --format.
@@ -1132,6 +1699,68 @@ def main(argv: Sequence[str] | None = None) -> int:
         return cmd_analyze(args)
 
     p_analyze.set_defaults(fn=_analyze_wrapper)
+
+    p_report = sub.add_parser(
+        "report",
+        help=(
+            "Generate a graduation report card for a switch. Reads the "
+            "switch's audit chain, computes transition-curve metrics, "
+            "writes markdown to dendra/results/<switch>.md. "
+            "Pass --summary instead of <switch> for a project-level rollup."
+        ),
+    )
+    p_report.add_argument(
+        "switch",
+        nargs="?",
+        default=None,
+        help=(
+            "Switch name (matches LearnedSwitch(name=...) at construction). "
+            "Omit when using --summary."
+        ),
+    )
+    p_report.add_argument(
+        "--summary",
+        action="store_true",
+        help=(
+            "Generate a project-level rollup across all switches in the "
+            "configured storage backend; writes dendra/results/_summary.md."
+        ),
+    )
+    p_report.add_argument(
+        "--storage",
+        default="file",
+        choices=["file", "sqlite", "memory"],
+        help="Storage backend to read from (default: file).",
+    )
+    p_report.add_argument(
+        "--storage-path",
+        default=".dendra/storage",
+        help="Path to the storage backend (default: .dendra/storage).",
+    )
+    p_report.add_argument(
+        "--out",
+        default=None,
+        help="Output path (default: dendra/results/<switch>.md).",
+    )
+    p_report.add_argument(
+        "--cost-per-call",
+        type=float,
+        default=None,
+        help="Estimated $ per pre-graduation LLM call (for cost section).",
+    )
+    p_report.add_argument(
+        "--calls-per-month",
+        type=int,
+        default=None,
+        help="Estimated monthly call count (for monthly-savings row).",
+    )
+    p_report.add_argument(
+        "--alpha",
+        type=float,
+        default=0.01,
+        help="Gate threshold (default: 0.01, matches paper §3.2).",
+    )
+    p_report.set_defaults(fn=cmd_report)
 
     p_init = sub.add_parser(
         "init",
@@ -1280,19 +1909,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     p_benchmark.set_defaults(fn=cmd_benchmark)
 
-    p_report = sub.add_parser(
-        "report",
+    p_bench_report = sub.add_parser(
+        "bench-report",
         help=(
             "Aggregate runtime/dendra/*/benchmarks/*.jsonl across all "
             "switches and print a human-readable summary."
         ),
     )
-    p_report.add_argument(
+    p_bench_report.add_argument(
         "--runtime",
         default=None,
         help="Project runtime root (default: ./runtime).",
     )
-    p_report.set_defaults(fn=cmd_report)
+    p_bench_report.set_defaults(fn=cmd_bench_report)
 
     p_plot = sub.add_parser(
         "plot",
@@ -1324,6 +1953,41 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Show the signed-in account email and a truncated API key.",
     )
     p_whoami.set_defaults(fn=cmd_whoami)
+
+    p_insights = sub.add_parser(
+        "insights",
+        help="Manage Dendra Insights — opt-in cohort flywheel (enroll/leave/status).",
+    )
+    p_insights.set_defaults(fn=lambda _a: p_insights.print_help() or 0)
+    insights_sub = p_insights.add_subparsers(dest="insights_cmd")
+
+    p_insights_enroll = insights_sub.add_parser(
+        "enroll",
+        help="Show the disclosure and opt in to Insights.",
+    )
+    p_insights_enroll.add_argument(
+        "--yes",
+        action="store_true",
+        help="Auto-confirm the disclosure prompt (for scripted installs on Ben-controlled infra).",
+    )
+    p_insights_enroll.set_defaults(fn=cmd_insights_enroll)
+
+    p_insights_leave = insights_sub.add_parser(
+        "leave",
+        help="Opt out of Insights. Local queue is NOT auto-deleted.",
+    )
+    p_insights_leave.set_defaults(fn=cmd_insights_leave)
+
+    p_insights_status = insights_sub.add_parser(
+        "status",
+        help="Show Insights enrollment + cohort defaults + pending queue size.",
+    )
+    p_insights_status.add_argument(
+        "--no-fetch",
+        action="store_true",
+        help="Skip the cohort-defaults fetch; show local cache only.",
+    )
+    p_insights_status.set_defaults(fn=cmd_insights_status)
 
     p_mcp = sub.add_parser(
         "mcp",

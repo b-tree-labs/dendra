@@ -1,0 +1,13 @@
+name = "dendra-dashboard"
+compatibility_date = "2026-04-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = ".vercel/output/static"
+
+# Non-secret runtime env vars. Secrets (CLERK_SECRET_KEY,
+# DENDRA_API_SERVICE_TOKEN, STRIPE_SECRET_KEY) are wired via
+# `wrangler pages secret put <NAME> --project-name=dendra-dashboard`.
+[vars]
+DENDRA_API_BASE_URL = "https://api.dendra.run"
+STRIPE_PRICE_ID_HOSTED_PRO = "price_1TTIfSDrF0wPV7rRYf1bAQiX"
+STRIPE_PRICE_ID_HOSTED_SCALE = "price_1TTIfTDrF0wPV7rR7evdTDVF"
+STRIPE_PRICE_ID_HOSTED_BUSINESS = "price_1TTIfUDrF0wPV7rR3g3ya7mE"

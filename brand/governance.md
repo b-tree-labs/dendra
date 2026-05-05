@@ -125,7 +125,7 @@ LangChain source code):
 - A competitor's comparison chart: **no**.
 - Merchandise / T-shirts / stickers: **no without permission** —
   swag is how brands get diluted; keep tight control until
-  Axiom Labs has an officially-licensed merch program.
+  B-Tree Labs has an officially-licensed merch program.
 
 ## Asset request process (for internal users)
 

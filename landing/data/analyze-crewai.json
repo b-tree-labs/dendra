@@ -1,0 +1,1720 @@
+{
+  "root": "/private/tmp/dendra-corpus/crewai",
+  "files_scanned": 1105,
+  "total_sites": 89,
+  "sites": [
+    {
+      "file_path": "lib/crewai-files/src/crewai_files/formatting/anthropic.py",
+      "function_name": "_get_block_type",
+      "line_start": 85,
+      "line_end": 98,
+      "pattern": "P1",
+      "labels": [
+        "image",
+        "document"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "                    \"data\": base64.b64encode(resolved.data).decode(\"ascii\"),\n                },\n                \"cache_control\": {\"type\": \"ephemeral\"},\n            }\n\n        raise TypeError(f\"Unexpected resolved type: {type(resolved).__name__}\")\n\n    @staticmethod\n    def _get_block_type(content_type: str) -> str | None:\n        \"\"\"Get Anthropic block type for content type.\n\n        Args:\n            content_type: MIME type.\n\n        Returns:\n            Block type string or None if not supported.\n        \"\"\"\n        if content_type.startswith(\"image/\"):\n            return \"image\"\n        if content_type == \"application/pdf\":\n            return \"document\"\n        return None",
+      "snippet_start_line": 77,
+      "snippet_end_line": 98
+    },
+    {
+      "file_path": "lib/crewai-files/src/crewai_files/uploaders/openai.py",
+      "function_name": "_get_purpose_for_content_type",
+      "line_start": 25,
+      "line_end": 43,
+      "pattern": "P1",
+      "labels": [
+        "user_data",
+        "vision"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "    classify_upload_error,\n)\nfrom crewai_files.uploaders.base import FileUploader, UploadResult\n\n\nlogger = logging.getLogger(__name__)\n\n\ndef _get_purpose_for_content_type(content_type: str, purpose: str | None) -> str:\n    \"\"\"Get the appropriate purpose for a file based on content type.\n\n    OpenAI Files API requires different purposes for different file types:\n    - Images (for Responses API vision): \"vision\"\n    - PDFs and other documents: \"user_data\"\n\n    Args:\n        content_type: MIME type of the file.\n        purpose: Optional explicit purpose override.\n\n    Returns:\n        The purpose string to use for upload.\n    \"\"\"\n    if purpose is not None:\n        return purpose\n    if content_type.startswith(\"image/\"):\n        return \"vision\"\n    return \"user_data\"\n\n\ndef _get_file_size(file: FileInput) -> int | None:\n    \"\"\"Get file size without reading content if possible.\n\n    Args:\n        file: The file to get size for.\n\n    Returns:\n        File size in bytes, or None if size cannot be determined without reading.\n    \"\"\"\n    source = file._file_source",
+      "snippet_start_line": 17,
+      "snippet_end_line": 55
+    },
+    {
+      "file_path": "lib/crewai-tools/src/crewai_tools/tools/databricks_query_tool/databricks_query_tool.py",
+      "function_name": "_format_results",
+      "line_start": 151,
+      "line_end": 196,
+      "pattern": "P1",
+      "labels": [
+        "Query returned no results.",
+        "Query returned empty rows with no columns.",
+        "Query returned rows but with no column data."
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "\n                self._workspace_client = WorkspaceClient()\n            except ImportError as e:\n                raise ImportError(\n                    \"`databricks-sdk` package not found, please run `uv add databricks-sdk`\"\n                ) from e\n        return self._workspace_client\n\n    def _format_results(self, results: list[dict[str, Any]]) -> str:\n        \"\"\"Format query results as a readable string.\"\"\"\n        if not results:\n            return \"Query returned no results.\"\n\n        # Get column names from the first row\n        if not results[0]:\n            return \"Query returned empty rows with no columns.\"\n\n        columns = list(results[0].keys())\n\n        # If we have rows but they're all empty, handle that case\n        if not columns:\n            return \"Query returned rows but with no column data.\"\n\n        # Calculate column widths based on data\n        col_widths = {col: len(col) for col in columns}\n        for row in results:\n            for col in columns:\n                # Convert value to string and get its length\n                # Handle None values gracefully\n                value_str = str(row[col]) if row[col] is not None else \"NULL\"\n                col_widths[col] = max(col_widths[col], len(value_str))\n\n        # Create header row\n        header = \" | \".join(f\"{col:{col_widths[col]}}\" for col in columns)\n        separator = \"-+-\".join(\"-\" * col_widths[col] for col in columns)\n\n        # Format data rows\n        data_rows = []\n        for row in results:\n            # Handle None values by displaying \"NULL\"\n            row_values = {\n                col: str(row[col]) if row[col] is not None else \"NULL\"\n                for col in columns\n            }\n            data_row = \" | \".join(\n                f\"{row_values[col]:{col_widths[col]}}\" for col in columns\n            )\n            data_rows.append(data_row)\n\n        # Add row count information\n        result_info = f\"({len(results)} row{'s' if len(results) != 1 else ''} returned)\"\n\n        # Combine all parts\n        return f\"{header}\\n{separator}\\n\" + \"\\n\".join(data_rows) + f\"\\n\\n{result_info}\"\n\n    def _run(\n        self,\n        **kwargs: Any,\n    ) -> str:\n        \"\"\"Execute a SQL query against Databricks and return the results.\n\n        Args:\n            query (str): SQL query to execute\n            catalog (Optional[str]): Databricks catalog name\n            db_schema (Optional[str]): Databricks schema name\n            warehouse_id (Optional[str]): SQL warehouse ID",
+      "snippet_start_line": 143,
+      "snippet_end_line": 208
+    },
+    {
+      "file_path": "lib/crewai-tools/src/crewai_tools/tools/databricks_query_tool/databricks_query_tool.py",
+      "function_name": "_run",
+      "line_start": 198,
+      "line_end": 850,
+      "pattern": "P4",
+      "labels": [
+        "SQL warehouse ID must be provided either as a parameter or as a default.",
+        "Failed to retrieve statement ID after execution.",
+        "Query returned no result (likely timed out or failed)",
+        "Query completed but returned an invalid result structure",
+        "Query executed successfully (no results to display)",
+        "Query was canceled",
+        "Query executed successfully (no data returned)"
+      ],
+      "label_cardinality": 7,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "            data_rows.append(data_row)\n\n        # Add row count information\n        result_info = f\"({len(results)} row{'s' if len(results) != 1 else ''} returned)\"\n\n        # Combine all parts\n        return f\"{header}\\n{separator}\\n\" + \"\\n\".join(data_rows) + f\"\\n\\n{result_info}\"\n\n    def _run(\n        self,\n        **kwargs: Any,\n    ) -> str:\n        \"\"\"Execute a SQL query against Databricks and return the results.\n\n        Args:\n            query (str): SQL query to execute\n            catalog (Optional[str]): Databricks catalog name\n            db_schema (Optional[str]): Databricks schema name\n            warehouse_id (Optional[str]): SQL warehouse ID\n            row_limit (Optional[int]): Maximum number of rows to return\n\n        Returns:\n            str: Formatted query results\n        \"\"\"\n        try:\n            # Get parameters with fallbacks to default values\n            query = kwargs.get(\"query\")\n            catalog = kwargs.get(\"catalog\") or self.default_catalog\n            db_schema = kwargs.get(\"db_schema\") or self.default_schema\n            warehouse_id = kwargs.get(\"warehouse_id\") or self.default_warehouse_id\n            row_limit = kwargs.get(\"row_limit\", 1000)\n\n            # Validate schema and query\n            validated_input = DatabricksQueryToolSchema(\n                query=query,\n                catalog=catalog,\n                db_schema=db_schema,\n                warehouse_id=warehouse_id,\n                row_limit=row_limit,\n            )\n\n            # Extract validated parameters\n            query = validated_input.query\n            catalog = validated_input.catalog\n            db_schema = validated_input.db_schema\n            warehouse_id = validated_input.warehouse_id\n\n            if warehouse_id is None:\n                return \"SQL warehouse ID must be provided either as a parameter or as a default.\"\n\n            # Setup SQL context with catalog/schema if provided\n\n            context: ExecutionContext = {}\n            if catalog:\n                context[\"catalog\"] = catalog\n            if db_schema:\n                context[\"schema\"] = db_schema\n\n            # Execute query\n            statement = self.workspace_client.statement_execution\n\n            try:\n                # Execute the statement\n                execution = statement.execute_statement(\n                    warehouse_id=warehouse_id, statement=query, **context\n                )\n\n                statement_id = execution.statement_id\n            except Exception as execute_error:\n                # Handle immediate execution errors\n                return f\"Error starting query execution: {execute_error!s}\"\n\n            # Poll for results with better error handling\n\n            result = None\n            timeout = 300  # 5 minutes timeout\n            start_time = time.time()\n            poll_count = 0\n            previous_state = None  # Track previous state to detect changes\n\n            if statement_id is None:\n                return \"Failed to retrieve statement ID after execution.\"\n\n            while time.time() - start_time < timeout:\n                poll_count += 1\n                try:\n                    # Get statement status\n                    result = statement.get_statement(statement_id)\n\n                    # Check if finished - be very explicit about state checking\n                    if hasattr(result, \"status\") and hasattr(result.status, \"state\"):\n                        state_value = str(\n                            result.status.state  # type: ignore[union-attr]\n                        )  # Convert to string to handle both string and enum\n\n                        # Track state changes for debugging\n                        if previous_state != state_value:\n                            previous_state = state_value\n\n                        # Check if state indicates completion\n                        if \"SUCCEEDED\" in state_value:\n                            break\n                        if \"FAILED\" in state_value:\n                            # Extract error message with more robust handling\n                            error_info = \"No detailed error info\"\n                            try:\n                                # First try direct access to error.message\n                                if (\n                                    hasattr(result.status, \"error\")\n                                    and result.status.error  # type: ignore[union-attr]\n                                ):\n                                    if hasattr(result.status.error, \"message\"):  # type: ignore[union-attr]\n                                        error_info = result.status.error.message  # type: ignore[union-attr,assignment]\n                                    # Some APIs may have a different structure\n                                    elif hasattr(result.status.error, \"error_message\"):  # type: ignore[union-attr]\n                                        error_info = result.status.error.error_message  # type: ignore[union-attr]\n                                    # Last resort, try to convert the whole error object to string\n                                    else:\n                                        error_info = str(result.status.error)  # type: ignore[union-attr]\n                            except Exception as err_extract_error:\n                                # If all else fails, try to get any info we can\n                                error_info = (\n                                    f\"Error details unavailable: {err_extract_error!s}\"\n                                )\n\n                            # Return immediately on first FAILED state detection\n                            return f\"Query execution failed: {error_info}\"\n                        if \"CANCELED\" in state_value:\n                            return \"Query was canceled\"\n\n                except Exception as poll_error:\n                    # Don't immediately fail - try again a few times\n                    if poll_count > 3:\n                        return f\"Error checking query status: {poll_error!s}\"\n\n                # Wait before polling again\n                time.sleep(2)\n\n            # Check if we timed out\n            if result is None:\n                return \"Query returned no result (likely timed out or failed)\"\n\n            if not hasattr(result, \"status\") or not hasattr(result.status, \"state\"):\n                return \"Query completed but returned an invalid result structure\"\n\n            # Convert state to string for comparison\n            state_value = str(result.status.state)  # type: ignore[union-attr]\n            if not any(\n                state in state_value for state in [\"SUCCEEDED\", \"FAILED\", \"CANCELED\"]\n            ):\n                return f\"Query timed out after 5 minutes (last state: {state_value})\"\n\n            # Get results - adapt this based on the actual structure of the result object\n            chunk_results = []\n\n            # Check if we have results and a schema in a very defensive way\n            has_schema = (\n                hasattr(result, \"manifest\")\n                and result.manifest is not None\n                and hasattr(result.manifest, \"schema\")\n                and result.manifest.schema is not None\n            )\n            has_result = hasattr(result, \"result\") and result.result is not None\n\n            if has_schema and has_result:\n                try:\n                    # Get schema for column names\n                    columns = [col.name for col in result.manifest.schema.columns]  # type: ignore[union-attr]\n\n                    # Debug info for schema\n\n                    # Keep track of all dynamic columns we create\n                    all_columns = set(columns)\n\n                    # Dump the raw structure of result data to help troubleshoot\n                    if _has_data_array(result):\n                        # Add defensive check for None data_array\n                        if result.result.data_array is None:\n                            # Return empty result handling rather than trying to process null data\n                            return \"Query executed successfully (no data returned)\"\n\n                    # IMPROVED DETECTION LOGIC: Check if we're possibly dealing with rows where each item\n                    # contains a single value or character (which could indicate incorrect row structure)\n                    is_likely_incorrect_row_structure = False\n\n                    # Only try to analyze sample if data_array exists and has content\n                    if (\n                        _has_data_array(result)\n                        and len(result.result.data_array) > 0\n                        and len(result.result.data_array[0]) > 0\n                    ):\n                        sample_size = min(20, len(result.result.data_array[0]))\n\n                        if sample_size > 0:\n                            single_char_count = 0\n                            single_digit_count = 0\n                            total_items = 0\n\n                            for i in range(sample_size):\n                                val = result.result.data_array[0][i]\n                                total_items += 1\n                                if (\n                                    isinstance(val, str)\n                                    and len(val) == 1\n                                    and not val.isdigit()\n                                ):\n                                    single_char_count += 1\n                                elif (\n                                    isinstance(val, str)\n                                    and len(val) == 1\n                                    and val.isdigit()\n                                ):\n                                    single_digit_count += 1\n\n                            # If a significant portion of the first values are single characters or digits,\n                            # this likely indicates data is being incorrectly structured\n                            if (\n                                total_items > 0\n                                and (single_char_count + single_digit_count)\n                                / total_items\n                                > 0.5\n                            ):\n                                is_likely_incorrect_row_structure = True\n\n                    # Additional check: if many rows have just 1 item when we expect multiple columns\n                    rows_with_single_item = 0\n                    if (\n                        hasattr(result.result, \"data_array\")\n                        and result.result.data_array  # type: ignore[union-attr]\n                        and len(result.result.data_array) > 0  # type: ignore[union-attr]\n                    ):\n                        sample_size_for_rows = (\n                            min(sample_size, len(result.result.data_array[0]))  # type: ignore[union-attr]\n                            if \"sample_size\" in locals()\n                            else min(20, len(result.result.data_array[0]))  # type: ignore[union-attr]\n                        )\n                        rows_with_single_item = sum(\n                            1  # type: ignore[misc]\n                            for row in result.result.data_array[0][  # type: ignore[union-attr]\n                                :sample_size_for_rows\n                            ]\n                            if isinstance(row, list) and len(row) == 1\n                        )\n                        if (\n                            rows_with_single_item > sample_size_for_rows * 0.5\n                            and len(columns) > 1\n                        ):\n                            is_likely_incorrect_row_structure = True\n\n                    # Check if we're getting primarily single characters or the data structure seems off,\n                    # we should use special handling\n                    if (\n                        \"is_likely_incorrect_row_structure\" in locals()\n                        and is_likely_incorrect_row_structure\n                    ):\n                        needs_special_string_handling = True\n                    else:\n                        needs_special_string_handling = False\n\n                    # Process results differently based on detection\n                    if (\n                        \"needs_special_string_handling\" in locals()\n                        and needs_special_string_handling\n                    ):\n                        # We're dealing with data where the rows may be incorrectly structured\n\n                        # Collect all values into a flat list\n                        all_values: list[Any] = []\n                        if (\n                            hasattr(result.result, \"data_array\")\n                            and result.result.data_array  # type: ignore[union-attr]\n                        ):\n                            # Flatten all values into a single list\n                            for chunk in result.result.data_array:  # type: ignore[union-attr]\n                                for item in chunk:\n                                    if isinstance(item, (list, tuple)):\n                                        all_values.extend(item)\n                                    else:\n                                        all_values.append(item)\n\n                        # Get the expected column count from schema\n                        expected_column_count = len(columns)\n\n                        # Try to reconstruct rows using pattern recognition\n                        reconstructed_rows = []\n\n                        # PATTERN RECOGNITION APPROACH\n                        # Look for likely indicators of row boundaries in the data\n                        # For Netflix data, we expect IDs as numbers, titles as text strings, etc.\n\n                        # Use regex pattern to identify ID columns that likely start a new row\n                        import re\n\n                        id_pattern = re.compile(\n                            r\"^\\d{5,9}$\"\n                        )  # Netflix IDs are often 5-9 digits\n                        id_indices = []\n\n                        for i, val in enumerate(all_values):\n                            if isinstance(val, str) and id_pattern.match(val):\n                                # This value looks like an ID, might be the start of a row\n                                if i < len(all_values) - 1:\n                                    next_few_values = all_values[i + 1 : i + 5]\n                                    # If following values look like they could be part of a title\n                                    if any(\n                                        isinstance(v, str) and len(v) > 1\n                                        for v in next_few_values\n                                    ):\n                                        id_indices.append(i)\n\n                        if id_indices:\n                            # If we found potential row starts, use them to extract rows\n                            for i in range(len(id_indices)):\n                                start_idx = id_indices[i]\n                                end_idx = (\n                                    id_indices[i + 1]\n                                    if i + 1 < len(id_indices)\n                                    else len(all_values)\n                                )\n\n                                # Extract values for this row\n                                row_values = all_values[start_idx:end_idx]\n\n                                # Special handling for Netflix title data\n                                # Titles might be split into individual characters\n                                if (\n                                    \"Title\" in columns\n                                    and len(row_values) > expected_column_count\n                                ):\n                                    # Try to reconstruct by looking for patterns\n                                    # We know ID is first, then Title (which may be split)\n                                    # Then other fields like Genre, etc.\n\n                                    # Take first value as ID\n                                    row_dict = {columns[0]: row_values[0]}\n\n                                    # Look for Genre or other non-title fields to determine where title ends\n                                    title_end_idx = 1\n                                    for j in range(2, min(100, len(row_values))):\n                                        val = row_values[j]\n                                        # Check for common genres or non-title markers\n                                        if isinstance(val, str) and val in [\n                                            \"Comedy\",\n                                            \"Drama\",\n                                            \"Action\",\n                                            \"Horror\",\n                                            \"Thriller\",\n                                            \"Documentary\",\n                                        ]:\n                                            # Likely found the Genre field\n                                            title_end_idx = j\n                                            break\n\n                                    # Reconstruct title from individual characters\n                                    if title_end_idx > 1:\n                                        title_chars = row_values[1:title_end_idx]\n                                        # Check if they're individual characters\n                                        if all(\n                                            isinstance(c, str) and len(c) == 1\n                                            for c in title_chars\n                                        ):\n                                            title = \"\".join(title_chars)\n                                            row_dict[\"Title\"] = title\n\n                                            # Assign remaining values to columns\n                                            remaining_values = row_values[\n                                                title_end_idx:\n                                            ]\n                                            for j, col_name in enumerate(\n                                                columns[2:], 2\n                                            ):\n                                                if j - 2 < len(remaining_values):\n                                                    row_dict[col_name] = (\n                                                        remaining_values[j - 2]\n                                                    )\n                                                else:\n                                                    row_dict[col_name] = None\n                                    else:\n                                        # Fallback: simple mapping\n                                        for j, col_name in enumerate(columns):\n                                            if j < len(row_values):\n                                                row_dict[col_name] = row_values[j]\n                                            else:\n                                                row_dict[col_name] = None\n                                else:\n                                    # Standard mapping\n                                    row_dict = {}\n                                    for j, col_name in enumerate(columns):\n                                        if j < len(row_values):\n                                            row_dict[col_name] = row_values[j]\n                                        else:\n                                            row_dict[col_name] = None\n\n                                reconstructed_rows.append(row_dict)\n                        else:\n                            # More intelligent chunking - try to detect where columns like Title might be split\n                            title_idx = (\n                                columns.index(\"Title\") if \"Title\" in columns else -1\n                            )\n\n                            if title_idx >= 0:\n                                # Try to detect if title is split across multiple values\n                                i = 0\n                                while i < len(all_values):\n                                    # Check if this could be an ID (start of a row)\n                                    if isinstance(\n                                        all_values[i], str\n                                    ) and id_pattern.match(all_values[i]):\n                                        row_dict = {columns[0]: all_values[i]}\n                                        i += 1\n\n                                        # Try to reconstruct title if it appears to be split\n                                        title_chars = []\n                                        while (\n                                            i < len(all_values)\n                                            and isinstance(all_values[i], str)\n                                            and len(all_values[i]) <= 1\n                                            and len(title_chars) < 100\n                                        ):  # Cap title length\n                                            title_chars.append(all_values[i])\n                                            i += 1\n\n                                        if title_chars:\n                                            row_dict[columns[title_idx]] = \"\".join(\n                                                title_chars\n                                            )\n\n                                        # Add remaining fields\n                                        for j in range(title_idx + 1, len(columns)):\n                                            if i < len(all_values):\n                                                row_dict[columns[j]] = all_values[i]\n                                                i += 1\n                                            else:\n                                                row_dict[columns[j]] = None\n\n                                        reconstructed_rows.append(row_dict)\n                                    else:\n                                        i += 1\n\n                        # If we still don't have rows, use simple chunking as fallback\n                        if not reconstructed_rows:\n                            chunks = [\n                                all_values[i : i + expected_column_count]\n                                for i in range(\n                                    0, len(all_values), expected_column_count\n                                )\n                            ]\n\n                            for chunk in chunks:\n                                # Skip chunks that seem to be partial/incomplete rows\n                                if (\n                                    len(chunk) < expected_column_count * 0.75\n                                ):  # Allow for some missing values\n                                    continue\n\n                                row_dict = {}\n\n                                # Map values to column names\n                                for i, col in enumerate(columns):\n                                    if i < len(chunk):\n                                        row_dict[col] = chunk[i]\n                                    else:\n                                        row_dict[col] = None\n\n                                reconstructed_rows.append(row_dict)\n\n                        # Apply post-processing to fix known issues\n                        if reconstructed_rows and \"Title\" in columns:\n                            for row in reconstructed_rows:\n                                # Fix titles that might still have issues\n                                if (\n                                    isinstance(row.get(\"Title\"), str)\n                                    and len(row.get(\"Title\")) <= 1  # type: ignore[arg-type]\n                                ):\n                                    # This is likely still a fragmented title - mark as potentially incomplete\n                                    row[\"Title\"] = f\"[INCOMPLETE] {row.get('Title')}\"\n\n                        # Ensure we respect the row limit\n                        if row_limit and len(reconstructed_rows) > row_limit:\n                            reconstructed_rows = reconstructed_rows[:row_limit]\n\n                        chunk_results = reconstructed_rows\n                    else:\n                        # Process normal result structure as before\n\n                        # Check different result structures\n                        if (\n                            hasattr(result.result, \"data_array\")\n                            and result.result.data_array  # type: ignore[union-attr]\n                        ):\n                            # Check if data appears to be malformed within chunks\n                            for _chunk_idx, chunk in enumerate(\n                                result.result.data_array  # type: ignore[union-attr]\n                            ):\n                                # Check if chunk might actually contain individual columns of a single row\n                                # This is another way data might be malformed - check the first few values\n                                if len(chunk) > 0 and len(columns) > 1:\n                                    # If there seems to be a mismatch between chunk structure and expected columns\n                                    first_few_values = chunk[: min(5, len(chunk))]\n                                    if all(\n                                        isinstance(val, (str, int, float))\n                                        and not isinstance(val, (list, dict))\n                                        for val in first_few_values\n                                    ):\n                                        if (\n                                            len(chunk) > len(columns) * 3\n                                        ):  # Heuristic: if chunk has way more items than columns\n                                            # This chunk might actually be values of multiple rows - try to reconstruct\n                                            values = chunk  # All values in this chunk\n                                            reconstructed_rows = []\n\n                                            # Try to create rows based on expected column count\n                                            for i in range(\n                                                0, len(values), len(columns)\n                                            ):\n                                                if i + len(columns) <= len(\n                                                    values\n                                                ):  # Ensure we have enough values\n                                                    row_values = values[\n                                                        i : i + len(columns)\n                                                    ]\n                                                    row_dict = {\n                                                        col: val\n                                                        for col, val in zip(\n                                                            columns,\n                                                            row_values,\n                                                            strict=False,\n                                                        )\n                                                    }\n                                                    reconstructed_rows.append(row_dict)\n\n                                            if reconstructed_rows:\n                                                chunk_results.extend(reconstructed_rows)\n                                                continue  # Skip normal processing for this chunk\n\n                                # Special case: when chunk contains exactly the right number of values for a single row\n                                # This handles the case where instead of a list of rows, we just got all values in a flat list\n                                if all(\n                                    isinstance(val, (str, int, float))\n                                    and not isinstance(val, (list, dict))\n                                    for val in chunk\n                                ):\n                                    if len(chunk) == len(columns) or (\n                                        len(chunk) > 0\n                                        and len(chunk) % len(columns) == 0\n                                    ):\n                                        # Process flat list of values as rows\n                                        for i in range(0, len(chunk), len(columns)):\n                                            row_values = chunk[i : i + len(columns)]\n                                            if len(row_values) == len(\n                                                columns\n                                            ):  # Only process complete rows\n                                                row_dict = {\n                                                    col: val\n                                                    for col, val in zip(\n                                                        columns,\n                                                        row_values,\n                                                        strict=False,\n                                                    )\n                                                }\n                                                chunk_results.append(row_dict)\n\n                                        # Skip regular row processing for this chunk\n                                        continue\n\n                                # Normal processing for typical row structure\n                                for _row_idx, row in enumerate(chunk):\n                                    # Ensure row is actually a collection of values\n                                    if not isinstance(row, (list, tuple, dict)):\n                                        # This might be a single value; skip it or handle specially\n                                        continue\n\n                                    # Convert each row to a dictionary with column names as keys\n                                    row_dict = {}\n\n                                    # Handle dict rows directly\n                                    if isinstance(row, dict):\n                                        # Use the existing column mapping\n                                        row_dict = dict(row)\n                                    elif isinstance(row, (list, tuple)):\n                                        # Map list of values to columns\n                                        for i, val in enumerate(row):\n                                            if (\n                                                i < len(columns)\n                                            ):  # Only process if we have a matching column\n                                                row_dict[columns[i]] = val\n                                            else:\n                                                # Extra values without column names\n                                                dynamic_col = f\"Column_{i}\"\n                                                row_dict[dynamic_col] = val\n                                                all_columns.add(dynamic_col)\n\n                                    # If we have fewer values than columns, set missing values to None\n                                    for col in columns:\n                                        if col not in row_dict:\n                                            row_dict[col] = None\n\n                                    chunk_results.append(row_dict)\n\n                        elif hasattr(result.result, \"data\") and result.result.data:  # type: ignore[union-attr]\n                            # Alternative data structure\n\n                            for _row_idx, row in enumerate(result.result.data):  # type: ignore[union-attr]\n                                # Debug info\n\n                                # Safely create dictionary matching column names to values\n                                row_dict = {}\n                                for i, val in enumerate(row):\n                                    if i < len(\n                                        columns\n                                    ):  # Only process if we have a matching column\n                                        row_dict[columns[i]] = val\n                                    else:\n                                        # Extra values without column names\n                                        dynamic_col = f\"Column_{i}\"\n                                        row_dict[dynamic_col] = val\n                                        all_columns.add(dynamic_col)\n\n                                # If we have fewer values than columns, set missing values to None\n                                for i, col in enumerate(columns):\n                                    if i >= len(row):\n                                        row_dict[col] = None\n\n                                chunk_results.append(row_dict)\n\n                    # After processing all rows, ensure all rows have all columns\n                    normalized_results = []\n                    for row in chunk_results:\n                        # Create a new row with all columns, defaulting to None for missing ones\n                        normalized_row = {\n                            col: row.get(col, None) for col in all_columns\n                        }\n                        normalized_results.append(normalized_row)\n\n                    # Replace the original results with normalized ones\n                    chunk_results = normalized_results\n\n                except Exception as results_error:\n                    # Enhanced error message with more context\n                    import traceback\n\n                    error_details = traceback.format_exc()\n                    return f\"Error processing query results: {results_error!s}\\n\\nDetails:\\n{error_details}\"\n\n            # If we have no results but the query succeeded (e.g., for DDL statements)\n            if not chunk_results and hasattr(result, \"status\"):\n                state_value = str(result.status.state)  # type: ignore[union-attr]\n                if \"SUCCEEDED\" in state_value:\n                    return \"Query executed successfully (no results to display)\"\n\n            # Format and return results\n            return self._format_results(chunk_results)  # type: ignore[arg-type]\n\n        except Exception as e:\n            # Include more details in the error message to help with debugging\n            import traceback\n\n            error_details = traceback.format_exc()\n            return (\n                f\"Error executing Databricks query: {e!s}\\n\\nDetails:\\n{error_details}\"\n            )",
+      "snippet_start_line": 190,
+      "snippet_end_line": 850
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "handle_continue_plan",
+      "line_start": 782,
+      "line_end": 786,
+      "pattern": "P1",
+      "labels": [
+        "has_todos",
+        "all_todos_complete"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "                PRINTER.print(\n                    content=f\"[Refine] Updated {len(remaining)} pending step(s)\",\n                    color=\"cyan\",\n                )\n\n        return \"has_todos\"\n\n    @router(\"continue_plan\")\n    def handle_continue_plan(self) -> Literal[\"has_todos\", \"all_todos_complete\"]:\n        \"\"\"Continue to the next todo after a successful step.\"\"\"\n        if self.state.todos.is_complete:\n            return \"all_todos_complete\"\n        return \"has_todos\"\n\n    @router(\"goal_achieved\")\n    def handle_goal_achieved(self) -> Literal[\"all_todos_complete\"]:\n        \"\"\"Handle early goal achievement \u2014 skip remaining todos.\"\"\"\n        completed = self.state.todos.get_completed_todos()\n        remaining = self.state.todos.get_pending_todos()\n\n        # Emit goal achieved early event\n        crewai_event_bus.emit(\n            self.agent,\n            event=GoalAchievedEarlyEvent(\n                agent_role=self.agent.role,",
+      "snippet_start_line": 774,
+      "snippet_end_line": 798
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "after_parallel_execution",
+      "line_start": 1164,
+      "line_end": 1179,
+      "pattern": "P1",
+      "labels": [
+        "has_todos",
+        "needs_replan",
+        "all_todos_complete"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "                        f\"learned={observation.key_information_learned[:80]}...\"\n                    ),\n                    color=\"cyan\",\n                )\n\n        return \"parallel_todos_complete\"\n\n    @router(\"parallel_todos_complete\")\n    def after_parallel_execution(\n        self,\n    ) -> Literal[\"has_todos\", \"all_todos_complete\", \"needs_replan\"]:\n        \"\"\"Check for more todos after parallel execution completes.\n\n        Also checks if replanning is needed based on execution results.\n        \"\"\"\n        # Check if replanning is needed before continuing\n        should_replan, reason = self._should_replan()\n        if should_replan:\n            self.state.last_replan_reason = reason\n            return \"needs_replan\"\n\n        if self.state.todos.is_complete:\n            return \"all_todos_complete\"\n        return \"has_todos\"\n\n    @router(or_(\"todo_injected\", \"no_todos\", \"planning_disabled\"))\n    def initialize_reasoning(self) -> Literal[\"initialized\"]:\n        \"\"\"Initialize the reasoning flow and emit agent start logs.\n\n        This is called either after todo context is injected, or when\n        there are no todos (falling back to standard execution).\n        \"\"\"\n        self._show_start_logs()\n        # Check for native tool support on first iteration\n        if self.state.iterations == 0:\n            self.state.use_native_tools = self._check_native_tool_support()",
+      "snippet_start_line": 1156,
+      "snippet_end_line": 1191
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "call_llm_and_parse",
+      "line_start": 1214,
+      "line_end": 1280,
+      "pattern": "P1",
+      "labels": [
+        "parsed",
+        "parser_error",
+        "context_error"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "        )\n\n        self.state.current_answer = formatted_answer\n        self.state.is_finished = True\n\n        return \"agent_finished\"\n\n    @router(\"continue_reasoning\")\n    def call_llm_and_parse(self) -> Literal[\"parsed\", \"parser_error\", \"context_error\"]:\n        \"\"\"Execute LLM call with hooks and parse the response.\n\n        Returns routing decision based on parsing result.\n        \"\"\"\n        if self.state.is_finished:\n            return \"parsed\"\n\n        try:\n            enforce_rpm_limit(self.request_within_rpm_limit)\n\n            answer = get_llm_response(\n                llm=self.llm,\n                messages=list(self.state.messages),\n                callbacks=self.callbacks,\n                printer=PRINTER,\n                from_task=self.task,\n                from_agent=self.agent,\n                response_model=self.response_model,\n                executor_context=self,\n                verbose=self.agent.verbose,\n            )\n\n            # If response is structured output (BaseModel), store it directly\n            if isinstance(answer, BaseModel):\n                self.state.current_answer = AgentFinish(\n                    thought=\"\",\n                    output=answer,\n                    text=str(answer),\n                )\n                return \"parsed\"\n\n            # Parse the LLM response\n            formatted_answer = process_llm_response(answer, self.use_stop_words)\n\n            self.state.current_answer = formatted_answer\n\n            if \"Final Answer:\" in answer and isinstance(formatted_answer, AgentAction):\n                warning_text = Text()\n                warning_text.append(\"\u26a0\ufe0f \", style=\"yellow bold\")\n                warning_text.append(\n                    f\"LLM returned 'Final Answer:' but parsed as AgentAction (tool: {formatted_answer.tool})\",\n                    style=\"yellow\",\n                )\n                self._console.print(warning_text)\n                preview_text = Text()\n                preview_text.append(\"Answer preview: \", style=\"yellow\")\n                preview_text.append(f\"{answer[:200]}...\", style=\"yellow dim\")\n                self._console.print(preview_text)\n\n            return \"parsed\"\n\n        except OutputParserError as e:\n            # Store error context for recovery\n            self._last_parser_error = e or OutputParserError(\n                error=\"Unknown parser error\"\n            )\n            return \"parser_error\"\n\n        except Exception as e:\n            if is_context_length_exceeded(e):\n                self._last_context_error = e\n                return \"context_error\"\n            if e.__class__.__module__.startswith(\"litellm\"):\n                raise e\n            handle_unknown_error(PRINTER, e, verbose=self.agent.verbose)\n            raise\n\n    @router(\"continue_reasoning_native\")\n    def call_llm_native_tools(\n        self,\n    ) -> Literal[\n        \"native_tool_calls\", \"native_finished\", \"context_error\", \"todo_satisfied\"\n    ]:\n        \"\"\"Execute LLM call with native function calling.\n\n        Always calls the LLM so it can read reflection prompts and decide\n        whether to provide a final answer or request more tools.\n",
+      "snippet_start_line": 1206,
+      "snippet_end_line": 1292
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "call_llm_native_tools",
+      "line_start": 1283,
+      "line_end": 1371,
+      "pattern": "P1",
+      "labels": [
+        "native_finished",
+        "native_tool_calls",
+        "context_error"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "                self._last_context_error = e\n                return \"context_error\"\n            if e.__class__.__module__.startswith(\"litellm\"):\n                raise e\n            handle_unknown_error(PRINTER, e, verbose=self.agent.verbose)\n            raise\n\n    @router(\"continue_reasoning_native\")\n    def call_llm_native_tools(\n        self,\n    ) -> Literal[\n        \"native_tool_calls\", \"native_finished\", \"context_error\", \"todo_satisfied\"\n    ]:\n        \"\"\"Execute LLM call with native function calling.\n\n        Always calls the LLM so it can read reflection prompts and decide\n        whether to provide a final answer or request more tools.\n\n        When todos are active and the LLM produces a final answer, we treat it\n        as completing the current todo rather than finishing the entire task.\n\n        Returns routing decision based on whether tool calls or final answer.\n        \"\"\"\n        if self.state.is_finished:\n            return \"native_finished\"\n\n        try:\n            # Clear pending tools - LLM will decide what to do next after reading\n            # the reflection prompt. It can either:\n            # 1. Return a final answer (string) if it has enough info\n            # 2. Return tool calls (possibly same ones, or different ones)\n            self.state.pending_tool_calls.clear()\n\n            enforce_rpm_limit(self.request_within_rpm_limit)\n\n            # Call LLM with native tools\n            answer = get_llm_response(\n                llm=self.llm,\n                messages=list(self.state.messages),\n                callbacks=self.callbacks,\n                printer=PRINTER,\n                tools=self._openai_tools,\n                available_functions=None,\n                from_task=self.task,\n                from_agent=self.agent,\n                response_model=self.response_model,\n                executor_context=self,\n                verbose=self.agent.verbose,\n            )\n\n            # Check if the response is a list of tool calls\n            if isinstance(answer, list) and answer and self._is_tool_call_list(answer):\n                # Store tool calls for sequential processing\n                self.state.pending_tool_calls = list(answer)\n                return \"native_tool_calls\"\n\n            if isinstance(answer, BaseModel):\n                self.state.current_answer = AgentFinish(\n                    thought=\"\",\n                    output=answer,\n                    text=answer.model_dump_json(),\n                )\n                self._invoke_step_callback(self.state.current_answer)\n                self._append_message_to_state(answer.model_dump_json())\n                return self._route_finish_with_todos(\"native_finished\")\n\n            # Text response - this is the final answer\n            if isinstance(answer, str):\n                self.state.current_answer = AgentFinish(\n                    thought=\"\",\n                    output=answer,\n                    text=answer,\n                )\n                self._invoke_step_callback(self.state.current_answer)\n                self._append_message_to_state(answer)\n\n                return self._route_finish_with_todos(\"native_finished\")\n\n            # Unexpected response type, treat as final answer\n            self.state.current_answer = AgentFinish(\n                thought=\"\",\n                output=str(answer),\n                text=str(answer),\n            )\n            self._invoke_step_callback(self.state.current_answer)\n            self._append_message_to_state(str(answer))\n\n            return self._route_finish_with_todos(\"native_finished\")\n\n        except Exception as e:\n            if is_context_length_exceeded(e):\n                self._last_context_error = e\n                return \"context_error\"\n            if e.__class__.__module__.startswith(\"litellm\"):\n                raise e\n            handle_unknown_error(PRINTER, e, verbose=self.agent.verbose)\n            raise\n\n    def _route_finish_with_todos(\n        self, default_route: _RouteT\n    ) -> _RouteT | Literal[\"todo_satisfied\"]:\n        \"\"\"Helper to route finish events, checking for pending todos first.\n\n        If there are pending todos, route to todo_satisfied instead of the\n        default finish event to continue processing todos.\n\n        Args:\n            default_route: The default route to use if no todos are pending.\n",
+      "snippet_start_line": 1275,
+      "snippet_end_line": 1383
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "check_native_todo_completion",
+      "line_start": 1913,
+      "line_end": 1926,
+      "pattern": "P1",
+      "labels": [
+        "todo_satisfied",
+        "todo_not_satisfied"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "        if isinstance(tool_call, dict):\n            func_info = tool_call.get(\"function\", {})\n            return sanitize_tool_name(\n                func_info.get(\"name\", \"\") or tool_call.get(\"name\", \"unknown\")\n            )\n        return \"unknown\"\n\n    @router(execute_native_tool)\n    def check_native_todo_completion(\n        self,\n    ) -> Literal[\"todo_satisfied\", \"todo_not_satisfied\"]:\n        \"\"\"Check if the native tool execution satisfied the active todo.\n\n        Similar to check_todo_completion but for native tool execution path.\n        \"\"\"\n        current_todo = self.state.todos.current_todo\n\n        if not current_todo:\n            return \"todo_not_satisfied\"\n\n        # For native tools, any tool execution satisfies the todo\n        return \"todo_satisfied\"\n\n    @listen(\"initialized\")\n    def continue_iteration(self) -> Literal[\"check_iteration\"]:\n        \"\"\"Bridge listener that connects iteration loop back to iteration check.\"\"\"\n        self._discard_or_listener(FlowMethodName(\"continue_iteration\"))\n        return \"check_iteration\"\n\n    @router(or_(initialize_reasoning, continue_iteration))\n    def check_max_iterations(\n        self,\n    ) -> Literal[\n        \"force_final_answer\", \"continue_reasoning\", \"continue_reasoning_native\"",
+      "snippet_start_line": 1905,
+      "snippet_end_line": 1938
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "check_max_iterations",
+      "line_start": 1935,
+      "line_end": 1945,
+      "pattern": "P1",
+      "labels": [
+        "continue_reasoning",
+        "force_final_answer",
+        "continue_reasoning_native"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "\n    @listen(\"initialized\")\n    def continue_iteration(self) -> Literal[\"check_iteration\"]:\n        \"\"\"Bridge listener that connects iteration loop back to iteration check.\"\"\"\n        self._discard_or_listener(FlowMethodName(\"continue_iteration\"))\n        return \"check_iteration\"\n\n    @router(or_(initialize_reasoning, continue_iteration))\n    def check_max_iterations(\n        self,\n    ) -> Literal[\n        \"force_final_answer\", \"continue_reasoning\", \"continue_reasoning_native\"\n    ]:\n        \"\"\"Check if max iterations reached before proceeding with reasoning.\"\"\"\n        if has_reached_max_iterations(self.state.iterations, self.max_iter):\n            return \"force_final_answer\"\n        if self.state.use_native_tools:\n            return \"continue_reasoning_native\"\n        return \"continue_reasoning\"\n\n    @router(execute_tool_action)\n    def check_todo_completion(\n        self,\n    ) -> Literal[\"todo_satisfied\", \"todo_not_satisfied\"]:\n        \"\"\"Check if the current tool execution satisfied the active todo.\n\n        After a tool is executed, this determines if the current todo\n        should be marked as complete based on whether:\n        1. The expected tool was used (if specified)\n        2. The agent returned a final answer for this step\n        \"\"\"",
+      "snippet_start_line": 1927,
+      "snippet_end_line": 1957
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "check_todo_completion",
+      "line_start": 1948,
+      "line_end": 1976,
+      "pattern": "P1",
+      "labels": [
+        "todo_not_satisfied",
+        "todo_satisfied"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "        \"\"\"Check if max iterations reached before proceeding with reasoning.\"\"\"\n        if has_reached_max_iterations(self.state.iterations, self.max_iter):\n            return \"force_final_answer\"\n        if self.state.use_native_tools:\n            return \"continue_reasoning_native\"\n        return \"continue_reasoning\"\n\n    @router(execute_tool_action)\n    def check_todo_completion(\n        self,\n    ) -> Literal[\"todo_satisfied\", \"todo_not_satisfied\"]:\n        \"\"\"Check if the current tool execution satisfied the active todo.\n\n        After a tool is executed, this determines if the current todo\n        should be marked as complete based on whether:\n        1. The expected tool was used (if specified)\n        2. The agent returned a final answer for this step\n        \"\"\"\n        current_todo = self.state.todos.current_todo\n\n        if not current_todo:\n            return \"todo_not_satisfied\"\n\n        action = self.state.current_answer\n\n        # Check if the expected tool was used\n        if isinstance(action, AgentAction):\n            if current_todo.tool_to_use:\n                if action.tool == current_todo.tool_to_use:\n                    return \"todo_satisfied\"\n            else:\n                return \"todo_satisfied\"\n\n        if isinstance(action, AgentFinish):\n            return \"todo_satisfied\"\n\n        return \"todo_not_satisfied\"\n\n    @listen(\"todo_satisfied\")\n    def mark_todo_complete(self) -> Literal[\"todo_marked\"]:\n        \"\"\"Mark the current todo as completed with its result.\"\"\"\n        current_todo = self.state.todos.current_todo\n\n        if not current_todo:\n            return \"todo_marked\"\n\n        # Extract result from the current answer\n        result = \"\"\n        if isinstance(self.state.current_answer, AgentFinish):",
+      "snippet_start_line": 1940,
+      "snippet_end_line": 1988
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "check_more_todos",
+      "line_start": 2040,
+      "line_end": 2056,
+      "pattern": "P1",
+      "labels": [
+        "has_todos",
+        "needs_replan",
+        "all_todos_complete"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "        # Add to history as a SYSTEM message for subsequent steps\n        if result:\n            self._append_message_to_state(\n                f\"**Step {step_number} result:**\\n\\n{result}\",\n                role=\"system\",\n            )\n\n    @router(mark_todo_complete)\n    def check_more_todos(\n        self,\n    ) -> Literal[\"has_todos\", \"all_todos_complete\", \"needs_replan\"]:\n        \"\"\"Check if there are more todos to execute after marking one complete.\n\n        Also checks if replanning is needed based on execution results.\n        \"\"\"\n        # Check if replanning is needed before continuing\n        should_replan, reason = self._should_replan()\n        if should_replan:\n            self.state.last_replan_reason = reason\n            return \"needs_replan\"\n\n        if self.state.todos.is_complete:\n            return \"all_todos_complete\"\n\n        return \"has_todos\"\n\n    @router(\"todo_not_satisfied\")\n    def increment_and_continue(self) -> Literal[\"initialized\"]:\n        \"\"\"Increment iteration counter and loop back for next iteration.\n\n        Called when a tool execution didn't satisfy the current todo,\n        allowing the agent to continue working on it.\n        \"\"\"\n        self.state.iterations += 1\n        return \"initialized\"\n\n    @listen(",
+      "snippet_start_line": 2032,
+      "snippet_end_line": 2068
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "finalize",
+      "line_start": 2076,
+      "line_end": 2148,
+      "pattern": "P1",
+      "labels": [
+        "completed",
+        "skipped"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "    @listen(\n        or_(\n            \"all_todos_complete\",\n            \"agent_finished\",\n            \"tool_result_is_final\",\n            \"native_finished\",\n        )\n    )\n    def finalize(self) -> Literal[\"completed\", \"skipped\"]:\n        \"\"\"Finalize execution and emit completion logs.\n\n        If todos were used, synthesizes a final answer from all todo results.\n        Handles both the legacy ReAct path (current_answer already set) and\n        the Plan-and-Execute path (synthesize from completed todos).\n        \"\"\"\n        # Guard against duplicate finalization \u2014 the flow may trigger finalize\n        # more than once when concurrent branches both reach a terminal state.\n        # Use a lock to atomically check-and-set _finalize_called so only the\n        # first caller proceeds.  We use a separate flag (not is_finished)\n        # because is_finished should only be set when finalization succeeds.\n        with self._finalize_lock:\n            if self._finalize_called:\n                return \"completed\"\n            self._finalize_called = True\n\n        if self.agent.verbose:\n            PRINTER.print(\n                content=f\"[Finalize] todos_count={len(self.state.todos.items)}, todos_with_results={sum(1 for t in self.state.todos.items if t.result)}\",\n                color=\"magenta\",\n            )\n\n        if self.state.current_answer is None:\n            # Plan-and-Execute path: todos may have results even if not all are\n            # marked \"completed\" (e.g., goal_achieved early).\n            todos_with_results = [t for t in self.state.todos.items if t.result]\n            if todos_with_results:\n                if self._can_use_last_todo_result_as_final_answer(todos_with_results):\n                    last_todo = max(\n                        todos_with_results, key=lambda todo: todo.step_number\n                    )\n                    final_text = str(last_todo.result or \"\")\n                    self.state.current_answer = AgentFinish(\n                        thought=\"Final answer returned directly from last completed todo\",\n                        output=final_text,\n                        text=final_text,\n                    )\n                else:\n                    self._synthesize_final_answer_from_todos()\n\n        if self.state.current_answer is None:\n            # Last resort: produce a fallback answer rather than leaving\n            # current_answer as None, which causes a RuntimeError upstream.\n            fallback_text = \"Agent completed execution but produced no final output.\"\n            if self.state.todos.items:\n                partial = [\n                    f\"Step {t.step_number}: {t.result or '(no result)'}\"\n                    for t in self.state.todos.items\n                    if t.status == \"completed\"\n                ]\n                if partial:\n                    fallback_text = \"\\n\\n\".join(partial)\n            self.state.current_answer = AgentFinish(\n                thought=\"Finalize fallback \u2014 no explicit answer was set\",\n                output=fallback_text,\n                text=fallback_text,\n            )\n\n        if not isinstance(self.state.current_answer, AgentFinish):\n            skip_text = Text()\n            skip_text.append(\"\u26a0\ufe0f \", style=\"yellow bold\")\n            skip_text.append(\n                f\"Finalize called with {type(self.state.current_answer).__name__} instead of AgentFinish - skipping\",\n                style=\"yellow\",\n            )\n            self._console.print(skip_text)\n            return \"skipped\"\n\n        self.state.is_finished = True\n        self._show_logs(self.state.current_answer)\n\n        return \"completed\"\n\n    def _can_use_last_todo_result_as_final_answer(\n        self, todos_with_results: list[TodoItem]\n    ) -> bool:\n        \"\"\"Determine whether synthesis can be skipped for planning results.\"\"\"\n        # Keep synthesis when structured output is requested.\n        if self.response_model is not None:\n            return False\n        if not todos_with_results:\n            return False\n\n        last_todo = max(todos_with_results, key=lambda todo: todo.step_number)",
+      "snippet_start_line": 2068,
+      "snippet_end_line": 2160
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/llm.py",
+      "function_name": "_infer_provider_from_model",
+      "line_start": 549,
+      "line_end": 577,
+      "pattern": "P1",
+      "labels": [
+        "openai",
+        "anthropic",
+        "gemini",
+        "bedrock",
+        "azure"
+      ],
+      "label_cardinality": 5,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "        if provider == \"azure\":\n            # azure does not provide a list of available models, determine a better way to handle this\n            return True\n\n        # Fallback to pattern matching for models not in constants\n        return cls._matches_provider_pattern(model, provider)\n\n    @classmethod\n    def _infer_provider_from_model(cls, model: str) -> str:\n        \"\"\"Infer the provider from the model name.\n\n        This method first checks the hardcoded constants list for known models.\n        If not found, it uses pattern matching to infer the provider from model name patterns.\n        This allows supporting new models and \"latest\" versions without hardcoding.\n\n        Args:\n            model: The model name without provider prefix\n\n        Returns:\n            The inferred provider name, defaults to \"openai\"\n        \"\"\"\n        if model in OPENAI_MODELS:\n            return \"openai\"\n\n        if model in ANTHROPIC_MODELS:\n            return \"anthropic\"\n\n        if model in GEMINI_MODELS:\n            return \"gemini\"\n\n        if model in BEDROCK_MODELS:\n            return \"bedrock\"\n\n        if model in AZURE_MODELS:\n            return \"azure\"\n\n        return \"openai\"\n\n    @classmethod\n    def _get_native_provider(cls, provider: str) -> type | None:\n        \"\"\"Get native provider class if available.\"\"\"\n        if provider == \"openai\":\n            from crewai.llms.providers.openai.completion import OpenAICompletion\n\n            return OpenAICompletion\n\n        if provider == \"anthropic\" or provider == \"claude\":\n            from crewai.llms.providers.anthropic.completion import (\n                AnthropicCompletion,",
+      "snippet_start_line": 541,
+      "snippet_end_line": 589
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/memory/recall_flow.py",
+      "function_name": "decide_depth",
+      "line_start": 287,
+      "line_end": 304,
+      "pattern": "P1",
+      "labels": [
+        "synthesize",
+        "explore_deeper"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 3.5,
+      "hazards": [],
+      "lift_status": "auto_liftable",
+      "snippet": "        return self.state.candidate_scopes\n\n    @listen(filter_and_chunk)\n    def search_chunks(self) -> list[Any]:\n        \"\"\"Initial parallel search across (embeddings x scopes) with filters.\"\"\"\n        return self._do_search()\n\n    @router(search_chunks)\n    def decide_depth(self) -> str:\n        \"\"\"Route based on confidence, complexity, and remaining budget.\"\"\"\n        analysis = self.state.query_analysis\n        if (\n            analysis\n            and analysis.complexity == \"complex\"\n            and self.state.confidence < self._config.complex_query_threshold\n        ):\n            if self.state.exploration_budget > 0:\n                return \"explore_deeper\"\n        if self.state.confidence >= self._config.confidence_threshold_high:\n            return \"synthesize\"\n        if (\n            self.state.exploration_budget > 0\n            and self.state.confidence < self._config.confidence_threshold_low\n        ):\n            return \"explore_deeper\"\n        return \"synthesize\"\n\n    @listen(\"explore_deeper\")\n    def recursive_exploration(self) -> list[Any]:\n        \"\"\"Feed top results back to LLM for deeper context extraction.\n\n        Decrements the exploration budget so the loop terminates.\n        \"\"\"\n        self.state.exploration_budget -= 1\n\n        enhanced = []\n        for finding in self.state.chunk_findings:\n            if not finding.get(\"results\"):",
+      "snippet_start_line": 279,
+      "snippet_end_line": 316
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/cli/version.py",
+      "function_name": "_find_latest_non_yanked_version",
+      "line_start": 41,
+      "line_end": 75,
+      "pattern": "P4",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 2.1,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "ensure_force_final_answer",
+      "line_start": 1197,
+      "line_end": 1211,
+      "pattern": "P6",
+      "labels": [
+        "agent_finished"
+      ],
+      "label_cardinality": 1,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 2.1,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "mark_todo_complete",
+      "line_start": 1979,
+      "line_end": 2013,
+      "pattern": "P6",
+      "labels": [
+        "todo_marked"
+      ],
+      "label_cardinality": 1,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 2.1,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "recover_from_parser_error",
+      "line_start": 2501,
+      "line_end": 2521,
+      "pattern": "P6",
+      "labels": [
+        "initialized"
+      ],
+      "label_cardinality": 1,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 2.1,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "recover_from_context_length",
+      "line_start": 2524,
+      "line_end": 2537,
+      "pattern": "P6",
+      "labels": [
+        "initialized"
+      ],
+      "label_cardinality": 1,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 2.1,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai-tools/src/crewai_tools/tools/files_compressor_tool/files_compressor_tool.py",
+      "function_name": "_run",
+      "line_start": 38,
+      "line_end": 90,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai-tools/src/crewai_tools/tools/files_compressor_tool/files_compressor_tool.py",
+      "function_name": "_compress_tar",
+      "line_start": 127,
+      "line_end": 143,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/a2a/wrapper.py",
+      "function_name": "_kickoff_with_a2a",
+      "line_start": 394,
+      "line_end": 512,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/a2a/wrapper.py",
+      "function_name": "_akickoff_with_a2a",
+      "line_start": 515,
+      "line_end": 637,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/agent/utils.py",
+      "function_name": "save_last_messages",
+      "line_start": 271,
+      "line_end": 307,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/agents/crew_agent_executor.py",
+      "function_name": "_setup_messages",
+      "line_start": 167,
+      "line_end": 190,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/agents/crew_agent_executor.py",
+      "function_name": "_inject_multimodal_files",
+      "line_start": 230,
+      "line_end": 257,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/agents/crew_agent_executor.py",
+      "function_name": "_ainject_multimodal_files",
+      "line_start": 259,
+      "line_end": 288,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/agents/crew_agent_executor.py",
+      "function_name": "_invoke_loop_react",
+      "line_start": 311,
+      "line_end": 445,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/agents/crew_agent_executor.py",
+      "function_name": "_invoke_loop_native_tools",
+      "line_start": 447,
+      "line_end": 555,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/agents/crew_agent_executor.py",
+      "function_name": "_invoke_loop_native_no_tools",
+      "line_start": 557,
+      "line_end": 592,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/agents/crew_agent_executor.py",
+      "function_name": "_append_tool_result_and_check_finality",
+      "line_start": 1026,
+      "line_end": 1060,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/agents/crew_agent_executor.py",
+      "function_name": "_ainvoke_loop_react",
+      "line_start": 1123,
+      "line_end": 1254,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/agents/crew_agent_executor.py",
+      "function_name": "_ainvoke_loop_native_tools",
+      "line_start": 1256,
+      "line_end": 1363,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/agents/crew_agent_executor.py",
+      "function_name": "_ainvoke_loop_native_no_tools",
+      "line_start": 1365,
+      "line_end": 1400,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/core/providers/human_input.py",
+      "function_name": "_handle_training_feedback",
+      "line_start": 217,
+      "line_end": 237,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/core/providers/human_input.py",
+      "function_name": "_handle_regular_feedback",
+      "line_start": 239,
+      "line_end": 266,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/core/providers/human_input.py",
+      "function_name": "_handle_training_feedback_async",
+      "line_start": 271,
+      "line_end": 291,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/core/providers/human_input.py",
+      "function_name": "_handle_regular_feedback_async",
+      "line_start": 293,
+      "line_end": 320,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "messages",
+      "line_start": 274,
+      "line_end": 276,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "invoke",
+      "line_start": 2539,
+      "line_end": 2633,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "invoke_async",
+      "line_start": 2635,
+      "line_end": 2724,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/llms/providers/anthropic/completion.py",
+      "function_name": "_handle_streaming_completion",
+      "line_start": 940,
+      "line_end": 1132,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/llms/providers/anthropic/completion.py",
+      "function_name": "_ahandle_streaming_completion",
+      "line_start": 1461,
+      "line_end": 1638,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/llms/providers/bedrock/completion.py",
+      "function_name": "_get_document_format",
+      "line_start": 2170,
+      "line_end": 2190,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/llms/providers/bedrock/completion.py",
+      "function_name": "_get_video_format",
+      "line_start": 2192,
+      "line_end": 2211,
+      "pattern": "P3",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/llms/providers/openai/completion.py",
+      "function_name": "_handle_completion",
+      "line_start": 1598,
+      "line_end": 1747,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/llms/providers/openai/completion.py",
+      "function_name": "_ahandle_completion",
+      "line_start": 1985,
+      "line_end": 2135,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/llms/providers/openai/completion.py",
+      "function_name": "_ahandle_streaming_completion",
+      "line_start": 2137,
+      "line_end": 2281,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/mcp/client.py",
+      "function_name": "_get_prompt_impl",
+      "line_start": 663,
+      "line_end": 682,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/security/security_config.py",
+      "function_name": "validate_fingerprint",
+      "line_start": 45,
+      "line_end": 58,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/utilities/agent_utils.py",
+      "function_name": "_prepare_llm_call",
+      "line_start": 364,
+      "line_end": 388,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/utilities/agent_utils.py",
+      "function_name": "_setup_before_llm_call_hooks",
+      "line_start": 1615,
+      "line_end": 1668,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/utilities/agent_utils.py",
+      "function_name": "_setup_after_llm_call_hooks",
+      "line_start": 1671,
+      "line_end": 1748,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/utilities/internal_instructor.py",
+      "function_name": "to_pydantic",
+      "line_start": 127,
+      "line_end": 150,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/devtools/src/crewai_devtools/docs_check.py",
+      "function_name": "_analyze_diff",
+      "line_start": 175,
+      "line_end": 196,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/devtools/src/crewai_devtools/docs_check.py",
+      "function_name": "_generate_doc",
+      "line_start": 199,
+      "line_end": 241,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/devtools/src/crewai_devtools/docs_check.py",
+      "function_name": "_update_doc",
+      "line_start": 244,
+      "line_end": 281,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/devtools/src/crewai_devtools/docs_check.py",
+      "function_name": "_translate_doc",
+      "line_start": 284,
+      "line_end": 317,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 1.4,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai-files/src/crewai_files/formatting/api.py",
+      "function_name": "_normalize_provider",
+      "line_start": 20,
+      "line_end": 54,
+      "pattern": "P1",
+      "labels": [
+        "openai",
+        "gemini",
+        "google",
+        "anthropic",
+        "claude",
+        "bedrock",
+        "aws",
+        "azure",
+        "gpt"
+      ],
+      "label_cardinality": 9,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 35,
+          "reason": "Line 35 binds 'provider_lower' from provider.lower(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If provider.lower supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai-tools/src/crewai_tools/tools/dalle_tool/dalle_tool.py",
+      "function_name": "_run",
+      "line_start": 51,
+      "line_end": 75,
+      "pattern": "P1",
+      "labels": [
+        "Image description is required.",
+        "Failed to generate image."
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 54,
+          "reason": "Line 54 binds 'image_description' from kwargs.get(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If kwargs.get supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        },
+        {
+          "category": "side_effect_evidence",
+          "line": 59,
+          "reason": "Line 59 binds 'response' from client.images.generate(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If client.images.generate supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai-tools/src/crewai_tools/tools/parallel_tools/parallel_search_tool.py",
+      "function_name": "_run",
+      "line_start": 68,
+      "line_end": 116,
+      "pattern": "P1",
+      "labels": [
+        "Error: PARALLEL_API_KEY environment variable is required",
+        "Error: Provide at least one of 'objective' or 'search_queries'",
+        "Parallel Search API timeout. Please try again later."
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 78,
+          "reason": "Line 78 binds 'api_key' from os.environ.get(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If os.environ.get supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai-tools/src/crewai_tools/tools/stagehand_tool/stagehand_tool.py",
+      "function_name": "_simplify_instruction",
+      "line_start": 384,
+      "line_end": 405,
+      "pattern": "P1",
+      "labels": [
+        "search for content on the page",
+        "click on the element",
+        "type in the input field",
+        "click on the search input field",
+        "click the button",
+        "click the link",
+        "click the search field"
+      ],
+      "label_cardinality": 7,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 387,
+          "reason": "Line 387 binds 'instruction_lower' from instruction.lower(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If instruction.lower supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "observe_step_result",
+      "line_start": 451,
+      "line_end": 516,
+      "pattern": "P1",
+      "labels": [
+        "step_observed_low",
+        "step_observed_high",
+        "step_observed_medium"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 467,
+          "reason": "Line 467 binds 'effort' from self._get_reasoning_effort(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._get_reasoning_effort supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "handle_step_observed_low",
+      "line_start": 521,
+      "line_end": 575,
+      "pattern": "P1",
+      "labels": [
+        "continue_plan",
+        "replan_now"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 536,
+          "reason": "Line 536 binds 'observation' from self.state.observations.get(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self.state.observations.get supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "handle_step_observed_medium",
+      "line_start": 580,
+      "line_end": 643,
+      "pattern": "P1",
+      "labels": [
+        "continue_plan",
+        "replan_now"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 593,
+          "reason": "Line 593 binds 'observation' from self.state.observations.get(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self.state.observations.get supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "decide_next_action",
+      "line_start": 648,
+      "line_end": 733,
+      "pattern": "P1",
+      "labels": [
+        "continue_plan",
+        "goal_achieved",
+        "replan_now",
+        "refine_and_continue"
+      ],
+      "label_cardinality": 4,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 666,
+          "reason": "Line 666 binds 'observation' from self.state.observations.get(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self.state.observations.get supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "handle_replan_now",
+      "line_start": 816,
+      "line_end": 856,
+      "pattern": "P1",
+      "labels": [
+        "all_todos_complete",
+        "has_todos"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 823,
+          "reason": "Line 823 binds 'max_replans' from self._get_max_replans(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._get_max_replans supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "check_todos_available",
+      "line_start": 863,
+      "line_end": 875,
+      "pattern": "P1",
+      "labels": [
+        "has_todos",
+        "planning_disabled",
+        "no_todos"
+      ],
+      "label_cardinality": 3,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 871,
+          "reason": "getattr(...) at line 871 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "get_ready_todos_method",
+      "line_start": 878,
+      "line_end": 912,
+      "pattern": "P1",
+      "labels": [
+        "multiple_todos_ready",
+        "needs_replan",
+        "single_todo_ready",
+        "all_todos_complete"
+      ],
+      "label_cardinality": 4,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 891,
+          "reason": "Line 891 binds 'ready' from self.state.todos.get_ready_todos(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self.state.todos.get_ready_todos supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "execute_todo_sequential",
+      "line_start": 915,
+      "line_end": 982,
+      "pattern": "P1",
+      "labels": [
+        "todo_injected",
+        "step_executed"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 932,
+          "reason": "getattr(...) at line 932 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "execute_tool_action",
+      "line_start": 1408,
+      "line_end": 1475,
+      "pattern": "P1",
+      "labels": [
+        "tool_completed",
+        "tool_result_is_final"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 1456,
+          "reason": "Line 1456 binds 'result' from self._handle_agent_action(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._handle_agent_action supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "execute_native_tool",
+      "line_start": 1478,
+      "line_end": 1649,
+      "pattern": "P1",
+      "labels": [
+        "native_tool_completed",
+        "tool_result_is_final"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 1532,
+          "reason": "Line 1532 binds 'should_parallelize' from self._should_parallelize_native_tool_calls(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._should_parallelize_native_tool_calls supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "handle_replan",
+      "line_start": 2476,
+      "line_end": 2498,
+      "pattern": "P1",
+      "labels": [
+        "no_todos",
+        "has_todos"
+      ],
+      "label_cardinality": 2,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 2482,
+          "reason": "Line 2482 binds 'max_replans' from self._get_max_replans(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._get_max_replans supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/flow/flow_serializer.py",
+      "function_name": "_get_method_type",
+      "line_start": 130,
+      "line_end": 158,
+      "pattern": "P1",
+      "labels": [
+        "listen",
+        "start_router",
+        "start",
+        "router"
+      ],
+      "label_cardinality": 4,
+      "regime": "narrow",
+      "volume_estimate": "warm",
+      "priority_score": 1.05,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 147,
+          "reason": "getattr(...) at line 147 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 150,
+          "reason": "getattr(...) at line 150 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/devtools/src/crewai_devtools/cli.py",
+      "function_name": "_generate_release_notes",
+      "line_start": 918,
+      "line_end": 1042,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "cold",
+      "priority_score": 0.8,
+      "hazards": [],
+      "lift_status": "auto_liftable"
+    },
+    {
+      "file_path": "lib/crewai-tools/src/crewai_tools/tools/ai_mind_tool/ai_mind_tool.py",
+      "function_name": "_run",
+      "line_start": 86,
+      "line_end": 104,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 96,
+          "reason": "Line 96 binds 'completion' from openai_client.chat.completions.create(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If openai_client.chat.completions.create supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/agent/core.py",
+      "function_name": "_build_output_from_result",
+      "line_start": 1634,
+      "line_end": 1709,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 1652,
+          "reason": "Line 1652 binds 'output' from result.get(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If result.get supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/agents/crew_agent_executor.py",
+      "function_name": "_handle_native_tool_calls",
+      "line_start": 627,
+      "line_end": 767,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "dynamic_dispatch",
+          "line": 662,
+          "reason": "getattr(...) at line 662 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "dynamic_dispatch",
+          "line": 671,
+          "reason": "getattr(...) at line 671 reads an attribute by computed name. The lifter can't trace what's being read into the evidence schema.",
+          "suggested_fix": "Replace with explicit attribute access, or annotate the evidence input with @evidence_inputs(name=lambda ...: ...) so the lifter knows what to gather.",
+          "severity": "error"
+        },
+        {
+          "category": "side_effect_evidence",
+          "line": 757,
+          "reason": "Line 757 binds 'tool_finish' from self._append_tool_result_and_check_finality(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._append_tool_result_and_check_finality supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        },
+        {
+          "category": "side_effect_evidence",
+          "line": 749,
+          "reason": "Line 749 binds 'execution_result' from self._execute_single_native_tool_call(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._execute_single_native_tool_call supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/agents/crew_agent_executor.py",
+      "function_name": "_handle_agent_action",
+      "line_start": 1402,
+      "line_end": 1429,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 1414,
+          "reason": "Line 1414 binds 'add_image_tool' from I18N_DEFAULT.tools(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If I18N_DEFAULT.tools supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "_should_replan",
+      "line_start": 2274,
+      "line_end": 2324,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 2285,
+          "reason": "Line 2285 binds 'max_replans' from self._get_max_replans(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._get_max_replans supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        },
+        {
+          "category": "side_effect_evidence",
+          "line": 2292,
+          "reason": "Line 2292 binds 'failed_todos' from self.state.todos.get_failed_todos(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self.state.todos.get_failed_todos supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "_handle_agent_action",
+      "line_start": 2730,
+      "line_end": 2759,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 2742,
+          "reason": "Line 2742 binds 'add_image_tool' from I18N_DEFAULT.tools(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If I18N_DEFAULT.tools supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/experimental/agent_executor.py",
+      "function_name": "_inject_files_from_inputs",
+      "line_start": 2896,
+      "line_end": 2910,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 2902,
+          "reason": "Line 2902 binds 'files' from inputs.get(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If inputs.get supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/llms/providers/anthropic/completion.py",
+      "function_name": "_handle_completion",
+      "line_start": 793,
+      "line_end": 938,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 845,
+          "reason": "Line 845 binds 'usage' from self._extract_anthropic_token_usage(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._extract_anthropic_token_usage supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/llms/providers/anthropic/completion.py",
+      "function_name": "_handle_tool_use_conversation",
+      "line_start": 1212,
+      "line_end": 1324,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 1229,
+          "reason": "Line 1229 binds 'tool_results' from self._execute_tools_and_collect_results(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._execute_tools_and_collect_results supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/llms/providers/anthropic/completion.py",
+      "function_name": "_ahandle_completion",
+      "line_start": 1326,
+      "line_end": 1459,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 1378,
+          "reason": "Line 1378 binds 'usage' from self._extract_anthropic_token_usage(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._extract_anthropic_token_usage supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/llms/providers/anthropic/completion.py",
+      "function_name": "_ahandle_tool_use_conversation",
+      "line_start": 1640,
+      "line_end": 1716,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 1657,
+          "reason": "Line 1657 binds 'tool_results' from self._execute_tools_and_collect_results(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._execute_tools_and_collect_results supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/crewai/src/crewai/llms/providers/openai/completion.py",
+      "function_name": "_handle_streaming_completion",
+      "line_start": 1845,
+      "line_end": 1983,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "warm",
+      "priority_score": 0.42,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 1970,
+          "reason": "Line 1970 binds 'result' from self._finalize_streaming_response(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If self._finalize_streaming_response supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    },
+    {
+      "file_path": "lib/devtools/src/crewai_devtools/cli.py",
+      "function_name": "translate_release_notes",
+      "line_start": 484,
+      "line_end": 526,
+      "pattern": "P6",
+      "labels": [],
+      "label_cardinality": 0,
+      "regime": "unknown",
+      "volume_estimate": "cold",
+      "priority_score": 0.24,
+      "hazards": [
+        {
+          "category": "side_effect_evidence",
+          "line": 499,
+          "reason": "Line 499 binds 'locale_cfg' from _CHANGELOG_LOCALES.get(...) and a later branch reads it. If the call has side effects, lifting it into evidence-gathering would re-fire those side effects on every dispatch.",
+          "suggested_fix": "If _CHANGELOG_LOCALES.get supports a dry-run mode, use it for the probe and move the real call into the chosen label's _on_ handler. If not, add @evidence_via_probe(field='...') to declare this as safe.",
+          "severity": "error"
+        }
+      ],
+      "lift_status": "refused"
+    }
+  ],
+  "errors": [
+    "lib/crewai/src/crewai/cli/templates/crew/crew.py: parse failed (invalid syntax)",
+    "lib/crewai/src/crewai/cli/templates/crew/main.py: parse failed (invalid syntax)",
+    "lib/crewai/src/crewai/cli/templates/flow/main.py: parse failed (invalid syntax)",
+    "lib/crewai/src/crewai/cli/templates/tool/src/{{folder_name}}/__init__.py: parse failed (invalid syntax)",
+    "lib/crewai/src/crewai/cli/templates/tool/src/{{folder_name}}/tool.py: parse failed (invalid syntax)"
+  ],
+  "repo_label": "crewai",
+  "github_path": "crewAIInc/crewAI",
+  "github_branch": "main",
+  "raw_url_prefix": "https://raw.githubusercontent.com/crewAIInc/crewAI/main",
+  "github_blob_prefix": "https://github.com/crewAIInc/crewAI/blob/main"
+}
