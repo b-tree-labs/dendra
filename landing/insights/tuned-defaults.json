@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "generated_at": "2026-04-29T00:00:00+00:00",
+  "version": 2,
+  "generated_at": "2026-05-05T05:47:06.746193+00:00",
   "cohort_size": 0,
   "defaults": {
     "median_outcomes_to_graduation": {
@@ -18,5 +18,10 @@
     "top_refusal_categories": []
   },
   "signature": null,
-  "_note": "Hand-curated cohort defaults bootstrapping the Dendra Insights flywheel. Cohort size 0 means these are the baked-in defaults wrapped in the public JSON envelope so the fetch pipe works end-to-end before any deployments emit. Once enrolled deployments begin emitting and the nightly aggregator runs, this file is replaced by aggregator output and signed."
+  "_meta": {
+    "events_total": 0,
+    "events_by_type": {},
+    "aggregator_version": "140fe4b",
+    "source_database": "dendra-events"
+  }
 }
