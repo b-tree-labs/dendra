@@ -16,8 +16,8 @@ export default defineConfig({
         d1Databases: ['DB'],
         bindings: {
           ENVIRONMENT: 'test',
-          API_KEY_PEPPER: 'test-pepper-32-bytes-of-pseudo-entropy-yo',
-          DASHBOARD_SERVICE_TOKEN: 'test-service-token-for-dashboard',
+          API_KEY_PEPPER: 'test-pepper-32-bytes-of-pseudo-entropy-yo', // pragma: allowlist secret
+          DASHBOARD_SERVICE_TOKEN: 'test-service-token-for-dashboard', // pragma: allowlist secret
           STRIPE_SECRET_KEY: 'sk_test_dummy', // pragma: allowlist secret
           STRIPE_WEBHOOK_SECRET: 'whsec_dummy', // pragma: allowlist secret
           // Deterministic Ed25519 32-byte private key (hex) for tests.
