@@ -363,4 +363,4 @@ the rename is a v1.x concern that arrives with the multi-axis API.
 
 ---
 
-_Copyright (c) 2026 B-Tree Ventures, LLC. Apache-2.0 licensed._
+_Copyright (c) 2026 B-Tree Labs. Apache-2.0 licensed._

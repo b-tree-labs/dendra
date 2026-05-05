@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright (c) 2026 B-Tree Ventures, LLC
+# Copyright (c) 2026 B-Tree Labs
 # SPDX-License-Identifier: Apache-2.0
 #
 # ship-check — local mirror of every GitHub Actions workflow that runs on
@@ -104,7 +104,7 @@ coverage_check() {
 
 # ─── individual mirrors ────────────────────────────────────────────────────
 
-# Mirrors ci.yml → axiom-labs-os/.github python-ci.yml@v1
+# Mirrors ci.yml → b-tree-labs/.github python-ci.yml@v1
 # Jobs: Lint, Pre-commit, Provenance scan, Test (py3.10–3.13)
 mirror_ci() {
   step "ci.yml" "ruff + pre-commit + pytest + provenance"

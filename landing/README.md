@@ -132,5 +132,5 @@ The landing page is a living artifact. Review quarterly:
 
 ---
 
-_Copyright (c) 2026 B-Tree Ventures, LLC (dba B-Tree Labs).
+_Copyright (c) 2026 B-Tree Labs (dba B-Tree Labs).
 Licensed CC-BY 4.0; site content copy-safe for adaptation._

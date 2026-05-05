@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2026 B-Tree Ventures, LLC
+# Copyright (c) 2026 B-Tree Labs
 # SPDX-License-Identifier: Apache-2.0
 
 """Build a self-contained browser bundle of the analyzer.
@@ -99,7 +99,7 @@ def build() -> int:
         out_lines.insert(20, _STUBS)
 
     header = (
-        "# Copyright (c) 2026 B-Tree Ventures, LLC\n"
+        "# Copyright (c) 2026 B-Tree Labs\n"
         "# SPDX-License-Identifier: LicenseRef-BSL-1.1\n"
         "# AUTO-GENERATED — DO NOT EDIT.\n"
         "# Generated from src/dendra/analyzer.py by scripts/build_browser_analyzer.py.\n"

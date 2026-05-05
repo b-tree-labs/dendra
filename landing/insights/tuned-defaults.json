@@ -18,5 +18,5 @@
     "top_refusal_categories": []
   },
   "signature": null,
-  "_note": "Hand-curated cohort defaults bootstrapping the Dendra Insights flywheel. Cohort size 0 means these are the baked-in defaults wrapped in the public JSON envelope so the fetch pipe works end-to-end before any seed deployments emit. Once SoilMetrix + UT begin emitting and the nightly aggregator runs, this file is replaced by aggregator output and signed."
+  "_note": "Hand-curated cohort defaults bootstrapping the Dendra Insights flywheel. Cohort size 0 means these are the baked-in defaults wrapped in the public JSON envelope so the fetch pipe works end-to-end before any deployments emit. Once enrolled deployments begin emitting and the nightly aggregator runs, this file is replaced by aggregator output and signed."
 }

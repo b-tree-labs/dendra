@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright (c) 2026 B-Tree Ventures, LLC
+# Copyright (c) 2026 B-Tree Labs
 # SPDX-License-Identifier: Apache-2.0
 #
 # Mirrors .github/workflows/license-check.yml. The BSL allowlist must
