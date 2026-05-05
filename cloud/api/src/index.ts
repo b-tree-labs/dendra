@@ -26,8 +26,9 @@ import {
   fetchCorpusHandler,
   contributeHandler,
 } from './cloud_features';
+import { device, type DeviceEnv } from './device';
 
-type Env = AdminEnv & WebhookEnv;
+type Env = AdminEnv & WebhookEnv & DeviceEnv;
 const app = new Hono<{ Bindings: Env }>();
 
 // ---------------------------------------------------------------------------
@@ -71,6 +72,11 @@ billable.post('/team-corpus', shareCorpusHandler);
 billable.get('/team-corpus/:id', fetchCorpusHandler);
 billable.post('/registry/contribute', contributeHandler);
 v1.route('/', billable);
+
+// Device-flow login (RFC 8628) — anonymous. Mounted BEFORE the
+// auth-required /v1 group so the more-specific /v1/device prefix wins
+// the route match and unauthenticated CLIs can kick off the flow.
+app.route('/v1/device', device);
 
 app.route('/v1', v1);
 

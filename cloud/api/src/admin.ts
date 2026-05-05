@@ -254,3 +254,109 @@ admin.delete('/keys/:id', async (c) => {
   }
   return c.json({ revoked: true, id });
 });
+
+// ---------------------------------------------------------------------------
+// CLI device-flow admin endpoints. Companion to /v1/device/* in device.ts.
+//
+// The dashboard's /cli-auth page calls these via the Clerk-authenticated
+// dashboard route handler, which forwards using the service token.
+// ---------------------------------------------------------------------------
+
+// GET /admin/cli-sessions/:user_code — pre-authorize lookup.
+// Returns metadata the dashboard renders for the user to confirm
+// before they click Authorize. NEVER returns device_code (CLI's secret).
+admin.get('/cli-sessions/:user_code', async (c) => {
+  const userCode = c.req.param('user_code');
+  if (!userCode) return c.json({ error: 'missing_user_code' }, 400);
+
+  const row = await c.env.DB.prepare(
+    `SELECT state, device_name, created_at, expires_at, authorized_at
+       FROM cli_sessions WHERE user_code = ? LIMIT 1`,
+  )
+    .bind(userCode)
+    .first<{
+      state: string;
+      device_name: string | null;
+      created_at: string;
+      expires_at: string;
+      authorized_at: string | null;
+    }>();
+  if (!row) return c.json({ error: 'not_found' }, 404);
+
+  // Treat past-expires_at + 'pending' as expired for the dashboard's sake.
+  const now = new Date().toISOString().replace('T', ' ').replace(/\..*$/, '');
+  const effectiveState = row.state === 'pending' && row.expires_at < now ? 'expired' : row.state;
+
+  return c.json({
+    state: effectiveState,
+    device_name: row.device_name,
+    created_at: row.created_at,
+    expires_at: row.expires_at,
+    authorized_at: row.authorized_at,
+  });
+});
+
+// POST /admin/cli-sessions/:user_code/authorize — dashboard authorizes.
+// Body: { user_id: number }
+admin.post('/cli-sessions/:user_code/authorize', async (c) => {
+  const userCode = c.req.param('user_code');
+  if (!userCode) return c.json({ error: 'missing_user_code' }, 400);
+
+  const body = await c.req.json<{ user_id?: number }>().catch(() => null);
+  if (!body?.user_id || !Number.isInteger(body.user_id)) {
+    return c.json({ error: 'missing_user_id' }, 400);
+  }
+
+  // Atomic state transition: only pending + non-expired sessions can be
+  // authorized. The WHERE clause prevents race-double-authorize.
+  const updated = await c.env.DB.prepare(
+    `UPDATE cli_sessions
+        SET state = 'authorized',
+            user_id = ?,
+            authorized_at = datetime('now')
+      WHERE user_code = ?
+        AND state = 'pending'
+        AND expires_at > datetime('now')
+     RETURNING id, state`,
+  )
+    .bind(body.user_id, userCode)
+    .first<{ id: number; state: string }>();
+
+  if (!updated) {
+    // Either not found, already authorized/denied/consumed, or expired.
+    // Look up to disambiguate for the dashboard's error message.
+    const existing = await c.env.DB.prepare(
+      `SELECT state, expires_at FROM cli_sessions WHERE user_code = ? LIMIT 1`,
+    )
+      .bind(userCode)
+      .first<{ state: string; expires_at: string }>();
+    if (!existing) return c.json({ error: 'not_found' }, 404);
+
+    const now = new Date().toISOString().replace('T', ' ').replace(/\..*$/, '');
+    if (existing.state === 'pending' && existing.expires_at < now) {
+      return c.json({ error: 'expired' }, 410);
+    }
+    return c.json({ error: `cannot_authorize_in_state_${existing.state}` }, 409);
+  }
+
+  return c.json({ ok: true });
+});
+
+// POST /admin/cli-sessions/:user_code/deny — dashboard denies.
+admin.post('/cli-sessions/:user_code/deny', async (c) => {
+  const userCode = c.req.param('user_code');
+  if (!userCode) return c.json({ error: 'missing_user_code' }, 400);
+
+  const updated = await c.env.DB.prepare(
+    `UPDATE cli_sessions
+        SET state = 'denied'
+      WHERE user_code = ?
+        AND state = 'pending'
+     RETURNING id`,
+  )
+    .bind(userCode)
+    .first<{ id: number }>();
+
+  if (!updated) return c.json({ error: 'not_found_or_already_decided' }, 404);
+  return c.json({ ok: true });
+});

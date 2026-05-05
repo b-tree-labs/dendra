@@ -91,3 +91,51 @@ export async function revokeKey(userId: number, keyId: number): Promise<void> {
     body: JSON.stringify({ user_id: userId }),
   });
 }
+
+// ---------------------------------------------------------------------------
+// CLI device-flow admin endpoints. Companions to /v1/device/* on the api
+// Worker; called from the dashboard's /cli-auth page after Clerk auth.
+// ---------------------------------------------------------------------------
+
+export type CliSessionState =
+  | 'pending'
+  | 'authorized'
+  | 'denied'
+  | 'consumed'
+  | 'expired';
+
+export interface CliSessionInfo {
+  state: CliSessionState;
+  device_name: string | null;
+  created_at: string;
+  expires_at: string;
+  authorized_at: string | null;
+}
+
+export async function lookupCliSession(userCode: string): Promise<CliSessionInfo> {
+  return adminFetch<CliSessionInfo>(
+    `/admin/cli-sessions/${encodeURIComponent(userCode)}`,
+  );
+}
+
+export async function authorizeCliSession(
+  userCode: string,
+  userId: number,
+): Promise<void> {
+  await adminFetch(
+    `/admin/cli-sessions/${encodeURIComponent(userCode)}/authorize`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId }),
+    },
+  );
+}
+
+export async function denyCliSession(userCode: string): Promise<void> {
+  await adminFetch(
+    `/admin/cli-sessions/${encodeURIComponent(userCode)}/deny`,
+    {
+      method: 'POST',
+    },
+  );
+}
