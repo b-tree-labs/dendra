@@ -12,11 +12,13 @@
 # Additional Use Grant: see LICENSE-BSL. Production use is
 # permitted; offering a competing hosted service is not.
 
-"""Public registry contributions (v1 stub).
+"""Public registry contributions.
 
 The third Tier of the Shared Package strategy: a community-contributed
 registry of analyzed repos with curated fixes. Contributions are
-opt-in and stripped of identifying information before upload.
+opt-in and stripped of identifying information before upload — the
+client-side ``anonymize`` pass strips a conservative key list and the
+server re-validates that the same keys are absent before accepting.
 """
 
 from __future__ import annotations

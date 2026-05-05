@@ -38,8 +38,10 @@ is_bsl_allowed() {
     tests/test_auth.py|\
     tests/test_benchmarks.py|\
     tests/test_cli.py|\
+    tests/test_cloud_registry.py|\
     tests/test_cloud_report.py|\
     tests/test_cloud_sync.py|\
+    tests/test_cloud_team_corpus.py|\
     tests/test_enrich_landing_corpus.py|\
     tests/test_lifter_branch.py|\
     tests/test_lifter_branch_v1_5.py|\

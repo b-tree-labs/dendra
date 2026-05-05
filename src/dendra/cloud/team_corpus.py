@@ -12,11 +12,16 @@
 # Additional Use Grant: see LICENSE-BSL. Production use is
 # permitted; offering a competing hosted service is not.
 
-"""Team-shared analyzer corpus (v1 stub).
+"""Team-shared analyzer corpus.
 
-A team uploads a corpus (rule + label set + examples) and gets back a
-share URL. Other team members fetch by team ID. Real implementation
-will tie to the team-membership model in the dashboard.
+A team uploads a corpus (rule + label set + examples) under a
+team-chosen ``team_id`` and gets back a share URL. Other team
+members fetch by ``team_id``. v1.0 ships with convention-only
+isolation: anyone who knows the ``team_id`` can fetch. The
+``team_id`` is operator-coordinated out of band; treat it like a
+shared secret.
+
+v1.1 will tie this to a real team-membership model in the dashboard.
 """
 
 from __future__ import annotations
@@ -51,15 +56,17 @@ def _auth_headers() -> dict[str, str]:
     }
 
 
-def share_corpus(corpus_dict: dict[str, Any]) -> str:
-    """Upload a corpus and return its share URL.
+def share_corpus(corpus_dict: dict[str, Any], team_id: str) -> str:
+    """Upload a corpus under ``team_id`` and return its share URL.
 
-    Falls back to a synthesized URL if the response shape is unexpected,
-    so callers always have something to display.
+    The server stamps a server-canonical URL of the form
+    ``<api-base>/team-corpus/<team_id>`` that team members can paste
+    into ``fetch_team_corpus`` to retrieve the most recent corpus.
     """
     headers = _auth_headers()
     url = f"{_api_base()}/team-corpus"
-    resp = requests.post(url, json=corpus_dict, headers=headers, timeout=_TIMEOUT_SECONDS)
+    body = {"team_id": team_id, "corpus": corpus_dict}
+    resp = requests.post(url, json=body, headers=headers, timeout=_TIMEOUT_SECONDS)
     if getattr(resp, "ok", False):
         try:
             payload = resp.json()
@@ -67,7 +74,10 @@ def share_corpus(corpus_dict: dict[str, Any]) -> str:
                 return str(payload["share_url"])
         except ValueError:
             pass
-    return f"{_api_base()}/team-corpus/pending"
+    # Non-ok response: synthesize the canonical URL from inputs so the
+    # caller has something coherent to display, but the URL won't
+    # resolve to anything until a successful upload.
+    return f"{_api_base()}/team-corpus/{team_id}"
 
 
 def fetch_team_corpus(team_id: str) -> dict:
