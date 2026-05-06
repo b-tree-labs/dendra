@@ -31,10 +31,15 @@ jobs:
           python-version: "3.13"
           cache: pip
 
-      - name: Install package + dev deps
+      - name: Install package + all extras needed for full coverage
+        # The ratchet's snapshot reflects coverage with optional deps
+        # installed. Without them, modules that import-guard on those
+        # packages drop to 0% and trip R1. We deliberately exclude the
+        # `bundled` extra (llama-cpp-python) which is a slow C build
+        # not exercised by the default test suite.
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev,train,viz]"
+          pip install -e ".[dev,train,viz,license,mcp,bench,openai,anthropic,ollama,onnx]"
 
       - name: Run pytest with coverage
         run: |
