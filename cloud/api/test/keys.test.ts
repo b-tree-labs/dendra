@@ -64,7 +64,7 @@ describe('parseBearer', () => {
   });
 
   it('rejects wrong prefix', () => {
-    expect(parseBearer('Bearer sk_live_abcdefghijklmnopqrstuvwxyz12345A')).toBeNull();
+    expect(parseBearer('Bearer sk_live_abcdefghijklmnopqrstuvwxyz12345A')).toBeNull(); // pragma: allowlist secret
   });
 
   it('rejects wrong length', () => {

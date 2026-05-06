@@ -27,7 +27,7 @@ export interface DeviceEnv extends ApiEnv {
 }
 
 // User-code alphabet excludes ambiguous glyphs (0/O, 1/I/L). 32 chars total.
-const USER_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const USER_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // pragma: allowlist secret
 const USER_CODE_LEN = 8; // 32^8 ≈ 1.1e12 keyspace; format XXXX-XXXX
 const DEVICE_CODE_BYTES = 32; // 256 bits via base64url
 

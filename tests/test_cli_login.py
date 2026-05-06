@@ -74,7 +74,7 @@ class TestHappyPath:
         success_resp = _resp(
             200,
             {
-                "api_key": "dndr_live_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                "api_key": "dndr_live_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",  # pragma: allowlist secret
                 "email": "user@example.com",
             },
         )
@@ -200,7 +200,7 @@ class TestErrorPaths:
         success = _resp(
             200,
             {
-                "api_key": "dndr_live_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                "api_key": "dndr_live_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",  # pragma: allowlist secret
                 "email": "u@e.com",
             },
         )
@@ -231,7 +231,11 @@ class TestPolish:
             },
         )
         success = _resp(
-            200, {"api_key": "dndr_live_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "email": "u@e.com"}
+            200,
+            {
+                "api_key": "dndr_live_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",  # pragma: allowlist secret
+                "email": "u@e.com",
+            },
         )
 
         with (
@@ -258,7 +262,11 @@ class TestPolish:
             },
         )
         success = _resp(
-            200, {"api_key": "dndr_live_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "email": "u@e.com"}
+            200,
+            {
+                "api_key": "dndr_live_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",  # pragma: allowlist secret
+                "email": "u@e.com",
+            },
         )
         args.no_browser = False
 
@@ -283,7 +291,11 @@ class TestPolish:
             },
         )
         success = _resp(
-            200, {"api_key": "dndr_live_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "email": "u@e.com"}
+            200,
+            {
+                "api_key": "dndr_live_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",  # pragma: allowlist secret
+                "email": "u@e.com",
+            },
         )
         with patch("requests.post", side_effect=[start_resp, success]) as post, patch("time.sleep"):
             cmd_login(args)
@@ -304,7 +316,11 @@ class TestPolish:
             },
         )
         success = _resp(
-            200, {"api_key": "dndr_live_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "email": "u@e.com"}
+            200,
+            {
+                "api_key": "dndr_live_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",  # pragma: allowlist secret
+                "email": "u@e.com",
+            },
         )
         sleeps: list[float] = []
         with (
