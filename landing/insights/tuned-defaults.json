@@ -1,6 +1,6 @@
 {
-  "version": 2,
-  "generated_at": "2026-05-05T05:47:06.746193+00:00",
+  "version": 3,
+  "generated_at": "2026-05-06T06:08:21.885629+00:00",
   "cohort_size": 0,
   "defaults": {
     "median_outcomes_to_graduation": {
@@ -21,7 +21,7 @@
   "_meta": {
     "events_total": 0,
     "events_by_type": {},
-    "aggregator_version": "140fe4b",
+    "aggregator_version": "dc830b6",
     "source_database": "dendra-events"
   }
 }
