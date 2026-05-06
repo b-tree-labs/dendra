@@ -1,0 +1,57 @@
+# Copyright (c) 2026 B-Tree Labs
+# SPDX-License-Identifier: Apache-2.0
+#
+# coverage-ratchet — enforces per-file coverage floors recorded in
+# coverage_floors.json. Three rules (see scripts/coverage_ratchet.py):
+#   R1  no-regression: every file must be >= its recorded floor.
+#   R2  +5pp buffer for files with floor < 70%.
+#   R3  new files must enter at >= 60% on first appearance.
+#
+# Required check: branch protection on main should mark
+# "Coverage ratchet" as required so this can't be bypassed without an
+# explicit admin override.
+name: Coverage ratchet
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ratchet:
+    name: Coverage ratchet
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install package + dev deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,train,viz]"
+
+      - name: Run pytest with coverage
+        run: |
+          pytest --cov=src/dendra --cov-report=json:coverage.json --cov-report=term -q
+
+      - name: Enforce coverage floors
+        run: |
+          python scripts/coverage_ratchet.py
+
+      - name: Validate integration-test manifest
+        run: |
+          python scripts/check_integration_manifest.py
+
+      - name: Upload coverage artifact (for inspection on failure)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-json
+          path: coverage.json
+          retention-days: 7
