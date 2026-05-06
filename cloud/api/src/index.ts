@@ -102,7 +102,20 @@ app.notFound((c) =>
 );
 
 app.onError((err, c) => {
-  console.error('unhandled error:', err);
+  // Structured log so Workers Observability can surface the right
+  // path / method / status. The Error object's stack survives the
+  // serialization since we pass it as the second arg.
+  console.error(
+    JSON.stringify({
+      level: 'error',
+      msg: 'unhandled_error',
+      path: c.req.path,
+      method: c.req.method,
+      env: c.env.ENVIRONMENT,
+      error: err.message,
+      stack: err.stack,
+    }),
+  );
   return c.json({ error: 'internal_error' }, 500);
 });
 

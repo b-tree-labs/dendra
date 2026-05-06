@@ -24,6 +24,10 @@ export default defineConfig({
           // Real keys are generated per-env via scripts/generate-license-key.ts.
           LICENSE_SIGNING_PRIVATE_KEY:
             '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef', // pragma: allowlist secret
+          // Rate-limiter bindings (DEVICE_CODE_LIMIT / DEVICE_TOKEN_LIMIT)
+          // are intentionally omitted: miniflare doesn't implement Workers
+          // Rate Limiting, and the handlers fail open when the binding is
+          // absent (see passesRateLimit() in device.ts).
         },
       },
     }),

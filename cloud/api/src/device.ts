@@ -24,6 +24,35 @@ export interface DeviceEnv extends ApiEnv {
   // Where the CLI tells the user to go. Defaults to app.dendra.run for
   // production; tests + staging override.
   DENDRA_DASHBOARD_URL?: string;
+
+  // Cloudflare Workers Rate Limiting bindings (configured in wrangler.toml).
+  // Both are per-IP, sliding-window. /code is stricter because each call
+  // creates a DB row; /token is looser because legitimate clients poll.
+  // Optional so tests + miniflare (which doesn't implement Rate Limiting)
+  // can omit them — handlers fail-open when the binding is absent.
+  DEVICE_CODE_LIMIT?: RateLimiter;
+  DEVICE_TOKEN_LIMIT?: RateLimiter;
+}
+
+interface RateLimiter {
+  limit: (opts: { key: string }) => Promise<{ success: boolean }>;
+}
+
+function clientIp(c: { req: { header: (n: string) => string | undefined } }): string {
+  return (
+    c.req.header('cf-connecting-ip') ??
+    c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ??
+    'unknown'
+  );
+}
+
+export async function passesRateLimit(
+  limiter: RateLimiter | undefined,
+  key: string,
+): Promise<boolean> {
+  if (!limiter) return true; // local dev / tests / miniflare — fail open
+  const { success } = await limiter.limit({ key });
+  return success;
 }
 
 // User-code alphabet excludes ambiguous glyphs (0/O, 1/I/L). 32 chars total.
@@ -72,6 +101,12 @@ export const device = new Hono<{ Bindings: DeviceEnv }>();
 // }
 // ---------------------------------------------------------------------------
 device.post('/code', async (c) => {
+  // Rate limit by client IP. Caps anonymous code-creation to ~10/min/IP
+  // so a runaway script can't fill cli_sessions with junk rows.
+  if (!(await passesRateLimit(c.env.DEVICE_CODE_LIMIT, clientIp(c)))) {
+    return c.json({ error: 'rate_limited' }, 429);
+  }
+
   const body = (await c.req.json().catch(() => ({}))) as { device_name?: unknown };
   let deviceName: string | null = null;
   if (typeof body.device_name === 'string' && body.device_name.trim()) {
@@ -126,6 +161,13 @@ device.post('/code', async (c) => {
 //   400 { error: "invalid_grant" }             unknown / already-consumed
 // ---------------------------------------------------------------------------
 device.post('/token', async (c) => {
+  // Rate limit by client IP. Looser than /code because legitimate clients
+  // poll every 5s = 12/min steady-state. We allow ~30/min/IP to absorb
+  // slow_down-induced backoff while still cutting off runaway pollers.
+  if (!(await passesRateLimit(c.env.DEVICE_TOKEN_LIMIT, clientIp(c)))) {
+    return c.json({ error: 'slow_down' }, 429);
+  }
+
   const body = (await c.req.json().catch(() => ({}))) as { device_code?: unknown };
   if (typeof body.device_code !== 'string' || !body.device_code) {
     return c.json({ error: 'invalid_request' }, 400);

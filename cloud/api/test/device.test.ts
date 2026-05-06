@@ -352,3 +352,40 @@ describe('POST /admin/cli-sessions/:user_code/deny', () => {
     expect(deny.status).toBe(404);
   });
 });
+
+// ---------------------------------------------------------------------------
+// passesRateLimit — unit-tests the helper that gates anonymous endpoints.
+// The handlers fail open when the binding is absent (tests/dev) and gate
+// at the platform layer in prod via the wrangler.toml ratelimit binding.
+// ---------------------------------------------------------------------------
+describe('passesRateLimit', () => {
+  it('returns true when no limiter binding is provided (fail open)', async () => {
+    const { passesRateLimit } = await import('../src/device');
+    expect(await passesRateLimit(undefined, '1.2.3.4')).toBe(true);
+  });
+
+  it('returns true when the limiter says success', async () => {
+    const { passesRateLimit } = await import('../src/device');
+    const limiter = { limit: async () => ({ success: true }) };
+    expect(await passesRateLimit(limiter, '1.2.3.4')).toBe(true);
+  });
+
+  it('returns false when the limiter says failure', async () => {
+    const { passesRateLimit } = await import('../src/device');
+    const limiter = { limit: async () => ({ success: false }) };
+    expect(await passesRateLimit(limiter, '1.2.3.4')).toBe(false);
+  });
+
+  it('passes the IP through as the rate-limit key', async () => {
+    const { passesRateLimit } = await import('../src/device');
+    let captured = '';
+    const limiter = {
+      limit: async ({ key }: { key: string }) => {
+        captured = key;
+        return { success: true };
+      },
+    };
+    await passesRateLimit(limiter, '203.0.113.42');
+    expect(captured).toBe('203.0.113.42');
+  });
+});
