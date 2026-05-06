@@ -27,9 +27,11 @@ from __future__ import annotations
 
 import argparse
 import json
-import secrets
+import os
+import socket
 import sys
 import time
+import webbrowser
 from collections.abc import Sequence
 from dataclasses import asdict
 from pathlib import Path
@@ -44,9 +46,11 @@ from dendra import auth
 # point that points new users at ``dendra login`` if they want cloud features.
 # ---------------------------------------------------------------------------
 
-_DASHBOARD_BASE = "https://app.dendra.ai"
-_CLI_AUTH_PATH = "/cli-auth"
+_DEFAULT_API_BASE = "https://api.dendra.run/v1"
+_DEFAULT_DASHBOARD = "https://app.dendra.run"
 _NUDGE_THRESHOLD = 3
+_LOGIN_REQUEST_TIMEOUT = 10.0  # seconds; per-request HTTP timeout
+_LOGIN_MIN_INTERVAL = 2.0  # safety floor on the server-suggested poll interval
 
 
 def _state_file() -> Path:
@@ -436,40 +440,159 @@ def cmd_status(args: argparse.Namespace) -> int:
 
 
 def cmd_login(args: argparse.Namespace) -> int:
-    """Browser-based device flow.
+    """Browser-based OAuth 2.0 Device Authorization Grant (RFC 8628).
 
-    v1 stub: prints the dashboard URL with a one-time code, polls a
-    stub endpoint, and saves the returned credentials. The real
-    polling endpoint is a TODO for the dashboard team; the CLI flow
-    works end-to-end against the local stub today.
+    1. POST /v1/device/code  → server returns (device_code, user_code,
+       verification_uri_complete, expires_in, interval). The device_code
+       is the long secret only this CLI process knows; the user_code is
+       the short XXXX-XXXX string the user types in the dashboard.
+    2. Display the URL + code, optionally launch the browser.
+    3. Poll POST /v1/device/token at the server-suggested interval until
+       the dashboard authorizes (or denies, or expires).
+    4. On success the server mints a fresh dndr_live_… key and returns
+       it once. Save to ~/.dendra/credentials with mode 0600.
+
+    Environment overrides:
+        DENDRA_API_BASE      — point the CLI at a non-prod api Worker
+                               (e.g. http://localhost:8787/v1 for dev)
     """
-    code = secrets.token_urlsafe(24)
-    auth_url = f"{_DASHBOARD_BASE}{_CLI_AUTH_PATH}?code={code}"
+    import requests  # lazy import; keeps `dendra --help` snappy
 
-    print("To finish signing in, open this URL in your browser:")
+    api_base = _login_api_base()
+    device_name = args.device_name or _detect_device_name()
+
+    # Step 1: start the flow.
+    try:
+        start = requests.post(
+            f"{api_base}/device/code",
+            json={"device_name": device_name},
+            timeout=_LOGIN_REQUEST_TIMEOUT,
+        )
+    except requests.RequestException as e:
+        print(f"Could not reach Dendra ({api_base}): {e}", file=sys.stderr)
+        return 1
+
+    if not start.ok:
+        print(f"Failed to start device flow: HTTP {start.status_code}", file=sys.stderr)
+        try:
+            print(f"  {start.json().get('error', start.text)}", file=sys.stderr)
+        except ValueError:
+            pass
+        return 1
+
+    info = start.json()
+    device_code = info["device_code"]
+    user_code = info["user_code"]
+    verification_uri_complete = info.get(
+        "verification_uri_complete",
+        f"{_DEFAULT_DASHBOARD}/cli-auth?user_code={user_code}",
+    )
+    interval = max(float(info.get("interval", 5)), _LOGIN_MIN_INTERVAL)
+    expires_in = int(info.get("expires_in", 900))
+
+    # Step 2: prompt + open the browser.
     print()
-    print(f"  {auth_url}")
+    print("To finish signing in:")
     print()
+    print(f"  1. Open  {verification_uri_complete}")
+    print(f"  2. Confirm the code:  {user_code}")
+    print()
+
+    if not args.no_browser:
+        try:
+            webbrowser.open(verification_uri_complete, new=1, autoraise=True)
+        except Exception:
+            # Headless environments / WSL / SSH without DISPLAY — silent fail.
+            pass
+
     print("Waiting for confirmation (Ctrl+C to cancel)...", flush=True)
 
-    # TODO(dashboard): replace this stub with real long-poll against
-    # ``POST {API_BASE}/cli-auth/poll`` once the dashboard ships.
-    api_key, email = _stub_poll_for_token(code)
+    # Step 3: poll.
+    deadline = time.monotonic() + expires_in
+    try:
+        while time.monotonic() < deadline:
+            time.sleep(interval)
+            try:
+                poll = requests.post(
+                    f"{api_base}/device/token",
+                    json={"device_code": device_code},
+                    timeout=_LOGIN_REQUEST_TIMEOUT,
+                )
+            except requests.RequestException:
+                # Transient network blip — keep polling within the deadline.
+                continue
 
-    auth.save_credentials(api_key, email=email)
+            if poll.ok:
+                data = poll.json()
+                api_key = data["api_key"]
+                email = data.get("email") or "unknown"
+                auth.save_credentials(api_key, email=email)
+                print()
+                print(f"Signed in as {email}.")
+                print(f"Credentials saved to {auth.credentials_path()} (mode 0600).")
+                return 0
+
+            err = ""
+            try:
+                err = poll.json().get("error", "")
+            except ValueError:
+                pass
+
+            if err == "authorization_pending":
+                continue
+            if err == "slow_down":
+                interval = min(interval + 5.0, 30.0)
+                continue
+            if err == "access_denied":
+                print()
+                print(
+                    "Access denied in browser. Run `dendra login` again to retry.",
+                    file=sys.stderr,
+                )
+                return 1
+            if err == "expired_token":
+                print()
+                print("Login session expired. Run `dendra login` again.", file=sys.stderr)
+                return 1
+            # invalid_grant / invalid_request / unknown
+            print()
+            print(f"Login failed: {err or f'HTTP {poll.status_code}'}", file=sys.stderr)
+            return 1
+    except KeyboardInterrupt:
+        print()
+        print("Login cancelled.", file=sys.stderr)
+        return 130
+
     print()
-    print(f"Signed in as {email}.")
-    print(f"Credentials saved to {auth.credentials_path()} (mode 0600).")
-    return 0
+    print("Login timed out. Run `dendra login` again.", file=sys.stderr)
+    return 1
 
 
-def _stub_poll_for_token(code: str) -> tuple[str, str]:
-    """v1 stub: sleep briefly, then mint a deterministic token.
+def _login_api_base() -> str:
+    """Resolve the api Worker's /v1 base URL for the device flow.
 
-    Replaced by a real HTTP poll once the dashboard exists.
+    Uses ``DENDRA_API_BASE`` if set, falls back to the production Worker.
     """
-    time.sleep(2)
-    return f"dndra_{code[:16]}", "user@example.com"
+    return os.environ.get("DENDRA_API_BASE", _DEFAULT_API_BASE).rstrip("/")
+
+
+def _detect_device_name() -> str:
+    """Best-effort device identifier the user will see in the dashboard.
+
+    Prefers the OS hostname (the operator's chosen machine name) because
+    it's what they recognize when confirming the device. Strips ``.local``
+    / ``.lan`` suffixes added by network managers, caps at 64 chars to
+    match the server-side cap.
+    """
+    try:
+        host = socket.gethostname()
+    except OSError:
+        return "unknown"
+    if not host:
+        return "unknown"
+    # Drop common DNS suffixes that aren't useful for human ID.
+    host = host.split(".", 1)[0]
+    return host[:64] or "unknown"
 
 
 def cmd_logout(args: argparse.Namespace) -> int:
@@ -1939,6 +2062,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     p_login = sub.add_parser(
         "login",
         help="Sign in to Dendra (browser-based, free account).",
+    )
+    p_login.add_argument(
+        "--no-browser",
+        action="store_true",
+        help="Don't try to open the browser. For headless / SSH / WSL "
+        "environments — copy the URL manually.",
+    )
+    p_login.add_argument(
+        "--device-name",
+        default=None,
+        help="Label shown to you in the dashboard ('which device is asking?'). "
+        "Defaults to the OS hostname.",
     )
     p_login.set_defaults(fn=cmd_login)
 
