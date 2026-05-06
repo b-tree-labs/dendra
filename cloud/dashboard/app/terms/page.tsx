@@ -1,0 +1,181 @@
+// Copyright (c) 2026 B-Tree Labs
+// SPDX-License-Identifier: LicenseRef-BSL-1.1
+//
+// Terms of Service. Linked from the dashboard footer + Stripe Checkout
+// footer. v1.0 launch boilerplate; revisit with counsel before any
+// material expansion of paid surface.
+
+export const runtime = "edge";
+
+export const metadata = {
+  title: "Terms of Service — Dendra",
+  description: "Terms governing your use of Dendra.",
+};
+
+export default function TermsPage() {
+  return (
+    <main className="mx-auto max-w-3xl px-6 py-16">
+      <h1 className="text-3xl font-semibold">Terms of Service</h1>
+      <p className="mt-1 text-sm text-neutral-500">
+        Last updated: 2026-05-06
+      </p>
+
+      <div className="prose prose-neutral mt-8 max-w-none text-base text-neutral-800">
+        <h2 className="mt-10 text-xl font-semibold">1. The service</h2>
+        <p>
+          Dendra is a graduated-autonomy classification primitive
+          provided by <strong>B-Tree Labs</strong> (a DBA of B-Tree
+          Ventures, LLC, Texas, USA). It comprises:
+        </p>
+        <ul className="list-disc pl-6">
+          <li>
+            An open-source Python library (<code>pip install dendra</code>),
+            licensed Apache 2.0 for the client SDK and BSL 1.1 for the
+            analyzer/server components. See{" "}
+            <a
+              href="https://github.com/b-tree-labs/dendra/blob/main/LICENSE.md"
+              className="underline"
+            >
+              LICENSE.md
+            </a>{" "}
+            for the canonical split.
+          </li>
+          <li>
+            A hosted API at <code>api.dendra.run</code> with tier-gated
+            usage caps and a paid upgrade path.
+          </li>
+          <li>
+            This dashboard at <code>app.dendra.run</code> for account,
+            billing, and key management.
+          </li>
+        </ul>
+
+        <h2 className="mt-10 text-xl font-semibold">2. Accounts</h2>
+        <p>
+          You must be at least 13 years old (16 in the EU). You agree to
+          provide accurate information and keep your credentials secure;
+          you are responsible for activity under your account. We may
+          suspend accounts that abuse the service, including: scraping,
+          credential sharing, exceeding tier limits via multiple
+          accounts, or violating applicable law.
+        </p>
+
+        <h2 className="mt-10 text-xl font-semibold">3. Acceptable use</h2>
+        <p>
+          You may use Dendra to classify any input you have the lawful
+          right to process. You may not use the service to:
+        </p>
+        <ul className="list-disc pl-6">
+          <li>
+            Generate or distribute illegal content, including CSAM,
+            non-consensual intimate imagery, or content that infringes
+            third-party intellectual property.
+          </li>
+          <li>
+            Build classifiers that target individuals on the basis of
+            protected attributes (race, religion, sexual orientation,
+            etc.) for surveillance, discrimination, or harm.
+          </li>
+          <li>
+            Reverse-engineer rate limits or attempt to bypass the tier
+            caps documented in your subscription.
+          </li>
+          <li>
+            Operate a competing hosted service using the
+            BSL-licensed analyzer/server components — see the License
+            for the full Additional Use Grant text.
+          </li>
+        </ul>
+
+        <h2 className="mt-10 text-xl font-semibold">4. Billing</h2>
+        <p>
+          Paid plans are billed monthly via Stripe. Charges renew until
+          you cancel; cancellation takes effect at the end of the
+          current billing period (no proration, no refunds for partial
+          months). Free tier requires no payment method and has no
+          minimum commitment.
+        </p>
+        <p>
+          We may change pricing with 30 days&apos; notice; existing paid
+          subscriptions remain on their current price until the next
+          renewal after the notice period.
+        </p>
+
+        <h2 className="mt-10 text-xl font-semibold">5. Service availability</h2>
+        <p>
+          We aim for 99% monthly uptime on the hosted API but do not
+          offer a contractual SLA at this stage. Status:{" "}
+          <a href="https://status.dendra.run" className="underline">
+            status.dendra.run
+          </a>
+          .
+        </p>
+
+        <h2 className="mt-10 text-xl font-semibold">6. Your data</h2>
+        <p>
+          You retain all rights in the inputs you submit and the
+          outputs Dendra produces. We process your data only to provide
+          the service, as described in our{" "}
+          <a href="/privacy" className="underline">
+            Privacy Policy
+          </a>
+          . We do not train models on your data.
+        </p>
+
+        <h2 className="mt-10 text-xl font-semibold">7. Disclaimers</h2>
+        <p>
+          The service is provided &ldquo;as is.&rdquo; To the maximum
+          extent permitted by law, we disclaim warranties of
+          merchantability, fitness for a particular purpose, and
+          non-infringement. <strong>Dendra is a classification
+          primitive, not a substitute for human review in
+          safety-critical contexts.</strong> Outcomes you derive from
+          using Dendra are your responsibility.
+        </p>
+
+        <h2 className="mt-10 text-xl font-semibold">8. Limitation of liability</h2>
+        <p>
+          To the maximum extent permitted by law, B-Tree Labs&apos;
+          aggregate liability arising out of or relating to the service
+          will not exceed the greater of (a) USD 100, or (b) the
+          amounts you paid us in the 12 months preceding the claim. We
+          are not liable for indirect, incidental, consequential,
+          special, or punitive damages.
+        </p>
+
+        <h2 className="mt-10 text-xl font-semibold">9. Termination</h2>
+        <p>
+          You may close your account at any time from the dashboard.
+          We may terminate accounts for violations of these Terms with
+          notice; for severe violations (e.g., illegal content), we may
+          terminate immediately.
+        </p>
+
+        <h2 className="mt-10 text-xl font-semibold">10. Governing law</h2>
+        <p>
+          These Terms are governed by the laws of the State of Texas,
+          USA, without regard to conflict-of-law principles. Disputes
+          will be resolved in the state or federal courts of Travis
+          County, Texas.
+        </p>
+
+        <h2 className="mt-10 text-xl font-semibold">11. Changes</h2>
+        <p>
+          We may update these Terms; material changes will be posted
+          here and (for active accounts) emailed at least 7 days before
+          they take effect. Continued use after the effective date
+          constitutes acceptance.
+        </p>
+
+        <h2 className="mt-10 text-xl font-semibold">Contact</h2>
+        <p>
+          Questions:{" "}
+          <a href="mailto:legal@dendra.run" className="underline">
+            legal@dendra.run
+          </a>
+          .
+        </p>
+      </div>
+    </main>
+  );
+}

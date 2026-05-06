@@ -52,6 +52,11 @@ export async function POST(req: NextRequest) {
           dendra_tier_id: body.tier_id,
         },
       },
+      // Stripe shows a "I agree to the Terms of Service" checkbox at
+      // checkout when consent_collection.terms_of_service = "required".
+      // The terms URL itself is configured in the Stripe Dashboard
+      // (Settings → Public details → Terms of service URL).
+      consent_collection: { terms_of_service: "required" },
       ...checkoutReturnUrls(baseUrl),
     });
 
