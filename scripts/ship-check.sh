@@ -55,6 +55,7 @@ declare -A WAIVERS=(
 # missing from both MIRRORS and WAIVERS.
 declare -A MIRRORS=(
   [ci.yml]="mirror_ci"
+  [coverage-ratchet.yml]="mirror_coverage_ratchet"
   [dco.yml]="mirror_dco"
   [install-smoke.yml]="mirror_install_smoke"
   [license-check.yml]="mirror_license_check"
@@ -174,6 +175,37 @@ mirror_install_smoke() {
     return 1
   fi
   ok "install-smoke"
+}
+
+# Mirrors coverage-ratchet.yml — pytest --cov + scripts/coverage_ratchet.py.
+# Enforces R1 (no per-file regression), R2 (+5pp buffer for files with floor
+# < 70%), and R3 (new files must enter at >= 60%).
+mirror_coverage_ratchet() {
+  step "coverage-ratchet.yml" "pytest --cov + per-file floor check"
+
+  if ! pytest --cov=src/dendra --cov-report=json:coverage.json -q \
+       >/tmp/ship-check-cov.log 2>&1; then
+    fail "pytest --cov"
+    tail -30 /tmp/ship-check-cov.log
+    return 1
+  fi
+  ok "pytest --cov ($(grep -E '[0-9]+ passed' /tmp/ship-check-cov.log | tail -1))"
+
+  if ! python "$REPO_ROOT/scripts/coverage_ratchet.py" \
+       >/tmp/ship-check-ratchet.log 2>&1; then
+    fail "coverage ratchet"
+    cat /tmp/ship-check-ratchet.log
+    return 1
+  fi
+  ok "coverage ratchet ($(tail -1 /tmp/ship-check-ratchet.log))"
+
+  if ! python "$REPO_ROOT/scripts/check_integration_manifest.py" \
+       >/tmp/ship-check-manifest.log 2>&1; then
+    fail "integration manifest"
+    cat /tmp/ship-check-manifest.log
+    return 1
+  fi
+  ok "integration manifest ($(tail -1 /tmp/ship-check-manifest.log))"
 }
 
 # Mirrors license-check.yml — SPDX header + BSL path allowlist.
