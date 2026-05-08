@@ -170,7 +170,7 @@ def aggregate(database: str, env_flag: str, *, version: int) -> dict[str, Any]:
 
     document = {
         "version": version,
-        "generated_at": _dt.datetime.now(_dt.UTC).isoformat(),
+        "generated_at": _dt.datetime.now(_dt.timezone.utc).isoformat(),
         "cohort_size": cohort_size,
         "defaults": {
             **_BAKED_IN_DEFAULTS,
