@@ -171,6 +171,20 @@ section:first-of-type {
   color: var(--ink);
 }
 
+.primary-nav__signin {
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  padding: 0.25rem 0.85rem;
+  color: var(--ink) !important;
+  font-weight: 500;
+}
+
+.primary-nav__signin:hover,
+.primary-nav__signin:focus-visible {
+  background: var(--ink);
+  color: var(--ground) !important;
+}
+
 @media (max-width: 640px) {
   .primary-nav {
     display: none;
