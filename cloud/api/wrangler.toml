@@ -53,7 +53,7 @@ database_id = "77ac4e6c-a09f-486a-9f40-bed39d209e2c"
 # See docs/working/aggregator-kv-cutover-2026-05-07.md.
 [[kv_namespaces]]
 binding = "KV_INSIGHTS"
-id = "REPLACE_WITH_STAGING_KV_NAMESPACE_ID"
+id = "e3b36f13737b4cf09850182549493779"
 
 # Per-IP rate limits on the anonymous device-flow endpoints. Workers
 # Rate Limiting is in-Worker (no extra plan required); namespace_id is
@@ -92,7 +92,7 @@ database_id = "d8f78857-de29-4ee2-a449-b78c95c6ad67"
 # See docs/working/aggregator-kv-cutover-2026-05-07.md.
 [[env.production.kv_namespaces]]
 binding = "KV_INSIGHTS"
-id = "REPLACE_WITH_PRODUCTION_KV_NAMESPACE_ID"
+id = "6af5e74e6de9496392621ad8030eb69f"
 
 [[env.production.ratelimits]]
 name = "DEVICE_CODE_LIMIT"

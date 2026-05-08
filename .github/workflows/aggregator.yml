@@ -85,7 +85,7 @@ jobs:
           # placeholder after running:
           #   wrangler kv namespace create dendra-insights-production
           # See docs/working/aggregator-kv-cutover-2026-05-07.md.
-          KV_INSIGHTS_NAMESPACE_ID: REPLACE_WITH_PRODUCTION_KV_NAMESPACE_ID
+          KV_INSIGHTS_NAMESPACE_ID: 6af5e74e6de9496392621ad8030eb69f
         run: |
           python cloud/aggregator/run.py \
             --database dendra-events \
