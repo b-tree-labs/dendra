@@ -56,6 +56,8 @@ import json
 import os
 import subprocess
 import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -130,7 +132,7 @@ def query_d1(database: str, sql: str, *, env_flag: str = "") -> list[dict[str, A
     return []
 
 
-def aggregate(database: str, env_flag: str) -> dict[str, Any]:
+def aggregate(database: str, env_flag: str, *, version: int) -> dict[str, Any]:
     """Read D1 + assemble the tuned-defaults JSON document."""
 
     # --- cohort size: distinct account_hash (excluding NULLs) ---
@@ -166,9 +168,6 @@ def aggregate(database: str, env_flag: str) -> dict[str, Any]:
     # Same: Phase B; v1.0 leaves empty.
     top_refusal_categories: list[str] = []
 
-    # --- assemble + bump version ---
-    version = _next_version()
-
     document = {
         "version": version,
         "generated_at": _dt.datetime.now(_dt.UTC).isoformat(),
@@ -189,23 +188,75 @@ def aggregate(database: str, env_flag: str) -> dict[str, Any]:
     return document
 
 
-def _next_version() -> int:
-    """Monotonically-increasing version counter persisted in the output file.
+def _next_version(previous: int) -> int:
+    """Monotonic +1 over the previously-published version."""
+    return previous + 1
 
-    Reads the previous version from the existing file (if any) and adds 1.
-    The version field gates client-side cache invalidation; bumping it
-    every aggregator run ensures clients with stale caches re-fetch at
-    least once per cycle.
-    """
-    output = os.environ.get("DENDRA_AGGREGATOR_OUTPUT", "landing/insights/tuned-defaults.json")
-    path = Path(output)
+
+def _previous_version_from_file(path: Path) -> int:
+    """Read `version` from a previously-written tuned-defaults file, or 0."""
     if path.exists():
         try:
             existing = json.loads(path.read_text(encoding="utf-8"))
-            return int(existing.get("version", 0)) + 1
+            return int(existing.get("version", 0))
         except (OSError, json.JSONDecodeError, ValueError):
             pass
-    return 1
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Cloudflare KV write path. Used in production to publish the cohort
+# JSON without committing to git — the API Worker reads the value and
+# serves it from /insights/tuned-defaults.json. Kept dependency-free
+# (urllib only) because the nightly workflow runs bare CPython without
+# `pip install`.
+# ---------------------------------------------------------------------------
+
+_KV_API_BASE = "https://api.cloudflare.com/client/v4"
+
+
+def _kv_put_url(account_id: str, namespace_id: str, key: str) -> str:
+    return f"{_KV_API_BASE}/accounts/{account_id}/storage/kv/namespaces/{namespace_id}/values/{key}"
+
+
+def _kv_get_url(account_id: str, namespace_id: str, key: str) -> str:
+    # Same endpoint shape; GET vs PUT is the verb difference.
+    return _kv_put_url(account_id, namespace_id, key)
+
+
+def _put_to_kv(account_id: str, namespace_id: str, key: str, body: bytes, token: str) -> None:
+    req = urllib.request.Request(
+        _kv_put_url(account_id, namespace_id, key),
+        method="PUT",
+        data=body,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        },
+    )
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        if resp.status not in (200, 201):
+            raise RuntimeError(f"KV PUT failed: status {resp.status}")
+
+
+def _previous_version_kv(account_id: str, namespace_id: str, key: str, token: str) -> int:
+    """GET the existing value, return its `version` field, or 0 if absent."""
+    req = urllib.request.Request(
+        _kv_get_url(account_id, namespace_id, key),
+        method="GET",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            payload = json.loads(resp.read().decode("utf-8"))
+            return int(payload.get("version", 0))
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return 0
+        raise
+    except (json.JSONDecodeError, ValueError, UnicodeDecodeError):
+        # Garbage value in KV — treat as "no prior version".
+        return 0
 
 
 def _git_sha() -> str:
@@ -222,7 +273,10 @@ def _git_sha() -> str:
         return "unknown"
 
 
-def main() -> int:
+_KV_KEY = "tuned-defaults.json"
+
+
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument(
         "--database",
@@ -237,28 +291,83 @@ def main() -> int:
     )
     parser.add_argument(
         "--output",
-        default="landing/insights/tuned-defaults.json",
-        help="Output path (default: landing/insights/tuned-defaults.json).",
+        default=None,
+        help=(
+            "Optional file path to write the JSON to. Useful for staging "
+            "artifacts and local dev. Production uses --kv-namespace-id."
+        ),
+    )
+    parser.add_argument(
+        "--kv-namespace-id",
+        default=None,
+        help=(
+            "Cloudflare KV namespace ID to PUT the JSON into. Requires "
+            "CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID in env."
+        ),
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print the document to stdout instead of writing.",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     env_flag = "--env production" if args.env == "production" else ""
-    document = aggregate(args.database, env_flag)
+
+    # --- Resolve previous version for monotonic bump ---
+    if args.kv_namespace_id:
+        token = os.environ.get("CLOUDFLARE_API_TOKEN")
+        account_id = os.environ.get("CLOUDFLARE_ACCOUNT_ID")
+        if not token or not account_id:
+            print(
+                "--kv-namespace-id requires CLOUDFLARE_API_TOKEN + "
+                "CLOUDFLARE_ACCOUNT_ID environment variables",
+                file=sys.stderr,
+            )
+            return 2
+        previous = _previous_version_kv(account_id, args.kv_namespace_id, _KV_KEY, token)
+    elif args.output:
+        previous = _previous_version_from_file(Path(args.output))
+    else:
+        previous = 0
+
+    version = _next_version(previous)
+    document = aggregate(args.database, env_flag, version=version)
+    body = json.dumps(document, indent=2) + "\n"
 
     if args.dry_run:
-        print(json.dumps(document, indent=2))
+        print(body)
         return 0
 
-    output = Path(args.output)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+    if not args.output and not args.kv_namespace_id:
+        print(
+            "Refusing to run with neither --output nor --kv-namespace-id "
+            "(would compute the document and discard it). Pass --dry-run "
+            "to inspect.",
+            file=sys.stderr,
+        )
+        return 2
+
+    if args.output:
+        output = Path(args.output)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(body, encoding="utf-8")
+        print(f"Wrote {output}")
+
+    if args.kv_namespace_id:
+        # Re-resolve in case the file path branch above ran.
+        token = os.environ["CLOUDFLARE_API_TOKEN"]
+        account_id = os.environ["CLOUDFLARE_ACCOUNT_ID"]
+        _put_to_kv(
+            account_id,
+            args.kv_namespace_id,
+            _KV_KEY,
+            body.encode("utf-8"),
+            token,
+        )
+        print(f"Wrote KV namespace {args.kv_namespace_id} key {_KV_KEY}")
+
     print(
-        f"Wrote {output}\n"
         f"  cohort_size:    {document['cohort_size']}\n"
         f"  events_total:   {document['_meta']['events_total']}\n"
         f"  events_by_type: {document['_meta']['events_by_type']}\n"

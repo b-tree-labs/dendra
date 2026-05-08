@@ -16,7 +16,7 @@ on:
   workflow_dispatch:  # manual run
 
 permissions:
-  contents: write  # commits the regenerated landing/insights/tuned-defaults.json
+  contents: read  # aggregator publishes to Cloudflare KV, not git — read-only
 
 concurrency:
   group: aggregator-nightly
@@ -62,14 +62,11 @@ jobs:
           retention-days: 14
 
   production:
-    name: Aggregate production cohort + commit
+    name: Aggregate production cohort + publish to KV
     needs: staging
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
@@ -77,28 +74,20 @@ jobs:
         with:
           node-version: "20"
       - name: Install wrangler
+        # Used by the aggregator's query_d1() helper to read events
+        # from the production D1 database. KV publish is direct urllib.
         run: npm install -g wrangler@4
-      - name: Run aggregator (production)
+      - name: Run aggregator (production → KV)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # Production KV namespace ID for cohort wisdom. Replace the
+          # placeholder after running:
+          #   wrangler kv namespace create dendra-insights-production
+          # See docs/working/aggregator-kv-cutover-2026-05-07.md.
+          KV_INSIGHTS_NAMESPACE_ID: REPLACE_WITH_PRODUCTION_KV_NAMESPACE_ID
         run: |
           python cloud/aggregator/run.py \
             --database dendra-events \
             --env production \
-            --output landing/insights/tuned-defaults.json
-      - name: Commit if changed
-        run: |
-          git config user.name "dendra-aggregator-bot"
-          git config user.email "noreply@dendra.run"
-          if git diff --quiet landing/insights/tuned-defaults.json; then
-            echo "No changes to landing/insights/tuned-defaults.json"
-            exit 0
-          fi
-          git add landing/insights/tuned-defaults.json
-          git commit -m "chore(aggregator): nightly cohort refresh
-
-          $(cd $GITHUB_WORKSPACE && jq -r '. as $d | "version: \($d.version)\ncohort_size: \($d.cohort_size)\nevents_total: \($d._meta.events_total)\ngenerated_at: \($d.generated_at)"' landing/insights/tuned-defaults.json)
-
-          [aggregator-bot]"
-          git push
+            --kv-namespace-id "$KV_INSIGHTS_NAMESPACE_ID"

@@ -14,6 +14,7 @@ export default defineConfig({
         compatibilityDate: '2026-04-01',
         compatibilityFlags: ['nodejs_compat'],
         d1Databases: ['DB'],
+        kvNamespaces: ['KV_INSIGHTS'],
         bindings: {
           ENVIRONMENT: 'test',
           API_KEY_PEPPER: 'test-pepper-32-bytes-of-pseudo-entropy-yo', // pragma: allowlist secret

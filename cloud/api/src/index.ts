@@ -27,8 +27,9 @@ import {
   contributeHandler,
 } from './cloud_features';
 import { device, type DeviceEnv } from './device';
+import { insights, type InsightsEnv } from './insights';
 
-type Env = AdminEnv & WebhookEnv & DeviceEnv;
+type Env = AdminEnv & WebhookEnv & DeviceEnv & InsightsEnv;
 const app = new Hono<{ Bindings: Env }>();
 
 // ---------------------------------------------------------------------------
@@ -42,6 +43,15 @@ app.get('/health', (c) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// ---------------------------------------------------------------------------
+// Public: cohort wisdom JSON, written by the nightly aggregator into KV.
+// Mounted at /insights so a Cloudflare Worker Route on
+// dendra.run/insights/* hands off to this Worker, keeping the
+// consumer URL https://dendra.run/insights/tuned-defaults.json stable
+// across the file→KV cutover. No auth.
+// ---------------------------------------------------------------------------
+app.route('/insights', insights);
 
 // ---------------------------------------------------------------------------
 // Authenticated routes. Every /v1/* path runs the auth middleware first.

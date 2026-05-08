@@ -8,6 +8,7 @@
 declare module 'cloudflare:test' {
   interface ProvidedEnv {
     DB: D1Database;
+    KV_INSIGHTS: KVNamespace;
     ENVIRONMENT: string;
     API_KEY_PEPPER: string;
     DASHBOARD_SERVICE_TOKEN: string;
