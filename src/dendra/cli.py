@@ -526,10 +526,26 @@ def cmd_login(args: argparse.Namespace) -> int:
                 data = poll.json()
                 api_key = data["api_key"]
                 email = data.get("email") or "unknown"
-                auth.save_credentials(api_key, email=email)
+                # Fetch the server-side preference for default-on telemetry.
+                # The dashboard's `/dashboard/settings` toggle persists the
+                # user's choice; cache it locally so `maybe_install` can
+                # short-circuit without an extra round-trip per process. If
+                # the fetch fails (transient network, server hiccup), fall
+                # back to True — the v1.0 default-on posture (Q4 decision).
+                telemetry_enabled = _fetch_telemetry_preference(api_base, api_key)
+                auth.save_credentials(
+                    api_key,
+                    email=email,
+                    telemetry_enabled=telemetry_enabled,
+                )
                 print()
                 print(f"Signed in as {email}.")
                 print(f"Credentials saved to {auth.credentials_path()} (mode 0600).")
+                if not telemetry_enabled:
+                    print(
+                        "Telemetry is OFF for this account "
+                        "(toggle via dendra.run/dashboard/settings)."
+                    )
                 return 0
 
             err = ""
@@ -574,6 +590,34 @@ def _login_api_base() -> str:
     Uses ``DENDRA_API_BASE`` if set, falls back to the production Worker.
     """
     return os.environ.get("DENDRA_API_BASE", _DEFAULT_API_BASE).rstrip("/")
+
+
+def _fetch_telemetry_preference(api_base: str, api_key: str) -> bool:
+    """Fetch ``users.telemetry_enabled`` via ``GET /v1/whoami``.
+
+    Best-effort. Defaults to ``True`` (the v1.0 Q4 default-on posture)
+    when the call fails or the server doesn't return the field. Tight
+    timeout so a slow server doesn't make ``dendra login`` feel
+    sluggish — the flag is purely a hint and ``maybe_install`` re-reads
+    the credentials file each process start anyway.
+    """
+    import requests  # already imported above; this re-import is cheap
+
+    try:
+        r = requests.get(
+            f"{api_base}/whoami",
+            headers={"Authorization": f"Bearer {api_key}"},
+            timeout=3.0,
+        )
+        if not r.ok:
+            return True
+        data = r.json()
+    except (requests.RequestException, ValueError):
+        return True
+    value = data.get("telemetry_enabled")
+    if value is None:
+        return True
+    return bool(value)
 
 
 def _detect_device_name() -> str:

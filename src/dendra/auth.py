@@ -49,6 +49,11 @@ def load_credentials() -> dict | None:
     Returns ``None`` when neither a credentials file nor the env var
     yields an API key. The on-disk file always wins over the env var
     so that ``dendra logout`` is honored even when the env var is set.
+
+    The ``telemetry_enabled`` field defaults to ``True`` when absent —
+    matching the v1.0 Q4 decision (default-on for signed-in users) and
+    keeping pre-existing credentials files (which never had the field)
+    on the default-on path.
     """
     path = credentials_path()
     if path.exists():
@@ -60,25 +65,40 @@ def load_credentials() -> dict | None:
             return {
                 "api_key": payload["api_key"],
                 "email": payload.get("email"),
+                "telemetry_enabled": bool(payload.get("telemetry_enabled", True)),
             }
 
     env_key = os.environ.get("DENDRA_API_KEY")
     if env_key:
-        return {"api_key": env_key, "email": None}
+        return {"api_key": env_key, "email": None, "telemetry_enabled": True}
 
     return None
 
 
-def save_credentials(api_key: str, email: str | None = None) -> None:
+def save_credentials(
+    api_key: str,
+    email: str | None = None,
+    telemetry_enabled: bool = True,
+) -> None:
     """Persist credentials at ``~/.dendra/credentials`` with mode 0600.
 
     The parent directory is created if missing. Existing credentials
     are overwritten.
+
+    ``telemetry_enabled`` mirrors the server-side
+    ``users.telemetry_enabled`` field surfaced via ``GET /v1/whoami``.
+    Cached locally so the SDK's ``maybe_install`` short-circuits without
+    an extra round-trip per process startup. Defaults to ``True`` per
+    the v1.0 Q4 decision (default-on with sign-in-flow consent).
     """
     path = credentials_path()
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    payload = {"api_key": api_key, "email": email}
+    payload = {
+        "api_key": api_key,
+        "email": email,
+        "telemetry_enabled": bool(telemetry_enabled),
+    }
     serialized = json.dumps(payload, indent=2, sort_keys=True)
 
     # Write then chmod. On POSIX, an os.open with mode 0o600 would be
@@ -88,6 +108,29 @@ def save_credentials(api_key: str, email: str | None = None) -> None:
     path.write_text(serialized, encoding="utf-8")
     if os.name == "posix":
         os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
+
+
+def update_telemetry_preference(enabled: bool) -> bool:
+    """Refresh the cached ``telemetry_enabled`` flag in-place.
+
+    Returns True iff the credentials file was found and updated; False
+    when there's no credentials file (the user isn't signed in, so
+    there's nothing to update — telemetry is already off by the
+    sign-in gate).
+
+    Called opportunistically when a successful ``/v1/whoami`` round-trip
+    returns a flag value that disagrees with what's cached locally.
+    """
+    creds = load_credentials()
+    if creds is None or not creds.get("api_key"):
+        return False
+    # Re-save with the existing api_key + email + the new flag value.
+    save_credentials(
+        api_key=creds["api_key"],
+        email=creds.get("email"),
+        telemetry_enabled=bool(enabled),
+    )
+    return True
 
 
 def clear_credentials() -> None:
