@@ -285,11 +285,18 @@ export interface SwitchSummary {
   first_activity: string;
   last_activity: string;
   sparkline: number[];
+  // Null when the switch is not archived. ISO 8601 timestamp otherwise.
+  archived_at: string | null;
+  archived_reason: string | null;
 }
 
 export interface SwitchListResponse {
   switches: SwitchSummary[];
   sparkline_window_days: number;
+  // Count of archived switches the user owns — surfaced regardless of
+  // the include_archived flag so the UI can decide whether to render
+  // the "Show archived (N)" toggle in the table header.
+  archived_count: number;
 }
 
 export interface SwitchReportAgg {
@@ -328,10 +335,20 @@ export interface SwitchReport {
   current_phase: string | null;
   current_phase_label: string | null;
   mcnemar_p_two_sided: number | null;
+  // Archive state. Null when the switch is not archived — the per-switch
+  // page uses this to decide whether to render the archived banner vs.
+  // the stale-detection banner (mutually exclusive).
+  archived_at: string | null;
+  archived_reason: string | null;
 }
 
-export async function listSwitches(userId: number): Promise<SwitchListResponse> {
-  return adminFetch<SwitchListResponse>(`/admin/switches?user_id=${userId}`);
+export async function listSwitches(
+  userId: number,
+  includeArchived = false,
+): Promise<SwitchListResponse> {
+  const params = new URLSearchParams({ user_id: String(userId) });
+  if (includeArchived) params.set('include_archived', 'true');
+  return adminFetch<SwitchListResponse>(`/admin/switches?${params.toString()}`);
 }
 
 /** Returns null on 404 (user does not own this switch). */
@@ -344,4 +361,45 @@ export async function getSwitchReport(
   return adminFetchNullable<SwitchReport>(
     `/admin/switches/${safeName}/report?user_id=${userId}&days=${days}`,
   );
+}
+
+// ---------------------------------------------------------------------------
+// Archive / unarchive — customer-driven hide/show. Available on all tiers.
+// Idempotent: re-archiving returns the existing row, re-unarchiving is 200.
+// Auto-unarchive on next verdict happens server-side (see verdicts.ts).
+// ---------------------------------------------------------------------------
+
+export interface SwitchArchive {
+  id: number;
+  user_id: number;
+  switch_name: string;
+  archived_at: string;
+  archived_reason: string | null;
+}
+
+export async function archiveSwitch(
+  userId: number,
+  switchName: string,
+  reason?: string | null,
+): Promise<SwitchArchive> {
+  const safeName = encodeURIComponent(switchName);
+  const r = await adminFetch<{ archive: SwitchArchive }>(
+    `/admin/switches/${safeName}/archive`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId, reason: reason ?? null }),
+    },
+  );
+  return r.archive;
+}
+
+export async function unarchiveSwitch(
+  userId: number,
+  switchName: string,
+): Promise<void> {
+  const safeName = encodeURIComponent(switchName);
+  await adminFetch(`/admin/switches/${safeName}/unarchive`, {
+    method: 'POST',
+    body: JSON.stringify({ user_id: userId }),
+  });
 }
