@@ -17,10 +17,12 @@ import { generateKey, type KeyEnvironment } from './keys';
 import { signLicense, type LicenseClaims } from './license';
 import { TIER_MONTHLY_CAP, periodOf } from './usage';
 import type { ApiEnv, AuthContext } from './auth';
+import { preferences } from './preferences';
 
 export interface AdminEnv extends ApiEnv {
   DASHBOARD_SERVICE_TOKEN: string;
   LICENSE_SIGNING_PRIVATE_KEY?: string;
+  KV_INSIGHTS: KVNamespace;
 }
 
 /**
@@ -450,6 +452,18 @@ admin.post('/cli-sessions/:user_code/authorize', async (c) => {
 
   return c.json({ ok: true });
 });
+
+// ---------------------------------------------------------------------------
+// Settings + insights preferences. Same /admin/* prefix, same service-token
+// auth (installed on the parent router above). Defined in preferences.ts to
+// keep the handlers focused on settings concerns.
+//   GET   /admin/whoami?user_id=N
+//   PATCH /admin/whoami
+//   GET   /admin/insights/status?user_id=N
+//   POST  /admin/insights/enroll
+//   POST  /admin/insights/leave
+// ---------------------------------------------------------------------------
+admin.route('/', preferences);
 
 // POST /admin/cli-sessions/:user_code/deny — dashboard denies.
 admin.post('/cli-sessions/:user_code/deny', async (c) => {

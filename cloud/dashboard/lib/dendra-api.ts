@@ -177,3 +177,70 @@ export async function listRecentVerdicts(
   );
   return r.verdicts;
 }
+
+// ---------------------------------------------------------------------------
+// Preferences + insights enrollment (cloud/api/src/preferences.ts).
+// Backs the /dashboard/settings and /dashboard/insights pages.
+// ---------------------------------------------------------------------------
+
+export interface DendraPreferences {
+  user_id: number;
+  email: string;
+  display_name: string | null;
+  telemetry_enabled: boolean;
+  tier: 'free' | 'pro' | 'scale' | 'business';
+  account_hash: string;
+}
+
+export async function getPreferences(userId: number): Promise<DendraPreferences> {
+  return adminFetch<DendraPreferences>(`/admin/whoami?user_id=${userId}`);
+}
+
+export interface PreferencesPatch {
+  display_name?: string | null;
+  telemetry_enabled?: boolean;
+}
+
+export async function patchPreferences(
+  userId: number,
+  patch: PreferencesPatch,
+): Promise<DendraPreferences> {
+  return adminFetch<DendraPreferences>('/admin/whoami', {
+    method: 'PATCH',
+    body: JSON.stringify({ user_id: userId, ...patch }),
+  });
+}
+
+export interface InsightsStatus {
+  enrolled: boolean;
+  enrolled_at: string | null;
+  last_sync_at: string | null;
+  cohort_size: number;
+}
+
+export async function getInsightsStatus(userId: number): Promise<InsightsStatus> {
+  return adminFetch<InsightsStatus>(`/admin/insights/status?user_id=${userId}`);
+}
+
+export async function enrollInsights(userId: number): Promise<InsightsStatus> {
+  const r = await adminFetch<{
+    enrolled: boolean;
+    enrolled_at: string | null;
+    last_sync_at: string | null;
+  }>(`/admin/insights/enroll`, {
+    method: 'POST',
+    body: JSON.stringify({ user_id: userId }),
+  });
+  // The enroll endpoint doesn't echo cohort_size to keep its response
+  // tight; the page re-fetches status after a successful toggle to pick
+  // up the new value. Surface a partial object here for callers that
+  // want it inline.
+  return { ...r, cohort_size: 0 };
+}
+
+export async function leaveInsights(userId: number): Promise<void> {
+  await adminFetch(`/admin/insights/leave`, {
+    method: 'POST',
+    body: JSON.stringify({ user_id: userId }),
+  });
+}

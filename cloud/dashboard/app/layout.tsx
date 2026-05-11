@@ -92,6 +92,12 @@ function SiteHeader() {
           <Link href="/dashboard/billing" className="nav-secondary">
             Billing
           </Link>
+          <Link href="/dashboard/insights" className="nav-secondary">
+            Insights
+          </Link>
+          <Link href="/dashboard/settings" className="nav-secondary">
+            Settings
+          </Link>
           <a
             href="https://dendra.run"
             className="nav-secondary"

@@ -415,6 +415,15 @@ def maybe_install(
         # The env-var opt-out wins. Don't register anything — the
         # default-emitter resolver will return NullEmitter() directly.
         return None
+    # TODO(saas-launch 2026-05-11): honor the server-side
+    # `user_preferences.telemetry_enabled` flag (PATCH /v1/whoami via the
+    # dashboard `/dashboard/settings` toggle). The dashboard already
+    # persists the preference and surfaces it on /v1/whoami. The SDK side
+    # for v1.0 launch: cache `telemetry_enabled` in ~/.dendra/credentials
+    # at `dendra login` time; refresh opportunistically on subsequent
+    # /v1/whoami calls. If False, return None here even when an api_key
+    # is present. Tracked separately from this PR per the launch task
+    # brief ("DO NOT touch SDK telemetry code beyond a stub TODO comment").
     lookup = auth_lookup or _auth.load_credentials
     try:
         creds = lookup()
