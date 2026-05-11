@@ -25,9 +25,22 @@ export default async function BillingPage({
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-12">
-      <h1 className="text-2xl font-semibold">Billing</h1>
-      <p className="mt-2 text-sm text-neutral-600">
-        Current plan: <span className="font-medium capitalize">{user.tier}</span>
+      <p className="eyebrow eyebrow--accent">Account</p>
+      <h1
+        className="mt-2"
+        style={{
+          fontSize: "var(--size-h2)",
+          lineHeight: "var(--lh-h2)",
+        }}
+      >
+        Billing
+      </h1>
+      <p className="prose-brand mt-3">
+        Current plan:{" "}
+        <span className="font-mono" style={{ textTransform: "capitalize" }}>
+          {user.tier}
+        </span>
+        .
       </p>
       <BillingClient currentTier={user.tier} returnStatus={sp.status ?? null} />
     </main>

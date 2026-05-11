@@ -1,14 +1,478 @@
+/*
+ * Dendra dashboard — global styles.
+ *
+ * The :root tokens below are a copy of landing/brand-tokens.css. We
+ * intentionally copy rather than import a shared package — see Q7
+ * (2026-05-11): a shared @b-tree-labs/brand-tokens module is Phase 2.
+ * For now: any change to landing/brand-tokens.css must be mirrored
+ * here. Keep the --* custom-property names identical so a future
+ * extraction is a single-file diff.
+ *
+ * Tailwind utilities still work; brand-aware classes (.btn, .btn-primary,
+ * .site-header, .site-footer, .wordmark, .prose-brand) coexist with them.
+ */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ───────────────────────────────────────────────────────────────────
+ * Brand tokens (copied from landing/brand-tokens.css — keep in sync).
+ * ─────────────────────────────────────────────────────────────────── */
 :root {
-  --foreground: #0a0a0a;
-  --background: #ffffff;
+  /* Primary palette */
+  --ink: #1a1a1f;
+  --ground: #f8f6f1;
+  --accent: #bf5700;
+
+  /* Extended (use sparingly) */
+  --ink-soft: #6a6a72;
+  --ground-soft: #efece6;
+  --rule: #d8d3c9;
+  --accent-deep: #8a3d00;
+  --accent-wash: #f4e4d8;
+
+  /* Typography stacks — the next/font loader injects --font-display-loaded
+   * and --font-mono-loaded onto <html>; we layer them on top of the system
+   * fallbacks so the page is still legible if Google Fonts fail. */
+  --font-display:
+    var(--font-display-loaded, "Space Grotesk"), system-ui, -apple-system,
+    sans-serif;
+  --font-body:
+    -apple-system, "SF Pro Text", system-ui, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono:
+    var(--font-mono-loaded, "Geist Mono"), ui-monospace, "SF Mono", Menlo,
+    Consolas, monospace;
+
+  /* Type scale — base 16, ratio 1.25 (major third) */
+  --size-display: 4rem; /* 64 */
+  --size-h1: 3rem; /* 48 */
+  --size-h2: 2rem; /* 32 */
+  --size-h3: 1.5rem; /* 24 */
+  --size-h4: 1.25rem; /* 20 */
+  --size-body: 1rem; /* 16 */
+  --size-caption: 0.8125rem; /* 13 */
+  --size-micro: 0.6875rem; /* 11 */
+
+  /* Line heights mirror the brand spec */
+  --lh-display: 1.05;
+  --lh-h1: 1.1;
+  --lh-h2: 1.2;
+  --lh-h3: 1.3;
+  --lh-h4: 1.35;
+  --lh-body: 1.55;
+  --lh-caption: 1.45;
+  --lh-micro: 1.4;
+
+  /* Layout rhythm — Tailwind-style 4px scale (token N = 4×N px). */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-7: 1.75rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
+
+  --max-content: 1120px;
+  --max-prose: 680px;
+  --radius: 8px;
+  --border: 1px solid var(--rule);
+}
+
+/* Fluid headline ramp for smaller viewports */
+@media (max-width: 768px) {
+  :root {
+    --size-display: 2.75rem; /* 44 */
+    --size-h1: 2.25rem; /* 36 */
+    --size-h2: 1.625rem; /* 26 */
+    --size-h3: 1.25rem; /* 20 */
+  }
+}
+
+/* ───────────────────────────────────────────────────────────────────
+ * Base — match landing's quiet-technical look.
+ * ─────────────────────────────────────────────────────────────────── */
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--size-body);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  font-weight: 500;
+}
+
+code,
+pre,
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* ───────────────────────────────────────────────────────────────────
+ * Header (lives in layout.tsx via .site-header).
+ * Mirrors landing/style.css .site-header.
+ * ─────────────────────────────────────────────────────────────────── */
+.site-header {
+  padding: var(--space-5) 0;
+  border-bottom: var(--border);
+  position: sticky;
+  top: 0;
+  background: color-mix(in oklab, var(--ground), transparent 10%);
+  backdrop-filter: saturate(1.2) blur(6px);
+  -webkit-backdrop-filter: saturate(1.2) blur(6px);
+  z-index: 10;
+}
+
+.site-header__inner {
+  max-width: var(--max-content);
+  margin: 0 auto;
+  padding: 0 var(--space-6);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+
+.wordmark {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 1.125rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6em;
+}
+
+.wordmark:hover,
+.wordmark:focus-visible {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.wordmark-mark {
+  display: block;
+  height: 1.9em;
+  width: auto;
+  flex-shrink: 0;
+}
+
+.primary-nav {
+  display: flex;
+  gap: var(--space-6);
+  font-size: var(--size-caption);
+  letter-spacing: 0.03em;
+  align-items: center;
+}
+
+.primary-nav a {
+  text-decoration: none;
+  color: var(--ink-soft);
+}
+
+.primary-nav a:hover,
+.primary-nav a:focus-visible {
+  color: var(--ink);
+}
+
+@media (max-width: 640px) {
+  .primary-nav {
+    gap: var(--space-4);
+  }
+  .primary-nav .nav-secondary {
+    display: none;
+  }
+}
+
+/* ───────────────────────────────────────────────────────────────────
+ * Buttons — pill-outline-fills-on-hover, ported from landing .button.
+ * Coexists with Tailwind utilities; pages opt in via .btn / .btn-primary /
+ * .btn-secondary / .btn-sm / .btn-danger.
+ * ─────────────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-6);
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: var(--size-body);
+  letter-spacing: 0.01em;
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--ink);
+  border-radius: var(--radius);
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+  min-height: 44px;
+}
+
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--ink);
+  color: var(--ground);
+}
+
+.btn-primary:hover:not(:disabled),
+.btn-primary:focus-visible:not(:disabled) {
+  background: var(--accent-deep);
+  border-color: var(--accent-deep);
+  color: var(--ground);
+  text-decoration: none;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--ink);
+}
+
+.btn-secondary:hover:not(:disabled),
+.btn-secondary:focus-visible:not(:disabled) {
+  background: var(--ground-soft);
+  color: var(--ink);
+  border-color: var(--ink);
+  text-decoration: none;
+}
+
+.btn-sm {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--size-caption);
+  min-height: 36px;
+}
+
+.btn-danger {
+  background: transparent;
+  color: #b3261e;
+  border-color: #e8c5c2;
+}
+
+.btn-danger:hover:not(:disabled),
+.btn-danger:focus-visible:not(:disabled) {
+  background: #fbecea;
+  border-color: #b3261e;
+  color: #8a1a14;
+}
+
+/* ───────────────────────────────────────────────────────────────────
+ * Form controls — match landing's quiet-rule aesthetic.
+ * ─────────────────────────────────────────────────────────────────── */
+.input-text {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-body);
+  font-size: var(--size-body);
+  background: var(--ground);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  transition: border-color 120ms ease, outline-color 120ms ease;
+}
+
+.input-text:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+
+.input-code {
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+}
+
+/* ───────────────────────────────────────────────────────────────────
+ * Cards, panels, prose — convenience classes used across the dashboard.
+ * ─────────────────────────────────────────────────────────────────── */
+.surface-card {
+  background: var(--ground);
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-6);
+}
+
+.surface-card--muted {
+  background: var(--ground-soft);
+}
+
+.surface-card--success {
+  background: color-mix(in oklab, var(--accent-wash) 70%, var(--ground));
+  border-color: color-mix(in oklab, var(--accent) 35%, var(--rule));
+}
+
+.surface-card--error {
+  background: #fbecea;
+  border-color: #e8c5c2;
+  color: #8a1a14;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: var(--size-caption);
+  font-weight: 500;
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+}
+
+.eyebrow--accent {
+  color: var(--accent);
+}
+
+/* Plain-language prose blocks (privacy / terms / dashboard copy). */
+.prose-brand {
+  color: var(--ink);
+  font-size: var(--size-body);
+  line-height: var(--lh-body);
+  max-width: var(--max-prose);
+}
+
+.prose-brand h2 {
+  font-size: var(--size-h3);
+  line-height: var(--lh-h3);
+  margin: var(--space-10) 0 var(--space-3);
+}
+
+.prose-brand h3 {
+  font-size: var(--size-h4);
+  line-height: var(--lh-h4);
+  margin: var(--space-6) 0 var(--space-2);
+}
+
+.prose-brand p {
+  margin: 0 0 var(--space-4);
+}
+
+.prose-brand ul,
+.prose-brand ol {
+  margin: 0 0 var(--space-4);
+  padding-left: var(--space-6);
+}
+
+.prose-brand li {
+  margin-bottom: var(--space-2);
+}
+
+.prose-brand a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--rule);
+  text-underline-offset: 3px;
+}
+
+.prose-brand a:hover,
+.prose-brand a:focus-visible {
+  text-decoration-color: var(--accent);
+}
+
+.prose-brand code {
+  font-family: var(--font-mono);
+  background: var(--ground-soft);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.prose-brand pre {
+  background: var(--ground-soft);
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-4) var(--space-6);
+  overflow-x: auto;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  margin: 0 0 var(--space-4);
+}
+
+/* Inline accent callout box — used to highlight key plain-language
+ * statements in the privacy / settings copy. */
+.callout {
+  margin: var(--space-4) 0;
+  padding: var(--space-4) var(--space-5);
+  background: color-mix(in oklab, var(--ground-soft) 55%, var(--ground));
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.callout p:last-child {
+  margin-bottom: 0;
+}
+
+/* ───────────────────────────────────────────────────────────────────
+ * Footer.
+ * ─────────────────────────────────────────────────────────────────── */
+.site-footer {
+  padding: var(--space-10) 0 var(--space-6);
+  border-top: var(--border);
+  font-size: var(--size-caption);
+  color: var(--ink-soft);
+  background: var(--ground);
+}
+
+.site-footer__inner {
+  max-width: var(--max-content);
+  margin: 0 auto;
+  padding: 0 var(--space-6);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.site-footer a {
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+
+.site-footer a:hover,
+.site-footer a:focus-visible {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--rule);
+}
+
+.site-footer nav {
+  display: flex;
+  gap: var(--space-5);
+}
+
+/* ───────────────────────────────────────────────────────────────────
+ * Tailwind brand-aware utilities — anything we still want to write
+ * in JSX as className="..." can pick these up instead of @apply.
+ * ─────────────────────────────────────────────────────────────────── */
+.text-ink { color: var(--ink); }
+.text-ink-soft { color: var(--ink-soft); }
+.text-accent { color: var(--accent); }
+.bg-ground { background: var(--ground); }
+.bg-ground-soft { background: var(--ground-soft); }
+.border-rule { border-color: var(--rule); }

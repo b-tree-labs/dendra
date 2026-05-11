@@ -61,51 +61,87 @@ export default function KeysClient({ initialKeys }: { initialKeys: ApiKeyMeta[] 
   const revoked = keys.filter((k) => k.revoked_at);
 
   return (
-    <div className="mt-8 space-y-8">
+    <div className="mt-8 space-y-6">
       {/* --- Just-issued plaintext, shown once ----------------------------- */}
       {justIssued && (
-        <section className="rounded-lg border border-emerald-300 bg-emerald-50 p-6">
-          <h2 className="text-lg font-medium text-emerald-900">New key created</h2>
-          <p className="mt-1 text-sm text-emerald-900">
+        <section className="surface-card surface-card--success">
+          <h2
+            style={{
+              fontSize: "var(--size-h4)",
+              lineHeight: "var(--lh-h4)",
+              marginBottom: "var(--space-2)",
+            }}
+          >
+            New key created
+          </h2>
+          <p
+            style={{
+              fontSize: "var(--size-caption)",
+              color: "var(--ink)",
+              marginBottom: "var(--space-3)",
+            }}
+          >
             Copy it now — you won&apos;t see the full value again.
           </p>
-          <pre className="mt-3 overflow-x-auto rounded bg-white p-3 font-mono text-sm">
+          <pre
+            className="font-mono"
+            style={{
+              background: "var(--ground)",
+              border: "var(--border)",
+              borderRadius: "var(--radius)",
+              padding: "var(--space-3) var(--space-4)",
+              overflowX: "auto",
+              fontSize: "0.875rem",
+              margin: 0,
+            }}
+          >
             {justIssued.plaintext}
           </pre>
-          <button
-            type="button"
-            className="mt-3 text-sm font-medium text-emerald-900 underline"
-            onClick={() => navigator.clipboard.writeText(justIssued.plaintext)}
-          >
-            Copy to clipboard
-          </button>
-          <button
-            type="button"
-            className="ml-4 mt-3 text-sm text-emerald-900 underline"
-            onClick={() => setJustIssued(null)}
-          >
-            I&apos;ve saved it, dismiss
-          </button>
+          <div className="mt-3 flex gap-3">
+            <button
+              type="button"
+              className="btn btn-sm btn-secondary"
+              onClick={() => navigator.clipboard.writeText(justIssued.plaintext)}
+            >
+              Copy to clipboard
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-secondary"
+              onClick={() => setJustIssued(null)}
+            >
+              I&apos;ve saved it, dismiss
+            </button>
+          </div>
         </section>
       )}
 
       {/* --- Create a new key ---------------------------------------------- */}
-      <section className="rounded-lg border border-neutral-200 p-6">
-        <h2 className="text-lg font-medium">Create a new key</h2>
-        <div className="mt-3 flex gap-2">
+      <section className="surface-card">
+        <h2
+          style={{
+            fontSize: "var(--size-h4)",
+            lineHeight: "var(--lh-h4)",
+            marginBottom: "var(--space-3)",
+          }}
+        >
+          Create a new key
+        </h2>
+        <div className="flex flex-wrap gap-3">
           <input
             type="text"
             value={newKeyName}
             onChange={(e) => setNewKeyName(e.target.value)}
             placeholder="Name (optional, e.g. production)"
-            className="flex-1 rounded-md border border-neutral-300 px-3 py-2 text-sm"
+            className="input-text"
+            style={{ flex: 1, minWidth: "240px" }}
             disabled={busy !== null}
           />
           <button
             type="button"
             onClick={createKey}
             disabled={busy !== null}
-            className="rounded-md bg-black px-4 py-2 text-sm text-white disabled:opacity-50"
+            className="btn btn-primary"
           >
             {busy === "create" ? "Creating…" : "Create"}
           </button>
@@ -113,19 +149,60 @@ export default function KeysClient({ initialKeys }: { initialKeys: ApiKeyMeta[] 
       </section>
 
       {/* --- Active keys --------------------------------------------------- */}
-      <section className="rounded-lg border border-neutral-200 p-6">
-        <h2 className="text-lg font-medium">Active keys</h2>
+      <section className="surface-card">
+        <h2
+          style={{
+            fontSize: "var(--size-h4)",
+            lineHeight: "var(--lh-h4)",
+            marginBottom: "var(--space-3)",
+          }}
+        >
+          Active keys
+        </h2>
         {active.length === 0 ? (
-          <p className="mt-2 text-sm text-neutral-600">No active keys.</p>
+          <p
+            style={{
+              color: "var(--ink-soft)",
+              fontSize: "var(--size-caption)",
+              margin: 0,
+            }}
+          >
+            No active keys yet. Create one above, or run{" "}
+            <code
+              style={{
+                fontFamily: "var(--font-mono)",
+                background: "var(--ground-soft)",
+                padding: "0.1em 0.35em",
+                borderRadius: "4px",
+              }}
+            >
+              dendra login
+            </code>{" "}
+            in your terminal.
+          </p>
         ) : (
-          <ul className="mt-3 divide-y divide-neutral-200">
-            {active.map((k) => (
-              <li key={k.id} className="flex items-center justify-between py-3 text-sm">
+          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+            {active.map((k, i) => (
+              <li
+                key={k.id}
+                className="flex items-center justify-between py-3"
+                style={{
+                  borderTop:
+                    i === 0 ? "none" : "1px solid var(--rule)",
+                  fontSize: "var(--size-caption)",
+                }}
+              >
                 <div>
-                  <div className="font-mono">
+                  <div
+                    className="font-mono"
+                    style={{ color: "var(--ink)", fontSize: "0.9375rem" }}
+                  >
                     dndr_live_{k.key_prefix}…{k.key_suffix}
                   </div>
-                  <div className="mt-1 text-neutral-600">
+                  <div
+                    className="mt-1"
+                    style={{ color: "var(--ink-soft)" }}
+                  >
                     {k.name ?? "(unnamed)"} · created {k.created_at}
                     {k.last_used_at ? ` · last used ${k.last_used_at}` : " · never used"}
                   </div>
@@ -134,7 +211,7 @@ export default function KeysClient({ initialKeys }: { initialKeys: ApiKeyMeta[] 
                   type="button"
                   onClick={() => revoke(k.id)}
                   disabled={busy !== null}
-                  className="rounded-md border border-red-300 px-3 py-1 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50"
+                  className="btn btn-sm btn-danger"
                 >
                   Revoke
                 </button>
@@ -146,11 +223,27 @@ export default function KeysClient({ initialKeys }: { initialKeys: ApiKeyMeta[] 
 
       {/* --- Revoked keys (audit history) --------------------------------- */}
       {revoked.length > 0 && (
-        <section className="rounded-lg border border-neutral-200 p-6 opacity-75">
-          <h2 className="text-lg font-medium">Revoked</h2>
-          <ul className="mt-3 divide-y divide-neutral-200 text-sm">
-            {revoked.map((k) => (
-              <li key={k.id} className="py-2 text-neutral-600">
+        <section className="surface-card" style={{ opacity: 0.75 }}>
+          <h2
+            style={{
+              fontSize: "var(--size-h4)",
+              lineHeight: "var(--lh-h4)",
+              marginBottom: "var(--space-3)",
+            }}
+          >
+            Revoked
+          </h2>
+          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+            {revoked.map((k, i) => (
+              <li
+                key={k.id}
+                style={{
+                  padding: "var(--space-2) 0",
+                  borderTop: i === 0 ? "none" : "1px solid var(--rule)",
+                  fontSize: "var(--size-caption)",
+                  color: "var(--ink-soft)",
+                }}
+              >
                 <span className="font-mono">
                   dndr_live_{k.key_prefix}…{k.key_suffix}
                 </span>{" "}
@@ -162,8 +255,8 @@ export default function KeysClient({ initialKeys }: { initialKeys: ApiKeyMeta[] 
       )}
 
       {error && (
-        <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
-          {error}
+        <div className="surface-card surface-card--error">
+          <p style={{ margin: 0, fontSize: "var(--size-caption)" }}>{error}</p>
         </div>
       )}
     </div>

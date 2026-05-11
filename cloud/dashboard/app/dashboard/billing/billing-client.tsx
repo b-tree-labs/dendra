@@ -98,19 +98,21 @@ export default function BillingClient({
   return (
     <div className="mt-8 space-y-6">
       {returnStatus === "success" && (
-        <div className="rounded-md border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-900">
-          Subscription started. It may take a few seconds for your plan to update — refresh
-          the page if your tier still says &quot;free&quot;.
+        <div className="surface-card surface-card--success">
+          <p style={{ margin: 0 }}>
+            Subscription started. It may take a few seconds for your plan to update —
+            refresh the page if your tier still says &quot;free&quot;.
+          </p>
         </div>
       )}
       {returnStatus === "canceled" && (
-        <div className="rounded-md border border-neutral-300 bg-neutral-50 p-3 text-sm text-neutral-700">
-          Checkout canceled.
+        <div className="surface-card surface-card--muted">
+          <p style={{ margin: 0 }}>Checkout canceled.</p>
         </div>
       )}
       {error && (
-        <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
-          {error}
+        <div className="surface-card surface-card--error">
+          <p style={{ margin: 0, fontSize: "var(--size-caption)" }}>{error}</p>
         </div>
       )}
 
@@ -120,29 +122,67 @@ export default function BillingClient({
       </p>
 
       <section>
-        <h2 className="text-lg font-medium">Available plans</h2>
-        <div className="mt-3 grid gap-4 md:grid-cols-3">
+        <h2
+          style={{
+            fontSize: "var(--size-h4)",
+            lineHeight: "var(--lh-h4)",
+            marginBottom: "var(--space-3)",
+          }}
+        >
+          Available plans
+        </h2>
+        <div className="grid gap-4 md:grid-cols-3">
           {PLANS.map((p) => {
             const isCurrent = p.tier_id === currentTier;
             return (
               <div
                 key={p.tier_id}
-                className="rounded-lg border border-neutral-200 p-5 text-sm"
+                className="surface-card"
+                style={{ padding: "var(--space-5)" }}
               >
                 <div className="flex items-baseline justify-between">
-                  <h3 className="text-lg font-medium">{p.label}</h3>
-                  <span className="text-neutral-700">{p.price}</span>
+                  <h3
+                    style={{
+                      fontSize: "var(--size-h4)",
+                      lineHeight: "var(--lh-h4)",
+                      margin: 0,
+                    }}
+                  >
+                    {p.label}
+                  </h3>
+                  <span
+                    className="font-mono"
+                    style={{ color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}
+                  >
+                    {p.price}
+                  </span>
                 </div>
-                <p className="mt-2 text-neutral-600">{p.features}</p>
-                <p className="mt-3 text-xs text-neutral-500">
-                  <span className="font-medium text-neutral-700">What you get:</span>{" "}
+                <p
+                  className="mt-2"
+                  style={{
+                    color: "var(--ink-soft)",
+                    fontSize: "var(--size-caption)",
+                  }}
+                >
+                  {p.features}
+                </p>
+                <p
+                  className="mt-3"
+                  style={{
+                    color: "var(--ink-soft)",
+                    fontSize: "var(--size-caption-small, var(--size-caption))",
+                  }}
+                >
+                  <span style={{ fontWeight: 600, color: "var(--ink)" }}>
+                    What you get:
+                  </span>{" "}
                   {p.upgrade_summary}
                 </p>
                 <button
                   type="button"
                   onClick={() => startCheckout(p.tier_id)}
                   disabled={busy !== null || isCurrent}
-                  className="mt-4 w-full rounded-md bg-black px-3 py-2 text-sm text-white disabled:opacity-50"
+                  className="btn btn-primary mt-4 w-full"
                 >
                   {isCurrent
                     ? "Current plan"
@@ -156,17 +196,25 @@ export default function BillingClient({
         </div>
       </section>
 
-      <section className="rounded-lg border border-neutral-200 p-6">
-        <h2 className="text-lg font-medium">Manage subscription</h2>
-        <p className="mt-2 text-sm text-neutral-600">
-          Update payment method, change plan, view invoices, or cancel via Stripe&apos;s
-          hosted portal.
+      <section className="surface-card">
+        <h2
+          style={{
+            fontSize: "var(--size-h4)",
+            lineHeight: "var(--lh-h4)",
+            marginBottom: "var(--space-2)",
+          }}
+        >
+          Manage subscription
+        </h2>
+        <p className="prose-brand">
+          Update payment method, change plan, view invoices, or cancel via
+          Stripe&apos;s hosted portal.
         </p>
         <button
           type="button"
           onClick={openPortal}
           disabled={busy !== null}
-          className="mt-4 rounded-md border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-50 disabled:opacity-50"
+          className="btn btn-secondary mt-2"
         >
           {busy === "portal" ? "Opening…" : "Open billing portal"}
         </button>

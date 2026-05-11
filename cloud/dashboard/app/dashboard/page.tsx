@@ -15,32 +15,68 @@ export default async function DashboardPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-12">
-      <h1 className="text-2xl font-semibold">Dashboard</h1>
-      <p className="mt-2 text-sm text-neutral-600">Signed in as {email}.</p>
+      <p className="eyebrow eyebrow--accent">Dashboard</p>
+      <h1
+        className="mt-2"
+        style={{
+          fontSize: "var(--size-h2)",
+          lineHeight: "var(--lh-h2)",
+        }}
+      >
+        Welcome back
+      </h1>
+      <p
+        className="mt-2"
+        style={{
+          color: "var(--ink-soft)",
+          fontSize: "var(--size-caption)",
+        }}
+      >
+        Signed in as <span className="font-mono">{email}</span>.
+      </p>
 
-      <section className="mt-8 rounded-lg border border-neutral-200 p-6">
-        <h2 className="text-lg font-medium">API keys</h2>
-        <p className="mt-2 text-sm text-neutral-600">
-          Issue a key for the CLI or your hosted-API integrations. Place it in{" "}
-          <code className="rounded bg-neutral-100 px-1">~/.dendra/credentials</code>{" "}
-          or export it as <code className="rounded bg-neutral-100 px-1">DENDRA_API_KEY</code>.
+      <section className="surface-card mt-8">
+        <h2
+          style={{
+            fontSize: "var(--size-h4)",
+            lineHeight: "var(--lh-h4)",
+            marginBottom: "var(--space-2)",
+          }}
+        >
+          API keys
+        </h2>
+        <p className="prose-brand">
+          Issue a key for the CLI or your hosted-API integrations. Place it
+          in <code>~/.dendra/credentials</code> or export it as{" "}
+          <code>DENDRA_API_KEY</code>. Or run{" "}
+          <code>dendra login</code> in your terminal and we&apos;ll
+          provision one automatically.
         </p>
         <Link
           href="/dashboard/keys"
-          className="mt-4 inline-block rounded-md bg-black px-4 py-2 text-sm text-white"
+          className="btn btn-primary mt-2 inline-flex"
         >
           Manage keys
         </Link>
       </section>
 
-      <section className="mt-6 rounded-lg border border-neutral-200 p-6">
-        <h2 className="text-lg font-medium">Billing</h2>
-        <p className="mt-2 text-sm text-neutral-600">
-          Choose a plan, view invoices, or update payment details.
+      <section className="surface-card mt-6">
+        <h2
+          style={{
+            fontSize: "var(--size-h4)",
+            lineHeight: "var(--lh-h4)",
+            marginBottom: "var(--space-2)",
+          }}
+        >
+          Billing
+        </h2>
+        <p className="prose-brand">
+          Choose a plan, view invoices, or update payment details. Stripe
+          handles every card detail — we never see them.
         </p>
         <Link
           href="/dashboard/billing"
-          className="mt-4 inline-block rounded-md border border-neutral-300 px-4 py-2 text-sm hover:bg-neutral-50"
+          className="btn btn-secondary mt-2 inline-flex"
         >
           Open billing
         </Link>
