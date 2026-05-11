@@ -533,29 +533,42 @@ admin.get('/switches', async (c) => {
   // LEFT JOIN switch_archives so archived state rides along with each
   // summary row. Filter is applied post-aggregation in the application
   // layer so archived_count stays accurate regardless of the toggle.
+  //
+  // The CTE pre-computes `phase_at_latest` per (user, switch) partition
+  // via a single window-function pass; the outer GROUP BY projects it
+  // back out. Replaces a correlated subquery that ran once per switch
+  // in the result set — for a 500-switch user, that was 500 nested
+  // SELECTs and pushed `/admin/switches` toward >2s on production D1
+  // with edge RTT (see `docs/working/SCALE_REPORT-2026-05-11.md` §5.1).
   const summary = (
     await c.env.DB.prepare(
-      `SELECT
-          v.switch_name        AS switch_name,
-          COUNT(*)             AS total_verdicts,
-          MIN(v.created_at)    AS first_activity,
-          MAX(v.created_at)    AS last_activity,
-          sa.archived_at       AS archived_at,
-          sa.archived_reason   AS archived_reason,
-          (SELECT phase FROM verdicts v2
-             JOIN api_keys k2 ON k2.id = v2.api_key_id
-            WHERE k2.user_id = ?
-              AND v2.switch_name = v.switch_name
-            ORDER BY v2.created_at DESC LIMIT 1)
-                               AS current_phase
+      `WITH user_verdicts AS (
+         SELECT
+           v.switch_name AS switch_name,
+           v.phase       AS phase,
+           v.created_at  AS created_at,
+           FIRST_VALUE(v.phase) OVER (
+             PARTITION BY v.switch_name
+             ORDER BY v.created_at DESC
+           ) AS phase_at_latest
          FROM verdicts v
          JOIN api_keys k ON k.id = v.api_key_id
-         LEFT JOIN switch_archives sa
-                ON sa.user_id = k.user_id
-               AND sa.switch_name = v.switch_name
-        WHERE k.user_id = ?
-        GROUP BY v.switch_name
-        ORDER BY MAX(v.created_at) DESC`,
+         WHERE k.user_id = ?
+       )
+       SELECT
+         uv.switch_name         AS switch_name,
+         COUNT(*)               AS total_verdicts,
+         MIN(uv.created_at)     AS first_activity,
+         MAX(uv.created_at)     AS last_activity,
+         sa.archived_at         AS archived_at,
+         sa.archived_reason     AS archived_reason,
+         MAX(uv.phase_at_latest) AS current_phase
+       FROM user_verdicts uv
+       LEFT JOIN switch_archives sa
+              ON sa.user_id = ?
+             AND sa.switch_name = uv.switch_name
+       GROUP BY uv.switch_name, sa.archived_at, sa.archived_reason
+       ORDER BY MAX(uv.created_at) DESC`,
     )
       .bind(uid, uid)
       .all<{
