@@ -18,6 +18,7 @@ import { signLicense, type LicenseClaims } from './license';
 import { TIER_MONTHLY_CAP, periodOf } from './usage';
 import type { ApiEnv, AuthContext } from './auth';
 import { preferences } from './preferences';
+import { computeReport, phaseLabel } from './report';
 
 export interface AdminEnv extends ApiEnv {
   DASHBOARD_SERVICE_TOKEN: string;
@@ -482,4 +483,147 @@ admin.post('/cli-sessions/:user_code/deny', async (c) => {
 
   if (!updated) return c.json({ error: 'not_found_or_already_decided' }, 404);
   return c.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// Switches roster + per-switch report — service-token proxy for the
+// dashboard. The dashboard authenticates the user via Clerk, looks up
+// the Dendra user_id via /admin/users (upsert), then calls these
+// endpoints with the user_id in the query string.
+//
+// These mirror the bearer-authenticated /v1/switches surface but accept
+// user_id via the service-token contract instead of resolving it from
+// an api_key_id. Data isolation is enforced by the user_id WHERE clause
+// in every query — the dashboard cannot read another user's data.
+// ---------------------------------------------------------------------------
+
+const SWITCH_NAME_RE = /^[A-Za-z][A-Za-z0-9_.-]{0,63}$/;
+const SPARKLINE_DAYS = 14;
+
+function utcDateStr(daysAgo: number, now: Date = new Date()): string {
+  const d = new Date(now.getTime() - daysAgo * 86_400_000);
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function lastNDates(n: number, now: Date = new Date()): string[] {
+  const out: string[] = [];
+  for (let i = n - 1; i >= 0; i--) out.push(utcDateStr(i, now));
+  return out;
+}
+
+// GET /admin/switches?user_id=N — list all switches owned by the user.
+admin.get('/switches', async (c) => {
+  const uid = Number(c.req.query('user_id'));
+  if (!Number.isInteger(uid) || uid <= 0) {
+    return c.json({ error: 'missing_or_invalid_user_id' }, 400);
+  }
+
+  const summary = (
+    await c.env.DB.prepare(
+      `SELECT
+          v.switch_name        AS switch_name,
+          COUNT(*)             AS total_verdicts,
+          MIN(v.created_at)    AS first_activity,
+          MAX(v.created_at)    AS last_activity,
+          (SELECT phase FROM verdicts v2
+             JOIN api_keys k2 ON k2.id = v2.api_key_id
+            WHERE k2.user_id = ?
+              AND v2.switch_name = v.switch_name
+            ORDER BY v2.created_at DESC LIMIT 1)
+                               AS current_phase
+         FROM verdicts v
+         JOIN api_keys k ON k.id = v.api_key_id
+        WHERE k.user_id = ?
+        GROUP BY v.switch_name
+        ORDER BY MAX(v.created_at) DESC`,
+    )
+      .bind(uid, uid)
+      .all<{
+        switch_name: string;
+        total_verdicts: number;
+        first_activity: string;
+        last_activity: string;
+        current_phase: string | null;
+      }>()
+  ).results ?? [];
+
+  const sparkRows = (
+    await c.env.DB.prepare(
+      `SELECT v.switch_name AS switch_name,
+              strftime('%Y-%m-%d', v.created_at) AS bucket_date,
+              COUNT(*) AS n
+         FROM verdicts v
+         JOIN api_keys k ON k.id = v.api_key_id
+        WHERE k.user_id = ?
+          AND v.created_at >= datetime('now', '-14 days')
+        GROUP BY v.switch_name, strftime('%Y-%m-%d', v.created_at)`,
+    )
+      .bind(uid)
+      .all<{ switch_name: string; bucket_date: string; n: number }>()
+  ).results ?? [];
+
+  const grid = lastNDates(SPARKLINE_DAYS);
+  const byName = new Map<string, Map<string, number>>();
+  for (const row of sparkRows) {
+    let m = byName.get(row.switch_name);
+    if (!m) {
+      m = new Map();
+      byName.set(row.switch_name, m);
+    }
+    m.set(row.bucket_date, row.n);
+  }
+
+  const switches = summary.map((row) => ({
+    switch_name: row.switch_name,
+    current_phase: row.current_phase,
+    current_phase_label: phaseLabel(row.current_phase),
+    total_verdicts: row.total_verdicts,
+    last_activity: row.last_activity,
+    first_activity: row.first_activity,
+    sparkline: grid.map((d) => byName.get(row.switch_name)?.get(d) ?? 0),
+  }));
+
+  return c.json({ switches, sparkline_window_days: SPARKLINE_DAYS });
+});
+
+// GET /admin/switches/:name/report?user_id=N — per-switch report card.
+// Returns 404 when the switch has no verdicts for the user (data
+// isolation: never 200-empty so the dashboard can't render a confusing
+// "empty card" for a stranger's switch name).
+admin.get('/switches/:name/report', async (c) => {
+  const uid = Number(c.req.query('user_id'));
+  if (!Number.isInteger(uid) || uid <= 0) {
+    return c.json({ error: 'missing_or_invalid_user_id' }, 400);
+  }
+  const switch_name = c.req.param('name') ?? '';
+  if (!SWITCH_NAME_RE.test(switch_name)) {
+    return c.json({ error: 'invalid_switch_name' }, 400);
+  }
+  const daysParam = Number(c.req.query('days') ?? '30');
+  const days = Number.isFinite(daysParam) && daysParam > 0
+    ? Math.min(Math.floor(daysParam), 365)
+    : 30;
+
+  const report = await computeReport(c.env.DB, uid, switch_name, days);
+  if (!report) {
+    return c.json({ error: 'switch_not_found' }, 404);
+  }
+
+  const currentPhase = report.transitions.length
+    ? report.transitions[report.transitions.length - 1].phase
+    : null;
+
+  return c.json({
+    switch_name,
+    days,
+    agg: report.agg,
+    phases: report.phases,
+    transitions: report.transitions,
+    current_phase: currentPhase,
+    current_phase_label: phaseLabel(currentPhase),
+    mcnemar_p_two_sided: report.mcnemar_p_two_sided,
+  });
 });

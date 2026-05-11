@@ -86,6 +86,9 @@ function SiteHeader() {
         </Link>
         <nav className="primary-nav" aria-label="Primary">
           <Link href="/dashboard">Dashboard</Link>
+          <Link href="/dashboard/switches" className="nav-secondary">
+            Switches
+          </Link>
           <Link href="/dashboard/keys" className="nav-secondary">
             API keys
           </Link>

@@ -35,6 +35,33 @@ async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+/**
+ * Variant of adminFetch that surfaces a 404 as `null` instead of throwing.
+ * Used by report-card lookups where "switch not found for this user" is
+ * a routine outcome (we render Next.js notFound()).
+ */
+async function adminFetchNullable<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<T | null> {
+  assertServerOnly();
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Dashboard-Token': SERVICE_TOKEN!,
+      ...(init?.headers ?? {}),
+    },
+    cache: 'no-store',
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`dendra-api ${path} failed: ${res.status} ${text}`);
+  }
+  return res.json() as Promise<T>;
+}
+
 export interface DendraUser {
   user_id: number;
   tier: 'free' | 'pro' | 'scale' | 'business';
@@ -243,4 +270,78 @@ export async function leaveInsights(userId: number): Promise<void> {
     method: 'POST',
     body: JSON.stringify({ user_id: userId }),
   });
+}
+
+// ---------------------------------------------------------------------------
+// Switches roster + per-switch report-card admin proxy. Counterpart of the
+// /admin/switches/* surface in cloud/api/src/admin.ts.
+// ---------------------------------------------------------------------------
+
+export interface SwitchSummary {
+  switch_name: string;
+  current_phase: string | null;
+  current_phase_label: string | null;
+  total_verdicts: number;
+  first_activity: string;
+  last_activity: string;
+  sparkline: number[];
+}
+
+export interface SwitchListResponse {
+  switches: SwitchSummary[];
+  sparkline_window_days: number;
+}
+
+export interface SwitchReportAgg {
+  total: number;
+  rule_total: number;
+  rule_correct: number;
+  model_total: number;
+  model_correct: number;
+  ml_total: number;
+  ml_correct: number;
+  paired_total: number;
+  b: number;
+  c: number;
+  first_at: string | null;
+  last_at: string | null;
+}
+
+export interface SwitchPhaseDistribution {
+  phase: string | null;
+  n: number;
+}
+
+export interface SwitchTransition {
+  phase: string;
+  first_seen: string;
+  last_seen: string;
+  n: number;
+}
+
+export interface SwitchReport {
+  switch_name: string;
+  days: number;
+  agg: SwitchReportAgg;
+  phases: SwitchPhaseDistribution[];
+  transitions: SwitchTransition[];
+  current_phase: string | null;
+  current_phase_label: string | null;
+  mcnemar_p_two_sided: number | null;
+}
+
+export async function listSwitches(userId: number): Promise<SwitchListResponse> {
+  return adminFetch<SwitchListResponse>(`/admin/switches?user_id=${userId}`);
+}
+
+/** Returns null on 404 (user does not own this switch). */
+export async function getSwitchReport(
+  userId: number,
+  switchName: string,
+  days = 30,
+): Promise<SwitchReport | null> {
+  const safeName = encodeURIComponent(switchName);
+  return adminFetchNullable<SwitchReport>(
+    `/admin/switches/${safeName}/report?user_id=${userId}&days=${days}`,
+  );
 }

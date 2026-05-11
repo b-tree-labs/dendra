@@ -413,6 +413,42 @@ pre,
   margin: 0 0 var(--space-4);
 }
 
+/* Tables inside report-card markdown excerpts. Mirrors the quiet rule
+ * styling used elsewhere; tabular-nums keeps numeric columns aligned. */
+.prose-brand table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--size-caption);
+  margin: 0 0 var(--space-4);
+  font-variant-numeric: tabular-nums;
+}
+
+.prose-brand table th,
+.prose-brand table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+}
+
+.prose-brand table th {
+  color: var(--ink-soft);
+  font-weight: 500;
+  background: var(--ground-soft);
+}
+
+.prose-brand blockquote {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  background: color-mix(in oklab, var(--accent-wash) 30%, var(--ground));
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  color: var(--ink);
+}
+
+.prose-brand blockquote p {
+  margin: 0;
+}
+
 /* Inline accent callout box — used to highlight key plain-language
  * statements in the privacy / settings copy. */
 .callout {
