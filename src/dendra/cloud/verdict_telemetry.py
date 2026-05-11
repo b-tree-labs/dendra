@@ -73,7 +73,6 @@ from typing import Any, Final
 
 from dendra import auth as _auth
 from dendra.telemetry import (
-    NullEmitter,
     TelemetryEmitter,
     register_default_emitter,
 )
@@ -193,7 +192,7 @@ class CloudVerdictEmitter:
 
         em = CloudVerdictEmitter(
             api_url="http://localhost:8787",
-            bearer_token="dndr_live_…",
+            bearer_token="dndr_live_…",  # pragma: allowlist secret
         )
         decorate(..., telemetry=em)
 
@@ -428,9 +427,7 @@ def maybe_install(
         # telemetry-free.
         return None
 
-    resolved_url = (
-        api_url or os.environ.get("DENDRA_API_URL") or DEFAULT_API_URL
-    ).rstrip("/")
+    resolved_url = (api_url or os.environ.get("DENDRA_API_URL") or DEFAULT_API_URL).rstrip("/")
     emitter = CloudVerdictEmitter(
         api_url=resolved_url,
         bearer_token=str(creds["api_key"]),

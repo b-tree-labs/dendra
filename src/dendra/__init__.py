@@ -128,12 +128,12 @@ from dendra.verdicts import (
 # on. Out of scope for this block (handled by other agents): the
 # sign-up flow's consent banner that announces the default-on
 # decision to the user.
-try:
-    from dendra.cloud import verdict_telemetry as _verdict_telemetry
+try:  # pragma: no cover — observability hook; intentionally fails silent
+    from dendra.cloud import verdict_telemetry as _verdict_telemetry  # pragma: no cover
 
-    _verdict_telemetry.maybe_install()
-except BaseException:  # noqa: BLE001 — observability hook, fails silent
-    pass
+    _verdict_telemetry.maybe_install()  # pragma: no cover
+except BaseException:  # noqa: BLE001 — observability hook, fails silent  # pragma: no cover
+    pass  # pragma: no cover
 
 __all__ = [
     "AccuracyMarginGate",

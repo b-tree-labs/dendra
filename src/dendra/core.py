@@ -1684,15 +1684,9 @@ class LearnedSwitch:
                     # decision table — the cloud pipe consumes these
                     # directly so we don't ship raw predictions over the
                     # wire.
-                    "rule_correct": _per_classifier_correct(
-                        rule_output, label, outcome
-                    ),
-                    "model_correct": _per_classifier_correct(
-                        model_output, label, outcome
-                    ),
-                    "ml_correct": _per_classifier_correct(
-                        ml_output, label, outcome
-                    ),
+                    "rule_correct": _per_classifier_correct(rule_output, label, outcome),
+                    "model_correct": _per_classifier_correct(model_output, label, outcome),
+                    "ml_correct": _per_classifier_correct(ml_output, label, outcome),
                 },
             )
         except (KeyboardInterrupt, SystemExit):

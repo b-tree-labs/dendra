@@ -33,7 +33,6 @@ Covered behaviors:
 
 from __future__ import annotations
 
-import json
 import threading
 import time
 from typing import Any
@@ -41,7 +40,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from dendra import LearnedSwitch, Phase, SwitchConfig, Verdict
+from dendra import LearnedSwitch, Verdict
 from dendra.cloud.verdict_telemetry import (
     CloudVerdictEmitter,
     maybe_install,
@@ -54,7 +53,6 @@ from dendra.telemetry import (
     register_default_emitter,
     reset_default_emitter,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -188,26 +186,22 @@ class TestMaybeInstall:
         assert em is None
 
     def test_signed_in_installs_and_registers(self):
-        em = maybe_install(
-            api_url="http://localhost:8787",
-            auth_lookup=lambda: {"api_key": "dndr_live_abc", "email": "ben@example"},
-        )
+        creds = {"api_key": "dndr_live_abc", "email": "ben@example"}  # pragma: allowlist secret
+        em = maybe_install(api_url="http://localhost:8787", auth_lookup=lambda: creds)
         assert isinstance(em, CloudVerdictEmitter)
         assert get_default_emitter() is em
         em.close(timeout=0.1)
 
     def test_env_var_blocks_install(self, monkeypatch):
         monkeypatch.setenv("DENDRA_NO_TELEMETRY", "1")
-        em = maybe_install(
-            auth_lookup=lambda: {"api_key": "dndr_live_abc"},
-        )
+        creds = {"api_key": "dndr_live_abc"}  # pragma: allowlist secret
+        em = maybe_install(auth_lookup=lambda: creds)
         assert em is None
         assert isinstance(get_default_emitter(), NullEmitter)
 
     def test_uninstall_restores_null(self):
-        maybe_install(
-            auth_lookup=lambda: {"api_key": "dndr_live_abc"},
-        )
+        creds = {"api_key": "dndr_live_abc"}  # pragma: allowlist secret
+        maybe_install(auth_lookup=lambda: creds)
         uninstall()
         assert isinstance(get_default_emitter(), NullEmitter)
 
@@ -229,7 +223,7 @@ class TestCloudVerdictEmitterPayload:
     def _make(self, sender: _RecordingSender) -> CloudVerdictEmitter:
         return CloudVerdictEmitter(
             api_url="http://localhost:8787",
-            bearer_token="dndr_live_test",
+            bearer_token="dndr_live_test",  # pragma: allowlist secret
             sender=sender,
         )
 
@@ -294,7 +288,7 @@ class TestCloudVerdictEmitterPayload:
         bad_sender.post.side_effect = RuntimeError("network down")
         em = CloudVerdictEmitter(
             api_url="http://localhost:8787",
-            bearer_token="dndr_live_test",
+            bearer_token="dndr_live_test",  # pragma: allowlist secret
             sender=bad_sender,
         )
         try:
@@ -382,9 +376,7 @@ class TestEndToEndDefaultEmitter:
             # Construct a switch with NO explicit telemetry= argument.
             s = LearnedSwitch(name="triage", rule=_rule, author="alice")
             s.classify({"title": "crash"})
-            s.record_verdict(
-                input={"title": "crash"}, label="bug", outcome=Verdict.CORRECT.value
-            )
+            s.record_verdict(input={"title": "crash"}, label="bug", outcome=Verdict.CORRECT.value)
             _drain(emitter)
             assert len(sender.calls) == 1
             wire = sender.calls[0]
@@ -406,13 +398,9 @@ class TestEndToEndDefaultEmitter:
         )
         try:
             register_default_emitter(lambda: emitter)
-            s = LearnedSwitch(
-                name="triage", rule=_rule, author="alice", telemetry=NullEmitter()
-            )
+            s = LearnedSwitch(name="triage", rule=_rule, author="alice", telemetry=NullEmitter())
             s.classify({"title": "crash"})
-            s.record_verdict(
-                input={"title": "crash"}, label="bug", outcome=Verdict.CORRECT.value
-            )
+            s.record_verdict(input={"title": "crash"}, label="bug", outcome=Verdict.CORRECT.value)
             _drain(emitter, timeout=0.2)
             assert sender.calls == []
         finally:
@@ -431,9 +419,7 @@ class TestEndToEndDefaultEmitter:
             # Construct a switch under the opt-out env var; should
             # fall back to NullEmitter despite the registered factory.
             s = LearnedSwitch(name="triage", rule=_rule, author="alice")
-            s.record_verdict(
-                input={"title": "crash"}, label="bug", outcome=Verdict.CORRECT.value
-            )
+            s.record_verdict(input={"title": "crash"}, label="bug", outcome=Verdict.CORRECT.value)
             _drain(emitter, timeout=0.2)
             assert sender.calls == []
         finally:
@@ -453,9 +439,7 @@ class TestEnrichedOutcomePayload:
         em = ListEmitter()
         s = LearnedSwitch(name="t", rule=_rule, author="alice", telemetry=em)
         s.classify({"title": "crash"})
-        s.record_verdict(
-            input={"title": "crash"}, label="bug", outcome=Verdict.CORRECT.value
-        )
+        s.record_verdict(input={"title": "crash"}, label="bug", outcome=Verdict.CORRECT.value)
         outcomes = [p for n, p in em.events if n == "outcome"]
         assert len(outcomes) == 1
         p = outcomes[0]
