@@ -1115,13 +1115,22 @@ Report written to <span class="dim">.dendra/analyze-2026-04-22.json</span></pre>
       -->
       <section id="pricing">
         <div class="container">
-          <h2>Volume-based pricing. No per-seat fees. Free forever for the library.</h2>
+          <h2>One product. Volume-priced on verdicts. No per-seat fees. Free for 10K verdicts/mo.</h2>
+          <p class="caption">
+            Dendra is one product — the local primitive plus a cloud audit
+            layer. Free covers both deployment modes (self-hosted and
+            cloud-hosted) up to 10K verdicts/mo. Pro adds cohort-tuned BYOK
+            judge orchestration and audit-chain export. Every CTA goes to
+            signup; Stripe Checkout is a post-signup flow.
+          </p>
 
           <!--
             Tier table + calculator are JS-rendered from
             landing/data/pricing-tiers.json (single source of truth)
             and landing/data/llm-prices.json (provider rates). Edit
-            those files; the page updates on next load.
+            those files; the page updates on next load. The metering
+            unit label and gloss line render directly under the table
+            header from the JSON's top-level metering_unit_* fields.
           -->
           <div class="pricing-grid" data-pricing-tiers>
             <p class="caption dim">Loading tier data…</p>
@@ -1142,16 +1151,16 @@ Report written to <span class="dim">.dendra/analyze-2026-04-22.json</span></pre>
           <div class="pricing-calculator" data-pricing-calculator hidden>
             <h3>Find your tier · estimate your savings</h3>
             <p class="caption">
-              Drag your monthly classification volume; pick your current
-              LLM. We recommend the smallest hosted tier that fits, and
-              project your post-graduation cost (assuming half your
-              sites graduate to in-process ML at <code>~$3 per million
-              calls</code>). Your inputs only — nothing is sent.
+              Drag your monthly verdict volume; pick your current LLM. We
+              recommend the smallest tier that fits, and project your
+              post-graduation cost (assuming half your sites graduate to
+              in-process ML at <code>~$3 per million calls</code>). Your
+              inputs only — nothing is sent.
             </p>
 
             <div class="pricing-calculator__inputs">
               <label class="slider">
-                <span class="slider__label">Monthly classifications</span>
+                <span class="slider__label">Monthly verdicts</span>
                 <input
                   data-pc-input="calls"
                   type="range"

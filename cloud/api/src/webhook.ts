@@ -26,7 +26,16 @@ export interface WebhookEnv extends ApiEnv {
 }
 
 // Map Stripe price metadata tier_id (lookup_key id) → users.current_tier value.
+// Both the post-2026-05-11 tier ids (`pro`, `scale`, `business`) and the
+// pre-restructure ids (`hosted_pro`, `hosted_scale`, `hosted_business`)
+// are accepted here so existing Stripe products whose metadata still
+// reads `tier_id: hosted_*` continue to resolve correctly. Sync the
+// products via cloud/api/scripts/sync-stripe-products.ts to refresh
+// metadata to the new short ids.
 const TIER_MAP: Record<string, AuthContext['tier']> = {
+  pro: 'pro',
+  scale: 'scale',
+  business: 'business',
   hosted_pro: 'pro',
   hosted_scale: 'scale',
   hosted_business: 'business',

@@ -81,31 +81,36 @@
       })
       .join("");
 
+    const meteringLabel = tiersData.metering_unit_label || "Verdicts / mo";
+    const meteringGloss = tiersData.metering_unit_gloss
+      ? `<p class="pricing-table__metering-gloss caption dim">${escapeHtml(tiersData.metering_unit_gloss)}</p>`
+      : "";
+
     container.innerHTML = `
       <table class="pricing-table pricing-table--tiers">
         <thead>
           <tr>
             <th>Tier</th>
             <th>Price</th>
-            <th>Classifications / mo</th>
+            <th>${escapeHtml(meteringLabel)}</th>
             <th></th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
       </table>
+      ${meteringGloss}
     `;
   }
 
   // ---------- CALCULATOR ----------------------------------------------------
 
   function pickRecommendedTier(tiers, callsPerMonth) {
-    // Skip OSS self-hosted (always free) and pro_services (decoupled);
-    // recommend the smallest hosted tier whose included classifications
-    // covers requested volume. If nothing fits, fall back to the
-    // largest hosted tier (overage will apply) or the contact-sales row.
+    // Skip pro_services (decoupled from license); recommend the smallest
+    // tier whose included verdict cap covers requested volume. If nothing
+    // fits, fall back to the largest hosted tier (overage will apply) or
+    // the contact-sales row.
     const hosted = tiers.filter(
       (t) =>
-        t.id !== "oss_self_hosted" &&
         t.id !== "pro_services" &&
         !t.is_enterprise &&
         t.classifications_per_month != null,

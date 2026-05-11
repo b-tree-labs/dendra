@@ -8,6 +8,16 @@ pages_build_output_dir = ".vercel/output/static"
 # `wrangler pages secret put <NAME> --project-name=dendra-dashboard`.
 [vars]
 DENDRA_API_BASE_URL = "https://api.dendra.run"
+# Post 2026-05-11 pricing restructure tier ids: pro / scale / business.
+# These env var names are what cloud/dashboard/lib/stripe.ts now resolves
+# via priceIdForTier(tier_id) → STRIPE_PRICE_ID_<TIER_UPPER>.
+STRIPE_PRICE_ID_PRO = "price_1TTIfSDrF0wPV7rRYf1bAQiX"
+STRIPE_PRICE_ID_SCALE = "price_1TTIfTDrF0wPV7rR7evdTDVF"
+STRIPE_PRICE_ID_BUSINESS = "price_1TTIfUDrF0wPV7rR3g3ya7mE"
+# Transitional aliases — kept until any caller still passing the
+# pre-restructure tier ids (`hosted_pro` etc.) is fully retired. Remove
+# in a follow-up once cloud/dashboard and cloud/api both reject the
+# legacy ids.
 STRIPE_PRICE_ID_HOSTED_PRO = "price_1TTIfSDrF0wPV7rRYf1bAQiX"
 STRIPE_PRICE_ID_HOSTED_SCALE = "price_1TTIfTDrF0wPV7rR7evdTDVF"
 STRIPE_PRICE_ID_HOSTED_BUSINESS = "price_1TTIfUDrF0wPV7rR3g3ya7mE"
