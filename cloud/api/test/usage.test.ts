@@ -16,6 +16,11 @@ import migration0004 from '../../collector/migrations/0004_verdicts.sql?raw';
 // test doesn't fail on a missing column when this suite runs before
 // preferences.test.ts.
 import migration0007 from '../../collector/migrations/0007_user_preferences.sql?raw';
+// Migration 0008 (switch_archives) is referenced by the verdict-emit hot
+// path for auto-unarchive — without it the INSERT INTO verdicts succeeds
+// but the follow-up DELETE FROM switch_archives 500s. Apply here so the
+// billable POST /v1/verdicts assertion doesn't depend on suite order.
+import migration0008 from '../../collector/migrations/0008_switch_archives.sql?raw';
 import { recordUsage, periodOf, secondsUntilNextPeriod } from '../src/usage';
 
 const SERVICE_TOKEN = 'test-service-token-for-dashboard';
@@ -54,6 +59,7 @@ beforeAll(async () => {
   await applySql(migration0003);
   await applySql(migration0004);
   await applySql(migration0007);
+  await applySql(migration0008);
 });
 
 describe('periodOf / secondsUntilNextPeriod', () => {
