@@ -290,13 +290,20 @@ and adds a maintenance surface.
 the wire shape is unchanged. Defer Option B until we see real
 heavy_tail traffic.
 
-**Risk if not fixed:** at 1000 switches the same query becomes ~280ms
-on local D1 (extrapolating linearly). Production D1 with the same
-query pattern is roughly 5-10x slower per probe; that puts a 1000-switch
-list at >2s — visible UI hang. The 200ms launch threshold is met for
-500 switches on local D1, but heavy customers exceeding that aren't
-hypothetical (the inflation-friendly read at /dashboard/switches
-shows up on every dashboard render, not just on-demand).
+**Status (2026-05-11):** Option A applied to both `GET /admin/switches`
+(`cloud/api/src/admin.ts`) and `GET /v1/switches` (`cloud/api/src/switches.ts`)
+as a CTE with `FIRST_VALUE(v.phase) OVER (PARTITION BY v.switch_name ORDER BY
+v.created_at DESC)`. All 220 existing tests still pass — wire shape preserved.
+The single binding parameter for the user_id replaces the previous double-bind
+(one for the outer WHERE, one for the now-deleted correlated subquery's WHERE).
+Empirical heavy-tail measurement to be captured via `DENDRA_SCALE=1 npm test --
+scale_harness` against the merged main; baseline was 140ms, target <50ms per
+the original analysis.
+
+**Risk if not fixed (preserved for posterity):** at 1000 switches the same
+query becomes ~280ms on local D1 (extrapolating linearly). Production D1 with
+the same query pattern is roughly 5-10x slower per probe; that puts a
+1000-switch list at >2s — visible UI hang.
 
 ### 5.2 `/admin/switches` sparkline subquery — full table scan past 14d window
 
