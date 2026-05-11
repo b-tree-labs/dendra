@@ -66,7 +66,12 @@ class TestSaveCredentials:
     def test_round_trip(self, fake_home):
         auth.save_credentials("dndra_token", email="a@b.com")
         creds = auth.load_credentials()
-        assert creds == {"api_key": "dndra_token", "email": "a@b.com"}  # pragma: allowlist secret
+        # `telemetry_enabled` defaults to True (Q4 decision 2026-05-11).
+        assert creds == {
+            "api_key": "dndra_token",  # pragma: allowlist secret
+            "email": "a@b.com",
+            "telemetry_enabled": True,
+        }
 
     def test_file_permissions_are_0600(self, fake_home):
         auth.save_credentials("dndra_token", email="a@b.com")
@@ -117,3 +122,49 @@ class TestIsLoggedIn:
     def test_true_with_env_credentials(self, fake_home, monkeypatch):
         monkeypatch.setenv("DENDRA_API_KEY", "dndra_env")
         assert auth.is_logged_in() is True
+
+
+class TestTelemetryPreference:
+    """The cached `telemetry_enabled` flag round-trips, defaults to True
+    on pre-existing credentials files (no field), and can be refreshed
+    in-place via `update_telemetry_preference`."""
+
+    def test_save_with_telemetry_disabled(self, fake_home):
+        auth.save_credentials("dndra_off", email="a@b.com", telemetry_enabled=False)
+        creds = auth.load_credentials()
+        assert creds is not None
+        assert creds["telemetry_enabled"] is False
+
+    def test_save_default_is_telemetry_enabled(self, fake_home):
+        auth.save_credentials("dndra_on", email="a@b.com")
+        creds = auth.load_credentials()
+        assert creds is not None
+        assert creds["telemetry_enabled"] is True
+
+    def test_legacy_credentials_default_to_telemetry_enabled(self, fake_home):
+        # Simulate a pre-1.0 credentials file written without the field.
+        path = auth.credentials_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        legacy_payload = {"api_key": "dndra_legacy", "email": "a@b.com"}  # pragma: allowlist secret
+        path.write_text(json.dumps(legacy_payload), encoding="utf-8")
+        creds = auth.load_credentials()
+        assert creds is not None
+        assert creds["telemetry_enabled"] is True
+
+    def test_env_var_only_defaults_to_telemetry_enabled(self, fake_home, monkeypatch):
+        monkeypatch.setenv("DENDRA_API_KEY", "dndra_env")
+        creds = auth.load_credentials()
+        assert creds is not None
+        assert creds["telemetry_enabled"] is True
+
+    def test_update_telemetry_preference_persists(self, fake_home):
+        auth.save_credentials("dndra_tok", email="a@b.com", telemetry_enabled=True)
+        assert auth.update_telemetry_preference(False) is True
+        creds = auth.load_credentials()
+        assert creds["telemetry_enabled"] is False
+        # API key + email survive the refresh.
+        assert creds["api_key"] == "dndra_tok"  # pragma: allowlist secret
+        assert creds["email"] == "a@b.com"
+
+    def test_update_telemetry_preference_no_creds_is_noop(self, fake_home):
+        assert auth.update_telemetry_preference(False) is False

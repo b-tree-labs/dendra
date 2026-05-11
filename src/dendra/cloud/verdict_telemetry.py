@@ -415,15 +415,6 @@ def maybe_install(
         # The env-var opt-out wins. Don't register anything — the
         # default-emitter resolver will return NullEmitter() directly.
         return None
-    # TODO(saas-launch 2026-05-11): honor the server-side
-    # `user_preferences.telemetry_enabled` flag (PATCH /v1/whoami via the
-    # dashboard `/dashboard/settings` toggle). The dashboard already
-    # persists the preference and surfaces it on /v1/whoami. The SDK side
-    # for v1.0 launch: cache `telemetry_enabled` in ~/.dendra/credentials
-    # at `dendra login` time; refresh opportunistically on subsequent
-    # /v1/whoami calls. If False, return None here even when an api_key
-    # is present. Tracked separately from this PR per the launch task
-    # brief ("DO NOT touch SDK telemetry code beyond a stub TODO comment").
     lookup = auth_lookup or _auth.load_credentials
     try:
         creds = lookup()
@@ -434,6 +425,13 @@ def maybe_install(
     if not creds or not creds.get("api_key"):
         # Not signed in. Stay quiet — the OSS path remains
         # telemetry-free.
+        return None
+    if creds.get("telemetry_enabled") is False:
+        # Signed in, but the user opted out via the `/dashboard/settings`
+        # toggle. The flag is cached locally in ~/.dendra/credentials at
+        # `dendra login` time (see ``cli.cmd_login``) and refreshed
+        # opportunistically when ``GET /v1/whoami`` disagrees with the
+        # local cache. Treat as if the env var were set.
         return None
 
     resolved_url = (api_url or os.environ.get("DENDRA_API_URL") or DEFAULT_API_URL).rstrip("/")

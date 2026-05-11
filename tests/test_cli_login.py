@@ -26,7 +26,7 @@ import pytest
 import requests
 
 from dendra import auth
-from dendra.cli import _detect_device_name, cmd_login
+from dendra.cli import _detect_device_name, _fetch_telemetry_preference, cmd_login
 
 
 @pytest.fixture()
@@ -78,9 +78,11 @@ class TestHappyPath:
                 "email": "user@example.com",
             },
         )
+        whoami_resp = _resp(200, {"telemetry_enabled": True, "email": "user@example.com"})
 
         with (
             patch("requests.post", side_effect=[start_resp, pending_resp, success_resp]) as post,
+            patch("requests.get", return_value=whoami_resp) as get,
             patch("time.sleep"),
         ):
             rc = cmd_login(args)
@@ -93,12 +95,86 @@ class TestHappyPath:
         assert post.call_args_list[2].args[0].endswith("/device/token")
         # Body of the start call carries the device_name override (or auto-detected).
         assert "device_name" in post.call_args_list[0].kwargs["json"]
+        # One GET: /whoami to read the server-side telemetry preference.
+        assert get.call_count == 1
+        assert get.call_args.args[0].endswith("/whoami")
 
         # Credentials were saved.
         creds = auth.load_credentials()
         assert creds is not None
         assert creds["api_key"].startswith("dndr_live_")
         assert creds["email"] == "user@example.com"
+        assert creds["telemetry_enabled"] is True
+
+    def test_full_flow_with_telemetry_off_persists_flag(self, args, fake_home, capsys):
+        start_resp = _resp(
+            200,
+            {
+                "device_code": "device-code-secret",
+                "user_code": "ABCD-2345",
+                "verification_uri_complete": "http://app.test/cli-auth?user_code=ABCD-2345",
+                "expires_in": 900,
+                "interval": 5,
+            },
+        )
+        success_resp = _resp(
+            200,
+            {
+                "api_key": "dndr_live_OFFAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",  # pragma: allowlist secret
+                "email": "user@example.com",
+            },
+        )
+        whoami_resp = _resp(200, {"telemetry_enabled": False, "email": "user@example.com"})
+
+        with (
+            patch("requests.post", side_effect=[start_resp, success_resp]),
+            patch("requests.get", return_value=whoami_resp),
+            patch("time.sleep"),
+        ):
+            rc = cmd_login(args)
+
+        assert rc == 0
+        creds = auth.load_credentials()
+        assert creds["telemetry_enabled"] is False
+        # User is told the toggle is in effect so they're not surprised.
+        assert "Telemetry is OFF" in capsys.readouterr().out
+
+
+class TestFetchTelemetryPreference:
+    """Unit tests for the helper that reads /v1/whoami after login."""
+
+    def test_returns_true_when_server_says_enabled(self):
+        resp = _resp(200, {"telemetry_enabled": True})
+        with patch("requests.get", return_value=resp):
+            assert _fetch_telemetry_preference("http://api.test/v1", "k") is True
+
+    def test_returns_false_when_server_says_disabled(self):
+        resp = _resp(200, {"telemetry_enabled": False})
+        with patch("requests.get", return_value=resp):
+            assert _fetch_telemetry_preference("http://api.test/v1", "k") is False
+
+    def test_defaults_true_on_network_error(self):
+        with patch("requests.get", side_effect=requests.RequestException("dns")):
+            assert _fetch_telemetry_preference("http://api.test/v1", "k") is True
+
+    def test_defaults_true_on_5xx(self):
+        resp = _resp(503, {"error": "service_unavailable"})
+        with patch("requests.get", return_value=resp):
+            assert _fetch_telemetry_preference("http://api.test/v1", "k") is True
+
+    def test_defaults_true_on_malformed_json(self):
+        resp = MagicMock()
+        resp.ok = True
+        resp.json.side_effect = ValueError("bad json")
+        with patch("requests.get", return_value=resp):
+            assert _fetch_telemetry_preference("http://api.test/v1", "k") is True
+
+    def test_defaults_true_when_field_absent(self):
+        # Server is reachable + returns 200 but doesn't include the field.
+        # We default to the v1.0 default-on posture rather than assume off.
+        resp = _resp(200, {"email": "x@y.com"})
+        with patch("requests.get", return_value=resp):
+            assert _fetch_telemetry_preference("http://api.test/v1", "k") is True
 
 
 class TestErrorPaths:
