@@ -987,7 +987,40 @@ def render_text(
         "Next step: `dendra init <file>:<function> --author @you:team` "
         "to wrap the highest-priority site."
     )
+
+    # M3 nudge: invite signup at a moment of revealed value. Suppressed
+    # silently when the user is already signed in — they already get the
+    # benefit. Failures (auth import unavailable, etc.) absorb silently;
+    # an analyzer run never breaks because of a side-channel nudge.
+    nudge_line = _format_login_nudge()
+    if nudge_line:
+        lines.append("")
+        lines.append(nudge_line)
     return "\n".join(lines)
+
+
+def _format_login_nudge() -> str | None:
+    """Return a one-line `dendra login` invitation, or ``None`` to suppress.
+
+    Suppresses when the user is already signed in (the cohort + audit-chain
+    upside is already theirs). Surfaces when not — the analyzer's report is
+    the moment a fresh visitor first sees concrete value in their own code,
+    and signup is the lightest action that compounds that value across runs.
+    """
+    try:
+        from dendra.auth import is_logged_in
+    except Exception:  # noqa: BLE001 — never fail analyze on a nudge
+        return None  # pragma: no cover — defensive against missing auth module
+    try:
+        if is_logged_in():
+            return None
+    except Exception:  # noqa: BLE001
+        return None
+    return (
+        "Tip: `dendra login` (free) saves this analysis to dendra.run, "
+        "shares it with teammates, and pulls cohort-tuned defaults. "
+        "30 seconds, GitHub OAuth, no card."
+    )
 
 
 def _format_cohort_comparison(report: AnalyzerReport) -> str | None:

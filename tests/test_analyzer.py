@@ -616,6 +616,75 @@ class TestCohortComparisonLine:
         assert "at or below median" in out
 
 
+class TestRenderTextLoginNudge:
+    """``render_text`` invites signup at the moment a fresh visitor sees
+    concrete value (sites found in their own code). Signed-in users do
+    not see the nudge — the upside is already theirs."""
+
+    def _build_report(self):
+        from dendra.analyzer import AnalyzerReport, ClassificationSite
+
+        return AnalyzerReport(
+            root="/r",
+            files_scanned=1,
+            sites=[
+                ClassificationSite(
+                    file_path="f.py",
+                    function_name="fn",
+                    line_start=1,
+                    line_end=2,
+                    pattern="P1",
+                    labels=["a", "b"],
+                    label_cardinality=2,
+                    regime="narrow",
+                    volume_estimate="warm",
+                    priority_score=5.0,
+                    lift_status="auto_liftable",
+                )
+            ],
+        )
+
+    def test_nudge_emitted_when_signed_out(self, monkeypatch):
+        import dendra.auth as _auth
+        from dendra.analyzer import render_text
+
+        monkeypatch.setattr(_auth, "is_logged_in", lambda: False)
+        out = render_text(self._build_report())
+        assert "dendra login" in out
+        assert "GitHub OAuth, no card" in out
+
+    def test_nudge_suppressed_when_signed_in(self, monkeypatch):
+        import dendra.auth as _auth
+        from dendra.analyzer import render_text
+
+        monkeypatch.setattr(_auth, "is_logged_in", lambda: True)
+        out = render_text(self._build_report())
+        assert "dendra login" not in out
+
+    def test_nudge_absorbs_auth_exception(self, monkeypatch):
+        import dendra.auth as _auth
+        from dendra.analyzer import render_text
+
+        def boom():
+            raise OSError("creds file corrupt")
+
+        monkeypatch.setattr(_auth, "is_logged_in", boom)
+        out = render_text(self._build_report())
+        # Either the nudge is suppressed or surfaced — both fine — but
+        # render_text must not raise.
+        assert isinstance(out, str)
+
+    def test_no_nudge_on_empty_report(self, monkeypatch):
+        import dendra.auth as _auth
+        from dendra.analyzer import AnalyzerReport, render_text
+
+        monkeypatch.setattr(_auth, "is_logged_in", lambda: False)
+        empty = AnalyzerReport(root="/r", files_scanned=0, sites=[])
+        out = render_text(empty)
+        # Empty-report path returns before the nudge block.
+        assert "dendra login" not in out
+
+
 class TestInternalSwitchWraps:
     """Dendra-on-Dendra: ``_classify_pattern`` and ``_classify_lift_status``
     are wrapped with ``@ml_switch`` at Phase.RULE.
