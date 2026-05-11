@@ -27,8 +27,14 @@ export default defineConfig({
             '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef', // pragma: allowlist secret
           // Rate-limiter bindings (DEVICE_CODE_LIMIT / DEVICE_TOKEN_LIMIT)
           // are intentionally omitted: miniflare doesn't implement Workers
-          // Rate Limiting, and the handlers fail open when the binding is
+          // Rate Limiting, and the handlers fail open when the handler is
           // absent (see passesRateLimit() in device.ts).
+          //
+          // Forward the host's DENDRA_SCALE env var into the Worker
+          // binding so cloud/api/test/scale_harness.test.ts can gate
+          // on it. `npm test` ignores it; `DENDRA_SCALE=1 npm test`
+          // turns the harness on.
+          DENDRA_SCALE: process.env.DENDRA_SCALE ?? '',
         },
       },
     }),
