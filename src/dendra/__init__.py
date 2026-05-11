@@ -115,6 +115,26 @@ from dendra.verdicts import (
     default_verifier,
 )
 
+# Default-on hosted-API verdict telemetry. Best-effort, fails silent.
+# Auto-installs the cloud emitter as the process-wide default iff the
+# user is signed in (``~/.dendra/credentials`` exists) AND has not
+# opted out via ``$DENDRA_NO_TELEMETRY``. The decision happens in
+# ``maybe_install`` itself; this block just triggers the check.
+#
+# The import + call is wrapped so a missing optional dependency, a
+# broken credentials file, or a malformed env override never aborts
+# ``import dendra``. The decision path is observability-unaware: if
+# anything here misfires, the user gets a NullEmitter and life goes
+# on. Out of scope for this block (handled by other agents): the
+# sign-up flow's consent banner that announces the default-on
+# decision to the user.
+try:  # pragma: no cover — observability hook; intentionally fails silent
+    from dendra.cloud import verdict_telemetry as _verdict_telemetry  # pragma: no cover
+
+    _verdict_telemetry.maybe_install()  # pragma: no cover
+except BaseException:  # noqa: BLE001 — observability hook, fails silent  # pragma: no cover
+    pass  # pragma: no cover
+
 __all__ = [
     "AccuracyMarginGate",
     "AnthropicAdapter",
