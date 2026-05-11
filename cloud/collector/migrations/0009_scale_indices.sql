@@ -1,0 +1,45 @@
+-- Migration 0009: indices motivated by the pre-launch scale harness.
+--
+-- See cloud/api/test/scale_harness.test.ts +
+-- cloud/api/test/SCALE_REPORT-2026-05-11.md for the measurement
+-- methodology and the per-endpoint baselines that informed each
+-- addition. Every index here is `CREATE INDEX IF NOT EXISTS` so the
+-- migration is idempotent and safe to re-apply.
+--
+-- Concerns the harness surfaced:
+--
+-- 1. GET /admin/verdicts/recent does
+--      JOIN api_keys ON ... WHERE k.user_id = ?
+--      ORDER BY v.created_at DESC LIMIT N.
+--    The existing idx_verdicts_key_switch_time covers
+--    (api_key_id, switch_name, created_at DESC) — usable for per-key
+--    per-switch scans but not for cross-key ORDER BY created_at across
+--    every key the user owns. With 1-2 keys per user the planner can
+--    still UNION the per-key views, but the explicit
+--    idx_verdicts_key_created index makes the per-key DESC walk index-
+--    only and shrinks the worst case for users with many keys.
+--
+-- 2. GET /admin/switches's correlated subquery
+--      (SELECT phase FROM verdicts v2 JOIN api_keys k2 ...
+--         WHERE k2.user_id = ? AND v2.switch_name = v.switch_name
+--         ORDER BY v2.created_at DESC LIMIT 1)
+--    runs once per switch_name in the result set (N+1). For the
+--    heavy-tail user (500 switches) the subquery alone fans out to
+--    500 lookups. The composite index on
+--    (api_key_id, switch_name, created_at DESC) already covers this —
+--    no additional index helps. The structural fix is a query
+--    rewrite (window function) in switches.ts / admin.ts; the harness
+--    quantifies the gap and the report flags it as a follow-up.
+--
+-- 3. GET /admin/switches's sparkline subquery groups by
+--      strftime('%Y-%m-%d', v.created_at)
+--    over the last 14 days. This is a recent-time slice across every
+--    key the user owns — the same access pattern as (1) but
+--    aggregating, not LIMIT-N. The idx_verdicts_key_created index in
+--    (1) covers this too.
+
+-- Cross-key ORDER BY created_at DESC + LIMIT N (verdicts/recent) and
+-- 14-day windowed GROUP BY (switches sparkline). Composite keeps the
+-- ORDER BY satisfiable purely from the index walk.
+CREATE INDEX IF NOT EXISTS idx_verdicts_key_created
+    ON verdicts (api_key_id, created_at DESC);
