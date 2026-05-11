@@ -109,8 +109,11 @@ Not blocking deploy:
   glyph is designed.
 - Open Graph social card (1200×630) — placeholder left; needs
   the finalized mark first.
-- Launch-day announcement banner (thin bar at top) with arXiv
-  link — add once arXiv ID assigned.
+- Launch-day announcement banner (thin bar at top). Lands on
+  the 2026-05-20 launch without an arXiv link; arXiv submission
+  is decoupled to ~2026-05-22 (post Snips-rerun + paper polish),
+  so the banner picks up the arXiv ID a few days after launch in
+  a follow-up patch.
 - Code-copy button on the install-cmd blocks — triggers a small
   JS dependency; `navigator.clipboard.writeText` with
   graceful fallback. Skip unless analytics show users want it.
