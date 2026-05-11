@@ -15,7 +15,8 @@
 import { Hono, type MiddlewareHandler } from 'hono';
 import { generateKey, type KeyEnvironment } from './keys';
 import { signLicense, type LicenseClaims } from './license';
-import type { ApiEnv } from './auth';
+import { TIER_MONTHLY_CAP, periodOf } from './usage';
+import type { ApiEnv, AuthContext } from './auth';
 
 export interface AdminEnv extends ApiEnv {
   DASHBOARD_SERVICE_TOKEN: string;
@@ -172,6 +173,114 @@ admin.get('/keys', async (c) => {
     .all();
 
   return c.json({ keys: rows.results ?? [] });
+});
+
+// ---------------------------------------------------------------------------
+// GET /admin/usage?user_id=N — return the user's current-period verdict
+// usage + tier cap, summed across all of their api_keys.
+//
+// Used by the dashboard root page to render the tier+usage strip and to
+// decide whether to surface the A7 earned-upgrade banner.
+//
+// Shape:
+//   { tier, verdicts_this_period, cap, period_start, period_end }
+//
+// period_start / period_end are ISO 8601 timestamps for the current UTC
+// calendar month (cap reset point). cap is null for unlimited tiers
+// (none today — every tier has a cap — but the JSON shape supports it).
+// ---------------------------------------------------------------------------
+admin.get('/usage', async (c) => {
+  const uid = Number(c.req.query('user_id'));
+  if (!Number.isInteger(uid) || uid <= 0) {
+    return c.json({ error: 'missing_or_invalid_user_id' }, 400);
+  }
+
+  const user = await c.env.DB.prepare(
+    `SELECT current_tier FROM users WHERE id = ? LIMIT 1`,
+  )
+    .bind(uid)
+    .first<{ current_tier: AuthContext['tier'] }>();
+  if (!user) return c.json({ error: 'user_not_found' }, 404);
+
+  // Defensive: an unknown tier shouldn't 500 the dashboard.
+  const tier: AuthContext['tier'] = (user.current_tier in TIER_MONTHLY_CAP
+    ? user.current_tier
+    : 'free') as AuthContext['tier'];
+
+  const now = new Date();
+  const period = periodOf(now);
+
+  // Sum the current period's classifications across every key the user
+  // owns. usage_metrics is per-(api_key_id, period); the join via
+  // api_keys.user_id keeps the SQL trivially indexed.
+  const row = await c.env.DB.prepare(
+    `SELECT COALESCE(SUM(m.classifications_count), 0) AS verdicts
+       FROM usage_metrics m
+       JOIN api_keys k ON k.id = m.api_key_id
+      WHERE k.user_id = ?
+        AND m.period_start = ?`,
+  )
+    .bind(uid, period)
+    .first<{ verdicts: number }>();
+
+  // Period bounds as ISO timestamps (start = first of current UTC month,
+  // end = first of next UTC month). The dashboard renders "days left".
+  const periodStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0),
+  );
+  const periodEnd = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0),
+  );
+
+  return c.json({
+    tier,
+    verdicts_this_period: row?.verdicts ?? 0,
+    cap: TIER_MONTHLY_CAP[tier],
+    period_start: periodStart.toISOString(),
+    period_end: periodEnd.toISOString(),
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET /admin/verdicts/recent?user_id=N&limit=K — most-recent K verdicts
+// across every api_key the user owns.
+//
+// Used by the dashboard root page to render the recent-activity feed.
+// limit is clamped to [1, 50] so a misbehaving caller can't drain D1.
+//
+// Shape:
+//   { verdicts: [{ id, switch_name, phase, rule_correct, model_correct,
+//                  ml_correct, created_at }, ...] }
+// ---------------------------------------------------------------------------
+admin.get('/verdicts/recent', async (c) => {
+  const uid = Number(c.req.query('user_id'));
+  if (!Number.isInteger(uid) || uid <= 0) {
+    return c.json({ error: 'missing_or_invalid_user_id' }, 400);
+  }
+
+  const rawLimit = Number(c.req.query('limit') ?? '5');
+  const limit = Number.isFinite(rawLimit) && rawLimit > 0
+    ? Math.min(Math.floor(rawLimit), 50)
+    : 5;
+
+  const rows = await c.env.DB.prepare(
+    `SELECT v.id,
+            v.switch_name,
+            v.phase,
+            v.rule_correct,
+            v.model_correct,
+            v.ml_correct,
+            v.created_at
+       FROM verdicts v
+       JOIN api_keys k ON k.id = v.api_key_id
+      WHERE k.user_id = ?
+      ORDER BY v.created_at DESC, v.id DESC
+      LIMIT ?`,
+  )
+    .bind(uid, limit)
+    .all();
+
+  return c.json({ verdicts: rows.results ?? [] });
 });
 
 // ---------------------------------------------------------------------------

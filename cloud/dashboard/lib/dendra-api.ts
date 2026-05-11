@@ -139,3 +139,41 @@ export async function denyCliSession(userCode: string): Promise<void> {
     },
   );
 }
+
+// ---------------------------------------------------------------------------
+// Dashboard root-page data — the tier+usage strip and recent-activity feed
+// both pull from these. Errors are surfaced as null so a single failed call
+// degrades gracefully instead of taking the whole page down.
+// ---------------------------------------------------------------------------
+
+export interface UsageInfo {
+  tier: 'free' | 'pro' | 'scale' | 'business';
+  verdicts_this_period: number;
+  cap: number | null;
+  period_start: string;
+  period_end: string;
+}
+
+export async function getUsage(userId: number): Promise<UsageInfo> {
+  return adminFetch<UsageInfo>(`/admin/usage?user_id=${userId}`);
+}
+
+export interface RecentVerdict {
+  id: number;
+  switch_name: string;
+  phase: string | null;
+  rule_correct: number | null;
+  model_correct: number | null;
+  ml_correct: number | null;
+  created_at: string;
+}
+
+export async function listRecentVerdicts(
+  userId: number,
+  limit = 5,
+): Promise<RecentVerdict[]> {
+  const r = await adminFetch<{ verdicts: RecentVerdict[] }>(
+    `/admin/verdicts/recent?user_id=${userId}&limit=${limit}`,
+  );
+  return r.verdicts;
+}
