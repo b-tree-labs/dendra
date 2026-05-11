@@ -9,6 +9,7 @@ import { env, SELF } from 'cloudflare:test';
 import migration0001 from '../../collector/migrations/0001_initial.sql?raw';
 import migration0002 from '../../collector/migrations/0002_leads.sql?raw';
 import migration0003 from '../../collector/migrations/0003_saas.sql?raw';
+import migration0004 from '../../collector/migrations/0004_verdicts.sql?raw';
 
 const SERVICE_TOKEN = 'test-service-token-for-dashboard';
 const BASE = 'https://api.test';
@@ -40,6 +41,7 @@ beforeAll(async () => {
   await applySql(migration0001);
   await applySql(migration0002);
   await applySql(migration0003);
+  await applySql(migration0004);
 });
 
 describe('admin: service-token auth', () => {
@@ -177,5 +179,181 @@ describe('admin: user upsert + key lifecycle', () => {
       body: JSON.stringify({ user_id: 99999 }),
     });
     expect(res.status).toBe(404);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET /admin/usage and GET /admin/verdicts/recent — dashboard root-page
+// data sources. Run in their own isolated user so the counts are
+// predictable regardless of test ordering.
+// ---------------------------------------------------------------------------
+describe('admin: dashboard root data — usage + recent verdicts', () => {
+  let userId: number;
+  let bearer: string;
+  let apiKeyId: number;
+
+  beforeAll(async () => {
+    const u = await SELF.fetch(`${BASE}/admin/users`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        clerk_user_id: 'dashboard_root_user',
+        email: 'dashboard-root@example.com',
+      }),
+    });
+    userId = (await u.json<{ user_id: number }>()).user_id;
+
+    const k = await SELF.fetch(`${BASE}/admin/keys`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ user_id: userId, name: 'root-test' }),
+    });
+    const kb = await k.json<{ id: number; plaintext: string }>();
+    apiKeyId = kb.id;
+    bearer = kb.plaintext;
+  });
+
+  it('GET /admin/usage returns tier + cap + zero verdicts for a fresh user', async () => {
+    const res = await SELF.fetch(`${BASE}/admin/usage?user_id=${userId}`, { headers });
+    expect(res.status).toBe(200);
+    const body = await res.json<{
+      tier: string;
+      verdicts_this_period: number;
+      cap: number | null;
+      period_start: string;
+      period_end: string;
+    }>();
+    expect(body.tier).toBe('free');
+    expect(body.cap).toBe(10_000);
+    expect(body.verdicts_this_period).toBe(0);
+    // period_start is the first of this UTC month; period_end is the first of next.
+    expect(body.period_start).toMatch(/T00:00:00\.000Z$/);
+    expect(body.period_end).toMatch(/T00:00:00\.000Z$/);
+    expect(new Date(body.period_end).getTime()).toBeGreaterThan(
+      new Date(body.period_start).getTime(),
+    );
+  });
+
+  it('GET /admin/usage reflects verdicts the user has posted', async () => {
+    // Post 3 verdicts via the public surface (which increments usage).
+    for (let i = 0; i < 3; i++) {
+      const r = await SELF.fetch(`${BASE}/v1/verdicts`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${bearer}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ switch_name: 'root_probe', phase: 'P3', rule_correct: true }),
+      });
+      expect(r.status).toBe(201);
+    }
+
+    const res = await SELF.fetch(`${BASE}/admin/usage?user_id=${userId}`, { headers });
+    expect(res.status).toBe(200);
+    const body = await res.json<{ verdicts_this_period: number; cap: number }>();
+    expect(body.verdicts_this_period).toBe(3);
+    expect(body.cap).toBe(10_000);
+  });
+
+  it('GET /admin/usage reflects the upgraded tier when current_tier changes', async () => {
+    await env.DB.prepare(`UPDATE users SET current_tier = 'pro' WHERE id = ?`)
+      .bind(userId)
+      .run();
+    const res = await SELF.fetch(`${BASE}/admin/usage?user_id=${userId}`, { headers });
+    const body = await res.json<{ tier: string; cap: number }>();
+    expect(body.tier).toBe('pro');
+    expect(body.cap).toBe(250_000);
+    // Reset for downstream tests.
+    await env.DB.prepare(`UPDATE users SET current_tier = 'free' WHERE id = ?`)
+      .bind(userId)
+      .run();
+  });
+
+  it('GET /admin/usage rejects missing / invalid user_id', async () => {
+    expect((await SELF.fetch(`${BASE}/admin/usage`, { headers })).status).toBe(400);
+    expect((await SELF.fetch(`${BASE}/admin/usage?user_id=0`, { headers })).status).toBe(400);
+    expect((await SELF.fetch(`${BASE}/admin/usage?user_id=abc`, { headers })).status).toBe(400);
+    expect((await SELF.fetch(`${BASE}/admin/usage?user_id=999999`, { headers })).status).toBe(404);
+  });
+
+  it('GET /admin/usage requires the service token', async () => {
+    const res = await SELF.fetch(`${BASE}/admin/usage?user_id=${userId}`);
+    expect(res.status).toBe(401);
+  });
+
+  it('GET /admin/verdicts/recent returns the most-recent N (newest-first)', async () => {
+    // Drop a few more verdicts with distinct switch_names so we can
+    // verify ordering by created_at DESC.
+    for (const name of ['feed_a', 'feed_b', 'feed_c']) {
+      const r = await SELF.fetch(`${BASE}/v1/verdicts`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${bearer}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ switch_name: name, phase: 'P4', ml_correct: true }),
+      });
+      expect(r.status).toBe(201);
+    }
+
+    const res = await SELF.fetch(
+      `${BASE}/admin/verdicts/recent?user_id=${userId}&limit=5`,
+      { headers },
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json<{
+      verdicts: Array<{ switch_name: string; phase: string | null; created_at: string }>;
+    }>();
+    expect(body.verdicts.length).toBeLessThanOrEqual(5);
+    expect(body.verdicts.length).toBeGreaterThanOrEqual(3);
+    // Newest first: feed_c was inserted last.
+    expect(body.verdicts[0].switch_name).toBe('feed_c');
+  });
+
+  it('GET /admin/verdicts/recent returns empty array for a user with no verdicts', async () => {
+    const u = await SELF.fetch(`${BASE}/admin/users`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        clerk_user_id: 'empty_feed_user',
+        email: 'empty-feed@example.com',
+      }),
+    });
+    const emptyUid = (await u.json<{ user_id: number }>()).user_id;
+    const res = await SELF.fetch(
+      `${BASE}/admin/verdicts/recent?user_id=${emptyUid}&limit=5`,
+      { headers },
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json<{ verdicts: unknown[] }>();
+    expect(body.verdicts).toEqual([]);
+  });
+
+  it('GET /admin/verdicts/recent clamps limit to 50', async () => {
+    const res = await SELF.fetch(
+      `${BASE}/admin/verdicts/recent?user_id=${userId}&limit=9999`,
+      { headers },
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json<{ verdicts: unknown[] }>();
+    expect(body.verdicts.length).toBeLessThanOrEqual(50);
+  });
+
+  it('GET /admin/verdicts/recent never returns rows from another user', async () => {
+    // Belt-and-suspenders: the join on api_keys.user_id should already
+    // scope rows. Confirm.
+    const other = await SELF.fetch(`${BASE}/admin/users`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        clerk_user_id: 'isolation_user',
+        email: 'iso@example.com',
+      }),
+    });
+    const otherUid = (await other.json<{ user_id: number }>()).user_id;
+
+    const res = await SELF.fetch(
+      `${BASE}/admin/verdicts/recent?user_id=${otherUid}&limit=10`,
+      { headers },
+    );
+    const body = await res.json<{ verdicts: Array<{ switch_name: string }> }>();
+    // Should be empty — this user has never posted a verdict.
+    expect(body.verdicts.length).toBe(0);
+    // Suppress unused-var lint.
+    void apiKeyId;
   });
 });
