@@ -185,13 +185,14 @@ describe('GET /v1/switches/:name/report — validation', () => {
     expect(res.status).toBe(401);
   });
 
-  it('returns empty stats for unknown switch_name (zero rows)', async () => {
+  it('returns 404 for a switch the authed user has never reported on', async () => {
+    // Data-isolation guarantee: never 200-empty. If we returned an empty
+    // report card here, an attacker with a valid key could enumerate
+    // switch names belonging to other accounts by watching response shapes.
     const res = await SELF.fetch(
       `${BASE}/v1/switches/never_seen/report?format=json`,
       { headers: authedHeaders() },
     );
-    expect(res.status).toBe(200);
-    const body = await res.json<{ agg: { total: number } }>();
-    expect(body.agg.total).toBe(0);
+    expect(res.status).toBe(404);
   });
 });

@@ -6,9 +6,10 @@
 // Routes:
 //   GET  /health                    — liveness probe (unauthenticated)
 //   GET  /v1/whoami                 — auth probe; returns tier + account_hash
-//   POST /v1/verdicts               — record outcome (week 2)
-//   GET  /v1/switches/:name/report  — report-card render (week 2)
-//   POST /v1/judge                  — LLM-as-judge (week 2, conditional)
+//   POST /v1/verdicts               — record outcome (billable)
+//   GET  /v1/switches               — list switches for the authed account
+//   GET  /v1/switches/:name/report  — report-card render (markdown or JSON)
+//   POST /v1/judge                  — LLM-as-judge (billable, not implemented)
 //
 // Auth: every /v1/* route requires `Authorization: Bearer dndr_live_…`.
 // The auth middleware resolves the key to a user + tier and attaches
@@ -21,6 +22,7 @@ import { admin, type AdminEnv } from './admin';
 import { webhook, type WebhookEnv } from './webhook';
 import { recordVerdictHandler } from './verdicts';
 import { renderReportHandler } from './report';
+import { listSwitchesHandler } from './switches';
 import {
   shareCorpusHandler,
   fetchCorpusHandler,
@@ -92,13 +94,19 @@ v1.get('/whoami', async (c) => {
   });
 });
 
+// Read-only auth-gated routes — NOT billable. Dashboard renders should
+// not consume the customer's verdict cap. Listing the switch roster +
+// fetching a switch's report card both live here.
+v1.get('/switches', listSwitchesHandler);
+v1.get('/switches/:name/report', renderReportHandler);
+
 // Billable routes — wrap with usageMiddleware so each call increments
-// the monthly counter and enforces tier caps before reaching the
-// (week 2) handlers.
+// the monthly counter and enforces tier caps. POST /v1/verdicts is the
+// canonical billable surface; LLM-as-judge + corpus / registry calls
+// also count against the cap.
 const billable = new Hono<{ Bindings: ApiEnv }>();
 billable.use('*', usageMiddleware());
 billable.post('/verdicts', recordVerdictHandler);
-billable.get('/switches/:name/report', renderReportHandler);
 billable.post('/judge', (c) => c.json({ error: 'not_implemented' }, 501));
 billable.post('/team-corpus', shareCorpusHandler);
 billable.get('/team-corpus/:id', fetchCorpusHandler);
