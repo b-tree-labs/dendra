@@ -347,6 +347,49 @@ describe('insights enrollment round-trip', () => {
     expect(body.cohort_size).toBeGreaterThanOrEqual(1);
   });
 
+  it('cohort_size falls back when KV read exceeds 100ms timeout', async () => {
+    // Mitigation for chaos finding #2 (PR #42 §5): the KV read is now
+    // bounded by KV_READ_TIMEOUT_MS = 100ms. A slow KV tail should fall
+    // through to the DB count, not block the whole response.
+    //
+    // We can't directly inject latency into the in-process miniflare KV
+    // mock, but we CAN swap the KV binding for a stand-in whose get()
+    // returns a never-resolving promise (worse than slow — never). If
+    // the timeout works, the response still resolves to the DB-count
+    // fallback. If the timeout doesn't work, this test hangs.
+    await env.KV_INSIGHTS.delete(TUNED_DEFAULTS_KEY);
+    const userId = await newUser('cohort-kv-slow');
+    await SELF.fetch(`${BASE}/admin/insights/enroll`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ user_id: userId }),
+    });
+
+    const originalGet = env.KV_INSIGHTS.get.bind(env.KV_INSIGHTS);
+    try {
+      env.KV_INSIGHTS.get = (() =>
+        new Promise<string | null>(() => {
+          /* never resolves — caller must time out */
+        })) as typeof env.KV_INSIGHTS.get;
+
+      const start = Date.now();
+      const res = await SELF.fetch(
+        `${BASE}/admin/insights/status?user_id=${userId}`,
+        { headers },
+      );
+      const elapsed = Date.now() - start;
+
+      expect(res.status).toBe(200);
+      const body = await res.json<{ cohort_size: number }>();
+      expect(body.cohort_size).toBeGreaterThanOrEqual(1);
+      // Bound at 100ms KV timeout + a generous test-env slack. If this
+      // takes >2s the timeout isn't firing.
+      expect(elapsed).toBeLessThan(2_000);
+    } finally {
+      env.KV_INSIGHTS.get = originalGet;
+    }
+  });
+
   it('enroll rejects unknown user_id', async () => {
     const res = await SELF.fetch(`${BASE}/admin/insights/enroll`, {
       method: 'POST',

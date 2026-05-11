@@ -62,6 +62,26 @@ export interface UsageState {
 /**
  * Atomically increment usage for the current period and return the new
  * counts plus a precomputed enforcement decision.
+ *
+ * **Counter is the authoritative cap ledger** (architecture choice
+ * confirmed 2026-05-11 from chaos finding #1, PR #42 §3): the
+ * usage_metrics increment and the downstream verdicts INSERT in
+ * verdicts.ts are NOT in a shared D1 transaction. If D1 fails between
+ * them, the counter advances by 1 with no corresponding verdict row.
+ * On retry, the request_id idempotency check on verdicts doesn't catch
+ * this — the original verdict never landed.
+ *
+ * The trade-off: wrapping both in a D1 batch would lose the early-cap-
+ * reject short-circuit below (every request would pay the verdict-prep
+ * cost even when usageMiddleware would 429 it). That ~1ms hot-path
+ * regression is worse for the median customer than the alternative — a
+ * few "lost" verdict rows under D1 stress, where the counter still
+ * counted them. The customer was billed for those verdicts; the audit
+ * chain is the cohort artifact, not the per-row source of truth.
+ *
+ * Revisit post-launch if we see real D1 transient rates >0.1%, or if a
+ * HIPAA-grade customer needs row-level atomicity. v1.1 idempotency-on-
+ * retry-via-request_id-history is the cleaner long-term fix.
  */
 export async function recordUsage(
   db: D1Database,
