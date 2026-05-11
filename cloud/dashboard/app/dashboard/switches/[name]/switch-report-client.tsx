@@ -3,9 +3,14 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useMemo, useState, useTransition } from "react";
 import ReactMarkdown from "react-markdown";
 import type { SwitchReport } from "../../../../lib/dendra-api";
+import {
+  isStale,
+  daysSince as daysSinceTs,
+} from "../../../../lib/switch-stale";
 
 const PHASE_LABELS: Record<string, string> = {
   P0: "RULE",
@@ -201,8 +206,69 @@ interface Props {
 }
 
 export default function SwitchReportClient({ switchName, report, tier }: Props) {
+  const router = useRouter();
   const [expanded, setExpanded] = useState(false);
+  const [archiveFormOpen, setArchiveFormOpen] = useState(false);
+  const [archiveReason, setArchiveReason] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
   const md = useMemo(() => buildMarkdown(switchName, report), [switchName, report]);
+
+  const archived = !!report.archived_at;
+  const stale =
+    !archived &&
+    !!report.agg.last_at &&
+    isStale({
+      last_activity: report.agg.last_at,
+      archived_at: report.archived_at,
+    });
+  const daysSinceActivity = report.agg.last_at
+    ? daysSinceTs(report.agg.last_at)
+    : null;
+
+  async function submitArchive() {
+    setSubmitError(null);
+    setSubmitting(true);
+    try {
+      const trimmed = archiveReason.trim();
+      const res = await fetch(
+        `/api/switches/${encodeURIComponent(switchName)}?action=archive`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(trimmed ? { reason: trimmed } : {}),
+        },
+      );
+      if (!res.ok) throw new Error(`archive failed: ${res.status}`);
+      setArchiveFormOpen(false);
+      setArchiveReason("");
+      startTransition(() => router.refresh());
+    } catch (e) {
+      console.error(e);
+      setSubmitError("Couldn't archive — try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function submitUnarchive() {
+    setSubmitError(null);
+    setSubmitting(true);
+    try {
+      const res = await fetch(
+        `/api/switches/${encodeURIComponent(switchName)}?action=unarchive`,
+        { method: "POST" },
+      );
+      if (!res.ok) throw new Error(`unarchive failed: ${res.status}`);
+      startTransition(() => router.refresh());
+    } catch (e) {
+      console.error(e);
+      setSubmitError("Couldn't unarchive — try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   const currentPhase = report.current_phase ?? "P0";
   const currentLabel = report.current_phase_label ?? "RULE";
@@ -229,6 +295,174 @@ export default function SwitchReportClient({ switchName, report, tier }: Props) 
           ← Switches
         </Link>
       </p>
+
+      {/* ── Archived banner (mutually exclusive with stale) ──────────────── */}
+      {archived && (
+        <div
+          role="status"
+          className="surface-card mt-3"
+          style={{
+            background: "var(--ground-soft)",
+            borderLeft: "3px solid var(--ink-soft)",
+            padding: "var(--space-3) var(--space-4)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "var(--space-3)",
+              flexWrap: "wrap",
+            }}
+          >
+            <p style={{ margin: 0, fontSize: "var(--size-caption)" }}>
+              <strong>Archived</strong>{" "}
+              <span className="font-mono" style={{ color: "var(--ink-soft)" }}>
+                {report.archived_at?.slice(0, 10)}
+              </span>
+              {report.archived_reason ? (
+                <>
+                  {" — "}
+                  <span style={{ color: "var(--ink-soft)" }}>
+                    &ldquo;{report.archived_reason}&rdquo;
+                  </span>
+                </>
+              ) : null}
+              {". The report card below is preserved as-is. A new verdict on this switch will auto-restore it to the default roster."}
+            </p>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={submitUnarchive}
+              disabled={submitting}
+            >
+              {submitting ? "Unarchiving…" : "Unarchive"}
+            </button>
+          </div>
+          {submitError && (
+            <p
+              role="alert"
+              style={{
+                margin: "var(--space-2) 0 0",
+                color: "var(--ink-soft)",
+                fontSize: "var(--size-micro)",
+              }}
+            >
+              {submitError}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* ── Stale banner (only when not archived) ────────────────────────── */}
+      {stale && (
+        <div
+          role="status"
+          className="surface-card mt-3"
+          style={{
+            background: "var(--ground-soft)",
+            borderLeft: "3px solid var(--accent)",
+            padding: "var(--space-3) var(--space-4)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "var(--space-3)",
+              flexWrap: "wrap",
+            }}
+          >
+            <p style={{ margin: 0, fontSize: "var(--size-caption)" }}>
+              <strong>No verdicts received in {daysSinceActivity} days.</strong>{" "}
+              <span style={{ color: "var(--ink-soft)" }}>
+                The switch may have been removed from your code. Archive to
+                hide from the roster — audit history is preserved either way.
+              </span>
+            </p>
+            {!archiveFormOpen && (
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => setArchiveFormOpen(true)}
+              >
+                Archive
+              </button>
+            )}
+          </div>
+          {archiveFormOpen && (
+            <div
+              style={{
+                marginTop: "var(--space-3)",
+                paddingTop: "var(--space-3)",
+                borderTop: "1px solid var(--rule)",
+              }}
+            >
+              <label
+                htmlFor="archive-reason"
+                style={{
+                  display: "block",
+                  fontSize: "var(--size-micro)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                  color: "var(--ink-soft)",
+                  marginBottom: "var(--space-2)",
+                  fontFamily: "var(--font-display)",
+                }}
+              >
+                Reason (optional, max 200 chars)
+              </label>
+              <input
+                id="archive-reason"
+                type="text"
+                className="input-text"
+                maxLength={200}
+                value={archiveReason}
+                onChange={(e) => setArchiveReason(e.target.value)}
+                placeholder="e.g. switch removed from intent_router.py"
+                style={{ marginBottom: "var(--space-3)" }}
+              />
+              <div style={{ display: "flex", gap: "var(--space-2)" }}>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={submitArchive}
+                  disabled={submitting}
+                >
+                  {submitting ? "Archiving…" : "Confirm archive"}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => {
+                    setArchiveFormOpen(false);
+                    setArchiveReason("");
+                    setSubmitError(null);
+                  }}
+                  disabled={submitting}
+                >
+                  Cancel
+                </button>
+              </div>
+              {submitError && (
+                <p
+                  role="alert"
+                  style={{
+                    margin: "var(--space-2) 0 0",
+                    color: "var(--ink-soft)",
+                    fontSize: "var(--size-micro)",
+                  }}
+                >
+                  {submitError}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       <h1
         className="mt-2"
         style={{

@@ -184,5 +184,21 @@ export async function recordVerdictHandler(c: Context<{ Bindings: ApiEnv }>) {
   if (!result) {
     return c.json({ error: 'insert_failed' }, 500);
   }
+
+  // Auto-unarchive on revival. If this (user, switch) was archived (the
+  // customer commented out the @ml_switch and clicked archive on the
+  // dashboard), a fresh verdict means the function is alive again —
+  // remove the archive row so the switch resurfaces in the default
+  // roster view. Single indexed DELETE; no-op when the row is absent.
+  //
+  // This does NOT affect verdict counting / tier-cap enforcement —
+  // usageMiddleware has already incremented the counter by this point.
+  await c.env.DB.prepare(
+    `DELETE FROM switch_archives
+      WHERE user_id = ? AND switch_name = ?`,
+  )
+    .bind(auth.user_id, v.switch_name)
+    .run();
+
   return c.json({ id: result.id, accepted_at: result.created_at }, 201);
 }

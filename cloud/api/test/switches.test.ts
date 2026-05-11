@@ -9,6 +9,7 @@ import migration0001 from '../../collector/migrations/0001_initial.sql?raw';
 import migration0002 from '../../collector/migrations/0002_leads.sql?raw';
 import migration0003 from '../../collector/migrations/0003_saas.sql?raw';
 import migration0004 from '../../collector/migrations/0004_verdicts.sql?raw';
+import migration0008 from '../../collector/migrations/0008_switch_archives.sql?raw';
 
 const SERVICE_TOKEN = 'test-service-token-for-dashboard';
 const BASE = 'https://api.test';
@@ -49,6 +50,7 @@ beforeAll(async () => {
   await applySql(migration0002);
   await applySql(migration0003);
   await applySql(migration0004);
+  await applySql(migration0008);
 
   // Alice — has two keys (a "live" and a "test" key) so we can verify
   // the dashboard sees a unified roster across her keys.
@@ -283,5 +285,307 @@ describe('GET /admin/switches — dashboard proxy', () => {
     expect(body.transitions.length).toBeGreaterThan(0);
     // We seeded P0, P3, P5 — first transition should be P0.
     expect(body.transitions[0].phase).toBe('P0');
+  });
+});
+
+// =============================================================================
+// Switch archive endpoints — manual hide/show + auto-revive on verdict.
+// =============================================================================
+
+describe('POST /admin/switches/:name/archive', () => {
+  it('archives a switch owned by the user (200 + archive row)', async () => {
+    // Use a switch we can mutate freely without interfering with other
+    // tests above — Alice's severity_classifier (we'll unarchive after).
+    const res = await SELF.fetch(
+      `${BASE}/admin/switches/severity_classifier/archive`,
+      {
+        method: 'POST',
+        headers: adminHeaders,
+        body: JSON.stringify({ user_id: aliceUserId, reason: 'removed from code' }),
+      },
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json<{
+      archive: {
+        id: number;
+        user_id: number;
+        switch_name: string;
+        archived_at: string;
+        archived_reason: string | null;
+      };
+    }>();
+    expect(body.archive.switch_name).toBe('severity_classifier');
+    expect(body.archive.user_id).toBe(aliceUserId);
+    expect(body.archive.archived_reason).toBe('removed from code');
+    expect(body.archive.archived_at).toMatch(/\d{4}-\d{2}-\d{2}/);
+
+    // Cleanup so subsequent archive-state tests start fresh.
+    await SELF.fetch(`${BASE}/admin/switches/severity_classifier/unarchive`, {
+      method: 'POST',
+      headers: adminHeaders,
+      body: JSON.stringify({ user_id: aliceUserId }),
+    });
+  });
+
+  it('is idempotent — second call returns the existing row (200, not 409)', async () => {
+    const r1 = await SELF.fetch(
+      `${BASE}/admin/switches/severity_classifier/archive`,
+      {
+        method: 'POST',
+        headers: adminHeaders,
+        body: JSON.stringify({ user_id: aliceUserId, reason: 'first' }),
+      },
+    );
+    expect(r1.status).toBe(200);
+    const b1 = await r1.json<{ archive: { id: number; archived_reason: string } }>();
+
+    // Re-archive with a different reason: should return the same row,
+    // archived_at unchanged, reason unchanged (first writer wins).
+    const r2 = await SELF.fetch(
+      `${BASE}/admin/switches/severity_classifier/archive`,
+      {
+        method: 'POST',
+        headers: adminHeaders,
+        body: JSON.stringify({ user_id: aliceUserId, reason: 'second' }),
+      },
+    );
+    expect(r2.status).toBe(200);
+    const b2 = await r2.json<{ archive: { id: number; archived_reason: string } }>();
+    expect(b2.archive.id).toBe(b1.archive.id);
+    expect(b2.archive.archived_reason).toBe('first');
+
+    // Cleanup.
+    await SELF.fetch(`${BASE}/admin/switches/severity_classifier/unarchive`, {
+      method: 'POST',
+      headers: adminHeaders,
+      body: JSON.stringify({ user_id: aliceUserId }),
+    });
+  });
+
+  it('returns 404 when the user does not own the switch (cross-account)', async () => {
+    const res = await SELF.fetch(
+      `${BASE}/admin/switches/bobs_private_switch/archive`,
+      {
+        method: 'POST',
+        headers: adminHeaders,
+        body: JSON.stringify({ user_id: aliceUserId }),
+      },
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 400 for invalid switch_name', async () => {
+    const res = await SELF.fetch(
+      `${BASE}/admin/switches/has%20spaces/archive`,
+      {
+        method: 'POST',
+        headers: adminHeaders,
+        body: JSON.stringify({ user_id: aliceUserId }),
+      },
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when reason exceeds 200 chars', async () => {
+    const res = await SELF.fetch(
+      `${BASE}/admin/switches/severity_classifier/archive`,
+      {
+        method: 'POST',
+        headers: adminHeaders,
+        body: JSON.stringify({ user_id: aliceUserId, reason: 'a'.repeat(201) }),
+      },
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it('accepts a missing reason (one-click archive)', async () => {
+    const res = await SELF.fetch(
+      `${BASE}/admin/switches/severity_classifier/archive`,
+      {
+        method: 'POST',
+        headers: adminHeaders,
+        body: JSON.stringify({ user_id: aliceUserId }),
+      },
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json<{ archive: { archived_reason: string | null } }>();
+    expect(body.archive.archived_reason).toBeNull();
+
+    // Cleanup.
+    await SELF.fetch(`${BASE}/admin/switches/severity_classifier/unarchive`, {
+      method: 'POST',
+      headers: adminHeaders,
+      body: JSON.stringify({ user_id: aliceUserId }),
+    });
+  });
+});
+
+describe('POST /admin/switches/:name/unarchive', () => {
+  it('unarchives a previously-archived switch (200)', async () => {
+    await SELF.fetch(`${BASE}/admin/switches/severity_classifier/archive`, {
+      method: 'POST',
+      headers: adminHeaders,
+      body: JSON.stringify({ user_id: aliceUserId }),
+    });
+
+    const res = await SELF.fetch(
+      `${BASE}/admin/switches/severity_classifier/unarchive`,
+      {
+        method: 'POST',
+        headers: adminHeaders,
+        body: JSON.stringify({ user_id: aliceUserId }),
+      },
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json<{ unarchived: boolean }>();
+    expect(body.unarchived).toBe(true);
+  });
+
+  it('is idempotent — unarchiving an unarchived switch returns 200', async () => {
+    const res = await SELF.fetch(
+      `${BASE}/admin/switches/severity_classifier/unarchive`,
+      {
+        method: 'POST',
+        headers: adminHeaders,
+        body: JSON.stringify({ user_id: aliceUserId }),
+      },
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it('returns 404 when the user does not own the switch', async () => {
+    const res = await SELF.fetch(
+      `${BASE}/admin/switches/bobs_private_switch/unarchive`,
+      {
+        method: 'POST',
+        headers: adminHeaders,
+        body: JSON.stringify({ user_id: aliceUserId }),
+      },
+    );
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('GET /admin/switches?include_archived — filter + count', () => {
+  it('hides archived switches by default and reports archived_count', async () => {
+    // Archive severity_classifier for the duration of this test, then unwind.
+    await SELF.fetch(`${BASE}/admin/switches/severity_classifier/archive`, {
+      method: 'POST',
+      headers: adminHeaders,
+      body: JSON.stringify({ user_id: aliceUserId, reason: 'dormant' }),
+    });
+
+    const res = await SELF.fetch(
+      `${BASE}/admin/switches?user_id=${aliceUserId}`,
+      { headers: { 'X-Dashboard-Token': SERVICE_TOKEN } },
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json<{
+      switches: Array<{ switch_name: string; archived_at: string | null }>;
+      archived_count: number;
+    }>();
+    const names = body.switches.map((s) => s.switch_name);
+    expect(names).not.toContain('severity_classifier');
+    expect(names).toContain('intent_classifier');
+    expect(body.archived_count).toBe(1);
+
+    // Cleanup.
+    await SELF.fetch(`${BASE}/admin/switches/severity_classifier/unarchive`, {
+      method: 'POST',
+      headers: adminHeaders,
+      body: JSON.stringify({ user_id: aliceUserId }),
+    });
+  });
+
+  it('includes archived switches with archived_at + archived_reason when include_archived=true', async () => {
+    await SELF.fetch(`${BASE}/admin/switches/severity_classifier/archive`, {
+      method: 'POST',
+      headers: adminHeaders,
+      body: JSON.stringify({ user_id: aliceUserId, reason: 'removed for now' }),
+    });
+
+    const res = await SELF.fetch(
+      `${BASE}/admin/switches?user_id=${aliceUserId}&include_archived=true`,
+      { headers: { 'X-Dashboard-Token': SERVICE_TOKEN } },
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json<{
+      switches: Array<{
+        switch_name: string;
+        archived_at: string | null;
+        archived_reason: string | null;
+      }>;
+      archived_count: number;
+    }>();
+    const sc = body.switches.find((s) => s.switch_name === 'severity_classifier');
+    expect(sc).toBeDefined();
+    expect(sc?.archived_at).toMatch(/\d{4}-\d{2}-\d{2}/);
+    expect(sc?.archived_reason).toBe('removed for now');
+    expect(body.archived_count).toBe(1);
+
+    // Non-archived switches should have null archive fields.
+    const ic = body.switches.find((s) => s.switch_name === 'intent_classifier');
+    expect(ic?.archived_at).toBeNull();
+    expect(ic?.archived_reason).toBeNull();
+
+    // Cleanup.
+    await SELF.fetch(`${BASE}/admin/switches/severity_classifier/unarchive`, {
+      method: 'POST',
+      headers: adminHeaders,
+      body: JSON.stringify({ user_id: aliceUserId }),
+    });
+  });
+
+  it('archived_count is 0 when no archives exist', async () => {
+    const res = await SELF.fetch(
+      `${BASE}/admin/switches?user_id=${aliceUserId}`,
+      { headers: { 'X-Dashboard-Token': SERVICE_TOKEN } },
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json<{ archived_count: number }>();
+    expect(body.archived_count).toBe(0);
+  });
+});
+
+describe('GET /admin/switches/:name/report — archive state echo', () => {
+  it('returns archived_at + archived_reason when the switch is archived', async () => {
+    await SELF.fetch(`${BASE}/admin/switches/severity_classifier/archive`, {
+      method: 'POST',
+      headers: adminHeaders,
+      body: JSON.stringify({ user_id: aliceUserId, reason: 'audit me' }),
+    });
+
+    const res = await SELF.fetch(
+      `${BASE}/admin/switches/severity_classifier/report?user_id=${aliceUserId}`,
+      { headers: { 'X-Dashboard-Token': SERVICE_TOKEN } },
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json<{
+      archived_at: string | null;
+      archived_reason: string | null;
+    }>();
+    expect(body.archived_at).toMatch(/\d{4}-\d{2}-\d{2}/);
+    expect(body.archived_reason).toBe('audit me');
+
+    // Cleanup.
+    await SELF.fetch(`${BASE}/admin/switches/severity_classifier/unarchive`, {
+      method: 'POST',
+      headers: adminHeaders,
+      body: JSON.stringify({ user_id: aliceUserId }),
+    });
+  });
+
+  it('returns null archive fields for a non-archived switch', async () => {
+    const res = await SELF.fetch(
+      `${BASE}/admin/switches/intent_classifier/report?user_id=${aliceUserId}`,
+      { headers: { 'X-Dashboard-Token': SERVICE_TOKEN } },
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json<{
+      archived_at: string | null;
+      archived_reason: string | null;
+    }>();
+    expect(body.archived_at).toBeNull();
+    expect(body.archived_reason).toBeNull();
   });
 });

@@ -11,7 +11,11 @@ import SwitchesClient from "./switches-client";
 
 export const runtime = "edge";
 
-export default async function SwitchesListPage() {
+export default async function SwitchesListPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ include_archived?: string }>;
+}) {
   const { userId } = await auth();
   if (!userId) redirect("/");
 
@@ -19,8 +23,11 @@ export default async function SwitchesListPage() {
   const email = u?.emailAddresses?.[0]?.emailAddress;
   if (!email) redirect("/");
 
+  const sp = await searchParams;
+  const includeArchived = sp.include_archived === "true";
+
   const user = await upsertUser(userId, email);
-  const data = await listSwitches(user.user_id);
+  const data = await listSwitches(user.user_id, includeArchived);
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-12">
@@ -43,6 +50,8 @@ export default async function SwitchesListPage() {
       <SwitchesClient
         switches={data.switches}
         sparklineWindowDays={data.sparkline_window_days}
+        archivedCount={data.archived_count}
+        includeArchived={includeArchived}
         tier={user.tier}
       />
     </main>

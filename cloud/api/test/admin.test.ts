@@ -10,6 +10,7 @@ import migration0001 from '../../collector/migrations/0001_initial.sql?raw';
 import migration0002 from '../../collector/migrations/0002_leads.sql?raw';
 import migration0003 from '../../collector/migrations/0003_saas.sql?raw';
 import migration0004 from '../../collector/migrations/0004_verdicts.sql?raw';
+import migration0008 from '../../collector/migrations/0008_switch_archives.sql?raw';
 
 const SERVICE_TOKEN = 'test-service-token-for-dashboard';
 const BASE = 'https://api.test';
@@ -42,6 +43,7 @@ beforeAll(async () => {
   await applySql(migration0002);
   await applySql(migration0003);
   await applySql(migration0004);
+  await applySql(migration0008);
 });
 
 describe('admin: service-token auth', () => {

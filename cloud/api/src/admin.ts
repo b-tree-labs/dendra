@@ -514,13 +514,25 @@ function lastNDates(n: number, now: Date = new Date()): string[] {
   return out;
 }
 
-// GET /admin/switches?user_id=N — list all switches owned by the user.
+// GET /admin/switches?user_id=N[&include_archived=true] — list all
+// switches owned by the user.
+//
+// Default (include_archived false / absent): only non-archived rows
+// appear in `switches`. archived_count is still computed so the UI can
+// decide whether to surface a "Show archived (N)" toggle.
+//
+// include_archived=true: archived rows are included; each row carries
+// archived_at + archived_reason (null when not archived).
 admin.get('/switches', async (c) => {
   const uid = Number(c.req.query('user_id'));
   if (!Number.isInteger(uid) || uid <= 0) {
     return c.json({ error: 'missing_or_invalid_user_id' }, 400);
   }
+  const includeArchived = c.req.query('include_archived') === 'true';
 
+  // LEFT JOIN switch_archives so archived state rides along with each
+  // summary row. Filter is applied post-aggregation in the application
+  // layer so archived_count stays accurate regardless of the toggle.
   const summary = (
     await c.env.DB.prepare(
       `SELECT
@@ -528,6 +540,8 @@ admin.get('/switches', async (c) => {
           COUNT(*)             AS total_verdicts,
           MIN(v.created_at)    AS first_activity,
           MAX(v.created_at)    AS last_activity,
+          sa.archived_at       AS archived_at,
+          sa.archived_reason   AS archived_reason,
           (SELECT phase FROM verdicts v2
              JOIN api_keys k2 ON k2.id = v2.api_key_id
             WHERE k2.user_id = ?
@@ -536,6 +550,9 @@ admin.get('/switches', async (c) => {
                                AS current_phase
          FROM verdicts v
          JOIN api_keys k ON k.id = v.api_key_id
+         LEFT JOIN switch_archives sa
+                ON sa.user_id = k.user_id
+               AND sa.switch_name = v.switch_name
         WHERE k.user_id = ?
         GROUP BY v.switch_name
         ORDER BY MAX(v.created_at) DESC`,
@@ -546,24 +563,41 @@ admin.get('/switches', async (c) => {
         total_verdicts: number;
         first_activity: string;
         last_activity: string;
+        archived_at: string | null;
+        archived_reason: string | null;
         current_phase: string | null;
       }>()
   ).results ?? [];
 
-  const sparkRows = (
-    await c.env.DB.prepare(
-      `SELECT v.switch_name AS switch_name,
-              strftime('%Y-%m-%d', v.created_at) AS bucket_date,
-              COUNT(*) AS n
-         FROM verdicts v
-         JOIN api_keys k ON k.id = v.api_key_id
-        WHERE k.user_id = ?
-          AND v.created_at >= datetime('now', '-14 days')
-        GROUP BY v.switch_name, strftime('%Y-%m-%d', v.created_at)`,
-    )
-      .bind(uid)
-      .all<{ switch_name: string; bucket_date: string; n: number }>()
-  ).results ?? [];
+  const archivedCount = summary.reduce(
+    (acc, r) => acc + (r.archived_at ? 1 : 0),
+    0,
+  );
+
+  // Sparkline window narrows to the non-archived set when we're hiding
+  // archived rows — no point hitting D1 for buckets we won't render.
+  const namesNeedingSpark = new Set(
+    summary
+      .filter((r) => includeArchived || !r.archived_at)
+      .map((r) => r.switch_name),
+  );
+
+  const sparkRows = namesNeedingSpark.size === 0
+    ? []
+    : (
+        await c.env.DB.prepare(
+          `SELECT v.switch_name AS switch_name,
+                  strftime('%Y-%m-%d', v.created_at) AS bucket_date,
+                  COUNT(*) AS n
+             FROM verdicts v
+             JOIN api_keys k ON k.id = v.api_key_id
+            WHERE k.user_id = ?
+              AND v.created_at >= datetime('now', '-14 days')
+            GROUP BY v.switch_name, strftime('%Y-%m-%d', v.created_at)`,
+        )
+          .bind(uid)
+          .all<{ switch_name: string; bucket_date: string; n: number }>()
+      ).results ?? [];
 
   const grid = lastNDates(SPARKLINE_DAYS);
   const byName = new Map<string, Map<string, number>>();
@@ -576,17 +610,27 @@ admin.get('/switches', async (c) => {
     m.set(row.bucket_date, row.n);
   }
 
-  const switches = summary.map((row) => ({
+  const filtered = includeArchived
+    ? summary
+    : summary.filter((r) => !r.archived_at);
+
+  const switches = filtered.map((row) => ({
     switch_name: row.switch_name,
     current_phase: row.current_phase,
     current_phase_label: phaseLabel(row.current_phase),
     total_verdicts: row.total_verdicts,
     last_activity: row.last_activity,
     first_activity: row.first_activity,
+    archived_at: row.archived_at,
+    archived_reason: row.archived_reason,
     sparkline: grid.map((d) => byName.get(row.switch_name)?.get(d) ?? 0),
   }));
 
-  return c.json({ switches, sparkline_window_days: SPARKLINE_DAYS });
+  return c.json({
+    switches,
+    sparkline_window_days: SPARKLINE_DAYS,
+    archived_count: archivedCount,
+  });
 });
 
 // GET /admin/switches/:name/report?user_id=N — per-switch report card.
@@ -616,6 +660,17 @@ admin.get('/switches/:name/report', async (c) => {
     ? report.transitions[report.transitions.length - 1].phase
     : null;
 
+  // Archive state rides along so the per-switch page can render the
+  // archived banner instead of the stale banner. Single indexed read.
+  const archive = await c.env.DB.prepare(
+    `SELECT archived_at, archived_reason
+       FROM switch_archives
+      WHERE user_id = ? AND switch_name = ?
+      LIMIT 1`,
+  )
+    .bind(uid, switch_name)
+    .first<{ archived_at: string; archived_reason: string | null }>();
+
   return c.json({
     switch_name,
     days,
@@ -625,5 +680,140 @@ admin.get('/switches/:name/report', async (c) => {
     current_phase: currentPhase,
     current_phase_label: phaseLabel(currentPhase),
     mcnemar_p_two_sided: report.mcnemar_p_two_sided,
+    archived_at: archive?.archived_at ?? null,
+    archived_reason: archive?.archived_reason ?? null,
   });
+});
+
+// ---------------------------------------------------------------------------
+// Switch archive endpoints — customer-driven hide/show. Archiving never
+// touches verdict history; auto-unarchive on next verdict (handled in
+// cloud/api/src/verdicts.ts) is the natural recovery path.
+//
+// Both endpoints are idempotent: re-archiving returns the existing row,
+// unarchiving an unarchived switch returns 200. Cross-account access is
+// blocked by the ownership lookup — same 404 shape as the report card.
+// ---------------------------------------------------------------------------
+
+const MAX_ARCHIVED_REASON = 200;
+
+// Local copy of the ownership check from switches.ts. We don't import to
+// keep admin.ts self-contained against the existing switches.ts surface
+// (which is bearer-auth scoped and uses AuthContext).
+async function userOwnsSwitch(
+  db: D1Database,
+  user_id: number,
+  switch_name: string,
+): Promise<boolean> {
+  if (!SWITCH_NAME_RE.test(switch_name)) return false;
+  const row = await db
+    .prepare(
+      `SELECT 1 AS hit
+         FROM verdicts v
+         JOIN api_keys k ON k.id = v.api_key_id
+        WHERE k.user_id = ?
+          AND v.switch_name = ?
+        LIMIT 1`,
+    )
+    .bind(user_id, switch_name)
+    .first<{ hit: number }>();
+  return !!row;
+}
+
+// POST /admin/switches/:name/archive — body: { user_id, reason? }.
+// Idempotent: already-archived returns the existing row, not 409.
+admin.post('/switches/:name/archive', async (c) => {
+  const switch_name = c.req.param('name') ?? '';
+  if (!SWITCH_NAME_RE.test(switch_name)) {
+    return c.json({ error: 'invalid_switch_name' }, 400);
+  }
+
+  const body = await c.req.json<{ user_id?: number; reason?: string | null }>()
+    .catch(() => null);
+  if (!body?.user_id || !Number.isInteger(body.user_id) || body.user_id <= 0) {
+    return c.json({ error: 'missing_or_invalid_user_id' }, 400);
+  }
+
+  let reason: string | null = null;
+  if (body.reason !== undefined && body.reason !== null) {
+    if (typeof body.reason !== 'string') {
+      return c.json({ error: 'reason_must_be_string' }, 400);
+    }
+    if (body.reason.length > MAX_ARCHIVED_REASON) {
+      return c.json(
+        { error: `reason_exceeds_${MAX_ARCHIVED_REASON}_chars` },
+        400,
+      );
+    }
+    reason = body.reason.length === 0 ? null : body.reason;
+  }
+
+  // 404 (NOT 403) for cross-account / typo. Matches the report-card
+  // contract — never leak existence.
+  const owns = await userOwnsSwitch(c.env.DB, body.user_id, switch_name);
+  if (!owns) {
+    return c.json({ error: 'switch_not_found' }, 404);
+  }
+
+  // Idempotent upsert: ON CONFLICT keeps the original archived_at so the
+  // audit timestamp doesn't slip on a repeat click. Reason is left
+  // untouched on conflict for the same reason — the customer's first
+  // explanation wins.
+  await c.env.DB.prepare(
+    `INSERT INTO switch_archives (user_id, switch_name, archived_reason)
+     VALUES (?, ?, ?)
+     ON CONFLICT(user_id, switch_name) DO NOTHING`,
+  )
+    .bind(body.user_id, switch_name, reason)
+    .run();
+
+  const row = await c.env.DB.prepare(
+    `SELECT id, user_id, switch_name, archived_at, archived_reason
+       FROM switch_archives
+      WHERE user_id = ? AND switch_name = ?
+      LIMIT 1`,
+  )
+    .bind(body.user_id, switch_name)
+    .first<{
+      id: number;
+      user_id: number;
+      switch_name: string;
+      archived_at: string;
+      archived_reason: string | null;
+    }>();
+
+  if (!row) {
+    // Shouldn't happen — the INSERT (or pre-existing row) guarantees one.
+    return c.json({ error: 'archive_failed' }, 500);
+  }
+
+  return c.json({ archive: row });
+});
+
+// POST /admin/switches/:name/unarchive — body: { user_id }.
+// Idempotent: already-unarchived returns 200.
+admin.post('/switches/:name/unarchive', async (c) => {
+  const switch_name = c.req.param('name') ?? '';
+  if (!SWITCH_NAME_RE.test(switch_name)) {
+    return c.json({ error: 'invalid_switch_name' }, 400);
+  }
+
+  const body = await c.req.json<{ user_id?: number }>().catch(() => null);
+  if (!body?.user_id || !Number.isInteger(body.user_id) || body.user_id <= 0) {
+    return c.json({ error: 'missing_or_invalid_user_id' }, 400);
+  }
+
+  const owns = await userOwnsSwitch(c.env.DB, body.user_id, switch_name);
+  if (!owns) {
+    return c.json({ error: 'switch_not_found' }, 404);
+  }
+
+  await c.env.DB.prepare(
+    `DELETE FROM switch_archives
+      WHERE user_id = ? AND switch_name = ?`,
+  )
+    .bind(body.user_id, switch_name)
+    .run();
+
+  return c.json({ unarchived: true });
 });

@@ -3,8 +3,10 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useMemo, useState, useTransition } from "react";
 import type { SwitchSummary } from "../../../lib/dendra-api";
+import { isStale, STALE_AFTER_DAYS } from "../../../lib/switch-stale";
 
 type SortKey = "last_activity" | "switch_name" | "current_phase" | "total_verdicts";
 type SortDir = "asc" | "desc";
@@ -127,6 +129,58 @@ function PhaseBadge({ phase }: { phase: string | null }) {
   );
 }
 
+/**
+ * Small dimmed chip rendered next to the switch name when the switch is
+ * stale (last_activity > STALE_AFTER_DAYS days ago AND not archived).
+ * Default sort already buries stale rows; this is just a visual marker
+ * so the customer can scan and see "ah, these aren't moving."
+ */
+function StaleChip() {
+  return (
+    <span
+      className="font-mono"
+      title={`No verdicts in over ${STALE_AFTER_DAYS} days — the switch may have been removed from your code.`}
+      style={{
+        display: "inline-block",
+        marginLeft: "var(--space-2)",
+        padding: "1px 6px",
+        borderRadius: "3px",
+        background: "var(--ground-soft)",
+        color: "var(--ink-soft)",
+        fontSize: "var(--size-micro)",
+        letterSpacing: "0.06em",
+        textTransform: "uppercase",
+        verticalAlign: "middle",
+      }}
+    >
+      Stale
+    </span>
+  );
+}
+
+function ArchivedChip() {
+  return (
+    <span
+      className="font-mono"
+      title="Archived — hidden from the default roster view."
+      style={{
+        display: "inline-block",
+        marginLeft: "var(--space-2)",
+        padding: "1px 6px",
+        borderRadius: "3px",
+        background: "var(--ground-soft)",
+        color: "var(--ink-soft)",
+        fontSize: "var(--size-micro)",
+        letterSpacing: "0.06em",
+        textTransform: "uppercase",
+        verticalAlign: "middle",
+      }}
+    >
+      Archived
+    </span>
+  );
+}
+
 function formatRelative(iso: string): string {
   const then = new Date(iso.replace(" ", "T") + (iso.endsWith("Z") ? "" : "Z"));
   if (Number.isNaN(then.getTime())) return iso;
@@ -141,17 +195,43 @@ function formatRelative(iso: string): string {
 interface SwitchesClientProps {
   switches: SwitchSummary[];
   sparklineWindowDays: number;
+  archivedCount: number;
+  includeArchived: boolean;
   tier: string;
 }
 
 export default function SwitchesClient({
   switches,
   sparklineWindowDays,
+  archivedCount,
+  includeArchived,
   tier,
 }: SwitchesClientProps) {
+  const router = useRouter();
   const [sortKey, setSortKey] = useState<SortKey>("last_activity");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [page, setPage] = useState(0);
+  const [pendingRow, setPendingRow] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
+  const [errorRow, setErrorRow] = useState<string | null>(null);
+
+  async function handleUnarchive(switchName: string) {
+    setErrorRow(null);
+    setPendingRow(switchName);
+    try {
+      const res = await fetch(
+        `/api/switches/${encodeURIComponent(switchName)}?action=unarchive`,
+        { method: "POST" },
+      );
+      if (!res.ok) throw new Error(`unarchive failed: ${res.status}`);
+      startTransition(() => router.refresh());
+    } catch (e) {
+      console.error(e);
+      setErrorRow(switchName);
+    } finally {
+      setPendingRow(null);
+    }
+  }
 
   const sorted = useMemo(() => {
     const copy = [...switches];
@@ -220,13 +300,49 @@ export default function SwitchesClient({
 
   return (
     <div className="mt-8">
-      <p
-        className="prose-brand"
-        style={{ color: "var(--ink-soft)", fontSize: "var(--size-caption)" }}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "baseline",
+          justifyContent: "space-between",
+          gap: "var(--space-3)",
+          flexWrap: "wrap",
+        }}
       >
-        {sorted.length} switch{sorted.length === 1 ? "" : "es"}. Sparkline shows
-        verdicts per day over the last {sparklineWindowDays} days.
-      </p>
+        <p
+          className="prose-brand"
+          style={{
+            color: "var(--ink-soft)",
+            fontSize: "var(--size-caption)",
+            margin: 0,
+          }}
+        >
+          {sorted.length} switch{sorted.length === 1 ? "" : "es"}
+          {includeArchived ? " (including archived)" : ""}. Sparkline shows
+          verdicts per day over the last {sparklineWindowDays} days.
+        </p>
+        {archivedCount > 0 && (
+          <Link
+            href={
+              includeArchived
+                ? "/dashboard/switches"
+                : "/dashboard/switches?include_archived=true"
+            }
+            className="font-mono"
+            style={{
+              color: "var(--ink-soft)",
+              fontSize: "var(--size-caption)",
+              textDecoration: "underline",
+              textDecorationColor: "var(--accent)",
+              textUnderlineOffset: "3px",
+            }}
+          >
+            {includeArchived
+              ? "Hide archived"
+              : `Show archived (${archivedCount})`}
+          </Link>
+        )}
+      </div>
 
       <div
         className="surface-card mt-3"
@@ -286,61 +402,133 @@ export default function SwitchesClient({
                 >
                   Trend (14d)
                 </th>
-              </tr>
-            </thead>
-            <tbody>
-              {visible.map((s) => (
-                <tr
-                  key={s.switch_name}
-                  style={{ borderBottom: "1px solid var(--rule)" }}
-                >
-                  <td
-                    style={{
-                      padding: "var(--space-3) var(--space-4)",
-                      fontFamily: "var(--font-mono)",
-                    }}
-                  >
-                    <Link
-                      href={`/dashboard/switches/${encodeURIComponent(s.switch_name)}`}
-                      style={{
-                        color: "var(--ink)",
-                        textDecoration: "underline",
-                        textDecorationColor: "var(--accent)",
-                        textUnderlineOffset: "3px",
-                      }}
-                    >
-                      {s.switch_name}
-                    </Link>
-                  </td>
-                  <td style={{ padding: "var(--space-3) var(--space-4)" }}>
-                    <PhaseBadge phase={s.current_phase} />
-                  </td>
-                  <td
-                    style={{
-                      padding: "var(--space-3) var(--space-4)",
-                      textAlign: "right",
-                      fontVariantNumeric: "tabular-nums",
-                      fontFamily: "var(--font-mono)",
-                    }}
-                  >
-                    {s.total_verdicts.toLocaleString()}
-                  </td>
-                  <td
+                {includeArchived && archivedCount > 0 && (
+                  <th
+                    scope="col"
                     style={{
                       padding: "var(--space-3) var(--space-4)",
                       color: "var(--ink-soft)",
-                      fontFamily: "var(--font-mono)",
-                      fontSize: "var(--size-caption)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.08em",
+                      fontSize: "var(--size-micro)",
+                      fontWeight: 500,
                     }}
-                    title={s.last_activity}
                   >
-                    {formatRelative(s.last_activity)}
-                  </td>
-                  <td style={{ padding: "var(--space-3) var(--space-4)" }}>
-                    <Sparkline data={s.sparkline} label={s.switch_name} />
-                  </td>
-                </tr>
-              ))}
+                    {/* Actions column header is visually empty (just the
+                        Unarchive button below); keep an aria-label for SR. */}
+                    <span aria-label="Actions">&nbsp;</span>
+                  </th>
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((s) => {
+                const archived = !!s.archived_at;
+                const stale =
+                  !archived &&
+                  isStale({
+                    last_activity: s.last_activity,
+                    archived_at: s.archived_at,
+                  });
+                // Archived rows dim universally; the link still works so
+                // the user can drill in and see the frozen report card.
+                const rowOpacity = archived ? 0.6 : 1;
+                const nameFontStyle = archived ? "italic" : "normal";
+                return (
+                  <tr
+                    key={s.switch_name}
+                    style={{
+                      borderBottom: "1px solid var(--rule)",
+                      opacity: rowOpacity,
+                    }}
+                  >
+                    <td
+                      style={{
+                        padding: "var(--space-3) var(--space-4)",
+                        fontFamily: "var(--font-mono)",
+                      }}
+                    >
+                      <Link
+                        href={`/dashboard/switches/${encodeURIComponent(s.switch_name)}`}
+                        style={{
+                          color: archived ? "var(--ink-soft)" : "var(--ink)",
+                          fontStyle: nameFontStyle,
+                          textDecoration: "underline",
+                          textDecorationColor: "var(--accent)",
+                          textUnderlineOffset: "3px",
+                        }}
+                      >
+                        {s.switch_name}
+                      </Link>
+                      {archived && <ArchivedChip />}
+                      {stale && <StaleChip />}
+                    </td>
+                    <td style={{ padding: "var(--space-3) var(--space-4)" }}>
+                      <PhaseBadge phase={s.current_phase} />
+                    </td>
+                    <td
+                      style={{
+                        padding: "var(--space-3) var(--space-4)",
+                        textAlign: "right",
+                        fontVariantNumeric: "tabular-nums",
+                        fontFamily: "var(--font-mono)",
+                      }}
+                    >
+                      {s.total_verdicts.toLocaleString()}
+                    </td>
+                    <td
+                      style={{
+                        padding: "var(--space-3) var(--space-4)",
+                        color: "var(--ink-soft)",
+                        fontFamily: "var(--font-mono)",
+                        fontSize: "var(--size-caption)",
+                      }}
+                      title={s.last_activity}
+                    >
+                      {formatRelative(s.last_activity)}
+                    </td>
+                    <td style={{ padding: "var(--space-3) var(--space-4)" }}>
+                      <Sparkline data={s.sparkline} label={s.switch_name} />
+                    </td>
+                    {includeArchived && archivedCount > 0 && (
+                      <td
+                        style={{
+                          padding: "var(--space-3) var(--space-4)",
+                          textAlign: "right",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {archived && (
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-sm"
+                            disabled={pendingRow === s.switch_name}
+                            onClick={() => handleUnarchive(s.switch_name)}
+                            title="Restore this switch to the default roster view."
+                          >
+                            {pendingRow === s.switch_name
+                              ? "Unarchiving…"
+                              : "Unarchive"}
+                          </button>
+                        )}
+                        {errorRow === s.switch_name && (
+                          <span
+                            role="alert"
+                            style={{
+                              display: "block",
+                              marginTop: "var(--space-2)",
+                              color: "var(--ink-soft)",
+                              fontSize: "var(--size-micro)",
+                            }}
+                          >
+                            Failed — try again.
+                          </span>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
