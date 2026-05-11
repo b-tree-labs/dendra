@@ -61,6 +61,41 @@ class Verdict(str, Enum):
 _VERDICT_VALUES: frozenset[str] = frozenset(o.value for o in Verdict)
 
 
+def _per_classifier_correct(
+    classifier_output: Any,
+    chosen_label: Any,
+    outcome: str,
+) -> bool | None:
+    """Decide whether a layer (rule / model / ml) "was correct" for
+    a given verdict-bearing classification.
+
+    Honest with what we know: we have the chosen label, each layer's
+    prediction (or None when the layer wasn't active), and a verdict
+    that applies to the *chosen* label only.
+
+    Decision table:
+
+    - layer wasn't active (output is None)              → None
+    - outcome == "unknown" (no judgement made)          → None
+    - layer's prediction matches the chosen label       → True/False
+      mirroring the chosen label's correctness
+    - layer's prediction differs from the chosen label  → None
+      (we don't know whether the OTHER label was the right one)
+
+    This is intentionally lossy on the "differs" case rather than
+    guessing — null is honest, true/false would smuggle in an
+    unjustified assumption. Paired-correctness analytics on the
+    server side know to treat null as "not paired".
+    """
+    if classifier_output is None:
+        return None
+    if outcome == Verdict.UNKNOWN.value:
+        return None
+    if classifier_output != chosen_label:
+        return None
+    return outcome == Verdict.CORRECT.value
+
+
 # ---------------------------------------------------------------------------
 # Labels + action dispatch
 # ---------------------------------------------------------------------------
@@ -882,9 +917,13 @@ class LearnedSwitch:
         self._ml_head = ml_head
         self._head_strategy = head_strategy
         if telemetry is None:
-            from dendra.telemetry import NullEmitter
+            # No explicit emitter — consult the process-wide registry.
+            # Integrations like the hosted cloud verdict pipe install a
+            # factory at import time; absent any registration this falls
+            # through to NullEmitter (zero overhead).
+            from dendra.telemetry import get_default_emitter
 
-            telemetry = NullEmitter()
+            telemetry = get_default_emitter()
         self._telemetry = telemetry
         # Single RLock serializing all mutations to per-switch state
         # (breaker, auto-advance counter, config.starting_phase,
@@ -1623,15 +1662,37 @@ class LearnedSwitch:
             except BaseException:
                 pass
         try:
+            phase_letter = f"P{_PHASE_ORDER.get(self.config.starting_phase, -1)}"
+            if phase_letter == "P-1":
+                phase_letter = None  # unreachable on a healthy switch; safety net
             self._telemetry.emit(
                 "outcome",
                 {
                     "switch": self.name,
                     "outcome": outcome,
                     "source": source,
+                    "phase": phase_letter,
+                    "label": label,
                     "rule_output": rule_output,
                     "model_output": model_output,
                     "ml_output": ml_output,
+                    # Pre-computed per-classifier correctness (rule / model /
+                    # ml). Each is True/False when this classifier's
+                    # prediction matches the chosen label AND we have a
+                    # verdict for that label; None otherwise. See
+                    # :func:`_per_classifier_correct` for the full
+                    # decision table — the cloud pipe consumes these
+                    # directly so we don't ship raw predictions over the
+                    # wire.
+                    "rule_correct": _per_classifier_correct(
+                        rule_output, label, outcome
+                    ),
+                    "model_correct": _per_classifier_correct(
+                        model_output, label, outcome
+                    ),
+                    "ml_correct": _per_classifier_correct(
+                        ml_output, label, outcome
+                    ),
                 },
             )
         except (KeyboardInterrupt, SystemExit):
