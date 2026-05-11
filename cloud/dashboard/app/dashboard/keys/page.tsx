@@ -21,11 +21,21 @@ export default async function KeysPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-12">
-      <h1 className="text-2xl font-semibold">API keys</h1>
-      <p className="mt-2 text-sm text-neutral-600">
-        Plan: <span className="font-medium">{user.tier}</span>. The plaintext key is shown
-        only once at creation — store it somewhere safe (e.g.{" "}
-        <code className="rounded bg-neutral-100 px-1">~/.dendra/credentials</code>).
+      <p className="eyebrow eyebrow--accent">Account</p>
+      <h1
+        className="mt-2"
+        style={{
+          fontSize: "var(--size-h2)",
+          lineHeight: "var(--lh-h2)",
+        }}
+      >
+        API keys
+      </h1>
+      <p className="prose-brand mt-3">
+        Plan: <span className="font-mono">{user.tier}</span>. The plaintext
+        key is shown only once at creation — store it somewhere safe
+        (e.g. <code>~/.dendra/credentials</code>) or skip the copy-paste
+        entirely by running <code>dendra login</code> from your terminal.
       </p>
       <KeysClient initialKeys={initialKeys} />
     </main>

@@ -1,11 +1,42 @@
+// Copyright (c) 2026 B-Tree Labs
+// SPDX-License-Identifier: LicenseRef-BSL-1.1
+//
+// Root layout for the Dendra dashboard.
+//
+// Brand port (2026-05-11): the page chrome (header + footer + body type)
+// matches landing/index.html exactly. Brand tokens live in globals.css;
+// fonts load via next/font/google so the dashboard inherits the same
+// Space Grotesk / Geist Mono pairing as dendra.run.
+
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Space_Grotesk, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
+// Display face — wordmark, headings, button labels.
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  display: "swap",
+  variable: "--font-display-loaded",
+});
+
+// Mono face — code blocks, key prefixes, numeric stats.
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  display: "swap",
+  variable: "--font-mono-loaded",
+});
+
 export const metadata: Metadata = {
   title: "Dendra",
-  description: "Graduated-autonomy classification primitive.",
+  description:
+    "Software that's smarter every month than the day you shipped it.",
+  icons: {
+    icon: "/brand/dendra-favicon.svg",
+  },
 };
 
 export default function RootLayout({
@@ -15,30 +46,82 @@ export default function RootLayout({
 }) {
   return (
     <ClerkProvider>
-      <html lang="en">
+      <html
+        lang="en"
+        className={`${spaceGrotesk.variable} ${geistMono.variable}`}
+      >
         <body className="flex min-h-screen flex-col">
+          <SiteHeader />
           <div className="flex-1">{children}</div>
-          <footer className="border-t border-neutral-200 px-6 py-8">
-            <div className="mx-auto flex max-w-3xl items-center justify-between text-xs text-neutral-500">
-              <span>© 2026 B-Tree Labs</span>
-              <nav className="flex items-center gap-4">
-                <Link href="/privacy" className="hover:text-neutral-900">
-                  Privacy
-                </Link>
-                <Link href="/terms" className="hover:text-neutral-900">
-                  Terms
-                </Link>
-                <a
-                  href="https://github.com/b-tree-labs/dendra"
-                  className="hover:text-neutral-900"
-                >
-                  GitHub
-                </a>
-              </nav>
-            </div>
-          </footer>
+          <SiteFooter />
         </body>
       </html>
     </ClerkProvider>
+  );
+}
+
+// ─── Header ────────────────────────────────────────────────────────────
+// Mirrors landing/index.html .site-header. The <picture> source swaps
+// the dark wordmark in dark mode — same pattern as README.md so the
+// asset story is identical across surfaces.
+function SiteHeader() {
+  return (
+    <header className="site-header">
+      <div className="site-header__inner">
+        <Link
+          href="/"
+          className="wordmark"
+          aria-label="Dendra home"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            className="wordmark-mark"
+            src="/brand/dendra-mark.svg"
+            alt=""
+            aria-hidden="true"
+            width="32"
+            height="32"
+          />
+          <span>DENDRA</span>
+        </Link>
+        <nav className="primary-nav" aria-label="Primary">
+          <Link href="/dashboard">Dashboard</Link>
+          <Link href="/dashboard/keys" className="nav-secondary">
+            API keys
+          </Link>
+          <Link href="/dashboard/billing" className="nav-secondary">
+            Billing
+          </Link>
+          <a
+            href="https://dendra.run"
+            className="nav-secondary"
+            rel="noreferrer"
+          >
+            dendra.run
+          </a>
+        </nav>
+      </div>
+    </header>
+  );
+}
+
+// ─── Footer ────────────────────────────────────────────────────────────
+function SiteFooter() {
+  return (
+    <footer className="site-footer">
+      <div className="site-footer__inner">
+        <span>© 2026 B-Tree Labs</span>
+        <nav>
+          <Link href="/privacy">Privacy</Link>
+          <Link href="/terms">Terms</Link>
+          <a
+            href="https://github.com/b-tree-labs/dendra"
+            rel="noreferrer"
+          >
+            GitHub
+          </a>
+        </nav>
+      </div>
+    </footer>
   );
 }

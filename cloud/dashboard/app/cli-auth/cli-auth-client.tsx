@@ -103,7 +103,7 @@ export default function CliAuthClient({ initialCode }: { initialCode: string }) 
         default:
           setView({ kind: "error", message: "Unknown session state." });
       }
-    } catch (e) {
+    } catch {
       setView({
         kind: "error",
         message: "Network error. Check your connection and try again.",
@@ -177,7 +177,15 @@ export default function CliAuthClient({ initialCode }: { initialCode: string }) 
   if (view.kind === "form") {
     return (
       <form onSubmit={submitForm} className="mt-8 space-y-4">
-        <label className="block text-sm font-medium text-neutral-700">
+        <label
+          className="block"
+          style={{
+            fontSize: "var(--size-caption)",
+            color: "var(--ink-soft)",
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+          }}
+        >
           Code from your terminal
         </label>
         <input
@@ -188,12 +196,10 @@ export default function CliAuthClient({ initialCode }: { initialCode: string }) 
           autoComplete="off"
           spellCheck={false}
           placeholder="ABCD-2345"
-          className="w-full rounded-md border border-neutral-300 px-4 py-3 font-mono text-2xl tracking-widest uppercase focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
+          className="input-text input-code"
+          style={{ fontSize: "1.5rem", textAlign: "center" }}
         />
-        <button
-          type="submit"
-          className="rounded-md bg-black px-5 py-2 text-sm text-white hover:bg-neutral-800"
-        >
+        <button type="submit" className="btn btn-primary">
           Look up
         </button>
       </form>
@@ -202,8 +208,16 @@ export default function CliAuthClient({ initialCode }: { initialCode: string }) 
 
   if (view.kind === "loading") {
     return (
-      <div className="mt-8 rounded-md border border-neutral-200 bg-neutral-50 p-6">
-        <p className="text-sm text-neutral-600">Looking up the session…</p>
+      <div className="mt-8 surface-card surface-card--muted">
+        <p
+          style={{
+            margin: 0,
+            color: "var(--ink-soft)",
+            fontSize: "var(--size-caption)",
+          }}
+        >
+          Looking up the session…
+        </p>
       </div>
     );
   }
@@ -215,55 +229,49 @@ export default function CliAuthClient({ initialCode }: { initialCode: string }) 
       Math.round((expiresAt.getTime() - Date.now()) / 60000),
     );
     return (
-      <div className="mt-8 space-y-6 rounded-lg border border-neutral-200 p-6">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-neutral-500">
-            Code
-          </p>
-          <p className="mt-1 font-mono text-2xl tracking-widest">
+      <div className="mt-8 surface-card space-y-5">
+        <DataRow label="Code">
+          <span className="font-mono" style={{ fontSize: "1.5rem", letterSpacing: "0.18em" }}>
             {view.data.user_code}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs uppercase tracking-wide text-neutral-500">
-            Device
-          </p>
-          <p className="mt-1 text-base">
-            {view.data.device_name ?? (
-              <span className="text-neutral-400">unnamed</span>
-            )}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs uppercase tracking-wide text-neutral-500">
-            Expires
-          </p>
-          <p className="mt-1 text-base">
-            in <span className="font-medium">{minutesLeft}</span>{" "}
-            minute{minutesLeft === 1 ? "" : "s"}
-          </p>
-        </div>
+          </span>
+        </DataRow>
+        <DataRow label="Device">
+          {view.data.device_name ?? (
+            <span style={{ color: "var(--ink-soft)" }}>unnamed</span>
+          )}
+        </DataRow>
+        <DataRow label="Expires">
+          in <span style={{ fontWeight: 500 }}>{minutesLeft}</span>{" "}
+          minute{minutesLeft === 1 ? "" : "s"}
+        </DataRow>
 
         <div className="flex items-center gap-3 pt-2">
           <button
             onClick={() => decide("authorize")}
             disabled={submitting}
-            className="rounded-md bg-black px-5 py-2 text-sm text-white hover:bg-neutral-800 disabled:opacity-50"
+            className="btn btn-primary"
           >
             {submitting ? "Authorizing…" : "Authorize"}
           </button>
           <button
             onClick={() => decide("deny")}
             disabled={submitting}
-            className="rounded-md border border-neutral-300 px-5 py-2 text-sm hover:bg-neutral-50 disabled:opacity-50"
+            className="btn btn-secondary"
           >
             Deny
           </button>
         </div>
 
-        <p className="pt-2 text-xs text-neutral-500">
-          Only authorize if the device name + code matches what's shown in
-          your terminal right now.
+        <p
+          className="pt-2"
+          style={{
+            fontSize: "var(--size-caption)",
+            color: "var(--ink-soft)",
+            margin: 0,
+          }}
+        >
+          Only authorize if the device name + code matches what&apos;s shown
+          in your terminal right now.
         </p>
       </div>
     );
@@ -271,13 +279,16 @@ export default function CliAuthClient({ initialCode }: { initialCode: string }) 
 
   if (view.kind === "success-authorize") {
     return (
-      <div className="mt-8 rounded-lg border border-green-200 bg-green-50 p-6">
-        <p className="text-base font-medium text-green-900">
+      <div className="mt-8 surface-card surface-card--success">
+        <p style={{ fontWeight: 500, margin: 0 }}>
           Authorized. You can close this tab.
         </p>
-        <p className="mt-2 text-sm text-green-800">
-          Your terminal will pick up the new credentials within a few
-          seconds and continue running.
+        <p
+          className="mt-2"
+          style={{ margin: 0, fontSize: "var(--size-caption)" }}
+        >
+          Your terminal will pick up the new credentials within a few seconds
+          and continue running.
         </p>
       </div>
     );
@@ -285,9 +296,12 @@ export default function CliAuthClient({ initialCode }: { initialCode: string }) 
 
   if (view.kind === "success-deny") {
     return (
-      <div className="mt-8 rounded-lg border border-neutral-200 bg-neutral-50 p-6">
-        <p className="text-base font-medium">Denied.</p>
-        <p className="mt-2 text-sm text-neutral-700">
+      <div className="mt-8 surface-card surface-card--muted">
+        <p style={{ fontWeight: 500, margin: 0 }}>Denied.</p>
+        <p
+          className="mt-2"
+          style={{ margin: 0, fontSize: "var(--size-caption)" }}
+        >
           The CLI request was rejected. The terminal will report the error
           shortly. You can close this tab.
         </p>
@@ -297,12 +311,23 @@ export default function CliAuthClient({ initialCode }: { initialCode: string }) 
 
   if (view.kind === "expired") {
     return (
-      <div className="mt-8 rounded-lg border border-amber-200 bg-amber-50 p-6">
-        <p className="text-base font-medium text-amber-900">
-          That code has expired.
-        </p>
-        <p className="mt-2 text-sm text-amber-800">
-          Codes are valid for 15 minutes. Run <code className="rounded bg-amber-100 px-1">dendra login</code>{" "}
+      <div className="mt-8 surface-card surface-card--muted">
+        <p style={{ fontWeight: 500, margin: 0 }}>That code has expired.</p>
+        <p
+          className="mt-2"
+          style={{ margin: 0, fontSize: "var(--size-caption)" }}
+        >
+          Codes are valid for 15 minutes. Run{" "}
+          <code
+            className="font-mono"
+            style={{
+              background: "var(--ground)",
+              padding: "0.1em 0.35em",
+              borderRadius: "4px",
+            }}
+          >
+            dendra login
+          </code>{" "}
           again from your terminal to get a fresh one.
         </p>
       </div>
@@ -311,10 +336,25 @@ export default function CliAuthClient({ initialCode }: { initialCode: string }) 
 
   if (view.kind === "denied") {
     return (
-      <div className="mt-8 rounded-lg border border-neutral-200 bg-neutral-50 p-6">
-        <p className="text-base font-medium">This session was already denied.</p>
-        <p className="mt-2 text-sm text-neutral-700">
-          Run <code className="rounded bg-neutral-100 px-1">dendra login</code>{" "}
+      <div className="mt-8 surface-card surface-card--muted">
+        <p style={{ fontWeight: 500, margin: 0 }}>
+          This session was already denied.
+        </p>
+        <p
+          className="mt-2"
+          style={{ margin: 0, fontSize: "var(--size-caption)" }}
+        >
+          Run{" "}
+          <code
+            className="font-mono"
+            style={{
+              background: "var(--ground)",
+              padding: "0.1em 0.35em",
+              borderRadius: "4px",
+            }}
+          >
+            dendra login
+          </code>{" "}
           again from your terminal to start a new session.
         </p>
       </div>
@@ -323,13 +363,17 @@ export default function CliAuthClient({ initialCode }: { initialCode: string }) 
 
   if (view.kind === "consumed") {
     return (
-      <div className="mt-8 rounded-lg border border-neutral-200 bg-neutral-50 p-6">
-        <p className="text-base font-medium">
+      <div className="mt-8 surface-card surface-card--muted">
+        <p style={{ fontWeight: 500, margin: 0 }}>
           Already authorized and redeemed.
         </p>
-        <p className="mt-2 text-sm text-neutral-700">
+        <p
+          className="mt-2"
+          style={{ margin: 0, fontSize: "var(--size-caption)" }}
+        >
           The CLI already received its API key for this session. If your
-          terminal still shows "Waiting for confirmation," restart it.
+          terminal still shows &quot;Waiting for confirmation,&quot; restart
+          it.
         </p>
       </div>
     );
@@ -337,11 +381,12 @@ export default function CliAuthClient({ initialCode }: { initialCode: string }) 
 
   if (view.kind === "authorized") {
     return (
-      <div className="mt-8 rounded-lg border border-green-200 bg-green-50 p-6">
-        <p className="text-base font-medium text-green-900">
-          Already authorized.
-        </p>
-        <p className="mt-2 text-sm text-green-800">
+      <div className="mt-8 surface-card surface-card--success">
+        <p style={{ fontWeight: 500, margin: 0 }}>Already authorized.</p>
+        <p
+          className="mt-2"
+          style={{ margin: 0, fontSize: "var(--size-caption)" }}
+        >
           Your terminal should pick up the credentials within a few seconds.
         </p>
       </div>
@@ -351,16 +396,41 @@ export default function CliAuthClient({ initialCode }: { initialCode: string }) 
   // view.kind === "error"
   return (
     <div className="mt-8 space-y-4">
-      <div className="rounded-lg border border-red-200 bg-red-50 p-6">
-        <p className="text-base font-medium text-red-900">Something went wrong.</p>
-        <p className="mt-2 text-sm text-red-800">{view.message}</p>
+      <div className="surface-card surface-card--error">
+        <p style={{ fontWeight: 500, margin: 0 }}>Something went wrong.</p>
+        <p
+          className="mt-2"
+          style={{ margin: 0, fontSize: "var(--size-caption)" }}
+        >
+          {view.message}
+        </p>
       </div>
       <button
         onClick={() => setView({ kind: "form" })}
-        className="rounded-md border border-neutral-300 px-5 py-2 text-sm hover:bg-neutral-50"
+        className="btn btn-secondary"
       >
         Try a different code
       </button>
+    </div>
+  );
+}
+
+function DataRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <p
+        className="eyebrow"
+        style={{ marginBottom: "var(--space-1)" }}
+      >
+        {label}
+      </p>
+      <p style={{ margin: 0 }}>{children}</p>
     </div>
   );
 }

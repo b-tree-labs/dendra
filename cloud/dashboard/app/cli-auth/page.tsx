@@ -26,21 +26,40 @@ export default async function CliAuthPage({
 
   return (
     <main className="mx-auto max-w-xl px-6 py-12">
-      <h1 className="text-2xl font-semibold">Authorize Dendra CLI</h1>
-      <p className="mt-2 text-sm text-neutral-600">
-        Signed in as <span className="font-medium">{email}</span>. Confirm
-        the device + code shown in your terminal, then click Authorize. The
-        CLI will receive a fresh API key automatically.
+      <p className="eyebrow eyebrow--accent">CLI</p>
+      <h1
+        className="mt-2"
+        style={{
+          fontSize: "var(--size-h2)",
+          lineHeight: "var(--lh-h2)",
+        }}
+      >
+        Authorize Dendra CLI
+      </h1>
+      <p className="prose-brand mt-3">
+        Signed in as <span className="font-mono">{email}</span>. Confirm the
+        device + code shown in your terminal, then click Authorize. The CLI
+        will receive a fresh API key automatically.
       </p>
 
       <CliAuthClient initialCode={initialCode} />
 
-      <hr className="mt-12 border-neutral-200" />
-      <p className="mt-4 text-xs text-neutral-500">
+      <hr
+        className="mt-12"
+        style={{ border: 0, borderTop: "var(--border)" }}
+      />
+      <p
+        className="mt-4"
+        style={{
+          fontSize: "var(--size-micro)",
+          color: "var(--ink-soft)",
+          lineHeight: "var(--lh-micro)",
+        }}
+      >
         This page implements the dashboard side of an OAuth 2.0 Device
         Authorization Grant (RFC 8628). The plaintext API key is generated
-        by the api Worker only after you authorize, and is delivered to
-        the CLI directly — the dashboard never sees it.
+        by the api Worker only after you authorize, and is delivered to the
+        CLI directly — the dashboard never sees it.
       </p>
     </main>
   );

@@ -1,42 +1,77 @@
 import Link from "next/link";
-import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
+import {
+  SignedIn,
+  SignedOut,
+  SignInButton,
+  SignUpButton,
+  UserButton,
+} from "@clerk/nextjs";
 
 export const runtime = "edge";
 
 export default function Home() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-16">
-      <h1 className="text-3xl font-semibold">Dendra</h1>
-      <p className="mt-3 text-base text-neutral-700">
-        Point any system in the best direction, then keep repointing.
-        Free account unlocks shared switch configurations, team analyzer
-        corpus, and opt-in registry contribution. OSS classification
-        works without an account.
-      </p>
+      <p className="eyebrow eyebrow--accent">Dendra Cloud</p>
+      <h1
+        className="mt-3"
+        style={{
+          fontSize: "var(--size-h1)",
+          lineHeight: "var(--lh-h1)",
+          letterSpacing: "-0.01em",
+        }}
+      >
+        Software that&apos;s smarter every month than the day you shipped
+        it.
+      </h1>
 
-      <div className="mt-8 flex items-center gap-3">
+      <div className="prose-brand mt-6">
+        <p>
+          A free account saves your analyses, shares them with teammates,
+          and lets your switches pull cohort-tuned defaults. The
+          open-source primitive runs without an account if you&apos;d
+          rather try it locally first.
+        </p>
+      </div>
+
+      <div className="mt-8 flex flex-wrap items-center gap-3">
         <SignedOut>
-          <SignInButton mode="modal">
-            <button className="rounded-md bg-black px-4 py-2 text-sm text-white">
-              Sign in
-            </button>
-          </SignInButton>
           <SignUpButton mode="modal">
-            <button className="rounded-md border border-black px-4 py-2 text-sm">
+            <button type="button" className="btn btn-primary">
               Create free account
             </button>
           </SignUpButton>
+          <SignInButton mode="modal">
+            <button type="button" className="btn btn-secondary">
+              Sign in
+            </button>
+          </SignInButton>
         </SignedOut>
         <SignedIn>
-          <Link
-            href="/dashboard"
-            className="rounded-md bg-black px-4 py-2 text-sm text-white"
-          >
+          <Link href="/dashboard" className="btn btn-primary">
             Open dashboard
           </Link>
           <UserButton />
         </SignedIn>
       </div>
+
+      <p
+        className="mt-6"
+        style={{
+          fontSize: "var(--size-caption)",
+          color: "var(--ink-soft)",
+        }}
+      >
+        Sign-up uses GitHub OAuth or a magic-link email. No password. We
+        send count-only telemetry by default — see{" "}
+        <Link
+          href="/privacy"
+          style={{ color: "var(--ink-soft)", textDecorationColor: "var(--rule)" }}
+        >
+          Privacy
+        </Link>{" "}
+        for the full contract and how to opt out.
+      </p>
     </main>
   );
 }
