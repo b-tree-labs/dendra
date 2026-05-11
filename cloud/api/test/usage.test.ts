@@ -11,6 +11,11 @@ import migration0001 from '../../collector/migrations/0001_initial.sql?raw';
 import migration0002 from '../../collector/migrations/0002_leads.sql?raw';
 import migration0003 from '../../collector/migrations/0003_saas.sql?raw';
 import migration0004 from '../../collector/migrations/0004_verdicts.sql?raw';
+// Migration 0007 adds users.display_name + users.telemetry_enabled, which
+// /v1/whoami now selects. Apply here so the whoami-doesn't-count-toward-usage
+// test doesn't fail on a missing column when this suite runs before
+// preferences.test.ts.
+import migration0007 from '../../collector/migrations/0007_user_preferences.sql?raw';
 import { recordUsage, periodOf, secondsUntilNextPeriod } from '../src/usage';
 
 const SERVICE_TOKEN = 'test-service-token-for-dashboard';
@@ -34,7 +39,11 @@ async function applySql(sql: string) {
     try {
       await env.DB.prepare(s).run();
     } catch (e) {
-      if (!String(e).includes('already exists')) throw e;
+      const msg = String(e);
+      // ALTER TABLE ADD COLUMN throws "duplicate column name" on re-apply.
+      if (!msg.includes('already exists') && !msg.includes('duplicate column')) {
+        throw e;
+      }
     }
   }
 }
@@ -44,6 +53,7 @@ beforeAll(async () => {
   await applySql(migration0002);
   await applySql(migration0003);
   await applySql(migration0004);
+  await applySql(migration0007);
 });
 
 describe('periodOf / secondsUntilNextPeriod', () => {

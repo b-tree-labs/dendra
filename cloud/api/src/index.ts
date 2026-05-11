@@ -60,13 +60,35 @@ const v1 = new Hono<{ Bindings: ApiEnv }>();
 v1.use('*', authMiddleware());
 
 // /whoami is auth-gated but does NOT count toward usage — it's a probe,
-// SDKs call it on connect to verify the key.
-v1.get('/whoami', (c) => {
+// SDKs call it on connect to verify the key. Returns user preferences
+// alongside the auth shape so the SDK's `maybe_install()` can honor
+// `telemetry_enabled` in addition to the env-var off-switch (per
+// docs/working/saas-launch-tech-spec-2026-05-02.md §230+ /dashboard/settings
+// and the privacy contract at /privacy).
+v1.get('/whoami', async (c) => {
   const auth = requireAuth(c);
+  // One additional indexed read — co-locating display_name +
+  // telemetry_enabled on the users row keeps this cheap (no join).
+  const prefs = await c.env.DB.prepare(
+    `SELECT email, display_name, telemetry_enabled
+       FROM users WHERE id = ? LIMIT 1`,
+  )
+    .bind(auth.user_id)
+    .first<{
+      email: string;
+      display_name: string | null;
+      telemetry_enabled: number;
+    }>();
+
   return c.json({
     tier: auth.tier,
     account_hash: auth.account_hash,
     rate_limit_rps: auth.rate_limit_rps,
+    email: prefs?.email ?? null,
+    display_name: prefs?.display_name ?? null,
+    // Default to true if the row is somehow missing the column (older
+    // pre-migration row) — matches the migration default.
+    telemetry_enabled: prefs ? prefs.telemetry_enabled === 1 : true,
   });
 });
 
