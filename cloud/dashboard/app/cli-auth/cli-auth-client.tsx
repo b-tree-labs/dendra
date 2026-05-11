@@ -178,6 +178,7 @@ export default function CliAuthClient({ initialCode }: { initialCode: string }) 
     return (
       <form onSubmit={submitForm} className="mt-8 space-y-4">
         <label
+          htmlFor="cli-user-code"
           className="block"
           style={{
             fontSize: "var(--size-caption)",
@@ -189,6 +190,7 @@ export default function CliAuthClient({ initialCode }: { initialCode: string }) 
           Code from your terminal
         </label>
         <input
+          id="cli-user-code"
           type="text"
           value={code}
           onChange={(e) => setCode(e.target.value.toUpperCase())}

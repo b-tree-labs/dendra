@@ -186,11 +186,16 @@ export default function SwitchesClient({
           No switches yet
         </h2>
         <p className="prose-brand" style={{ margin: 0 }}>
-          Wrap a function with <code>@ml_switch</code> — it&apos;ll appear here
-          once you record a verdict. The fastest path is to{" "}
+          Wrap a call site with <code>@ml_switch</code> — it&apos;ll appear
+          here once you record a verdict. The fastest path is to{" "}
           <Link
             href="/dashboard/keys"
-            style={{ color: "var(--accent)", textDecoration: "underline" }}
+            style={{
+              color: "var(--ink)",
+              textDecoration: "underline",
+              textDecorationColor: "var(--accent)",
+              textUnderlineOffset: "3px",
+            }}
           >
             issue an API key
           </Link>{" "}
@@ -298,8 +303,10 @@ export default function SwitchesClient({
                     <Link
                       href={`/dashboard/switches/${encodeURIComponent(s.switch_name)}`}
                       style={{
-                        color: "var(--accent)",
-                        textDecoration: "none",
+                        color: "var(--ink)",
+                        textDecoration: "underline",
+                        textDecorationColor: "var(--accent)",
+                        textUnderlineOffset: "3px",
                       }}
                     >
                       {s.switch_name}

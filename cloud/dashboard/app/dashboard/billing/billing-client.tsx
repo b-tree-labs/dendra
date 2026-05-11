@@ -116,9 +116,19 @@ export default function BillingClient({
         </div>
       )}
 
-      <p className="text-sm text-neutral-600">
-        Metered on <span className="font-medium">Verdicts / mo</span>. A verdict is one
-        classification Dendra logs to your account — feeds your report card and the cohort.
+      <p
+        style={{
+          fontSize: "var(--size-caption)",
+          color: "var(--ink-soft)",
+          margin: 0,
+        }}
+      >
+        Metered on{" "}
+        <span style={{ fontWeight: 500, color: "var(--ink)" }}>
+          Verdicts / mo
+        </span>
+        . A verdict is one classification Dendra logs to your account — feeds
+        your report card and the cohort.
       </p>
 
       <section>

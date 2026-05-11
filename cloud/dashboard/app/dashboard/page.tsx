@@ -66,18 +66,25 @@ export default async function DashboardPage() {
 
   // Single upsert for the row id, then fan out the three reads in
   // parallel. Each is independent at the SQL level so there's no reason
-  // to serialize them.
+  // to serialize them. allSettled rather than all so a single failed
+  // read doesn't blank the entire dashboard (polish-pass 2026-05-11):
+  // the user can still see e.g. their checklist if /admin/usage 500s.
   const user = await upsertUser(userId, email);
-  const [usage, keys, recent] = await Promise.all([
+  const [usageRes, keysRes, recentRes] = await Promise.allSettled([
     getUsage(user.user_id),
     listKeys(user.user_id),
     listRecentVerdicts(user.user_id, 5),
   ]);
 
-  const hasApiKey = keys.some((k) => !k.revoked_at);
-  const hasVerdict = recent.length > 0;
+  const usage = usageRes.status === "fulfilled" ? usageRes.value : null;
+  const keys = keysRes.status === "fulfilled" ? keysRes.value : null;
+  const recent = recentRes.status === "fulfilled" ? recentRes.value : null;
+  const anyFailed = !usage || !keys || !recent;
+
+  const hasApiKey = keys?.some((k) => !k.revoked_at) ?? false;
+  const hasVerdict = (recent?.length ?? 0) > 0;
   const now = new Date();
-  const daysLeft = daysUntil(usage.period_end, now);
+  const daysLeft = usage ? daysUntil(usage.period_end, now) : 0;
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-12">
@@ -102,22 +109,43 @@ export default async function DashboardPage() {
       </p>
 
       <div className="mt-8" style={{ display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
+        {anyFailed && (
+          <div
+            className="surface-card surface-card--muted"
+            role="status"
+            style={{ padding: "var(--space-4) var(--space-5)" }}
+          >
+            <p
+              style={{
+                margin: 0,
+                fontSize: "var(--size-caption)",
+                color: "var(--ink-soft)",
+              }}
+            >
+              Some sections could not load just now. The rest of the page is
+              live — reload to retry.
+            </p>
+          </div>
+        )}
+
         {/* 1. Earned-upgrade banner (above the strip, per brief) */}
-        <UpgradeBanner
-          tier={usage.tier}
-          used={usage.verdicts_this_period}
-          cap={usage.cap}
-          periodKey={periodKey(usage.period_start)}
-        />
+        {usage && (
+          <UpgradeBanner
+            tier={usage.tier}
+            used={usage.verdicts_this_period}
+            cap={usage.cap}
+            periodKey={periodKey(usage.period_start)}
+          />
+        )}
 
         {/* 2. Tier + usage strip */}
-        <TierUsageStrip usage={usage} daysLeft={daysLeft} />
+        {usage && <TierUsageStrip usage={usage} daysLeft={daysLeft} />}
 
         {/* 3. M5 onboarding checklist (collapses when complete) */}
         <OnboardingChecklist hasApiKey={hasApiKey} hasVerdict={hasVerdict} />
 
         {/* 4. Recent activity feed */}
-        <RecentActivity recent={recent} />
+        {recent !== null && <RecentActivity recent={recent} />}
       </div>
     </main>
   );
@@ -273,8 +301,9 @@ function RecentActivity({ recent }: { recent: RecentVerdict[] }) {
             margin: 0,
           }}
         >
-          No verdicts yet. Wrap a function with{" "}
-          <code>@ml_switch</code> and run it — events will appear here.
+          No verdicts yet. Wrap a call site with{" "}
+          <code>@ml_switch</code> and run it — verdicts will appear here as
+          they&apos;re emitted.
         </p>
       </section>
     );

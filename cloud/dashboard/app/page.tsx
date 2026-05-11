@@ -4,7 +4,6 @@ import {
   SignedOut,
   SignInButton,
   SignUpButton,
-  UserButton,
 } from "@clerk/nextjs";
 
 export const runtime = "edge";
@@ -51,7 +50,6 @@ export default function Home() {
           <Link href="/dashboard" className="btn btn-primary">
             Open dashboard
           </Link>
-          <UserButton />
         </SignedIn>
       </div>
 

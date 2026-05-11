@@ -122,12 +122,17 @@ export default function SettingsClient({
         </div>
 
         <div>
-          <p className="eyebrow" style={{ marginBottom: "var(--space-1)" }}>
+          <label
+            htmlFor="display-name-input"
+            className="eyebrow"
+            style={{ marginBottom: "var(--space-1)", display: "block" }}
+          >
             Display name
-          </p>
+          </label>
           {editingName ? (
             <div className="flex flex-wrap items-center gap-3 mt-1">
               <input
+                id="display-name-input"
                 type="text"
                 value={nameDraft}
                 onChange={(e) => setNameDraft(e.target.value)}

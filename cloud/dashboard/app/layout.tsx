@@ -11,7 +11,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Space_Grotesk, Geist_Mono } from "next/font/google";
-import { ClerkProvider } from "@clerk/nextjs";
+import { ClerkProvider, SignedIn, UserButton } from "@clerk/nextjs";
 import "./globals.css";
 
 // Display face — wordmark, headings, button labels.
@@ -108,6 +108,9 @@ function SiteHeader() {
           >
             dendra.run
           </a>
+          <SignedIn>
+            <UserButton afterSignOutUrl="/" />
+          </SignedIn>
         </nav>
       </div>
     </header>
@@ -120,7 +123,13 @@ function SiteFooter() {
     <footer className="site-footer">
       <div className="site-footer__inner">
         <span>© 2026 B-Tree Labs</span>
-        <nav>
+        <nav aria-label="Footer">
+          <a
+            href="https://github.com/b-tree-labs/dendra/tree/main/docs"
+            rel="noreferrer"
+          >
+            Docs
+          </a>
           <Link href="/privacy">Privacy</Link>
           <Link href="/terms">Terms</Link>
           <a
