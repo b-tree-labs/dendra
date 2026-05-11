@@ -68,6 +68,55 @@ class MLHead(Protocol):
 # ---------------------------------------------------------------------------
 
 
+class _MonoclassPredictor:
+    """Constant-prediction stand-in for sklearn pipelines on single-class
+    training data.
+
+    When the head's training records collapse to a single label (which
+    happens on label-sorted training streams before a second class
+    appears — e.g. Snips on the HuggingFace ``benayas/snips`` mirror,
+    which feeds ~1,842 ``AddToPlaylist`` rows before the next class),
+    ``LogisticRegression.fit`` raises ``ValueError`` because LR needs
+    >= 2 classes. The pre-fix path bailed out and left the head's
+    ``_pipeline`` as ``None``, which caused ``predict`` to return
+    ``label=""`` (zero accuracy) while the harness still reported
+    ``ml_trained=True``.
+
+    The right semantic: a head that has only seen one label predicts
+    that label with full confidence. That matches the rule's modal-
+    fallback behavior on the same stream and produces a meaningful,
+    interpretable accuracy number (chance on a balanced test set).
+    """
+
+    def __init__(self, label: str) -> None:
+        import numpy as np
+
+        self._label = label
+        # ``classes_`` is consumed via ``list(...)`` in the existing
+        # predict path; a 1-element ndarray matches sklearn's contract.
+        self.classes_ = np.asarray([label])
+
+    def predict_proba(self, X: Any) -> Any:
+        import numpy as np
+
+        # Shape (n_samples, 1); softmax-equivalent for a 1-class output:
+        # the single class gets full mass on every row. Returning a
+        # numpy array preserves the ``.argmax()`` interface the existing
+        # ``predict`` paths rely on.
+        n = len(list(X))
+        return np.ones((n, 1), dtype=float)
+
+    def decision_function(self, X: Any) -> Any:
+        # Mirror sklearn's contract for a 1-class LinearSVC: each input
+        # gets a positive margin for the sole class. Returning the same
+        # shape sklearn's single-class case would produce keeps
+        # TfidfLinearSVCHead.predict happy when it consumes this.
+        import numpy as np
+
+        n = len(list(X))
+        return np.ones(n, dtype=float)
+
+
 class SklearnTextHead:
     """Simple TF-IDF + logistic-regression text classifier.
 
@@ -106,7 +155,15 @@ class SklearnTextHead:
                 continue
             X.append(serialize_input_for_features(r.input))
             y.append(r.label)
-        if len({*y}) < 2:
+        if not y:
+            return
+        unique = {*y}
+        if len(unique) < 2:
+            # Degenerate single-class training data: train a constant
+            # predictor that always returns the one observed label.
+            # See _MonoclassPredictor docstring for the Snips precedent.
+            self._pipeline = _MonoclassPredictor(next(iter(unique)))
+            self._version = f"sklearn-{len(records)}-monoclass"
             return
         pipe = self._Pipeline(
             [
@@ -123,6 +180,9 @@ class SklearnTextHead:
             # Untrained — surface a low-confidence guess so the caller
             # routes to the fallback.
             return MLPrediction(label="", confidence=0.0)
+        if isinstance(self._pipeline, _MonoclassPredictor):
+            # Single-class training data: predict the one observed label.
+            return MLPrediction(label=self._pipeline._label, confidence=1.0)
         probs = self._pipeline.predict_proba([serialize_input_for_features(input)])[0]
         classes = list(self._pipeline.classes_)
         idx = int(probs.argmax())
@@ -171,7 +231,14 @@ def _fit_tfidf_head(self: Any, records: Iterable[Any]) -> None:
             continue
         X.append(serialize_input_for_features(r.input))
         y.append(r.label)
-    if len({*y}) < 2:
+    if not y:
+        return
+    unique = {*y}
+    if len(unique) < 2:
+        # Single-class training data: train a constant predictor that
+        # always returns the observed label. See _MonoclassPredictor.
+        self._pipeline = _MonoclassPredictor(next(iter(unique)))
+        self._version = f"{type(self).__name__}-{len(records)}-monoclass"
         return
     pipe = _build_tfidf_pipeline(
         self._build_classifier(),
@@ -186,6 +253,9 @@ def _fit_tfidf_head(self: Any, records: Iterable[Any]) -> None:
 def _predict_tfidf_head(self: Any, input: Any, labels: Iterable[str]) -> MLPrediction:
     if self._pipeline is None:
         return MLPrediction(label="", confidence=0.0)
+    if isinstance(self._pipeline, _MonoclassPredictor):
+        # Constant-class predictor: always returns the one observed label.
+        return MLPrediction(label=self._pipeline._label, confidence=1.0)
     probs = self._pipeline.predict_proba([serialize_input_for_features(input)])[0]
     classes = list(self._pipeline.classes_)
     idx = int(probs.argmax())
@@ -274,6 +344,8 @@ class TfidfLinearSVCHead(TfidfHeadBase):
     def predict(self, input: Any, labels: Iterable[str]) -> MLPrediction:
         if self._pipeline is None:
             return MLPrediction(label="", confidence=0.0)
+        if isinstance(self._pipeline, _MonoclassPredictor):
+            return MLPrediction(label=self._pipeline._label, confidence=1.0)
         import numpy as np
 
         scores = self._pipeline.decision_function([serialize_input_for_features(input)])[0]
