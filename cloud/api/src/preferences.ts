@@ -168,9 +168,22 @@ preferences.patch('/whoami', async (c) => {
 // insights_enrollments rows when KV is empty (pre-aggregator-run, dev
 // envs). The fallback prevents the dashboard from rendering "Cohort
 // size: 0" when there are clearly enrolled users.
+//
+// The KV read is bounded by KV_READ_TIMEOUT_MS so a slow KV tail does
+// not dominate the response's p99. Findings from the 2026-05-11 chaos
+// harness (PR #42, §5) showed that the other two response fields
+// resolve in <5ms from D1; without a timeout, the full response
+// blocks on whatever KV decides to do. On a timeout we treat the KV
+// value as "absent" and fall through to the DB count — the same
+// behavior as a genuinely-empty KV.
 // ---------------------------------------------------------------------------
+const KV_READ_TIMEOUT_MS = 100;
+
 async function readCohortSize(env: PreferencesEnv): Promise<number> {
-  const raw = await env.KV_INSIGHTS.get(TUNED_DEFAULTS_KEY);
+  const raw = await Promise.race([
+    env.KV_INSIGHTS.get(TUNED_DEFAULTS_KEY),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), KV_READ_TIMEOUT_MS)),
+  ]);
   if (raw !== null) {
     try {
       const parsed = JSON.parse(raw) as { cohort_size?: unknown };
