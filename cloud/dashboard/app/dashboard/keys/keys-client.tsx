@@ -133,6 +133,7 @@ export default function KeysClient({ initialKeys }: { initialKeys: ApiKeyMeta[] 
             value={newKeyName}
             onChange={(e) => setNewKeyName(e.target.value)}
             placeholder="Name (optional, e.g. production)"
+            aria-label="API key name (optional)"
             className="input-text"
             style={{ flex: 1, minWidth: "240px" }}
             disabled={busy !== null}

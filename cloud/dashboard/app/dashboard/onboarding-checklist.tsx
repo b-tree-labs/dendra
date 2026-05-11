@@ -87,7 +87,7 @@ export default function OnboardingChecklist({
             margin: 0,
           }}
         >
-          Look at your switches in{" "}
+          Open a report card from{" "}
           <Link
             href="/dashboard/switches"
             style={{
@@ -99,7 +99,7 @@ export default function OnboardingChecklist({
           >
             Switches
           </Link>
-          {" "}or your verdicts in{" "}
+          , or enroll in{" "}
           <Link
             href="/dashboard/insights"
             style={{
@@ -109,7 +109,7 @@ export default function OnboardingChecklist({
               textUnderlineOffset: "3px",
             }}
           >
-            Activity
+            cohort tuned-defaults
           </Link>
           .
         </p>
@@ -123,7 +123,7 @@ export default function OnboardingChecklist({
         className="eyebrow eyebrow--accent"
         style={{ margin: 0 }}
       >
-        Welcome to Dendra — you&apos;re on the Free plan
+        Get started
       </p>
       <ol
         style={{
