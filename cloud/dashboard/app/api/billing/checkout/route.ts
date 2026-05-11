@@ -17,7 +17,19 @@ import { stripe, priceIdForTier, checkoutReturnUrls } from "../../../../lib/stri
 
 export const runtime = "edge";
 
-const ALLOWED_TIERS = new Set(["hosted_pro", "hosted_scale", "hosted_business"]);
+// Tier ids mirror landing/data/pricing-tiers.json `id` fields (post
+// 2026-05-11 pricing restructure). The pre-restructure ids
+// (`hosted_pro`/`hosted_scale`/`hosted_business`) are kept here as
+// transitional aliases until the dashboard build no longer references
+// them anywhere.
+const ALLOWED_TIERS = new Set([
+  "pro",
+  "scale",
+  "business",
+  "hosted_pro",
+  "hosted_scale",
+  "hosted_business",
+]);
 
 export async function POST(req: NextRequest) {
   try {
