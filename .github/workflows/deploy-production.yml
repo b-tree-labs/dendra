@@ -61,7 +61,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - run: npm install
+      - run: npm ci
       - name: Apply D1 migrations (production)
         uses: cloudflare/wrangler-action@v3
         with:
@@ -111,7 +111,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - run: npm install
+      - run: npm ci
       - name: Rollback collector Worker (production)
         uses: cloudflare/wrangler-action@v3
         with:

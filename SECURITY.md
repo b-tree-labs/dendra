@@ -92,6 +92,35 @@ to incidents:
   on-the-wire format of every event the SDK sends, with a
   programmatic verification recipe.
 
+## Supply-chain posture
+
+In response to the May 2026 wave of npm supply-chain compromises
+(`pull_request_target` + cache-poisoning + OIDC-token extraction):
+
+- **No workflow uses `pull_request_target`.** Every PR-triggered
+  workflow runs under the standard `pull_request` event, which
+  GitHub isolates from repo secrets when triggered by a fork.
+- **OIDC publish (`id-token: write`) is granted only to
+  `release.yml`, which triggers exclusively on `push: tags: ['v*']`
+  and `workflow_dispatch`.** Fork PRs cannot trigger a publish.
+- **No `actions/cache` usage** in the dendra repo, so no cache can
+  be poisoned by a PR run and restored by a release run.
+- **CI installs use `npm ci`, not `npm install`.** Lockfile state
+  is enforced; an attacker cannot pull a different transitive
+  version through a malicious resolver.
+- **Dependabot alerts + Push Protection** are enabled on the repo;
+  HIGH / CRITICAL alerts get same-week dependency bumps. The
+  2026-05-11 audit closed 16 alerts including the App Router
+  middleware bypass (CVE-2026-45109).
+- **The `b-tree-labs/dendra` repo has no `@tanstack/*`
+  dependencies**, transitive or direct (verified 2026-05-13). The
+  May 11 TanStack supply-chain compromise does not affect Dendra.
+
+If you find a vulnerability in any of the above postures (e.g., a
+new workflow PR adds a dangerous trigger, a cache appears in a
+sensitive workflow, a publish path opens to fork events), please
+report via the disclosure flow above.
+
 ## Cryptographic signing
 
 Dendra releases are:
@@ -104,7 +133,7 @@ Dendra releases are:
 Verify a release:
 
 ```bash
-git verify-tag v1.0.0
+git verify-tag v1.1.0
 ```
 
 ## Hall of fame
