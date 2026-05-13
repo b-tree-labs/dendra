@@ -1,0 +1,84 @@
+# Copyright (c) 2026 B-Tree Labs
+# SPDX-License-Identifier: LicenseRef-BSL-1.1
+#
+# Cloudflare Worker config — Dendra security-ops.
+#
+# Two environments: staging (default) + production.
+# Deploy with:
+#   wrangler deploy                          # → staging (default env)
+#   wrangler deploy --env production         # → production
+#
+# Required secrets (set with `wrangler secret put <NAME> --env <env>`):
+#   SECURITY_FORWARD_TO     — operator's primary inbox (Ben's personal mail)
+#                             receives forwards of every inbound report +
+#                             daily overdue digests + urgent escalations.
+#
+# Optional vars (settable per-env in [vars] / [env.production.vars]):
+#   SECURITY_FROM_ADDRESS   — defaults to "security@b-treeventures.com"
+#                             when unset. The auto-reply uses this as
+#                             From: on outbound cron / urgent mail.
+#
+# Migrations live with the collector (cloud/collector/migrations/) since
+# this Worker shares the same D1 (security_reports table added in 0010).
+
+name = "dendra-security-ops-staging"
+main = "src/index.ts"
+compatibility_date = "2026-05-13"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = false
+
+# Persist console.* output to the Cloudflare dashboard (3-day retention,
+# searchable, free) — same pattern as cloud/api/. Without this, logs are
+# visible only via `wrangler tail` while a session is running.
+[observability]
+enabled = true
+head_sampling_rate = 1.0
+
+# Daily at 09:00 UTC. Picks UTC (not Austin local) so DST doesn't shift
+# the run time twice a year. 09:00 UTC = 04:00 CDT / 03:00 CST — early
+# enough that Ben sees overdue alerts at start-of-day.
+[triggers]
+crons = ["0 9 * * *"]
+
+# Shared D1 database with the collector + api Workers. Same staging
+# database the rest of the stack runs against; the security_reports
+# table is unrelated to the events / users / verdicts surface.
+[[d1_databases]]
+binding = "DB"
+database_name = "dendra-events-staging"
+database_id = "77ac4e6c-a09f-486a-9f40-bed39d209e2c"
+
+# Email-routing binding is configured via the Cloudflare dashboard
+# (Email → Email Routing → Routes), not declared here. After this
+# Worker deploys, Ben adds the route:
+#   security@b-treeventures.com → Send to a Worker → dendra-security-ops
+# Wrangler's TOML schema doesn't have a stable [[email_routing]] block
+# yet (as of wrangler 4.87); the dashboard route is the supported path.
+
+[vars]
+ENVIRONMENT = "staging"
+SECURITY_FROM_ADDRESS = "security@b-treeventures.com"
+
+# ---------------------------------------------------------------------------
+# Production environment
+# ---------------------------------------------------------------------------
+
+[env.production]
+name = "dendra-security-ops"
+workers_dev = false
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "dendra-events"
+database_id = "d8f78857-de29-4ee2-a449-b78c95c6ad67"
+
+[env.production.triggers]
+crons = ["0 9 * * *"]
+
+[env.production.observability]
+enabled = true
+head_sampling_rate = 1.0
+
+[env.production.vars]
+ENVIRONMENT = "production"
+SECURITY_FROM_ADDRESS = "security@b-treeventures.com"
