@@ -1,0 +1,26 @@
+{
+  "name": "dendra-security-ops",
+  "version": "1.0.0-rc1",
+  "private": true,
+  "description": "Dendra security-ops Worker — auto-acks inbound disclosures to security@b-treeventures.com and escalates overdue triage via a daily cron, mechanizing the SLAs published in SECURITY.md.",
+  "license": "BSL-1.1",
+  "scripts": {
+    "deploy:staging": "wrangler deploy",
+    "deploy:production": "wrangler deploy --env production",
+    "tail:staging": "wrangler tail",
+    "tail:production": "wrangler tail --env production",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.15.2",
+    "@cloudflare/workers-types": "^4.20260101.0",
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.0",
+    "wrangler": "^4.87.0"
+  },
+  "overrides": {
+    "undici": "^6.23.1"
+  }
+}
