@@ -147,7 +147,7 @@
     const tierOut = root.querySelector('[data-pc-output="tier"]');
     const tierDetailOut = root.querySelector('[data-pc-output="tier-detail"]');
     const baselineOut = root.querySelector('[data-pc-output="baseline"]');
-    const dendraOut = root.querySelector('[data-pc-output="dendra"]');
+    const postruleOut = root.querySelector('[data-pc-output="postrule"]');
     const savingsOut = root.querySelector('[data-pc-output="savings"]');
 
     if (!calls || !provider || !tierOut) return;
@@ -209,7 +209,7 @@
         ? `${tier.price_display || ""}${overage > 0 ? " · " + fmtUSD(overage) + " overage" : ""}`
         : "";
       baselineOut.textContent = fmtUSD(baseline);
-      dendraOut.textContent = fmtUSD(total);
+      postruleOut.textContent = fmtUSD(total);
       savingsOut.textContent = (savings >= 0 ? "" : "−") + fmtUSD(Math.abs(savings));
       savingsOut.classList.toggle("pricing-calculator__savings--positive", savings > 0);
       savingsOut.classList.toggle("pricing-calculator__savings--negative", savings <= 0);
@@ -241,7 +241,7 @@
     } catch (err) {
       if (tiersContainer) {
         tiersContainer.innerHTML =
-          '<p class="caption dim">Pricing data unavailable. Email <a href="mailto:sales@dendra.run">sales@dendra.run</a> for current rates.</p>';
+          '<p class="caption dim">Pricing data unavailable. Email <a href="mailto:sales@postrule.ai">sales@postrule.ai</a> for current rates.</p>';
       }
       console.error("[pricing] failed to load JSON sources:", err);
       return;

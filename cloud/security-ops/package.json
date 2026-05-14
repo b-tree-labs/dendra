@@ -1,8 +1,8 @@
 {
-  "name": "dendra-security-ops",
+  "name": "postrule-security-ops",
   "version": "1.0.0-rc1",
   "private": true,
-  "description": "Dendra security-ops Worker — auto-acks inbound disclosures to security@dendra.run and escalates overdue triage via a daily cron, mechanizing the SLAs published in SECURITY.md.",
+  "description": "Postrule security-ops Worker — auto-acks inbound disclosures to security@postrule.ai and escalates overdue triage via a daily cron, mechanizing the SLAs published in SECURITY.md.",
   "license": "BSL-1.1",
   "scripts": {
     "deploy:staging": "wrangler deploy",

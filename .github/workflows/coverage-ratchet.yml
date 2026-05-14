@@ -43,7 +43,7 @@ jobs:
 
       - name: Run pytest with coverage
         run: |
-          pytest --cov=src/dendra --cov-report=json:coverage.json --cov-report=term -q
+          pytest --cov=src/postrule --cov-report=json:coverage.json --cov-report=term -q
 
       - name: Enforce coverage floors
         run: |

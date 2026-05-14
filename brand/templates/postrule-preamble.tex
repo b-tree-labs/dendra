@@ -1,0 +1,107 @@
+% Postrule LaTeX preamble — paper + figure consistency
+% Copyright (c) 2026 B-Tree Ventures, LLC
+% SPDX-License-Identifier: Apache-2.0
+%
+% Usage (in your paper's preamble):
+%   \input{path/to/postrule-preamble.tex}
+%
+% Requires XeLaTeX or LuaLaTeX (for system-font support via fontspec).
+% Falls back to standard pdflatex body if fontspec is unavailable —
+% the color + spacing rules still apply.
+%
+% Matches the Axiom Labs preamble convention: serif body face for
+% academic convention, Space Grotesk display for figure labels and
+% section heads, JetBrains Mono for code.
+
+% --- Color definitions (Postrule palette) --------------------------------
+\usepackage{xcolor}
+\definecolor{postruleink}{HTML}{1a1a1f}
+\definecolor{postruleground}{HTML}{f8f6f1}
+\definecolor{postruleaccent}{HTML}{BF5700}
+\definecolor{postruleinksoft}{HTML}{6a6a72}
+\definecolor{postrulerule}{HTML}{d8d3c9}
+\definecolor{postrulegroundsoft}{HTML}{efece6}
+\definecolor{postruleaccentdeep}{HTML}{8a3d00}
+\definecolor{postruleaccentwash}{HTML}{f4e4d8}
+
+% --- Typography (XeLaTeX / LuaLaTeX) -----------------------------------
+% Body: TeX Gyre Pagella (the open substitute for Palatino).
+% Display: Space Grotesk Medium for section heads + figure titles.
+% Mono: JetBrains Mono for code listings.
+\@ifpackageloaded{fontspec}{%
+  \setmainfont{TeX Gyre Pagella}
+  \setsansfont{Space Grotesk}[UprightFont=*-Medium, BoldFont=*-Bold]
+  \setmonofont{JetBrains Mono}[Scale=0.90]
+}{%
+  % pdflatex fallback: sans-serif for display via lmodern's cmss
+  \renewcommand{\familydefault}{\rmdefault}
+  \usepackage{lmodern}
+}
+
+% --- Section-head style ------------------------------------------------
+\usepackage{titlesec}
+\titleformat{\section}
+  {\normalfont\sffamily\large\color{postruleink}}
+  {\thesection.}{0.6em}{}
+\titleformat{\subsection}
+  {\normalfont\sffamily\normalsize\color{postruleink}}
+  {\thesubsection.}{0.5em}{}
+\titleformat{\subsubsection}
+  {\normalfont\sffamily\small\color{postruleinksoft}}
+  {\thesubsubsection.}{0.4em}{}
+
+% --- Link styling (matches web brand-tokens hover state) ---------------
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks   = true,
+  linkcolor    = postruleink,
+  citecolor    = postruleaccentdeep,
+  urlcolor     = postruleaccentdeep,
+  filecolor    = postruleink,
+  breaklinks   = true,
+  pdfborder    = {0 0 0},
+}
+
+% --- Caption style -----------------------------------------------------
+\usepackage[
+  font=small,
+  labelfont={sf,color=postruleinksoft},
+  textfont={color=postruleink},
+  labelsep=endash,
+  skip=6pt
+]{caption}
+
+% --- Tables ------------------------------------------------------------
+\usepackage{booktabs}
+\renewcommand{\arraystretch}{1.12}
+
+% --- Code listings (for inline Python in the paper) --------------------
+\@ifpackageloaded{listings}{%
+  \lstset{
+    basicstyle  = \ttfamily\small\color{postruleink},
+    commentstyle= \color{postruleinksoft},
+    keywordstyle= \color{postruleaccentdeep}\bfseries,
+    stringstyle = \color{postruleink},
+    backgroundcolor = \color{postrulegroundsoft},
+    frame       = none,
+    tabsize     = 4,
+    breaklines  = true,
+    showstringspaces = false,
+    aboveskip   = 10pt,
+    belowskip   = 10pt,
+    xleftmargin = 8pt,
+  }
+}{}
+
+% --- Page geometry (NeurIPS submission defaults preserved; override in
+%     consumer paper if you're not targeting NeurIPS). ------------------
+% No geometry override here — consumer paper class (neurips, icml,
+% tlmr, article, etc.) controls page margins. This preamble only adds
+% brand-level type + color.
+
+% --- Paper footer metadata ---------------------------------------------
+\newcommand{\postrulepaperfooter}{%
+  \footnotesize\color{postruleinksoft}%
+  Postrule is a trademark of B-Tree Ventures, LLC.%
+  \ POSTRULE mark + palette under CC-BY 4.0 from the Axiom Labs brand kit.%
+}

@@ -3,7 +3,7 @@
 //
 // License-key system. Issues Ed25519-signed JWS-compact tokens that
 // Business+ tier subscribers can install on offline / air-gapped
-// systems. The Python CLI (`dendra license verify`) checks the
+// systems. The Python CLI (`postrule license verify`) checks the
 // signature against an embedded public key and the claims against
 // local time, with no network call required.
 //
@@ -11,12 +11,12 @@
 //   base64url(header).base64url(payload).base64url(signature)
 //
 // Header fixed:
-//   { "alg": "EdDSA", "typ": "DendraLicense", "v": 1 }
+//   { "alg": "EdDSA", "typ": "PostruleLicense", "v": 1 }
 //
 // Payload claims:
 //   {
-//     "iss": "dendra.run",
-//     "sub": "<dendra_user_id>",
+//     "iss": "postrule.ai",
+//     "sub": "<postrule_user_id>",
 //     "tier": "business",
 //     "account_hash": "<hex>",
 //     "iat": <unix_seconds>,
@@ -27,7 +27,7 @@
 //
 // The private key is stored as wrangler secret LICENSE_SIGNING_PRIVATE_KEY
 // (32-byte raw, hex-encoded). Generate once with scripts/generate-license-key.ts.
-// The public key is published — embed in dendra Python package + sample
+// The public key is published — embed in postrule Python package + sample
 // docs so verifiers can check signatures without us in the loop.
 
 const ENCODER = new TextEncoder();
@@ -44,7 +44,7 @@ export interface LicenseClaims {
   license_id: string;
 }
 
-const HEADER = { alg: 'EdDSA', typ: 'DendraLicense', v: 1 } as const;
+const HEADER = { alg: 'EdDSA', typ: 'PostruleLicense', v: 1 } as const;
 
 function b64uEncode(bytes: Uint8Array): string {
   let bin = '';
@@ -179,7 +179,7 @@ export async function signLicense(args: SignArgs): Promise<{ token: string; clai
   const now = args.now ? args.now() : Math.floor(Date.now() / 1000);
   const ttl = args.ttlSeconds ?? 30 * 86400;
   const claims: LicenseClaims = {
-    iss: 'dendra.run',
+    iss: 'postrule.ai',
     sub: String(args.user_id),
     tier: args.tier,
     account_hash: args.account_hash,
@@ -207,7 +207,7 @@ export async function signLicense(args: SignArgs): Promise<{ token: string; clai
  * parsed claims if signature valid AND not expired; throws otherwise.
  *
  * (We export this so tests + admin tools can verify; production CLI
- * verification happens in the Python sibling at src/dendra/license.py.)
+ * verification happens in the Python sibling at src/postrule/license.py.)
  */
 export async function verifyLicense(token: string, publicKeyHex: string, now?: number): Promise<LicenseClaims> {
   const parts = token.split('.');
@@ -216,7 +216,7 @@ export async function verifyLicense(token: string, publicKeyHex: string, now?: n
 
   const headerJson = DECODER.decode(b64uDecode(headerB64!));
   const header = JSON.parse(headerJson);
-  if (header.alg !== 'EdDSA' || header.typ !== 'DendraLicense') {
+  if (header.alg !== 'EdDSA' || header.typ !== 'PostruleLicense') {
     throw new Error('unsupported_header');
   }
 

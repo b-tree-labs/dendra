@@ -18,7 +18,7 @@ import {
   getPreferences,
   patchPreferences,
   type PreferencesPatch,
-} from "../../../lib/dendra-api";
+} from "../../../lib/postrule-api";
 
 export const runtime = "edge";
 

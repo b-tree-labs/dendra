@@ -33,7 +33,7 @@ export default function UpgradeBanner({ tier, used, cap, periodKey }: Props) {
   const [ready, setReady] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
-  const storageKey = `dendra:upgrade-banner-dismissed:${periodKey}`;
+  const storageKey = `postrule:upgrade-banner-dismissed:${periodKey}`;
 
   useEffect(() => {
     try {

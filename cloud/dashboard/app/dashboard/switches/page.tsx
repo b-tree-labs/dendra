@@ -6,7 +6,7 @@
 
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { upsertUser, listSwitches } from "../../../lib/dendra-api";
+import { upsertUser, listSwitches } from "../../../lib/postrule-api";
 import SwitchesClient from "./switches-client";
 
 export const runtime = "edge";

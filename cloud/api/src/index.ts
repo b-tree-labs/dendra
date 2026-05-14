@@ -1,7 +1,7 @@
 // Copyright (c) 2026 B-Tree Labs
 // SPDX-License-Identifier: LicenseRef-BSL-1.1
 //
-// Dendra hosted API — Cloudflare Worker.
+// Postrule hosted API — Cloudflare Worker.
 //
 // Routes:
 //   GET  /health                    — liveness probe (unauthenticated)
@@ -11,7 +11,7 @@
 //   GET  /v1/switches/:name/report  — report-card render (markdown or JSON)
 //   POST /v1/judge                  — LLM-as-judge (billable, not implemented)
 //
-// Auth: every /v1/* route requires `Authorization: Bearer dndr_live_…`.
+// Auth: every /v1/* route requires `Authorization: Bearer prul_live_…`.
 // The auth middleware resolves the key to a user + tier and attaches
 // the AuthContext to c.var.auth for downstream handlers.
 
@@ -40,7 +40,7 @@ const app = new Hono<{ Bindings: Env }>();
 app.get('/health', (c) => {
   return c.json({
     status: 'ok',
-    service: 'dendra-api',
+    service: 'postrule-api',
     environment: c.env.ENVIRONMENT,
     timestamp: new Date().toISOString(),
   });
@@ -49,8 +49,8 @@ app.get('/health', (c) => {
 // ---------------------------------------------------------------------------
 // Public: cohort wisdom JSON, written by the nightly aggregator into KV.
 // Mounted at /insights so a Cloudflare Worker Route on
-// dendra.run/insights/* hands off to this Worker, keeping the
-// consumer URL https://dendra.run/insights/tuned-defaults.json stable
+// postrule.ai/insights/* hands off to this Worker, keeping the
+// consumer URL https://postrule.ai/insights/tuned-defaults.json stable
 // across the file→KV cutover. No auth.
 // ---------------------------------------------------------------------------
 app.route('/insights', insights);

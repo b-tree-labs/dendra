@@ -78,7 +78,7 @@ export function makeInboundMessage(args: {
   const recordedForwards: RecordedForward[] = [];
   const msg: FakeMessage = {
     from: args.from,
-    to: args.to ?? 'security@dendra.run',
+    to: args.to ?? 'security@postrule.ai',
     headers: {
       get(name: string): string | null {
         return headers.get(name.toLowerCase()) ?? null;

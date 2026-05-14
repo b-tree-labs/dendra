@@ -25,7 +25,7 @@ import os
 import time
 from pathlib import Path
 
-from dendra import (
+from postrule import (
     JudgeSource,
     LlamafileAdapter,
     OllamaAdapter,
@@ -180,7 +180,7 @@ def _bench_model(
                 "backend": backend,
                 "error": "OPENAI_API_KEY not set; cloud row skipped",
             }
-        from dendra import OpenAIAdapter
+        from postrule import OpenAIAdapter
 
         adapter = OpenAIAdapter(model=model_name)
     elif backend == "anthropic":
@@ -190,7 +190,7 @@ def _bench_model(
                 "backend": backend,
                 "error": "ANTHROPIC_API_KEY not set; cloud row skipped",
             }
-        from dendra import AnthropicAdapter
+        from postrule import AnthropicAdapter
 
         adapter = AnthropicAdapter(model=model_name)
     else:

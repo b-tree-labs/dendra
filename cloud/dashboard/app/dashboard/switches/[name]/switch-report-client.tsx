@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import ReactMarkdown from "react-markdown";
-import type { SwitchReport } from "../../../../lib/dendra-api";
+import type { SwitchReport } from "../../../../lib/postrule-api";
 import {
   isStale,
   daysSince as daysSinceTs,
@@ -35,7 +35,7 @@ const PHASE_INDEX: Record<string, number> = {
 // uses, anchored to a moderate-cost LLM (~$0.0042/call rule, ~$0.000003
 // after ML graduation). The dashboard surfaces them so the user can see
 // the projected trajectory of their switch as it climbs phases; the
-// canonical numbers ship with the OSS `dendra report` output.
+// canonical numbers ship with the OSS `postrule report` output.
 const PHASE_COST_PER_CALL: Record<string, number> = {
   P0: 0.0042,
   P1: 0.0042,
@@ -83,7 +83,7 @@ function formatPValue(p: number | null): string {
   return p.toFixed(4);
 }
 
-// Render the same Markdown the OSS `dendra report` command emits, built
+// Render the same Markdown the OSS `postrule report` command emits, built
 // from the structured payload the server returned. Same headline as
 // docs/sample-reports/triage_rule.md so the "report-card-as-evidence"
 // narrative is consistent between CLI + dashboard + audit-chain export.
@@ -138,7 +138,7 @@ function buildMarkdown(switchName: string, report: SwitchReport): string {
   lines.push("---");
   lines.push("");
   lines.push(
-    "*Regenerate with `dendra report " + switchName + "`. " +
+    "*Regenerate with `postrule report " + switchName + "`. " +
       "Markdown excerpt mirrors the canonical OSS report-card shape.*",
   );
   return lines.join("\n");
@@ -571,7 +571,7 @@ export default function SwitchReportClient({ switchName, report, tier }: Props) 
         >
           Indicative cost per call as the switch climbs phases. Latest figure
           highlighted. Re-render with{" "}
-          <code>dendra report {switchName} --model &lt;name&gt;</code> in the
+          <code>postrule report {switchName} --model &lt;name&gt;</code> in the
           CLI to swap pricing models for what-if analysis.
         </p>
       </section>
@@ -671,7 +671,7 @@ export default function SwitchReportClient({ switchName, report, tier }: Props) 
               margin: "var(--space-3) 0 0",
             }}
           >
-            The same Markdown shape <code>dendra report {switchName}</code>{" "}
+            The same Markdown shape <code>postrule report {switchName}</code>{" "}
             emits at the CLI. Expand to copy.
           </p>
         )}
@@ -779,7 +779,7 @@ function EmptyShadowPanel({ report }: { report: SwitchReport }) {
         className="prose-brand"
         style={{ marginTop: 0, marginBottom: "var(--space-3)" }}
       >
-        Still in shadow — the gate hasn&apos;t fired yet. Dendra is collecting
+        Still in shadow — the gate hasn&apos;t fired yet. Postrule is collecting
         paired-correctness observations and won&apos;t graduate this switch
         until McNemar clears α = 0.01.
       </p>

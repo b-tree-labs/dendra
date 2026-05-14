@@ -15,7 +15,7 @@ declare module 'cloudflare:test' {
     STRIPE_SECRET_KEY: string;
     STRIPE_WEBHOOK_SECRET: string;
     LICENSE_SIGNING_PRIVATE_KEY: string;
-    DENDRA_SCALE: string;
+    POSTRULE_SCALE: string;
   }
 }
 

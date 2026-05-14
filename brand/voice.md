@@ -1,12 +1,12 @@
-# Dendra · voice and tone
+# Postrule · voice and tone
 
-How Dendra talks. What the product sounds like in docs, marketing,
+How Postrule talks. What the product sounds like in docs, marketing,
 support, error messages, and code comments. If the mark is the
 visual identity, this is the verbal one.
 
 ## The axis
 
-**Technical, measured, quiet.** Dendra is built by engineers for
+**Technical, measured, quiet.** Postrule is built by engineers for
 engineers. It never oversells. It shows, then explains. It is
 specific, bounded, and honest about what it does not do.
 
@@ -36,7 +36,7 @@ written by someone who would be embarrassed to overstate.
 - *classify, classification, classifier, classification site*
 - *phase, phase transition, lifecycle*
 - *specific, concrete, bounded*
-- *primitive* (Dendra is a primitive, not a platform)
+- *primitive* (Postrule is a primitive, not a platform)
 
 ## Words to avoid
 
@@ -48,13 +48,13 @@ list.
 - *revolutionary, game-changing, transformative, paradigm-shifting*
 - *cutting-edge, state-of-the-art, best-in-class, world-class*
 - *AI-powered, ML-powered, intelligent, smart* (as standalone
-  adjectives for Dendra itself — Dendra *uses* ML; it isn't
+  adjectives for Postrule itself — Postrule *uses* ML; it isn't
   vaguely "intelligent")
 - *seamless, frictionless, magical, effortless*
 - *unleash, unlock, empower, supercharge*
 - *reimagine, reinvent, revolutionize*
 - *delight, delighted, delightful*
-- *low-code, no-code* (Dendra is code; embrace that)
+- *low-code, no-code* (Postrule is code; embrace that)
 - *turnkey, out-of-the-box* (overused, tell what's actually
   configurable)
 - *leverage* (use "use")
@@ -82,8 +82,8 @@ list.
 
 - **Second person** for instructions. "Wrap your classifier," not
   "The user wraps a classifier."
-- **First person plural** ("we") for Dendra/B-Tree Labs claims.
-  "We measured this on four benchmarks," not "Dendra was measured
+- **First person plural** ("we") for Postrule/B-Tree Labs claims.
+  "We measured this on four benchmarks," not "Postrule was measured
   on four benchmarks" (passive) or "I measured this" (too
   personal). Reserve "I" for author blog posts only.
 - **Third person** for the product in reference docs. "`ml_switch`
@@ -91,7 +91,7 @@ list.
 
 ## On the primitive framing
 
-Dendra is a **primitive**, not a platform, suite, or product
+Postrule is a **primitive**, not a platform, suite, or product
 family. Language that reinforces this:
 
 - "A primitive for X" not "a platform that does X"
@@ -109,13 +109,13 @@ always name the test, never overclaim:
 - **Correct:** "The probability of worse-than-rule behavior at
   any transition is bounded above by the paired-proportion test's
   Type-I error rate α."
-- **Incorrect:** "Dendra guarantees safety." (Bound is
+- **Incorrect:** "Postrule guarantees safety." (Bound is
   probabilistic; "guarantees" is wrong.)
-- **Also incorrect:** "Dendra reduces risk." (Not specific.)
+- **Also incorrect:** "Postrule reduces risk." (Not specific.)
 
 ## On safety
 
-Safety claims are the highest-integrity claims Dendra makes.
+Safety claims are the highest-integrity claims Postrule makes.
 They are load-bearing for enterprise procurement.
 
 - Use "safety floor" for the rule-as-architectural-guarantee.
@@ -127,19 +127,19 @@ They are load-bearing for enterprise procurement.
 
 ## On competitors
 
-**No naming.** The `entry-with-end-in-mind.md` §4 rule: Dendra
+**No naming.** The `entry-with-end-in-mind.md` §4 rule: Postrule
 does not name competitors in marketing, never says "better than
 X," never posts comparison charts. Indirect framing only.
 
-- **Correct:** "Unlike pure-LLM architectures, Dendra retains the
+- **Correct:** "Unlike pure-LLM architectures, Postrule retains the
   rule as safety floor." (Frames by architecture, not by company.)
-- **Incorrect:** "Unlike LangChain, Dendra …" (Names a company.)
+- **Incorrect:** "Unlike LangChain, Postrule …" (Names a company.)
 - **Also incorrect:** "Other classifier libraries have drifted
   from their rules." (Vague dig — worse than nothing.)
 
 ## Error messages
 
-Dendra error messages are short, specific, and actionable. They
+Postrule error messages are short, specific, and actionable. They
 name the thing that went wrong and what the caller should do.
 
 - **Correct:** `safety_critical switches cannot start in
@@ -147,7 +147,7 @@ name the thing that went wrong and what the caller should do.
 - **Too apologetic:** `Sorry, this operation isn't supported in
   safety-critical mode.`
 - **Too abstract:** `Invalid configuration.`
-- **Too chatty:** `Dendra could not construct your switch because
+- **Too chatty:** `Postrule could not construct your switch because
   you specified safety_critical=True in combination with
   Phase.ML_PRIMARY, but this combination is disallowed because…`
 
@@ -187,7 +187,7 @@ Internal docs and commit messages are signed:
 - Commit trailers: `Co-Authored-By:` for AI / pair programming.
   `Signed-off-by:` per DCO for every non-bot commit.
 - Public-facing content (blog, landing, paper) is attributed to
-  **Dendra** or **B-Tree Labs** as appropriate. Individual
+  **Postrule** or **B-Tree Labs** as appropriate. Individual
   attribution (Benjamin Booth as author) appears in the paper,
   patent filings, and select first-person blog posts only.
 

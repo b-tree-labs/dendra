@@ -7,7 +7,7 @@
   28 r node measurement from the B-Tree Labs origin mark but renders
   as an outline (stroke 12) so it doesn't cover the accent.
   Visually marks the threshold-crossing moment without interrupting
-  the rising gesture. Ties Dendra's mark to B-Tree Labs' node
+  the rising gesture. Ties Postrule's mark to B-Tree Labs' node
   vocabulary without becoming the same glyph.
 -->
 <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">

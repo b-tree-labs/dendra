@@ -1,9 +1,9 @@
-# Dendra · typography
+# Postrule · typography
 
-Dendra inherits the B-Tree Labs typography system exactly.
+Postrule inherits the B-Tree Labs typography system exactly.
 `b-tree-labs/.github/brand/typography.md` defines the source of
-truth; this file documents Dendra's use of that system plus any
-Dendra-specific overrides (none currently).
+truth; this file documents Postrule's use of that system plus any
+Postrule-specific overrides (none currently).
 
 ## Type stacks
 
@@ -56,17 +56,17 @@ Base 16 px. Ratio 1.25 (major third).
 
 ## Wordmark typography
 
-The DENDRA wordmark is Space Grotesk Medium (500), all caps,
+The POSTRULE wordmark is Space Grotesk Medium (500), all caps,
 tracked 0.18em. Identical treatment to the B-Tree Labs wordmark
 — same weight, same tracking. This is load-bearing for the
-portfolio-sibling read: at a glance, "DENDRA" and "B-TREE LABS"
+portfolio-sibling read: at a glance, "POSTRULE" and "B-TREE LABS"
 should feel like members of the same typographic family.
 
 **Never:**
 
 - Stretch, slant, or outline the wordmark typography.
 - Use a weight other than Medium (500) for the wordmark.
-- Reset the tracking. `0.18em` is what makes "DENDRA" look like
+- Reset the tracking. `0.18em` is what makes "POSTRULE" look like
   the wordmark and not just the word.
 
 **Do:**
@@ -77,14 +77,14 @@ should feel like members of the same typographic family.
 
 ## Paper / LaTeX
 
-Dendra papers use the B-Tree Labs preamble at
+Postrule papers use the B-Tree Labs preamble at
 `b-tree-labs/.github/brand/templates/b-tree-labs-preamble.tex`
 — serif body in TeX Gyre Pagella, Space Grotesk for figure labels
 and titles. Academic-convention-compliant body + branded display.
 
 ## Matplotlib
 
-See `brand/templates/dendra.mplstyle` when it lands. Figure 1 of
-the paper and `dendra plot` outputs should adopt this style so
+See `brand/templates/postrule.mplstyle` when it lands. Figure 1 of
+the paper and `postrule plot` outputs should adopt this style so
 the transition curves rendered in the paper match the transition
 curves rendered by the CLI.

@@ -1,7 +1,7 @@
 // Copyright (c) 2026 B-Tree Labs
 // SPDX-License-Identifier: LicenseRef-BSL-1.1
 //
-// Auth middleware. Extracts Bearer dndr_live_… → resolves to user +
+// Auth middleware. Extracts Bearer prul_live_… → resolves to user +
 // tier via D1 lookup → attaches to Hono context for downstream handlers.
 
 import type { Context, MiddlewareHandler } from 'hono';

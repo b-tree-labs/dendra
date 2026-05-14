@@ -10,7 +10,7 @@
 //
 //   Steps 1+2  ←  has the user issued any API key yet?
 //                 (proves install + working credentials, since either
-//                  `pip install dendra` + `dendra login` device-flow or
+//                  `pip install postrule` + `postrule login` device-flow or
 //                  manual /dashboard/keys issuance lands a key row)
 //   Step 3     ←  has any verdict been emitted to this account?
 //
@@ -49,19 +49,19 @@ export default function OnboardingChecklist({
     {
       n: 1,
       label: "Install the CLI",
-      command: "pip install dendra",
+      command: "pip install postrule",
       done: hasApiKey,
     },
     {
       n: 2,
       label: "Connect this account",
-      command: "dendra login",
+      command: "postrule login",
       done: hasApiKey,
     },
     {
       n: 3,
       label: "Analyze your first repo",
-      command: "dendra analyze .",
+      command: "postrule analyze .",
       done: hasVerdict,
     },
   ];

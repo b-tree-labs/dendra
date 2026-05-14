@@ -79,7 +79,7 @@ export default function CliAuthClient({ initialCode }: { initialCode: string }) 
       if (!res.ok) {
         setView({
           kind: "error",
-          message: `Lookup failed (HTTP ${res.status}). Try again, or restart \`dendra login\`.`,
+          message: `Lookup failed (HTTP ${res.status}). Try again, or restart \`postrule login\`.`,
         });
         return;
       }
@@ -328,7 +328,7 @@ export default function CliAuthClient({ initialCode }: { initialCode: string }) 
               borderRadius: "4px",
             }}
           >
-            dendra login
+            postrule login
           </code>{" "}
           again from your terminal to get a fresh one.
         </p>
@@ -355,7 +355,7 @@ export default function CliAuthClient({ initialCode }: { initialCode: string }) 
               borderRadius: "4px",
             }}
           >
-            dendra login
+            postrule login
           </code>{" "}
           again from your terminal to start a new session.
         </p>

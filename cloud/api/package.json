@@ -1,8 +1,8 @@
 {
-  "name": "dendra-api",
+  "name": "postrule-api",
   "version": "1.0.0-rc1",
   "private": true,
-  "description": "Dendra hosted API — Cloudflare Worker for /v1/verdicts, /v1/switches, /v1/judge with Bearer-token auth + tier enforcement.",
+  "description": "Postrule hosted API — Cloudflare Worker for /v1/verdicts, /v1/switches, /v1/judge with Bearer-token auth + tier enforcement.",
   "license": "BSL-1.1",
   "scripts": {
     "deploy:staging": "wrangler deploy",

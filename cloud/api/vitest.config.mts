@@ -30,11 +30,11 @@ export default defineConfig({
           // Rate Limiting, and the handlers fail open when the handler is
           // absent (see passesRateLimit() in device.ts).
           //
-          // Forward the host's DENDRA_SCALE env var into the Worker
+          // Forward the host's POSTRULE_SCALE env var into the Worker
           // binding so cloud/api/test/scale_harness.test.ts can gate
-          // on it. `npm test` ignores it; `DENDRA_SCALE=1 npm test`
+          // on it. `npm test` ignores it; `POSTRULE_SCALE=1 npm test`
           // turns the harness on.
-          DENDRA_SCALE: process.env.DENDRA_SCALE ?? '',
+          POSTRULE_SCALE: process.env.POSTRULE_SCALE ?? '',
         },
       },
     }),

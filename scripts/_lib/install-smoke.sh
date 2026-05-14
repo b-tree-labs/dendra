@@ -15,7 +15,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/../.."
 
-tmp=$(mktemp -d -t dendra-smoke-XXXXXX)
+tmp=$(mktemp -d -t postrule-smoke-XXXXXX)
 trap 'rm -rf "$tmp"' EXIT
 
 # We need a Python with `build` available to make the wheel. Modern macOS
@@ -37,9 +37,9 @@ echo "Installing wheel ..."
 pip install --quiet "$tmp"/dist/*.whl
 
 echo "Smoke-test imports ..."
-python -c "import dendra; print('dendra import: ok')"
-python -c "from dendra import ml_switch, Phase, SwitchConfig, LearnedSwitch; print('client SDK imports: ok')"
-dendra --help >/dev/null && echo "dendra --help: ok"
+python -c "import postrule; print('postrule import: ok')"
+python -c "from postrule import ml_switch, Phase, SwitchConfig, LearnedSwitch; print('client SDK imports: ok')"
+postrule --help >/dev/null && echo "postrule --help: ok"
 
 echo "Running example gallery (01-05) ..."
 for example in examples/01_hello_world.py \

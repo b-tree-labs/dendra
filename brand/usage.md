@@ -1,11 +1,11 @@
-# Dendra · usage rules
+# Postrule · usage rules
 
-Dendra-specific rules for the mark, wordmark, and brand assets.
+Postrule-specific rules for the mark, wordmark, and brand assets.
 Inherits all non-specified rules from `b-tree-labs/.github/brand/usage.md`.
 
 ## The mark
 
-Dendra's mark is the **D2' · Node** glyph: a rule-floor (parted
+Postrule's mark is the **D2' · Node** glyph: a rule-floor (parted
 at the accent), two gate posts, a lintel, a hollow 28-r ink ring
 at the threshold-crossing point, and an accent-orange vertical
 stroke rising from below the floor through the gate.
@@ -42,7 +42,7 @@ this zone.
 | UI avatar | 32 × 32 px |
 | Print | 0.25 inch across |
 
-At sizes below 16 px, use the `dendra-favicon.svg` (rounded tile)
+At sizes below 16 px, use the `postrule-favicon.svg` (rounded tile)
 variant — it's vertically recentered and sized for pixel density
 at small sizes.
 
@@ -50,15 +50,15 @@ at small sizes.
 
 | Context | Use |
 |---|---|
-| GitHub avatar, app icon, favicon | `dendra-favicon.svg` (rounded tile) |
-| Website header, README hero, slide titles | `dendra-wordmark-horizontal.svg` |
-| Book cover, poster, square social | `dendra-wordmark-stacked.svg` |
-| Running text | Never use the mark inline. Write "Dendra" in the body font. |
+| GitHub avatar, app icon, favicon | `postrule-favicon.svg` (rounded tile) |
+| Website header, README hero, slide titles | `postrule-wordmark-horizontal.svg` |
+| Book cover, poster, square social | `postrule-wordmark-stacked.svg` |
+| Running text | Never use the mark inline. Write "Postrule" in the body font. |
 | On a dark ground (e.g. terminal hero, night-mode doc) | Use the `-dark` variant of the asset |
 
 ## Mark on dark ground
 
-Use `dendra-mark-dark.svg` (or the `-dark` variant of any
+Use `postrule-mark-dark.svg` (or the `-dark` variant of any
 composite asset). Structure strokes invert to warm off-white
 (`#f8f6f1`); the threshold-crossing ring also inverts. The accent
 stays `#BF5700` in both modes — do not switch to a brighter
@@ -68,8 +68,8 @@ dark-mode orange without updating the canonical palette.
 
 For print, embroidery, single-color rendering contexts:
 
-- `dendra-mark-mono-light.svg` — all graphite, no accent
-- `dendra-mark-mono-dark.svg` — all warm off-white, no accent
+- `postrule-mark-mono-light.svg` — all graphite, no accent
+- `postrule-mark-mono-dark.svg` — all warm off-white, no accent
 
 Monochrome loses the accent-as-evidence semantic layer — the mark
 still reads as a gate-with-a-crossing, but without the
@@ -95,38 +95,38 @@ means mono.
   28-r measurement is structural, not decorative.
 - **Don't add a drop shadow, bevel, or glow.** The mark is flat.
 - **Don't crop the mark.** Use the masters at
-  `brand/logo/dendra-mark*.svg`.
+  `brand/logo/postrule-mark*.svg`.
 - **Don't reconstruct the mark from primitives in downstream
   tools** (Keynote, PowerPoint, Word). Import the SVG or PNG;
   never redraw.
 
 ## Mark-in-running-text conventions
 
-In body prose, refer to the product as "Dendra" (body font, no
+In body prose, refer to the product as "Postrule" (body font, no
 styling). The first mention in a document may include the ™
 symbol if registration hasn't completed; post-registration it
 becomes ®. Current: pre-registration, use ™.
 
-**Correct:** Dendra is a classification primitive...
-**Also correct (first mention):** Dendra™ is a classification primitive...
-**Incorrect:** **DENDRA** is a classification primitive... (wordmark treatment doesn't belong in running text)
+**Correct:** Postrule is a classification primitive...
+**Also correct (first mention):** Postrule™ is a classification primitive...
+**Incorrect:** **POSTRULE** is a classification primitive... (wordmark treatment doesn't belong in running text)
 
 ## Relationship to the parent brand
 
-Dendra is a product of **B-Tree Labs**, which is the commercial
-vehicle of B-Tree Labs. The Dendra mark is a distinct
+Postrule is a product of **B-Tree Labs**, which is the commercial
+vehicle of B-Tree Labs. The Postrule mark is a distinct
 glyph in B-Tree Labs' visual language — same palette, same
 34-px square-capped stroke weight, same 28-r node measurement
 (used here as a ring rather than a dot). The two marks share
 ancestry but are not variations of one another.
 
 When the two brands appear together (co-branded content,
-portfolio pages), use the horizontal wordmark for Dendra and the
+portfolio pages), use the horizontal wordmark for Postrule and the
 B-Tree Labs horizontal wordmark at the same baseline, with a
 minimum 2× clear space between them.
 
 ## Trademarks
 
-DENDRA and B-TREE LABS are trademarks (or pending trademarks) of
+POSTRULE and B-TREE LABS are trademarks (or pending trademarks) of
 B-Tree Labs. The mark and wordmark are subject to the
 trademark policy at `TRADEMARKS.md` in the repository root.

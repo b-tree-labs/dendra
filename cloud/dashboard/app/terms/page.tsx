@@ -10,8 +10,8 @@ import Link from "next/link";
 export const runtime = "edge";
 
 export const metadata = {
-  title: "Terms of Service — Dendra",
-  description: "Terms governing your use of Dendra.",
+  title: "Terms of Service — Postrule",
+  description: "Terms governing your use of Postrule.",
 };
 
 export default function TermsPage() {
@@ -40,26 +40,26 @@ export default function TermsPage() {
       <div className="prose-brand mt-8">
         <h2>1. The service</h2>
         <p>
-          Dendra is a graduated-autonomy classification primitive provided
+          Postrule is a graduated-autonomy classification primitive provided
           by <strong>B-Tree Labs</strong> (a DBA of B-Tree Ventures, LLC,
           Texas, USA). It comprises:
         </p>
         <ul>
           <li>
-            An open-source Python library (<code>pip install dendra</code>),
+            An open-source Python library (<code>pip install postrule</code>),
             licensed Apache 2.0 for the client SDK and BSL 1.1 for the
             analyzer/server components. See{" "}
-            <a href="https://github.com/b-tree-labs/dendra/blob/main/LICENSE.md">
+            <a href="https://github.com/b-tree-labs/postrule/blob/main/LICENSE.md">
               LICENSE.md
             </a>{" "}
             for the canonical split.
           </li>
           <li>
-            A hosted API at <code>api.dendra.run</code> with tier-gated
+            A hosted API at <code>api.postrule.ai</code> with tier-gated
             usage caps and a paid upgrade path.
           </li>
           <li>
-            This dashboard at <code>app.dendra.run</code> for account,
+            This dashboard at <code>app.postrule.ai</code> for account,
             billing, and key management.
           </li>
         </ul>
@@ -76,7 +76,7 @@ export default function TermsPage() {
 
         <h2>3. Acceptable use</h2>
         <p>
-          You may use Dendra to classify any input you have the lawful
+          You may use Postrule to classify any input you have the lawful
           right to process. You may not use the service to:
         </p>
         <ul>
@@ -119,13 +119,13 @@ export default function TermsPage() {
         <p>
           We aim for 99% monthly uptime on the hosted API but do not
           offer a contractual SLA at this stage. Status:{" "}
-          <a href="https://status.dendra.run">status.dendra.run</a>.
+          <a href="https://status.postrule.ai">status.postrule.ai</a>.
         </p>
 
         <h2>6. Your data and telemetry</h2>
         <p>
           You retain all rights in the inputs you submit and the outputs
-          Dendra produces. We process your data only to provide the
+          Postrule produces. We process your data only to provide the
           service. The full data and telemetry contract — including the
           default-on, count-only verdict events sent when you&apos;re
           signed in, and the three ways to turn them off — is described
@@ -141,10 +141,10 @@ export default function TermsPage() {
           merchantability, fitness for a particular purpose, and
           non-infringement.{" "}
           <strong>
-            Dendra is a classification primitive, not a substitute for
+            Postrule is a classification primitive, not a substitute for
             human review in safety-critical contexts.
           </strong>{" "}
-          Outcomes you derive from using Dendra are your responsibility.
+          Outcomes you derive from using Postrule are your responsibility.
         </p>
 
         <h2>8. Limitation of liability</h2>
@@ -183,7 +183,7 @@ export default function TermsPage() {
 
         <h2>Contact</h2>
         <p>
-          Questions: <a href="mailto:legal@dendra.run">legal@dendra.run</a>.
+          Questions: <a href="mailto:legal@postrule.ai">legal@postrule.ai</a>.
         </p>
       </div>
     </main>

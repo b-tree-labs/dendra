@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import json
 
-from dendra.analyzer import analyze, render_json, render_text
+from postrule.analyzer import analyze, render_json, render_text
 
 
 def _write(path, text):
@@ -280,7 +280,7 @@ class TestRender:
 
 class TestRenderMarkdown:
     def test_markdown_contains_ranked_table(self, tmp_path):
-        from dendra.analyzer import render_markdown
+        from postrule.analyzer import render_markdown
 
         _write(
             tmp_path / "triage.py",
@@ -291,13 +291,13 @@ class TestRenderMarkdown:
         )
         report = analyze(tmp_path)
         md = render_markdown(report)
-        assert "# Dendra analyzer report" in md
+        assert "# Postrule analyzer report" in md
         assert "Sites ranked by wrap priority" in md
         assert "`triage.py:1`" in md
         assert "`triage`" in md
 
     def test_markdown_empty_has_helpful_message(self, tmp_path):
-        from dendra.analyzer import render_markdown
+        from postrule.analyzer import render_markdown
 
         _write(tmp_path / "noop.py", "def noop(): pass\n")
         report = analyze(tmp_path)
@@ -308,7 +308,7 @@ class TestRenderMarkdown:
 
 class TestSavingsProjection:
     def test_projection_totals_are_positive(self, tmp_path):
-        from dendra.analyzer import project_savings
+        from postrule.analyzer import project_savings
 
         _write(
             tmp_path / "triage.py",
@@ -328,7 +328,7 @@ class TestSavingsProjection:
         assert p.regression_avoidance_low_usd > 0
 
     def test_projection_respects_custom_assumptions(self, tmp_path):
-        from dendra.analyzer import project_savings
+        from postrule.analyzer import project_savings
 
         _write(
             tmp_path / "triage.py",
@@ -343,7 +343,7 @@ class TestSavingsProjection:
         assert cheap.engineering_savings_low_usd < default.engineering_savings_low_usd
 
     def test_markdown_with_projections_shows_totals(self, tmp_path):
-        from dendra.analyzer import project_savings, render_markdown
+        from postrule.analyzer import project_savings, render_markdown
 
         _write(
             tmp_path / "triage.py",
@@ -372,25 +372,25 @@ class TestRegimeClassification:
     """
 
     def test_zero_cardinality_is_unknown(self):
-        from dendra.analyzer import _classify_regime
+        from postrule.analyzer import _classify_regime
 
         assert _classify_regime(0) == "unknown"
 
     def test_just_below_narrow_threshold(self):
-        from dendra.analyzer import _classify_regime
+        from postrule.analyzer import _classify_regime
 
         assert _classify_regime(1) == "narrow"
         assert _classify_regime(29) == "narrow"
 
     def test_narrow_threshold_boundary(self):
         """Cardinality 30 is the first medium; <30 is narrow."""
-        from dendra.analyzer import _classify_regime
+        from postrule.analyzer import _classify_regime
 
         assert _classify_regime(29) == "narrow"
         assert _classify_regime(30) == "medium"
 
     def test_medium_band(self):
-        from dendra.analyzer import _classify_regime
+        from postrule.analyzer import _classify_regime
 
         assert _classify_regime(30) == "medium"
         assert _classify_regime(45) == "medium"
@@ -398,13 +398,13 @@ class TestRegimeClassification:
 
     def test_high_threshold_boundary(self):
         """Cardinality 61 is the first high; ≤60 is medium."""
-        from dendra.analyzer import _classify_regime
+        from postrule.analyzer import _classify_regime
 
         assert _classify_regime(60) == "medium"
         assert _classify_regime(61) == "high"
 
     def test_far_above_high_threshold(self):
-        from dendra.analyzer import _classify_regime
+        from postrule.analyzer import _classify_regime
 
         assert _classify_regime(77) == "high"
         assert _classify_regime(151) == "high"
@@ -412,7 +412,7 @@ class TestRegimeClassification:
 
     def test_paper_section_6_anchors(self):
         """The paper's §6 heuristics use these boundary cases. Pin them."""
-        from dendra.analyzer import _classify_regime
+        from postrule.analyzer import _classify_regime
 
         # ATIS: 26 labels → narrow (Regime A)
         assert _classify_regime(26) == "narrow"
@@ -429,39 +429,39 @@ class TestGateFitBoundaries:
     plus narrow/medium regime plus P1/P4 patterns."""
 
     def test_min_score_no_labels_no_p1p4(self):
-        from dendra.analyzer import _compute_gate_fit
+        from postrule.analyzer import _compute_gate_fit
 
         # Cardinality 0 → unknown regime, no sweet-spot bonus, P5 pattern.
         assert _compute_gate_fit([], "P5") == 2.0
 
     def test_max_score_p1_narrow_sweet_spot(self):
-        from dendra.analyzer import _compute_gate_fit
+        from postrule.analyzer import _compute_gate_fit
 
         labels = ["bug", "feature", "question"]  # 3 labels, narrow, sweet spot
         assert _compute_gate_fit(labels, "P1") == 5.0
 
     def test_max_score_p4_narrow_sweet_spot(self):
-        from dendra.analyzer import _compute_gate_fit
+        from postrule.analyzer import _compute_gate_fit
 
         labels = ["bug", "feature", "question"]
         assert _compute_gate_fit(labels, "P4") == 5.0
 
     def test_high_cardinality_loses_sweet_spot_and_regime_bonus(self):
-        from dendra.analyzer import _compute_gate_fit
+        from postrule.analyzer import _compute_gate_fit
 
         labels = [f"label_{i}" for i in range(70)]  # high regime, outside sweet spot
         # 2 base + 0 (not in sweet spot) + 0 (high regime) + 1 (P1) = 3.0
         assert _compute_gate_fit(labels, "P1") == 3.0
 
     def test_medium_regime_loses_sweet_spot_keeps_regime_bonus(self):
-        from dendra.analyzer import _compute_gate_fit
+        from postrule.analyzer import _compute_gate_fit
 
         labels = [f"label_{i}" for i in range(40)]  # medium regime, outside sweet spot
         # 2 base + 0 (not sweet spot, n>=30) + 1 (medium regime) + 1 (P4) = 4.0
         assert _compute_gate_fit(labels, "P4") == 4.0
 
     def test_p2_pattern_no_pattern_bonus(self):
-        from dendra.analyzer import _compute_gate_fit
+        from postrule.analyzer import _compute_gate_fit
 
         labels = ["bug", "feature"]  # narrow, sweet spot, but P2 not P1/P4
         # 2 base + 1 (sweet spot) + 1 (narrow) + 0 (P2) = 4.0
@@ -478,31 +478,31 @@ class TestVolumeEstimate:
         return next(n for n in _ast.walk(mod) if isinstance(n, _ast.FunctionDef))
 
     def test_warm_default(self):
-        from dendra.analyzer import _compute_volume_estimate
+        from postrule.analyzer import _compute_volume_estimate
 
         fn = self._parse_fn("def f(x):\n    return 'a'\n")
         assert _compute_volume_estimate(fn, "src/svc/router.py") == "warm"
 
     def test_hot_via_route_decorator_attribute(self):
-        from dendra.analyzer import _compute_volume_estimate
+        from postrule.analyzer import _compute_volume_estimate
 
         fn = self._parse_fn("@app.post('/triage')\ndef triage(req):\n    return 'bug'\n")
         assert _compute_volume_estimate(fn, "src/svc/api.py") == "hot"
 
     def test_hot_via_route_decorator_bare_name(self):
-        from dendra.analyzer import _compute_volume_estimate
+        from postrule.analyzer import _compute_volume_estimate
 
         fn = self._parse_fn("@route\ndef view(req):\n    return 'ok'\n")
         assert _compute_volume_estimate(fn, "src/views.py") == "hot"
 
     def test_cold_via_cli_path(self):
-        from dendra.analyzer import _compute_volume_estimate
+        from postrule.analyzer import _compute_volume_estimate
 
         fn = self._parse_fn("def cmd_init(args):\n    return 'ok'\n")
-        assert _compute_volume_estimate(fn, "src/dendra/cli.py") == "cold"
+        assert _compute_volume_estimate(fn, "src/postrule/cli.py") == "cold"
 
     def test_cold_via_migrations_path(self):
-        from dendra.analyzer import _compute_volume_estimate
+        from postrule.analyzer import _compute_volume_estimate
 
         fn = self._parse_fn("def upgrade():\n    return 'done'\n")
         assert _compute_volume_estimate(fn, "src/db/migrations/0042_add.py") == "cold"
@@ -512,25 +512,25 @@ class TestPriorityScore:
     """``_compute_priority_score`` blends gate-fit, volume, and lift."""
 
     def test_max_priority_hot_auto_liftable(self):
-        from dendra.analyzer import _compute_priority_score
+        from postrule.analyzer import _compute_priority_score
 
         # gate_fit 5 × volume 1.0 × lift 1.0 → 5.0
         assert _compute_priority_score(5.0, "hot", "auto_liftable") == 5.0
 
     def test_warm_auto_liftable_takes_volume_haircut(self):
-        from dendra.analyzer import _compute_priority_score
+        from postrule.analyzer import _compute_priority_score
 
         # gate_fit 5 × volume 0.7 × lift 1.0 → 3.5
         assert _compute_priority_score(5.0, "warm", "auto_liftable") == 3.5
 
     def test_cold_refused_deeply_deprioritized(self):
-        from dendra.analyzer import _compute_priority_score
+        from postrule.analyzer import _compute_priority_score
 
         # gate_fit 5 × volume 0.4 × lift 0.3 → 0.6
         assert _compute_priority_score(5.0, "cold", "refused") == 0.6
 
     def test_already_dendrified_zeroed_out(self):
-        from dendra.analyzer import _compute_priority_score
+        from postrule.analyzer import _compute_priority_score
 
         # No remaining work to prioritize on a site already wrapped.
         assert _compute_priority_score(5.0, "hot", "already_dendrified") == 0.0
@@ -541,7 +541,7 @@ class TestCohortComparisonLine:
     is real (cohort_size >= 10 + median field populated)."""
 
     def _patch_defaults(self, monkeypatch, *, cohort_size, median):
-        from dendra.insights.tuned_defaults import TunedDefaults
+        from postrule.insights.tuned_defaults import TunedDefaults
 
         defaults = TunedDefaults(
             cohort_size=cohort_size,
@@ -552,12 +552,12 @@ class TestCohortComparisonLine:
             return defaults
 
         # Patch via the import that analyzer.py uses lazily.
-        import dendra.insights as _i
+        import postrule.insights as _i
 
         monkeypatch.setattr(_i, "load_cached_or_baked_in", _stub)
 
     def _build_report_with_priorities(self, priorities):
-        from dendra.analyzer import AnalyzerReport, ClassificationSite
+        from postrule.analyzer import AnalyzerReport, ClassificationSite
 
         sites = [
             ClassificationSite(
@@ -578,7 +578,7 @@ class TestCohortComparisonLine:
         return AnalyzerReport(root="/r", files_scanned=len(sites), sites=sites)
 
     def test_suppressed_when_cohort_too_small(self, monkeypatch):
-        from dendra.analyzer import render_text
+        from postrule.analyzer import render_text
 
         self._patch_defaults(monkeypatch, cohort_size=9, median=0.30)
         report = self._build_report_with_priorities([5.0, 4.5, 2.0, 1.0])
@@ -586,7 +586,7 @@ class TestCohortComparisonLine:
         assert "Cohort comparison" not in out
 
     def test_suppressed_when_median_missing(self, monkeypatch):
-        from dendra.analyzer import render_text
+        from postrule.analyzer import render_text
 
         self._patch_defaults(monkeypatch, cohort_size=50, median=None)
         report = self._build_report_with_priorities([5.0, 4.5, 2.0])
@@ -594,7 +594,7 @@ class TestCohortComparisonLine:
         assert "Cohort comparison" not in out
 
     def test_emits_above_median_when_density_higher(self, monkeypatch):
-        from dendra.analyzer import render_text
+        from postrule.analyzer import render_text
 
         # 3 of 4 sites are high-priority (75%); cohort median 30%.
         self._patch_defaults(monkeypatch, cohort_size=47, median=0.30)
@@ -606,7 +606,7 @@ class TestCohortComparisonLine:
         assert "above median" in out
 
     def test_emits_at_or_below_median_when_density_lower(self, monkeypatch):
-        from dendra.analyzer import render_text
+        from postrule.analyzer import render_text
 
         # 0 of 3 sites are high-priority (0%); cohort median 30%.
         self._patch_defaults(monkeypatch, cohort_size=47, median=0.30)
@@ -622,7 +622,7 @@ class TestRenderTextLoginNudge:
     not see the nudge — the upside is already theirs."""
 
     def _build_report(self):
-        from dendra.analyzer import AnalyzerReport, ClassificationSite
+        from postrule.analyzer import AnalyzerReport, ClassificationSite
 
         return AnalyzerReport(
             root="/r",
@@ -645,25 +645,25 @@ class TestRenderTextLoginNudge:
         )
 
     def test_nudge_emitted_when_signed_out(self, monkeypatch):
-        import dendra.auth as _auth
-        from dendra.analyzer import render_text
+        import postrule.auth as _auth
+        from postrule.analyzer import render_text
 
         monkeypatch.setattr(_auth, "is_logged_in", lambda: False)
         out = render_text(self._build_report())
-        assert "dendra login" in out
+        assert "postrule login" in out
         assert "GitHub OAuth, no card" in out
 
     def test_nudge_suppressed_when_signed_in(self, monkeypatch):
-        import dendra.auth as _auth
-        from dendra.analyzer import render_text
+        import postrule.auth as _auth
+        from postrule.analyzer import render_text
 
         monkeypatch.setattr(_auth, "is_logged_in", lambda: True)
         out = render_text(self._build_report())
-        assert "dendra login" not in out
+        assert "postrule login" not in out
 
     def test_nudge_absorbs_auth_exception(self, monkeypatch):
-        import dendra.auth as _auth
-        from dendra.analyzer import render_text
+        import postrule.auth as _auth
+        from postrule.analyzer import render_text
 
         def boom():
             raise OSError("creds file corrupt")
@@ -675,18 +675,18 @@ class TestRenderTextLoginNudge:
         assert isinstance(out, str)
 
     def test_no_nudge_on_empty_report(self, monkeypatch):
-        import dendra.auth as _auth
-        from dendra.analyzer import AnalyzerReport, render_text
+        import postrule.auth as _auth
+        from postrule.analyzer import AnalyzerReport, render_text
 
         monkeypatch.setattr(_auth, "is_logged_in", lambda: False)
         empty = AnalyzerReport(root="/r", files_scanned=0, sites=[])
         out = render_text(empty)
         # Empty-report path returns before the nudge block.
-        assert "dendra login" not in out
+        assert "postrule login" not in out
 
 
 class TestInternalSwitchWraps:
-    """Dendra-on-Dendra: ``_classify_pattern`` and ``_classify_lift_status``
+    """Postrule-on-Postrule: ``_classify_pattern`` and ``_classify_lift_status``
     are wrapped with ``@ml_switch`` at Phase.RULE.
 
     Behavior at Phase.RULE must be bit-for-bit identical to the inline
@@ -696,7 +696,7 @@ class TestInternalSwitchWraps:
     def test_classify_pattern_p1_match(self):
         import ast as _ast
 
-        from dendra.analyzer import _classify_pattern
+        from postrule.analyzer import _classify_pattern
 
         node = _ast.parse(
             "def triage(t):\n"
@@ -709,13 +709,13 @@ class TestInternalSwitchWraps:
     def test_classify_pattern_no_match_for_non_classifier(self):
         import ast as _ast
 
-        from dendra.analyzer import _classify_pattern
+        from postrule.analyzer import _classify_pattern
 
         node = _ast.parse("def add(a, b):\n    return a + b\n").body[0]
         assert _classify_pattern(node) == "no_match"
 
     def test_classify_pattern_is_ml_switch_wrapped(self):
-        from dendra.analyzer import _classify_pattern
+        from postrule.analyzer import _classify_pattern
 
         # Exposes the LearnedSwitch surface — proves the @ml_switch
         # decorator is applied (not just a plain function).
@@ -725,12 +725,12 @@ class TestInternalSwitchWraps:
         assert str(st.phase) == "Phase.RULE"
 
     def test_classify_lift_status_auto_when_no_hazards(self):
-        from dendra.analyzer import _classify_lift_status
+        from postrule.analyzer import _classify_lift_status
 
         assert _classify_lift_status([]) == "auto_liftable"
 
     def test_classify_lift_status_refused_on_error_hazard(self):
-        from dendra.analyzer import Hazard, _classify_lift_status
+        from postrule.analyzer import Hazard, _classify_lift_status
 
         hazards = [
             Hazard(
@@ -744,7 +744,7 @@ class TestInternalSwitchWraps:
         assert _classify_lift_status(hazards) == "refused"
 
     def test_classify_lift_status_needs_annotation_on_warning(self):
-        from dendra.analyzer import Hazard, _classify_lift_status
+        from postrule.analyzer import Hazard, _classify_lift_status
 
         hazards = [
             Hazard(
@@ -758,22 +758,22 @@ class TestInternalSwitchWraps:
         assert _classify_lift_status(hazards) == "needs_annotation"
 
     def test_classify_lift_status_is_ml_switch_wrapped(self):
-        from dendra.analyzer import _classify_lift_status
+        from postrule.analyzer import _classify_lift_status
 
         assert hasattr(_classify_lift_status, "status")
         st = _classify_lift_status.status()
         assert st.name == "_classify_lift_status"
         assert str(st.phase) == "Phase.RULE"
 
-    def test_dendra_repo_scan_finds_internal_switches_already_wrapped(self, tmp_path):
+    def test_postrule_repo_scan_finds_internal_switches_already_wrapped(self, tmp_path):
         """Scanning the analyzer module itself surfaces both internal
         switches in ``already_dendrified`` — the dogfood story.
         """
         from pathlib import Path as _Path
 
         # Find the real analyzer.py by inspecting the import
-        import dendra.analyzer as _a
-        from dendra.analyzer import analyze
+        import postrule.analyzer as _a
+        from postrule.analyzer import analyze
 
         analyzer_path = _Path(_a.__file__)
         report = analyze(analyzer_path)
@@ -786,7 +786,7 @@ class TestSortSites:
     """``AnalyzerReport.sort_sites`` orders by the requested key."""
 
     def _report_with_three_sites(self):
-        from dendra.analyzer import AnalyzerReport, ClassificationSite
+        from postrule.analyzer import AnalyzerReport, ClassificationSite
 
         a = ClassificationSite(
             file_path="z_last.py",
@@ -948,7 +948,7 @@ class TestAsyncFunctionDef:
 # ---------------------------------------------------------------------------
 # Test-path demotion — analyzer should mark sites in test directories /
 # pytest-style fixtures as refused with a ``not_a_classifier`` hazard so
-# they don't dominate fit lists when users run ``dendra analyze`` on
+# they don't dominate fit lists when users run ``postrule analyze`` on
 # their own repo. Mirrors the existing landing-corpus filter, applied at
 # the analyzer layer.
 # ---------------------------------------------------------------------------
@@ -1030,7 +1030,7 @@ class TestTestPathDemotion:
 
 
 _DECORATOR_RULE = """\
-from dendra import ml_switch
+from postrule import ml_switch
 
 @ml_switch(
     ml_kind='triage',
@@ -1046,7 +1046,7 @@ def my_rule(ticket):
 
 
 _SWITCH_SUBCLASS_RULE = """\
-from dendra import Switch
+from postrule import Switch
 
 class TicketRouter(Switch):
     labels = ('bug', 'feature', 'question')
@@ -1088,8 +1088,8 @@ class TestSelfHostDecoratorSkip:
         _write(
             tmp_path / "src" / "rules.py",
             (
-                "import dendra\n\n"
-                "@dendra.ml_switch(ml_kind='x', labels={'a', 'b'})\n"
+                "import postrule\n\n"
+                "@postrule.ml_switch(ml_kind='x', labels={'a', 'b'})\n"
                 "def my_rule(t):\n"
                 "    if t == 'a': return 'a'\n"
                 "    return 'b'\n"
@@ -1114,12 +1114,12 @@ class TestSelfHostSwitchSubclassSkip:
         # Both _rule and _evidence_severity should be skipped.
         assert report.total_sites() == 0
 
-    def test_dotted_base_dendra_switch_is_recognized(self, tmp_path):
+    def test_dotted_base_postrule_switch_is_recognized(self, tmp_path):
         _write(
             tmp_path / "src" / "router.py",
             (
-                "import dendra\n\n"
-                "class TicketRouter(dendra.Switch):\n"
+                "import postrule\n\n"
+                "class TicketRouter(postrule.Switch):\n"
                 "    def _rule(self, evidence):\n"
                 "        if evidence.x == 'a': return 'a'\n"
                 "        return 'b'\n"
@@ -1145,14 +1145,14 @@ class TestSelfHostSwitchSubclassSkip:
 
 
 class TestSelfHostGeneratedDirIgnored:
-    def test_dendra_generated_directory_is_skipped(self, tmp_path):
+    def test_postrule_generated_directory_is_skipped(self, tmp_path):
         _write(tmp_path / "src" / "rules.py", _PLAIN_RULE)
         # Synthesize a generated companion module that the analyzer
         # used to recurse into and re-suggest for graduation.
         _write(
-            tmp_path / "src" / "__dendra_generated__" / "triage_switch.py",
+            tmp_path / "src" / "__postrule_generated__" / "triage_switch.py",
             (
-                "from dendra import Switch\n"
+                "from postrule import Switch\n"
                 "class TriageSwitch(Switch):\n"
                 "    def _rule(self, evidence):\n"
                 "        if evidence.x == 'a': return 'a'\n"
@@ -1163,21 +1163,21 @@ class TestSelfHostGeneratedDirIgnored:
         # Only the user's plain rule should be reported.
         assert report.total_sites() == 1
         assert report.sites[0].file_path.endswith("rules.py")
-        assert "__dendra_generated__" not in report.sites[0].file_path
+        assert "__postrule_generated__" not in report.sites[0].file_path
 
 
 class TestSelfHostProjectSelfBlacklist:
-    def test_dendra_repo_self_scan_skips_src_dendra(self, tmp_path):
-        # Mimic the Dendra repo layout: pyproject.toml at root with
-        # name = "dendra", and a src/dendra/ tree that the analyzer
+    def test_postrule_repo_self_scan_skips_src_postrule(self, tmp_path):
+        # Mimic the Postrule repo layout: pyproject.toml at root with
+        # name = "postrule", and a src/postrule/ tree that the analyzer
         # would otherwise flag (analyzer's own _classify_regime is
         # the canonical case).
         _write(
             tmp_path / "pyproject.toml",
-            '[project]\nname = "dendra"\nversion = "1.0.0"\n',
+            '[project]\nname = "postrule"\nversion = "1.0.0"\n',
         )
         _write(
-            tmp_path / "src" / "dendra" / "library_helper.py",
+            tmp_path / "src" / "postrule" / "library_helper.py",
             (
                 "def _internal_bucket(n):\n"
                 "    if n == 0: return 'unknown'\n"
@@ -1194,13 +1194,13 @@ class TestSelfHostProjectSelfBlacklist:
         assert report.total_sites() == 1
         assert report.sites[0].file_path.startswith("examples/")
 
-    def test_dendra_named_package_variant_also_skips(self, tmp_path):
+    def test_postrule_named_package_variant_also_skips(self, tmp_path):
         _write(
             tmp_path / "pyproject.toml",
-            '[project]\nname = "dendra-server"\nversion = "1.0.0"\n',
+            '[project]\nname = "postrule-server"\nversion = "1.0.0"\n',
         )
         _write(
-            tmp_path / "src" / "dendra" / "x.py",
+            tmp_path / "src" / "postrule" / "x.py",
             "def f(t):\n    if t == 'a': return 'a'\n    return 'b'\n",
         )
         report = analyze(tmp_path)
@@ -1213,7 +1213,7 @@ class TestSelfHostProjectSelfBlacklist:
             '[project]\nname = "their_app"\nversion = "0.1.0"\n',
         )
         _write(
-            tmp_path / "src" / "dendra" / "x.py",
+            tmp_path / "src" / "postrule" / "x.py",
             "def f(t):\n    if t == 'a': return 'a'\n    return 'b'\n",
         )
         report = analyze(tmp_path)
@@ -1237,7 +1237,7 @@ class TestSelfHostNestedWorktreeSkip:
 
 class TestAnalyzeFunctionSourceAlreadyDendrified:
     def test_decorated_top_level_function_returns_already_dendrified(self):
-        from dendra.analyzer import analyze_function_source
+        from postrule.analyzer import analyze_function_source
 
         result = analyze_function_source(_DECORATOR_RULE, "my_rule")
         assert result.lift_status.value == "already_dendrified"

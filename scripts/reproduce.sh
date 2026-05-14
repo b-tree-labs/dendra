@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Reproduce every measurement cited in the Dendra paper and the README.
+# Reproduce every measurement cited in the Postrule paper and the README.
 #
 # Runs from a fresh install:
 #   1. pip install -e '.[dev,train,bench,viz]'
@@ -23,7 +23,7 @@ echo "==> §5 transition-curve measurements (4 benchmarks)"
 for BENCH in "${BENCHES[@]}"; do
   OUT="${RESULTS_DIR}/${BENCH}.jsonl"
   echo "    [bench] ${BENCH} -> ${OUT}"
-  python -m dendra.cli bench "${BENCH}" \
+  python -m postrule.cli bench "${BENCH}" \
       --checkpoint-every 500 > "${OUT}"
 done
 
@@ -32,14 +32,14 @@ echo "==> §5.2 seed-size sensitivity (seed=1000 on each benchmark)"
 for BENCH in "${BENCHES[@]}"; do
   OUT="${RESULTS_DIR}/${BENCH}_seed1000.jsonl"
   echo "    [bench] ${BENCH} seed-size=1000 -> ${OUT}"
-  python -m dendra.cli bench "${BENCH}" \
+  python -m postrule.cli bench "${BENCH}" \
       --seed-size 1000 \
       --checkpoint-every 1000 > "${OUT}"
 done
 
 echo ""
 echo "==> §5.1 Figure 1 (four-panel transition curves)"
-python -m dendra.cli plot \
+python -m postrule.cli plot \
     "${RESULTS_DIR}/atis.jsonl" \
     "${RESULTS_DIR}/hwu64.jsonl" \
     "${RESULTS_DIR}/banking77.jsonl" \

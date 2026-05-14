@@ -1,4 +1,4 @@
-# Dendra landing page (`dendra.run`)
+# Postrule landing page (`postrule.ai`)
 
 Static single-page site. No build step. Deploy the `landing/`
 directory as-is to any static host.
@@ -13,9 +13,9 @@ landing/
 ├── _headers                # Cloudflare Pages / Netlify security + caching
 ├── README.md               # this file
 └── assets/
-    ├── favicon.svg                     # Dendra rounded-tile favicon
-    ├── dendra-mark.svg                 # site-header mark, light
-    ├── dendra-mark-dark.svg            # site-header mark, dark
+    ├── favicon.svg                     # Postrule rounded-tile favicon
+    ├── postrule-mark.svg                 # site-header mark, light
+    ├── postrule-mark-dark.svg            # site-header mark, dark
     ├── social-card.png                 # 1200×630 OG / Twitter card
     └── figure-1-transition-curves.svg  # paper results figure
 ```
@@ -26,12 +26,12 @@ Tokens and type-scale come from the B-Tree Labs brand kit at
 [`b-tree-labs/.github/brand/`](https://github.com/b-tree-labs/.github/tree/main/brand).
 See `brand-tokens.css` for the semantic CSS-variable expression.
 
-The Dendra mark is finalized — the **D2' · Node** glyph (a rule
+The Postrule mark is finalized — the **D2' · Node** glyph (a rule
 floor parted by a rising accent stroke that crosses through a
 phase-gate lintel, with a hollow 28-r ink ring at the threshold-
 crossing point). Canonical assets live at
 [`brand/logo/`](../brand/logo/) with SVG masters + PNG exports;
-the landing page's `assets/favicon.svg`, `assets/dendra-mark.svg`,
+the landing page's `assets/favicon.svg`, `assets/postrule-mark.svg`,
 and `assets/social-card.png` are production copies from that kit
 ready for deploy.
 
@@ -40,11 +40,11 @@ ready for deploy.
 ```bash
 npm i -g wrangler
 cd landing
-wrangler pages deploy . --project-name=dendra-dev
+wrangler pages deploy . --project-name=postrule-dev
 ```
 
 Or drag-and-drop the `landing/` directory into the Cloudflare
-dashboard. Point the project at the `dendra.run` domain under
+dashboard. Point the project at the `postrule.ai` domain under
 Custom Domains.
 
 Cloudflare Pages auto-picks up `_headers` and `_redirects`.
@@ -105,7 +105,7 @@ Intentionally NOT copied:
 
 Not blocking deploy:
 
-- Dendra mark — replace the placeholder favicon when the real
+- Postrule mark — replace the placeholder favicon when the real
   glyph is designed.
 - Open Graph social card (1200×630) — placeholder left; needs
   the finalized mark first.

@@ -34,7 +34,7 @@ export default async function CliAuthPage({
           lineHeight: "var(--lh-h2)",
         }}
       >
-        Authorize Dendra CLI
+        Authorize Postrule CLI
       </h1>
       <p className="prose-brand mt-3">
         Signed in as <span className="font-mono">{email}</span>. Confirm the

@@ -1,5 +1,5 @@
 /*
- * Dendra landing page — layout
+ * Postrule landing page — layout
  *
  * Paired with brand-tokens.css. Keep layout concerns here; keep the
  * design-system tokens (palette, type, scale) in brand-tokens.css so
@@ -1666,8 +1666,8 @@ section:first-of-type {
 
 /* =====================================================================
  * Site-row interactivity — hover, click-to-expand, four-tab panel
- * (Source / Dendra-wrapped / Config / Sample log entry). Tier 1 of
- * the Dendra Shared Package preview UX.
+ * (Source / Postrule-wrapped / Config / Sample log entry). Tier 1 of
+ * the Postrule Shared Package preview UX.
  * =================================================================== */
 
 .try-table .site-row {
@@ -1870,7 +1870,7 @@ section:first-of-type {
   scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
 }
 
-/* Gutter variant — Source + Dendra-wrapped tabs only. The line-number
+/* Gutter variant — Source + Postrule-wrapped tabs only. The line-number
  * column lives in left padding; .cs-line ::before draws into it.
  * Log + Config tabs use the bare .code-snippet above (no numbers). */
 .code-snippet--gutter {

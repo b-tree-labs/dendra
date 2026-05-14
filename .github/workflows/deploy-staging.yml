@@ -35,7 +35,7 @@ jobs:
       - run: pytest --timeout=60
 
   deploy-landing:
-    name: Deploy landing → staging.dendra.run
+    name: Deploy landing → staging.postrule.ai
     needs: test
     runs-on: ubuntu-latest
     steps:
@@ -45,7 +45,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy landing --project-name=dendra-run-staging --branch=main
+          command: pages deploy landing --project-name=postrule-run-staging --branch=main
 
   deploy-collector:
     name: Deploy collector Worker → staging
@@ -66,7 +66,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: cloud/collector
-          command: d1 migrations apply dendra-events-staging --remote
+          command: d1 migrations apply postrule-events-staging --remote
       - name: Deploy Worker (staging env)
         uses: cloudflare/wrangler-action@v3
         with:
@@ -91,7 +91,7 @@ jobs:
         run: sleep 15
       - name: Run smoke tests
         env:
-          DENDRA_SMOKE_BASE_URL: https://staging.dendra.run
-          DENDRA_SMOKE_MODELS_URL: https://staging-models.dendra.run
-          DENDRA_SMOKE_COLLECTOR_URL: https://staging-collector.dendra.run
+          POSTRULE_SMOKE_BASE_URL: https://staging.postrule.ai
+          POSTRULE_SMOKE_MODELS_URL: https://staging-models.postrule.ai
+          POSTRULE_SMOKE_COLLECTOR_URL: https://staging-collector.postrule.ai
         run: pytest -m smoke --timeout=60

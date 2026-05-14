@@ -17,7 +17,7 @@ import {
   getInsightsStatus,
   enrollInsights,
   leaveInsights,
-} from "../../../lib/dendra-api";
+} from "../../../lib/postrule-api";
 
 export const runtime = "edge";
 
@@ -48,7 +48,7 @@ export async function POST() {
     if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     await enrollInsights(user.user_id);
     // Re-fetch full status so the cohort_size in the response is accurate;
-    // enroll() returns a partial object by design (see lib/dendra-api.ts).
+    // enroll() returns a partial object by design (see lib/postrule-api.ts).
     const status = await getInsightsStatus(user.user_id);
     return NextResponse.json(status);
   } catch (e) {

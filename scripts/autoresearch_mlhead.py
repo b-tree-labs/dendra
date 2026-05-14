@@ -1,7 +1,7 @@
 # Copyright (c) 2026 B-Tree Labs
 # SPDX-License-Identifier: Apache-2.0
 
-"""Autoresearch loop: pick the best MLHead empirically on Dendra's own benchmarks.
+"""Autoresearch loop: pick the best MLHead empirically on Postrule's own benchmarks.
 
 Uses the same paired-McNemar gate the paper publishes about. Four
 candidate heads (TF-IDF + LogisticRegression / LinearSVC /
@@ -28,7 +28,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-from dendra.ml import (
+from postrule.ml import (
     SklearnTextHead,
     TfidfGradientBoostingHead,
     TfidfLinearSVCHead,
@@ -200,7 +200,7 @@ def select_best_head(
 
 def run_autoresearch(benchmark_slug: str, *, alpha: float = 0.01) -> SelectionResult:
     """Run the autoresearch loop on a public benchmark."""
-    from dendra.benchmarks import loaders
+    from postrule.benchmarks import loaders
 
     loader = getattr(loaders, f"load_{benchmark_slug}", None)
     if loader is None:

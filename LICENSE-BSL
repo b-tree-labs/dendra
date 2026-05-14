@@ -7,12 +7,12 @@ Parameters
 Licensor:             B-Tree Ventures, LLC (a Texas limited liability
                       company doing business as Axiom Labs).
 
-Licensed Work:        The portions of the Dendra source repository
+Licensed Work:        The portions of the Postrule source repository
                       whose per-file header carries the SPDX
                       identifier "LicenseRef-BSL-1.1". Files whose
                       header carries "Apache-2.0" are licensed under
                       the Apache License, Version 2.0 and are not
-                      subject to this License. Dendra Version 0.2.0
+                      subject to this License. Postrule Version 0.2.0
                       or later. The Licensed Work is (c) 2026 B-Tree
                       Ventures, LLC.
 
@@ -20,7 +20,7 @@ Additional Use Grant: You may make production use of the Licensed
                       Work, including running it on your own
                       infrastructure for the benefit of Your
                       Organization, provided you do not use the
-                      Licensed Work to offer a Hosted Dendra Service.
+                      Licensed Work to offer a Hosted Postrule Service.
 
                       "Your Organization" means you, your employees,
                       your contractors, your wholly-owned affiliates,
@@ -30,7 +30,7 @@ Additional Use Grant: You may make production use of the Licensed
                       internal to that group and not offered as a
                       service to parties outside it.
 
-                      A "Hosted Dendra Service" is any commercial or
+                      A "Hosted Postrule Service" is any commercial or
                       non-commercial offering that allows parties
                       outside Your Organization to access the
                       functionality of the Licensed Work over a
@@ -60,20 +60,20 @@ Additional Use Grant: You may make production use of the Licensed
                         Your Organization, where the value You offer
                         those parties is NOT primarily the
                         capabilities listed in (a)–(d) above. (For
-                        example: a security product that uses Dendra
+                        example: a security product that uses Postrule
                         internally to gate its detection-rule changes
                         is permitted; the value sold to your security
                         customers is the security product, not
-                        Dendra.)
+                        Postrule.)
                       - Modifying the Licensed Work for Your
                         Organization's internal use, provided
                         modifications are not offered as a Hosted
-                        Dendra Service.
+                        Postrule Service.
 
                       The following uses ARE NOT PERMITTED prior to
                       the Change Date:
 
-                      - Offering a managed Dendra deployment, hosted
+                      - Offering a managed Postrule deployment, hosted
                         dashboard, or eval-as-a-service to parties
                         outside Your Organization for a fee or in
                         exchange for other value.
@@ -82,7 +82,7 @@ Additional Use Grant: You may make production use of the Licensed
                         primary value to the recipient, regardless of
                         branding or trade dress.
 
-                      For interpretive guidance on using Dendra under
+                      For interpretive guidance on using Postrule under
                       the Business Source License, please contact
                       licensing@b-treeventures.com.
 

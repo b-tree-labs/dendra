@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: LicenseRef-BSL-1.1
 //
 // /api/cli-auth — dashboard side of the OAuth 2.0 Device Authorization
-// Grant (RFC 8628) used by `dendra login`.
+// Grant (RFC 8628) used by `postrule login`.
 //
 //   GET  /api/cli-auth?user_code=ABCD-2345
 //        Look up a pending CLI session. Returns metadata the page
@@ -22,7 +22,7 @@ import {
   lookupCliSession,
   authorizeCliSession,
   denyCliSession,
-} from "../../../lib/dendra-api";
+} from "../../../lib/postrule-api";
 
 export const runtime = "edge";
 
@@ -116,9 +116,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Authorize path: ensure the current Clerk user has a row in the
-    // dendra users table (idempotent), then call admin/authorize.
-    const dendraUser = await upsertUser(a.userId, a.email);
-    await authorizeCliSession(userCode, dendraUser.user_id);
+    // postrule users table (idempotent), then call admin/authorize.
+    const postruleUser = await upsertUser(a.userId, a.email);
+    await authorizeCliSession(userCode, postruleUser.user_id);
     return NextResponse.json({ ok: true, action: "authorized" });
   } catch (e) {
     const msg = String(e);

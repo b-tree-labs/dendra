@@ -18,7 +18,7 @@ interface PlanOption {
 // STRIPE_PRICE_ID_<TIER>) keys off these same tier ids; rename here only
 // in lockstep with those. Per the 2026-05-11 pricing restructure, the
 // metering unit is "Verdicts / mo" — a verdict is one classification
-// Dendra logs to your account; it feeds your report card and the cohort.
+// Postrule logs to your account; it feeds your report card and the cohort.
 const PLANS: PlanOption[] = [
   {
     tier_id: "pro",
@@ -127,7 +127,7 @@ export default function BillingClient({
         <span style={{ fontWeight: 500, color: "var(--ink)" }}>
           Verdicts / mo
         </span>
-        . A verdict is one classification Dendra logs to your account — feeds
+        . A verdict is one classification Postrule logs to your account — feeds
         your report card and the cohort.
       </p>
 

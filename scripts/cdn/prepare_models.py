@@ -4,8 +4,8 @@
 
 """Download bundled GGUF models from HuggingFace, checksum, and prep for upload.
 
-This script prepares the two GGUF files that ``dendra[bundled]`` lazy-
-downloads from ``https://models.dendra.run/`` once the CDN is provisioned.
+This script prepares the two GGUF files that ``postrule[bundled]`` lazy-
+downloads from ``https://models.postrule.ai/`` once the CDN is provisioned.
 
 It does NOT upload anything — that requires Cloudflare R2 credentials and
 is intentionally a manual step (see the runbook at
@@ -16,14 +16,14 @@ What it does:
        ``./out/`` (or whatever ``--out`` you pass).
     2. Compute SHA-256 + size for each.
     3. Print the upload-ready filenames + the ``_REGISTRY`` block to paste
-       back into ``src/dendra/bundled.py`` so ``size_bytes`` and ``sha256``
+       back into ``src/postrule/bundled.py`` so ``size_bytes`` and ``sha256``
        become real values instead of placeholder zeros.
     4. Print the ``wrangler r2 object put`` commands for upload.
 
 Usage::
 
     python scripts/cdn/prepare_models.py
-    python scripts/cdn/prepare_models.py --out /tmp/dendra-models
+    python scripts/cdn/prepare_models.py --out /tmp/postrule-models
     python scripts/cdn/prepare_models.py --skip-download   # if files are
                                                             # already local
     python scripts/cdn/prepare_models.py --only judge       # only one model
@@ -43,7 +43,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
-# Source-of-truth registry — mirrors `src/dendra/bundled.py:_REGISTRY` but
+# Source-of-truth registry — mirrors `src/postrule/bundled.py:_REGISTRY` but
 # carries the HuggingFace download URLs the runtime registry doesn't.
 # ---------------------------------------------------------------------------
 
@@ -92,7 +92,7 @@ def _download(url: str, dest: Path, *, chunk_size: int = 1024 * 1024) -> int:
     scratch.
     """
     dest.parent.mkdir(parents=True, exist_ok=True)
-    req = urllib.request.Request(url, headers={"User-Agent": "dendra-cdn-prep/1.0"})
+    req = urllib.request.Request(url, headers={"User-Agent": "postrule-cdn-prep/1.0"})
     with urllib.request.urlopen(req) as resp:  # noqa: S310 — HTTPS only
         total = int(resp.headers.get("Content-Length", 0))
         written = 0
@@ -140,7 +140,7 @@ class PreparedModel:
 
 
 def _render_registry_block(prepared: Iterable[PreparedModel]) -> str:
-    """Render the ``_REGISTRY`` dict for src/dendra/bundled.py."""
+    """Render the ``_REGISTRY`` dict for src/postrule/bundled.py."""
     lines = ["_REGISTRY: dict[str, dict[str, Any]] = {"]
     for p in prepared:
         ollama_fallback = {
@@ -214,8 +214,8 @@ def main() -> int:
     )
     parser.add_argument(
         "--bucket",
-        default="dendra-models",
-        help="Cloudflare R2 bucket name for the rendered upload commands (default: dendra-models).",
+        default="postrule-models",
+        help="Cloudflare R2 bucket name for the rendered upload commands (default: postrule-models).",
     )
     args = parser.parse_args()
 
@@ -256,7 +256,7 @@ def main() -> int:
     print(_render_summary(prepared))
     print()
     print("=" * 72)
-    print("Paste this _REGISTRY block into src/dendra/bundled.py")
+    print("Paste this _REGISTRY block into src/postrule/bundled.py")
     print("(replacing the existing _REGISTRY at line ~98):")
     print("=" * 72)
     print()
@@ -274,7 +274,7 @@ def main() -> int:
     print("=" * 72)
     print()
     for p in prepared:
-        print(f"  curl -I https://models.dendra.run/{p.spec.canonical_filename}")
+        print(f"  curl -I https://models.postrule.ai/{p.spec.canonical_filename}")
     print()
     print("Expected: 200 OK with Content-Length matching size above.")
     print()

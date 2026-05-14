@@ -1,7 +1,7 @@
 # Copyright (c) 2026 B-Tree Labs
 # SPDX-License-Identifier: LicenseRef-BSL-1.1
 #
-# Cloudflare Worker config — Dendra hosted API.
+# Cloudflare Worker config — Postrule hosted API.
 #
 # Two environments: staging (default) + production.
 # Deploy with:
@@ -22,7 +22,7 @@
 # Migrations live with the collector (cloud/collector/migrations/) since
 # both Workers share the same D1 database (users + api_keys + events).
 
-name = "dendra-api-staging"
+name = "postrule-api-staging"
 main = "src/index.ts"
 compatibility_date = "2026-04-01"
 compatibility_flags = ["nodejs_compat"]
@@ -37,19 +37,19 @@ head_sampling_rate = 1.0
 
 # Custom domain for staging.
 [[routes]]
-pattern = "staging-api.dendra.run"
+pattern = "staging-api.postrule.ai"
 custom_domain = true
 
 # Shared D1 database with the collector.
 [[d1_databases]]
 binding = "DB"
-database_name = "dendra-events-staging"
+database_name = "postrule-events-staging"
 database_id = "77ac4e6c-a09f-486a-9f40-bed39d209e2c"
 
 # Cohort-wisdom JSON written nightly by cloud/aggregator/run.py and
 # served from /insights/tuned-defaults.json. Replace the placeholder id
 # after running:
-#   wrangler kv namespace create dendra-insights-staging
+#   wrangler kv namespace create postrule-insights-staging
 # See docs/working/aggregator-kv-cutover-2026-05-07.md.
 [[kv_namespaces]]
 binding = "KV_INSIGHTS"
@@ -76,19 +76,19 @@ ENVIRONMENT = "staging"
 # ---------------------------------------------------------------------------
 
 [env.production]
-name = "dendra-api"
+name = "postrule-api"
 
 [[env.production.routes]]
-pattern = "api.dendra.run"
+pattern = "api.postrule.ai"
 custom_domain = true
 
 [[env.production.d1_databases]]
 binding = "DB"
-database_name = "dendra-events"
+database_name = "postrule-events"
 database_id = "d8f78857-de29-4ee2-a449-b78c95c6ad67"
 
 # Production cohort-wisdom KV. Replace the placeholder id after running:
-#   wrangler kv namespace create dendra-insights-production
+#   wrangler kv namespace create postrule-insights-production
 # See docs/working/aggregator-kv-cutover-2026-05-07.md.
 [[env.production.kv_namespaces]]
 binding = "KV_INSIGHTS"

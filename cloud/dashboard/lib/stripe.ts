@@ -23,7 +23,7 @@ export function stripe(): Stripe {
   return _stripe;
 }
 
-/** Map Dendra tier id → STRIPE_PRICE_ID_<TIER> env var. */
+/** Map Postrule tier id → STRIPE_PRICE_ID_<TIER> env var. */
 export function priceIdForTier(tierId: string): string {
   const envName = `STRIPE_PRICE_ID_${tierId.toUpperCase()}`;
   const v = process.env[envName];

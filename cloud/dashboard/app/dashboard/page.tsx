@@ -28,7 +28,7 @@ import {
   listRecentVerdicts,
   type UsageInfo,
   type RecentVerdict,
-} from "../../lib/dendra-api";
+} from "../../lib/postrule-api";
 import UpgradeBanner from "./upgrade-banner";
 import OnboardingChecklist from "./onboarding-checklist";
 

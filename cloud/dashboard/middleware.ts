@@ -39,13 +39,13 @@ import { NextResponse } from "next/server";
 //
 // Sources of script / style / image / connect / frame that the dashboard
 // legitimately uses. Audit before extending:
-//   * 'self'              — the dashboard origin (app.dendra.run + local dev)
+//   * 'self'              — the dashboard origin (app.postrule.ai + local dev)
 //   * clerk.com + clerk.dev + clerk.accounts.dev — Clerk SDK (auth)
 //   * *.stripe.com        — Stripe-hosted Checkout / Billing Portal redirects
 //   * fonts.googleapis.com + fonts.gstatic.com — next/font/google (Space
 //     Grotesk + Geist Mono) — fonts are self-hosted in production by
 //     Next.js but the build pipeline still resolves through google.
-//   * api.dendra.run + staging-api.dendra.run — the api Worker (server-
+//   * api.postrule.ai + staging-api.postrule.ai — the api Worker (server-
 //     side fetch in route handlers; not strictly needed in CSP, but
 //     listed for transparency).
 //
@@ -64,7 +64,7 @@ const CSP = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https://*.clerk.com https://img.clerk.com",
   "font-src 'self' data: https://fonts.gstatic.com",
-  "connect-src 'self' https://*.clerk.com https://*.clerk.dev https://*.clerk.accounts.dev https://clerk-telemetry.com https://api.dendra.run https://staging-api.dendra.run",
+  "connect-src 'self' https://*.clerk.com https://*.clerk.dev https://*.clerk.accounts.dev https://clerk-telemetry.com https://api.postrule.ai https://staging-api.postrule.ai",
   "frame-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://challenges.cloudflare.com https://checkout.stripe.com https://billing.stripe.com",
   "form-action 'self' https://checkout.stripe.com https://billing.stripe.com https://*.clerk.com https://*.clerk.accounts.dev",
   "frame-ancestors 'none'",
@@ -73,7 +73,7 @@ const CSP = [
   "upgrade-insecure-requests",
 ].join("; ");
 
-// 6 months. We're confident in HTTPS-everywhere on app.dendra.run already;
+// 6 months. We're confident in HTTPS-everywhere on app.postrule.ai already;
 // preload-list submission is a v1.1 follow-up.
 const HSTS = "max-age=15552000; includeSubDomains";
 

@@ -5,7 +5,7 @@
 """Enrich landing/data/analyze-*.json with source snippets per site.
 
 For each detected classification site (top N by priority_score), reads
-the cloned source file from /tmp/dendra-corpus/<repo>/<file_path> and
+the cloned source file from /tmp/postrule-corpus/<repo>/<file_path> and
 captures lines [line_start - 3, line_end + 3] as `source_snippet`.
 Also captures repo-level metadata (default branch, raw URL prefix)
 so the landing UI can deep-link to GitHub.
@@ -40,10 +40,10 @@ _SRC = _REPO_ROOT / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-from dendra.analyzer import analyze  # noqa: E402
+from postrule.analyzer import analyze  # noqa: E402
 
 LANDING_DATA = _REPO_ROOT / "landing" / "data"
-CORPUS_ROOT = Path("/tmp/dendra-corpus")
+CORPUS_ROOT = Path("/tmp/postrule-corpus")
 
 # (preset slug, github org/repo, default branch, repo_subpath). The
 # subpath defaults to "" (analyze the clone root); LiteLLM is the
@@ -210,7 +210,7 @@ def extract_snippet(file_path: Path, line_start: int, line_end: int) -> dict | N
 def _run_analyzer(repo_root: Path) -> dict:
     """Run the static analyzer and return a serialized report dict.
 
-    Mirrors the JSON shape that ``dendra analyze --format json`` emits
+    Mirrors the JSON shape that ``postrule analyze --format json`` emits
     so downstream code (and the landing UI) sees the same fields.
     """
     report = analyze(repo_root)

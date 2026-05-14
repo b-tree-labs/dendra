@@ -20,13 +20,13 @@ from dataclasses import dataclass
 
 import pytest
 
-from dendra import (
+from postrule import (
     LearnedSwitch,
     ModelPrediction,
     Phase,
     SwitchConfig,
 )
-from dendra.research import BenchmarkExample, Checkpoint, run_transition_curve
+from postrule.research import BenchmarkExample, Checkpoint, run_transition_curve
 
 
 def _rule(ticket: dict) -> str:
@@ -97,8 +97,8 @@ class TestBenchmarkExperimentStorage:
         original CLINC150 run. Run the benchmark past the cap and
         assert the final outcome log holds every example.
         """
-        from dendra.ml import MLHead
-        from dendra.research import run_benchmark_experiment
+        from postrule.ml import MLHead
+        from postrule.research import run_benchmark_experiment
 
         # Minimal ML head — no-op, just satisfies the protocol.
         class _NoopHead(MLHead):

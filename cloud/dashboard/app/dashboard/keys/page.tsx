@@ -3,7 +3,7 @@
 
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { upsertUser, listKeys } from "../../../lib/dendra-api";
+import { upsertUser, listKeys } from "../../../lib/postrule-api";
 import KeysClient from "./keys-client";
 
 export const runtime = "edge";
@@ -34,8 +34,8 @@ export default async function KeysPage() {
       <p className="prose-brand mt-3">
         Plan: <span className="font-mono">{user.tier}</span>. The plaintext
         key is shown only once at creation — store it somewhere safe
-        (e.g. <code>~/.dendra/credentials</code>) or skip the copy-paste
-        entirely by running <code>dendra login</code> from your terminal.
+        (e.g. <code>~/.postrule/credentials</code>) or skip the copy-paste
+        entirely by running <code>postrule login</code> from your terminal.
       </p>
       <KeysClient initialKeys={initialKeys} />
     </main>

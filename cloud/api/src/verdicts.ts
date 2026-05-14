@@ -5,7 +5,7 @@
 //
 // Contract:
 //   POST /v1/verdicts
-//   Authorization: Bearer dndr_live_…
+//   Authorization: Bearer prul_live_…
 //   Content-Type: application/json
 //   {
 //     "switch_name": "intent_classifier",     // required, ≤64 chars

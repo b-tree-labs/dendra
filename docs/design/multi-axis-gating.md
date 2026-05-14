@@ -271,7 +271,7 @@ Add latency-axis support:
    under the existing `Gate` protocol.
 3. Add a `latency_gate` slot to `SwitchConfig` (optional; default None).
 4. Auto-demote loop OR-composes accuracy and latency drift signals.
-5. Document the n-axis pattern as the canonical way to extend Dendra.
+5. Document the n-axis pattern as the canonical way to extend Postrule.
 
 ### Renaming consideration
 
@@ -345,7 +345,7 @@ default). Catalog of terms to migrate when multi-axis lands:
 
 Approximate scope of a rename pass at the time of v1.x:
 
-- Code comments + docstrings: ~25 sites in `src/dendra/`.
+- Code comments + docstrings: ~25 sites in `src/postrule/`.
 - Design + paper docs: ~50 sites across `docs/design/`,
   `docs/papers/`, `docs/THREAT_MODEL.md`, plus `docs/working/` notes.
 - Customer-facing docs (README, FAQ, getting-started): currently

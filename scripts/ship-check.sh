@@ -183,7 +183,7 @@ mirror_install_smoke() {
 mirror_coverage_ratchet() {
   step "coverage-ratchet.yml" "pytest --cov + per-file floor check"
 
-  if ! pytest --cov=src/dendra --cov-report=json:coverage.json -q \
+  if ! pytest --cov=src/postrule --cov-report=json:coverage.json -q \
        >/tmp/ship-check-cov.log 2>&1; then
     fail "pytest --cov"
     tail -30 /tmp/ship-check-cov.log

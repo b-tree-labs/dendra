@@ -5,7 +5,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import type { SwitchSummary } from "../../../lib/dendra-api";
+import type { SwitchSummary } from "../../../lib/postrule-api";
 import { isStale, STALE_AFTER_DAYS } from "../../../lib/switch-stale";
 
 type SortKey = "last_activity" | "switch_name" | "current_phase" | "total_verdicts";
@@ -279,7 +279,7 @@ export default function SwitchesClient({
           >
             issue an API key
           </Link>{" "}
-          and follow the <code>dendra init</code> walkthrough in your project.
+          and follow the <code>postrule init</code> walkthrough in your project.
         </p>
         <p
           className="mt-3"

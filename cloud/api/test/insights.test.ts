@@ -4,7 +4,7 @@
 // /insights/tuned-defaults.json — public, unauthenticated, KV-backed.
 // The aggregator nightly writes the JSON into KV_INSIGHTS; this route
 // is the read path the landing site (and the Python CLI) hit at
-// https://dendra.run/insights/tuned-defaults.json.
+// https://postrule.ai/insights/tuned-defaults.json.
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { env, SELF } from 'cloudflare:test';
@@ -43,10 +43,10 @@ describe('GET /insights/tuned-defaults.json', () => {
     expect(res.headers.get('cache-control')).toBe('public, max-age=300');
   });
 
-  it('sets X-Dendra-Source: kv on hit (lets cutover verify origin)', async () => {
+  it('sets X-Postrule-Source: kv on hit (lets cutover verify origin)', async () => {
     await env.KV_INSIGHTS.put(KEY, JSON.stringify({ version: 1 }));
     const res = await SELF.fetch(`${BASE}/insights/tuned-defaults.json`);
-    expect(res.headers.get('x-dendra-source')).toBe('kv');
+    expect(res.headers.get('x-postrule-source')).toBe('kv');
   });
 
   it('returns 404 when KV has no value yet (pre-aggregator-run)', async () => {

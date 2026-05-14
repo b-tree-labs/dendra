@@ -3,7 +3,7 @@
 //
 // Scale-measurement harness for the dashboard server endpoints + the
 // modified POST /v1/verdicts hot path. Skipped by default; runs only
-// when DENDRA_SCALE=1 is set in the environment. End-to-end via
+// when POSTRULE_SCALE=1 is set in the environment. End-to-end via
 // vitest-pool-workers SELF.fetch + the same D1 binding the production
 // Worker uses — measures the same code path the dashboard hits in
 // production. Local D1 + Worker (not staging-mirror).
@@ -14,7 +14,7 @@
 //   * cloud/api/test/SCALE_REPORT-<YYYY-MM-DD>.md (committed) carries
 //     the curated findings + concerns. The console JSON is the
 //     primary input the report is built from; rerun with
-//     DENDRA_SCALE=1 to regenerate numbers and rewrite the report
+//     POSTRULE_SCALE=1 to regenerate numbers and rewrite the report
 //     by hand.
 //
 // Methodology:
@@ -51,10 +51,10 @@ import migration0009 from '../../collector/migrations/0009_scale_indices.sql?raw
 
 const SERVICE_TOKEN = 'test-service-token-for-dashboard';
 const BASE = 'https://api.test';
-// DENDRA_SCALE is threaded through miniflare bindings in vitest.config.mts
-// from the host's environment, so `DENDRA_SCALE=1 npm test` turns the
+// POSTRULE_SCALE is threaded through miniflare bindings in vitest.config.mts
+// from the host's environment, so `POSTRULE_SCALE=1 npm test` turns the
 // harness on and plain `npm test` skips it.
-const ENABLED = env.DENDRA_SCALE === '1';
+const ENABLED = env.POSTRULE_SCALE === '1';
 
 // Persistent result store across the harness's it()s. The worker
 // isolate is shared via singleWorker:true so this Array survives
@@ -627,12 +627,12 @@ async function measureHotPathConcurrent(
 
 // --------------------------------------------------------------------------
 // Suite. Single beforeAll seeds the world; one describe per class
-// fans out the endpoint matrix. Skip-by-default — DENDRA_SCALE=1 to run.
+// fans out the endpoint matrix. Skip-by-default — POSTRULE_SCALE=1 to run.
 // --------------------------------------------------------------------------
 
 const suite = ENABLED ? describe : describe.skip;
 
-suite('Dendra scale harness (DENDRA_SCALE=1)', () => {
+suite('Postrule scale harness (POSTRULE_SCALE=1)', () => {
   let freeUser: SeededUser;
   let proUser: SeededUser;
   let scaleUser: SeededUser;
