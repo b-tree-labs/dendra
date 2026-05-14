@@ -108,7 +108,7 @@ when embedded in documents, emails, slides, and web pages.
 | Horizontal wordmark | `Postrule` |
 | Stacked wordmark | `Postrule` |
 | Sub-brand lockup (e.g. Cloud) | `Postrule Cloud` |
-| Social card | `Postrule: software that's smarter every month than the day you shipped it` |
+| Social card | `Postrule: self-taught classifiers — the graduated-autonomy primitive for production classification` |
 | Favicon / tile | usually omitted (favicons are decorative context for the page title) |
 | Animated mark | `Postrule mark (animated)` — include the (animated) hint for screen-reader users |
 

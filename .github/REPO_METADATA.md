@@ -24,7 +24,7 @@ Three alternates if the above reads off:
 
 1. _Python primitive that graduates rule-based classifiers to ML through a paired-McNemar evidence gate._ (108 chars)
 2. _Wrap a classifier. The rule stays as the safety floor; the ML head graduates when the evidence justifies it._ (110 chars)
-3. _Software that's smarter every month than the day you shipped it. The classification primitive every codebase is missing._ (123 chars — over)
+3. _Self-taught classifiers. The graduated-autonomy primitive for production classification._ (95 chars)
 
 ---
 

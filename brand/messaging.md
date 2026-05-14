@@ -9,14 +9,22 @@ the canonical copy verbatim rather than paraphrasing.
 
 ## Primary tagline
 
-> **Software that's smarter every month than the day you shipped it.**
+> **Self-taught classifiers.**
 
-(Internal codename: "closer #9" — landed 2026-04-29 after iteration on
-nine candidates. The rationale: it states the value (compounding
-quality) without claiming the mechanism, doesn't require knowing the
-"primitive" framing to land, and reads cleanly without product
-context. Passes the calibration test in `voice.md` — pairs with
-site-level scoping naturally.)
+Subhead (companion sentence, used wherever the tagline gets a
+single follow-on line):
+
+> *The graduated-autonomy primitive for production classification. Rules graduate to LLM, then to in-process ML, through statistically-gated phase transitions. The rule stays as the safety floor.*
+
+(Internal codename: "self-taught" — landed 2026-05-14 in response to
+founder feedback that the prior tagline ("Software that's smarter
+every month than the day you shipped it.") pinned the value
+prop to a monthly cadence the product can't universally deliver
+(low-traffic switches may take longer; high-traffic ones improve
+daily). "Self-taught classifiers." captures the autonomy in three
+words, doesn't claim a cadence, names the audience, and thematically
+echoes the founder's own self-taught engineering path. The previous
+"closer #9" tagline is retained below for historical context.)
 
 Use on:
 - Landing page hero (`landing/index.html`).
@@ -28,6 +36,10 @@ Use on:
 
 Do not shorten, re-order, or paraphrase without noting the new
 form in this doc.
+
+### Historical primary taglines
+
+- **2026-04-29 → 2026-05-14 ("closer #9"):** *Software that's smarter every month than the day you shipped it.* Replaced because the monthly cadence wasn't universally accurate.
 
 ## Secondary taglines (contextual alternates)
 

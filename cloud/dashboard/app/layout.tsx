@@ -33,7 +33,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Postrule",
   description:
-    "Software that's smarter every month than the day you shipped it.",
+    "Self-taught classifiers. The graduated-autonomy primitive for production classification.",
   icons: {
     icon: "/brand/postrule-favicon.svg",
   },
