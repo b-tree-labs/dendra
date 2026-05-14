@@ -14,9 +14,12 @@
 #                             daily overdue digests + urgent escalations.
 #
 # Optional vars (settable per-env in [vars] / [env.production.vars]):
-#   SECURITY_FROM_ADDRESS   — defaults to "security@b-treeventures.com"
+#   SECURITY_FROM_ADDRESS   — defaults to "security@dendra.run"
 #                             when unset. The auto-reply uses this as
 #                             From: on outbound cron / urgent mail.
+#                             Note: b-treeventures.com is on Google
+#                             Workspace; security@ disclosure runs on
+#                             dendra.run which is Cloudflare-resident.
 #
 # Migrations live with the collector (cloud/collector/migrations/) since
 # this Worker shares the same D1 (security_reports table added in 0010).
@@ -50,14 +53,15 @@ database_id = "77ac4e6c-a09f-486a-9f40-bed39d209e2c"
 
 # Email-routing binding is configured via the Cloudflare dashboard
 # (Email → Email Routing → Routes), not declared here. After this
-# Worker deploys, Ben adds the route:
-#   security@b-treeventures.com → Send to a Worker → dendra-security-ops
+# Worker deploys, Ben adds the route on dendra.run (NOT
+# b-treeventures.com, which is Google-Workspace-hosted):
+#   security@dendra.run → Send to a Worker → dendra-security-ops
 # Wrangler's TOML schema doesn't have a stable [[email_routing]] block
 # yet (as of wrangler 4.87); the dashboard route is the supported path.
 
 [vars]
 ENVIRONMENT = "staging"
-SECURITY_FROM_ADDRESS = "security@b-treeventures.com"
+SECURITY_FROM_ADDRESS = "security@dendra.run"
 
 # ---------------------------------------------------------------------------
 # Production environment
@@ -81,4 +85,4 @@ head_sampling_rate = 1.0
 
 [env.production.vars]
 ENVIRONMENT = "production"
-SECURITY_FROM_ADDRESS = "security@b-treeventures.com"
+SECURITY_FROM_ADDRESS = "security@dendra.run"

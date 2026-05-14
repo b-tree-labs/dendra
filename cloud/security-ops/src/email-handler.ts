@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: LicenseRef-BSL-1.1
 //
 // Inbound email handler — every message routed to
-// security@b-treeventures.com lands here. Pipeline:
+// security@dendra.run lands here. Pipeline:
 //
 //   1. Parse From + Subject. Detect URGENT in the subject.
 //   2. Allocate a SR-YYYY-NNNN reference and INSERT into D1.
