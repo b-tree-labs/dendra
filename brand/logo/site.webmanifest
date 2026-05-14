@@ -1,7 +1,7 @@
 {
   "name": "Postrule",
   "short_name": "Postrule",
-  "description": "The classification primitive every production codebase is missing.",
+  "description": "Self-taught classifiers. The graduated-autonomy primitive for production classification.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
