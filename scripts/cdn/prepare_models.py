@@ -215,7 +215,10 @@ def main() -> int:
     parser.add_argument(
         "--bucket",
         default="postrule-models",
-        help="Cloudflare R2 bucket name for the rendered upload commands (default: postrule-models).",
+        help=(
+            "Cloudflare R2 bucket name for the rendered upload commands "
+            "(default: postrule-models)."
+        ),
     )
     args = parser.parse_args()
 
