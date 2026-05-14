@@ -3,13 +3,12 @@
 
 == Abstract
 <abstract>
-Production classification sites cross a paired-McNemar gate at α = 0.01
-within 250 to 1,000 outcomes on seven of eight public benchmarks (2,000
-on the eighth, Snips), even when the day-zero rule is a 100-example
-keyword auto-build that reduces to chance-accuracy modal-fallback on the
-high-cardinality benchmarks (HWU64, Banking77, CLINC150) and on the
-low-cardinality benchmarks whose as-shipped split is label-sorted (Snips,
-AG News). We formalize the rule-to-ML migration as a
+Across eight public classification benchmarks, the paired-McNemar
+gate at α = 0.01 fires within 250 to 1,000 outcomes on seven (2,000
+on the eighth, Snips). This holds even when the day-zero rule starts
+at chance accuracy: a 100-example keyword auto-build that collapses
+to modal-fallback on five of the eight benchmarks (HWU64, Banking77,
+CLINC150, Snips, AG News). We formalize the rule-to-ML migration as a
 #emph[graduated-autonomy lifecycle] (`RULE` → `MODEL_SHADOW` →
 `MODEL_PRIMARY` → `ML_SHADOW` → `ML_WITH_FALLBACK` → `ML_PRIMARY`),
 prove a per-step Type-I bound (the marginal probability of a
