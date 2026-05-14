@@ -3,7 +3,7 @@
 
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { upsertUser, getPreferences } from "../../../lib/dendra-api";
+import { upsertUser, getPreferences } from "../../../lib/postrule-api";
 import SettingsClient from "./settings-client";
 
 export const runtime = "edge";

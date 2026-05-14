@@ -14,7 +14,7 @@ describe('GET /health', () => {
     expect(res.status).toBe(200);
     const body = await res.json<{ status: string; service: string; environment: string }>();
     expect(body.status).toBe('ok');
-    expect(body.service).toBe('dendra-security-ops');
+    expect(body.service).toBe('postrule-security-ops');
     expect(body.environment).toBe('test');
   });
 

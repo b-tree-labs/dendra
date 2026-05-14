@@ -1,16 +1,16 @@
-# Dendra · motion guidelines
+# Postrule · motion guidelines
 
-How Dendra animates. Which moves are on-brand and which aren't.
+How Postrule animates. Which moves are on-brand and which aren't.
 
 The B-Tree Labs `usage.md` rule is "no animation beyond hover."
-Dendra extends this narrowly: the mark has exactly **one
+Postrule extends this narrowly: the mark has exactly **one
 on-brand animation** — the accent rising through the gate — and
 it is reserved for contexts where the animation does semantic
 work. Everywhere else, the mark is static.
 
 ## The one animation: the rising accent
 
-The accent orange stroke of the Dendra mark rises from below the
+The accent orange stroke of the Postrule mark rises from below the
 rule floor, parts the floor, passes through the phase gate, and
 settles above the lintel. It is the theorem in motion.
 
@@ -21,11 +21,11 @@ settles above the lintel. It is the theorem in motion.
   UI element.
 **Hold:** 200 ms at the settled position before either restarting
   (loading state) or fading (success state).
-**Reversal:** none. The accent never retreats. Dendra does not
+**Reversal:** none. The accent never retreats. Postrule does not
   animate a phase going backward.
 
 The canonical animated SVG is
-`brand/logo/dendra-mark-animated.svg`. SMIL-based for universal
+`brand/logo/postrule-mark-animated.svg`. SMIL-based for universal
 rendering — works in img src, object, inline embed, and CSS
 backgrounds without any JavaScript dependency.
 
@@ -34,8 +34,8 @@ backgrounds without any JavaScript dependency.
 Animate only when the animation reinforces what the interface is
 saying:
 
-- **Loading state** for long-running Dendra operations — the
-  analyzer running against a large repo, `dendra bench` running
+- **Loading state** for long-running Postrule operations — the
+  analyzer running against a large repo, `postrule bench` running
   a benchmark, a phase-transition evaluation. The rising accent
   loops silently in the corner; the user's eye catches "something
   is happening, specifically something that ends with a phase
@@ -63,7 +63,7 @@ saying:
   or weight changes, not mark animation. The mark is not a
   button.
 - **On scroll or in parallax.** Scroll-triggered mark animation
-  reads as marketing theater. Dendra is not a landing-page
+  reads as marketing theater. Postrule is not a landing-page
   animation exhibit.
 
 The single rule to remember: **the rising accent means "a phase
@@ -72,14 +72,14 @@ don't play it.
 
 ## Canonical easing curves
 
-All Dendra UI motion (the mark's rise, button hover transitions,
+All Postrule UI motion (the mark's rise, button hover transitions,
 section reveals, etc.) uses one of three curves:
 
 | Name | CSS | Use |
 |---|---|---|
-| `dendra-rise` | `cubic-bezier(0.2, 0.6, 0.2, 1)` | The accent rising. Any "advancement" animation. |
-| `dendra-settle` | `cubic-bezier(0.4, 0, 0.2, 1)` | Button hover, link underline. Symmetric in/out. |
-| `dendra-snap` | `cubic-bezier(0.4, 0, 1, 1)` | Dismiss, close, collapse. Quick exit, no anticipation. |
+| `postrule-rise` | `cubic-bezier(0.2, 0.6, 0.2, 1)` | The accent rising. Any "advancement" animation. |
+| `postrule-settle` | `cubic-bezier(0.4, 0, 0.2, 1)` | Button hover, link underline. Symmetric in/out. |
+| `postrule-snap` | `cubic-bezier(0.4, 0, 1, 1)` | Dismiss, close, collapse. Quick exit, no anticipation. |
 
 ## Durations
 
@@ -102,7 +102,7 @@ fallback inside a `<style>` block.
 ```svg
 <style>
   @media (prefers-reduced-motion: reduce) {
-    .dendra-accent-rising { animation: none; transform: none; }
+    .postrule-accent-rising { animation: none; transform: none; }
   }
 </style>
 ```
@@ -118,9 +118,9 @@ same rule:
 
 ## Audio
 
-Dendra does not have a sonic identity. The mark has no
+Postrule does not have a sonic identity. The mark has no
 accompanying sound effect. Video and product demos may include
-spoken narration; they do not include a Dendra chime, whoosh,
+spoken narration; they do not include a Postrule chime, whoosh,
 or click.
 
 ## Motion debt — things we'll revisit after a designer engages

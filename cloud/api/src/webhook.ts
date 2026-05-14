@@ -13,7 +13,7 @@
 //   customer.subscription.updated   → status / period change, possibly tier change
 //   customer.subscription.deleted   → set status='canceled', drop tier to 'free'
 //
-// Mapping Stripe price → Dendra tier: we look up the price's metadata.tier_id
+// Mapping Stripe price → Postrule tier: we look up the price's metadata.tier_id
 // (set by scripts/sync-stripe-products.ts at price-creation time).
 
 import { Hono } from 'hono';
@@ -125,15 +125,15 @@ async function handleSubscriptionEvent(
   const price = item?.price;
   if (price) {
     // Lookup-key shape produced by scripts/sync-stripe-products.ts is
-    //   dendra_hosted_pro_monthly_usd
+    //   postrule_hosted_pro_monthly_usd
     // The TIER_MAP keys match the tier id in pricing-tiers.json
-    // (hosted_pro etc), so we strip both the dendra_ prefix and the
+    // (hosted_pro etc), so we strip both the postrule_ prefix and the
     // _monthly_usd suffix before lookup.
     const raw =
       price.lookup_key ??
       (typeof price.metadata?.lookup_key === 'string' ? price.metadata.lookup_key : null);
     const productLookup = raw
-      ? raw.replace(/^dendra_/, '').replace(/_monthly_usd$/, '')
+      ? raw.replace(/^postrule_/, '').replace(/_monthly_usd$/, '')
       : null;
     if (productLookup && TIER_MAP[productLookup]) {
       tier = TIER_MAP[productLookup]!;

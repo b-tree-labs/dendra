@@ -4,11 +4,11 @@
 
 """Build a self-contained browser bundle of the analyzer.
 
-The static analyzer (``src/dendra/analyzer.py``) is pure-stdlib except
-for two dendra-internal imports used by the @ml_switch wraps:
+The static analyzer (``src/postrule/analyzer.py``) is pure-stdlib except
+for two postrule-internal imports used by the @ml_switch wraps:
 
-    from dendra.core import Phase
-    from dendra.decorator import ml_switch
+    from postrule.core import Phase
+    from postrule.decorator import ml_switch
 
 For browser-side use via Pyodide we don't need real switches — those
 wraps add observability for the local CLI invocation, not for a one-
@@ -20,7 +20,7 @@ Run:
     python3 scripts/build_browser_analyzer.py
 
 Writes:
-    landing/wasm/dendra_analyzer.py
+    landing/wasm/postrule_analyzer.py
 """
 
 from __future__ import annotations
@@ -29,15 +29,15 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SOURCE = REPO_ROOT / "src" / "dendra" / "analyzer.py"
-OUTPUT = REPO_ROOT / "landing" / "wasm" / "dendra_analyzer.py"
+SOURCE = REPO_ROOT / "src" / "postrule" / "analyzer.py"
+OUTPUT = REPO_ROOT / "landing" / "wasm" / "postrule_analyzer.py"
 
 _STUBS = """\
 # ----- Inlined stubs (browser-only) ---------------------------------------
 # The browser bundle doesn't need real LearnedSwitch behavior — these
 # stubs make ``@ml_switch(...)`` a no-op decorator and ``Phase.RULE`` a
 # trivial constant, so the analyzer module imports + runs without the
-# rest of the dendra package.
+# rest of the postrule package.
 
 
 class Phase:
@@ -71,19 +71,19 @@ def build() -> int:
     stubs_inserted = False
     for line in lines:
         stripped = line.lstrip()
-        # Strip the two dendra-internal imports added in the @ml_switch
+        # Strip the two postrule-internal imports added in the @ml_switch
         # wrap commit (358b502).
-        if stripped.startswith("from dendra.core import Phase") or stripped.startswith(
-            "from dendra.decorator import ml_switch"
+        if stripped.startswith("from postrule.core import Phase") or stripped.startswith(
+            "from postrule.decorator import ml_switch"
         ):
             if not stubs_inserted:
                 out_lines.append(_STUBS)
                 stubs_inserted = True
             continue
         # Drop the explanatory comment block that introduces the strip
-        # imports — it references "dendra-internal" which is misleading
+        # imports — it references "postrule-internal" which is misleading
         # in the browser bundle context.
-        if "Internal-switch wrapping (Dendra-on-Dendra dogfood)." in stripped:
+        if "Internal-switch wrapping (Postrule-on-Postrule dogfood)." in stripped:
             # Skip this comment line + the next 3 follow-up comment lines.
             continue
         if "Direct imports" in stripped and "going through" in stripped:
@@ -102,10 +102,10 @@ def build() -> int:
         "# Copyright (c) 2026 B-Tree Labs\n"
         "# SPDX-License-Identifier: LicenseRef-BSL-1.1\n"
         "# AUTO-GENERATED — DO NOT EDIT.\n"
-        "# Generated from src/dendra/analyzer.py by scripts/build_browser_analyzer.py.\n"
+        "# Generated from src/postrule/analyzer.py by scripts/build_browser_analyzer.py.\n"
         "# Loaded into Pyodide at runtime by landing/scripts/paste-analyzer.js so\n"
         "# visitors can analyze pasted Python without installing anything locally.\n"
-        "# Two dendra-internal imports stripped + replaced with inline no-op stubs\n"
+        "# Two postrule-internal imports stripped + replaced with inline no-op stubs\n"
         "# so this is a single self-contained .py file.\n"
         "\n"
     )

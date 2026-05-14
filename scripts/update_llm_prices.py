@@ -125,7 +125,7 @@ CURATED: list[dict] = [
 def fetch_litellm() -> dict:
     req = urllib.request.Request(
         LITELLM_URL,
-        headers={"User-Agent": "dendra-pricing-refresh/1.0"},
+        headers={"User-Agent": "postrule-pricing-refresh/1.0"},
     )
     with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310 — HTTPS pinned URL
         return json.loads(resp.read().decode("utf-8"))
@@ -185,7 +185,7 @@ def main() -> int:
     providers = [build_provider(catalog, entry) for entry in CURATED]
 
     output = {
-        "$schema": "https://dendra.run/schemas/llm-prices.v1.json",
+        "$schema": "https://postrule.ai/schemas/llm-prices.v1.json",
         "last_updated": _dt.date.today().isoformat(),
         "source": {
             "name": "BerriAI/litellm model_prices_and_context_window.json",

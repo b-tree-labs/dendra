@@ -1,5 +1,5 @@
 <!--
-Thanks for contributing to Dendra. A few things that make
+Thanks for contributing to Postrule. A few things that make
 review faster:
 
 - Keep the PR focused on a single change. Two unrelated
@@ -34,7 +34,7 @@ Delete the sections that don't apply.
 ## Checklist
 
 - [ ] Tests pass locally (`pytest`)
-- [ ] Public API additions are exported from `dendra/__init__.py`
+- [ ] Public API additions are exported from `postrule/__init__.py`
 - [ ] User-visible changes are reflected in `CHANGELOG.md`
       under `[Unreleased]`
 - [ ] Docs are updated for any new public surface

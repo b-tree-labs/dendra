@@ -15,9 +15,9 @@ from pathlib import Path
 
 import numpy as np
 
-from dendra.benchmarks.loaders import load_cifar10
-from dendra.image_rules import build_color_centroid_rule
-from dendra.ml import ImagePixelLogRegHead
+from postrule.benchmarks.loaders import load_cifar10
+from postrule.image_rules import build_color_centroid_rule
+from postrule.ml import ImagePixelLogRegHead
 
 
 @dataclass

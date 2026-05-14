@@ -488,7 +488,7 @@ admin.post('/cli-sessions/:user_code/deny', async (c) => {
 // ---------------------------------------------------------------------------
 // Switches roster + per-switch report — service-token proxy for the
 // dashboard. The dashboard authenticates the user via Clerk, looks up
-// the Dendra user_id via /admin/users (upsert), then calls these
+// the Postrule user_id via /admin/users (upsert), then calls these
 // endpoints with the user_id in the query string.
 //
 // These mirror the bearer-authenticated /v1/switches surface but accept

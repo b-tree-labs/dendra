@@ -4,12 +4,12 @@
 """Auto-lift sizing study.
 
 Walks the local examples corpus plus (if present) the cloned
-landing-analyzer corpora at /tmp/dendra-corpus/{fastapi,requests,dvc,
-marimo}, runs `dendra.analyzer.analyze` to enumerate candidate
+landing-analyzer corpora at /tmp/postrule-corpus/{fastapi,requests,dvc,
+marimo}, runs `postrule.analyzer.analyze` to enumerate candidate
 classification sites, and attempts both `lift_branches` and
 `lift_evidence` on each site. Records per-site outcomes and emits
 
-  - a JSON report at /tmp/dendra-sizing-study.json
+  - a JSON report at /tmp/postrule-sizing-study.json
   - a copy at docs/working/sizing-study-2026-04-27.json
   - a Markdown summary to stdout
 
@@ -34,13 +34,13 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "src"))
 
-from dendra.analyzer import (  # noqa: E402
+from postrule.analyzer import (  # noqa: E402
     AnalyzerReport,
     LiftStatus,
     analyze,
 )
-from dendra.lifters.branch import LiftRefused, lift_branches  # noqa: E402
-from dendra.lifters.evidence import lift_evidence  # noqa: E402
+from postrule.lifters.branch import LiftRefused, lift_branches  # noqa: E402
+from postrule.lifters.evidence import lift_evidence  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Corpus discovery
@@ -58,7 +58,7 @@ def discover_corpora() -> list[Corpus]:
     out: list[Corpus] = [
         Corpus(name="examples", root=_REPO_ROOT / "examples", present=True),
     ]
-    base = Path("/tmp/dendra-corpus")
+    base = Path("/tmp/postrule-corpus")
     for sub in ("fastapi", "requests", "dvc", "marimo"):
         path = base / sub
         out.append(Corpus(name=sub, root=path, present=path.exists()))
@@ -524,7 +524,7 @@ def main() -> int:
         },
         "sites": [asdict(r) for r in all_records],
     }
-    out_tmp = Path("/tmp/dendra-sizing-study.json")
+    out_tmp = Path("/tmp/postrule-sizing-study.json")
     out_repo = _REPO_ROOT / "docs" / "working" / "sizing-study-2026-04-27.json"
     out_repo.parent.mkdir(parents=True, exist_ok=True)
     out_tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")

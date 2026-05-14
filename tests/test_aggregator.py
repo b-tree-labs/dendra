@@ -217,7 +217,7 @@ class TestMainKvPath:
             rc = aggregator_run.main(
                 argv=[
                     "--database",
-                    "dendra-events-staging",
+                    "postrule-events-staging",
                     "--kv-namespace-id",
                     "ns-staging",
                 ]

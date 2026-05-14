@@ -1,7 +1,7 @@
-# Dendra dashboard (`app.dendra.run`)
+# Postrule dashboard (`app.postrule.ai`)
 
 Next.js 15 app that handles sign-in (Clerk), API-key issuance, and the
-CLI device-flow exchange. Pairs with the `dendra` Python CLI in the
+CLI device-flow exchange. Pairs with the `postrule` Python CLI in the
 parent repo. Deployed to Cloudflare Pages via the `@cloudflare/next-on-pages`
 adapter (see `wrangler.toml`).
 
@@ -15,8 +15,8 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000 . The CLI's `dendra login` command, when
-pointed at a local dashboard with `DENDRA_CLOUD_API_BASE=http://localhost:3000/api`,
+Open http://localhost:3000 . The CLI's `postrule login` command, when
+pointed at a local dashboard with `POSTRULE_CLOUD_API_BASE=http://localhost:3000/api`,
 will hit the `app/api/cli-auth/route.ts` endpoint.
 
 ## Clerk setup
@@ -58,18 +58,18 @@ vercel --prod
 
 Set the same `.env.example` variables in the Cloudflare Pages project
 settings (or via `wrangler pages secret put` for the secrets). Point
-`app.dendra.run` at the Pages project as a custom domain.
+`app.postrule.ai` at the Pages project as a custom domain.
 
 ## Architecture notes
 
 - `app/page.tsx` — landing CTA (sign in / sign up).
 - `app/dashboard/page.tsx` — logged-in view with API key generation.
 - `app/api/cli-auth/route.ts` — POST endpoint the CLI polls during
-  `dendra login`. v1 returns a stub token; production reads/writes
+  `postrule login`. v1 returns a stub token; production reads/writes
   the `cli_sessions` table.
 - `middleware.ts` — Clerk session middleware, matches all routes
   except static files.
 
 OSS classification works without this dashboard. Cloud features
-(`dendra.cloud.sync`, `dendra.cloud.team_corpus`, `dendra.cloud.registry`)
+(`postrule.cloud.sync`, `postrule.cloud.team_corpus`, `postrule.cloud.registry`)
 require an account.

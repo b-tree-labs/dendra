@@ -19,7 +19,7 @@
   <text x="560" y="250"
         font-family="'Space Grotesk', 'Helvetica Neue', sans-serif"
         font-weight="500" font-size="88" letter-spacing="15.8"
-        fill="#1a1a1f">DENDRA</text>
+        fill="#1a1a1f">POSTRULE</text>
 
   <!-- Tagline -->
   <text x="560" y="330"
@@ -36,7 +36,7 @@
         font-family="'JetBrains Mono', ui-monospace, monospace"
         font-weight="400" font-size="24"
         letter-spacing="0.5"
-        fill="#1a1a1f">$ pip install dendra</text>
+        fill="#1a1a1f">$ pip install postrule</text>
 
   <!-- URL strip at bottom -->
   <line x1="560" y1="530" x2="1120" y2="530"
@@ -44,5 +44,5 @@
   <text x="560" y="568"
         font-family="'JetBrains Mono', ui-monospace, monospace"
         font-weight="400" font-size="20"
-        fill="#6a6a72">dendra.run</text>
+        fill="#6a6a72">postrule.ai</text>
 </svg>

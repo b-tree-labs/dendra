@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: LicenseRef-BSL-1.1
 //
 // /v1/device/* — RFC 8628 OAuth 2.0 Device Authorization Grant for the
-// dendra-login flow. Anonymous; rate-limited at the platform layer.
+// postrule-login flow. Anonymous; rate-limited at the platform layer.
 //
 //   POST /v1/device/code   — CLI starts the flow; returns (device_code,
 //                            user_code, verification_uri, expires_in,
@@ -21,9 +21,9 @@ import type { ApiEnv } from './auth';
 import { generateKey } from './keys';
 
 export interface DeviceEnv extends ApiEnv {
-  // Where the CLI tells the user to go. Defaults to app.dendra.run for
+  // Where the CLI tells the user to go. Defaults to app.postrule.ai for
   // production; tests + staging override.
-  DENDRA_DASHBOARD_URL?: string;
+  POSTRULE_DASHBOARD_URL?: string;
 
   // Cloudflare Workers Rate Limiting bindings (configured in wrangler.toml).
   // Both are per-IP, sliding-window. /code is stricter because each call
@@ -87,7 +87,7 @@ function genDeviceCode(): string {
 }
 
 function dashboardUrl(env: DeviceEnv): string {
-  return (env.DENDRA_DASHBOARD_URL ?? 'https://app.dendra.run').replace(/\/$/, '');
+  return (env.POSTRULE_DASHBOARD_URL ?? 'https://app.postrule.ai').replace(/\/$/, '');
 }
 
 export const device = new Hono<{ Bindings: DeviceEnv }>();
@@ -211,7 +211,7 @@ device.post('/token', async (c) => {
   }
 
   // State == authorized + within TTL + user_id set. Mint a fresh
-  // dndr_live_… key and atomically transition to consumed.
+  // prul_live_… key and atomically transition to consumed.
   const issued = await generateKey(c.env.API_KEY_PEPPER, 'live');
 
   // Atomic: insert key, link to cli_session row, transition state.

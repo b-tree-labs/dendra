@@ -2,7 +2,7 @@
 //
 // Loads Pyodide on first interaction (lazy — keeps landing fast for
 // the 90% who don't use this), fetches the bundled
-// landing/wasm/dendra_analyzer.py, then runs `analyze(temp_path)` on
+// landing/wasm/postrule_analyzer.py, then runs `analyze(temp_path)` on
 // whatever the visitor pasted into the textarea. Pasted code stays
 // in the browser — Pyodide runs in WASM, the only thing that hits
 // the wire is the result table on explicit "email me / send to
@@ -20,7 +20,7 @@
 
   const PYODIDE_VERSION = "0.26.4";
   const PYODIDE_CDN = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`;
-  const ANALYZER_BUNDLE_URL = "/wasm/dendra_analyzer.py";
+  const ANALYZER_BUNDLE_URL = "/wasm/postrule_analyzer.py";
 
   let pyodideReady = null; // Promise<pyodide>; cached after first load.
   let pyodide = null;
@@ -100,7 +100,7 @@
     }
     if (source.length > 200_000) {
       setStatus(
-        "Snippet over 200 KB — paste a smaller chunk or run `dendra analyze .` locally on the full repo.",
+        "Snippet over 200 KB — paste a smaller chunk or run `postrule analyze .` locally on the full repo.",
         "error",
       );
       return;
@@ -229,11 +229,11 @@ os.unlink(_paste_path)
 
   function getCollectorBase() {
     const host = window.location.hostname;
-    if (host === "dendra.run" || host === "www.dendra.run") {
-      return "https://collector.dendra.run";
+    if (host === "postrule.ai" || host === "www.postrule.ai") {
+      return "https://collector.postrule.ai";
     }
-    if (host === "staging.dendra.run") {
-      return "https://staging-collector.dendra.run";
+    if (host === "staging.postrule.ai") {
+      return "https://staging-collector.postrule.ai";
     }
     // Local dev / unknown — no collector reachable. Caller handles
     // the fall-through with a simulated success.
@@ -280,7 +280,7 @@ os.unlink(_paste_path)
           // the demo flow is reviewable without the Worker running.
           await new Promise((r) => setTimeout(r, 400));
           setLeadsStatus(
-            "Recorded locally (preview mode — Worker not reachable). On dendra.run this would email your results.",
+            "Recorded locally (preview mode — Worker not reachable). On postrule.ai this would email your results.",
             "success",
           );
         } else {

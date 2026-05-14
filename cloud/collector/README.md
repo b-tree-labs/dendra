@@ -1,4 +1,4 @@
-# Dendra Insights collector
+# Postrule Insights collector
 
 Cloudflare Worker that ingests anonymized cohort telemetry events
 into a D1 database. Two routes: `POST /v1/events` and `GET /health`.
@@ -30,8 +30,8 @@ Done once per environment, before first deploy.
 
 ```bash
 cd cloud/collector
-wrangler d1 create dendra-events-staging
-wrangler d1 create dendra-events
+wrangler d1 create postrule-events-staging
+wrangler d1 create postrule-events
 ```
 
 Each command prints a `database_id`. Paste them into the corresponding
@@ -40,8 +40,8 @@ Each command prints a `database_id`. Paste them into the corresponding
 ### 2. Apply the migrations
 
 ```bash
-wrangler d1 migrations apply dendra-events-staging
-wrangler d1 migrations apply dendra-events --env production --remote
+wrangler d1 migrations apply postrule-events-staging
+wrangler d1 migrations apply postrule-events --env production --remote
 ```
 
 Wrangler tracks applied migrations in a `d1_migrations` table inside
@@ -61,10 +61,10 @@ Sentry; the secret slot is reserved.
 ## Deploy
 
 ```bash
-# Staging — runs at staging-collector.dendra.run
+# Staging — runs at staging-collector.postrule.ai
 wrangler deploy
 
-# Production — runs at collector.dendra.run
+# Production — runs at collector.postrule.ai
 wrangler deploy --env production
 ```
 
@@ -75,10 +75,10 @@ custom domain. First deploy provisions TLS automatically (~2 min).
 
 ```bash
 # Health
-curl -sS https://staging-collector.dendra.run/health | jq
+curl -sS https://staging-collector.postrule.ai/health | jq
 
 # Sample POST (synthetic event)
-curl -sS -X POST https://staging-collector.dendra.run/v1/events \
+curl -sS -X POST https://staging-collector.postrule.ai/v1/events \
   -H 'content-type: application/json' \
   -d '{
     "schema_version": 1,
@@ -119,11 +119,11 @@ wrangler tail --env production       # prod
 
 ```bash
 # Create a new migration
-wrangler d1 migrations create dendra-events-staging <description>
+wrangler d1 migrations create postrule-events-staging <description>
 
 # Apply
-wrangler d1 migrations apply dendra-events-staging
-wrangler d1 migrations apply dendra-events --env production --remote
+wrangler d1 migrations apply postrule-events-staging
+wrangler d1 migrations apply postrule-events --env production --remote
 ```
 
 Migrations are SQL-only, up-only, and tracked in

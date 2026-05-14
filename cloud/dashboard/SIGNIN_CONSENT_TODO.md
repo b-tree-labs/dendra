@@ -45,7 +45,7 @@ extend to return `telemetry_enabled: bool`) and short-circuits.
 
 ### 3. SDK enforcement of the dashboard opt-out
 
-Today the SDK honors `DENDRA_NO_TELEMETRY=1` (env) and
+Today the SDK honors `POSTRULE_NO_TELEMETRY=1` (env) and
 `telemetry=NullEmitter()` (per-switch). To make the dashboard
 toggle authoritative, on first `record_verdict` the cloud
 emitter should call `GET /v1/whoami`, cache `telemetry_enabled`
@@ -65,8 +65,8 @@ admin endpoint writes the column.
 
 ## Cross-references
 
-- SDK side: `src/dendra/cloud/verdict_telemetry.py`,
-  `src/dendra/telemetry.py` (env-var hook).
+- SDK side: `src/postrule/cloud/verdict_telemetry.py`,
+  `src/postrule/telemetry.py` (env-var hook).
 - Server side: `cloud/api/src/verdicts.ts`,
   `cloud/api/src/usage.ts` (cap enforcement),
   `cloud/collector/migrations/0004_verdicts.sql`.

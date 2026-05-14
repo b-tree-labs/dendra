@@ -12,7 +12,7 @@
 # Additional Use Grant: see LICENSE-BSL. Production use is
 # permitted; offering a competing hosted service is not.
 
-"""Tests for the `dendra` CLI surface."""
+"""Tests for the `postrule` CLI surface."""
 
 from __future__ import annotations
 
@@ -21,8 +21,8 @@ import time
 
 import pytest
 
-from dendra import ClassificationRecord, FileStorage
-from dendra.cli import main
+from postrule import ClassificationRecord, FileStorage
+from postrule.cli import main
 
 
 def _run_cli(argv, capsys):
@@ -36,7 +36,7 @@ def _run_cli(argv, capsys):
 
 
 # ---------------------------------------------------------------------------
-# dendra init
+# postrule init
 # ---------------------------------------------------------------------------
 
 
@@ -62,7 +62,7 @@ class TestCliInit:
         )
         assert code == 0
         assert "@ml_switch(" in out
-        assert "from dendra import ml_switch" in out
+        assert "from postrule import ml_switch" in out
 
     def test_init_rejects_nonexistent_file(self, tmp_path, capsys):
         code, out, err = _run_cli(
@@ -90,7 +90,7 @@ class TestCliInit:
         assert code == 0
         modified = src.read_text()
         assert "@ml_switch(" in modified
-        assert "from dendra import ml_switch" in modified
+        assert "from postrule import ml_switch" in modified
 
     def test_init_with_safety_critical_flag(self, tmp_path, capsys):
         src = tmp_path / "gate.py"
@@ -112,7 +112,7 @@ class TestCliInit:
     def test_init_reports_wrap_errors(self, tmp_path, capsys):
         src = tmp_path / "already.py"
         src.write_text(
-            "from dendra import ml_switch\n"
+            "from postrule import ml_switch\n"
             "\n"
             "@ml_switch(labels=['a'], author='@x:y')\n"
             "def triage(x):\n"
@@ -127,7 +127,7 @@ class TestCliInit:
 
 
 # ---------------------------------------------------------------------------
-# dendra analyze
+# postrule analyze
 # ---------------------------------------------------------------------------
 
 
@@ -144,7 +144,7 @@ class TestCliAnalyze:
         self._write_sample(tmp_path)
         code, out, err = _run_cli(["analyze", str(tmp_path)], capsys)
         assert code == 0
-        assert "Dendra static analyzer" in out
+        assert "Postrule static analyzer" in out
         assert "triage" in out
 
     def test_analyze_json_format(self, tmp_path, capsys):
@@ -180,13 +180,13 @@ class TestCliAnalyze:
             capsys,
         )
         assert code == 0
-        assert "# Dendra analyzer report" in out
+        assert "# Postrule analyzer report" in out
         assert "Projected annual value" in out
         assert "Portfolio projected value" in out
 
 
 # ---------------------------------------------------------------------------
-# dendra roi
+# postrule roi
 # ---------------------------------------------------------------------------
 
 
@@ -240,7 +240,7 @@ class TestCliRoi:
 
 
 # ---------------------------------------------------------------------------
-# dendra plot (smoke test — full render requires matplotlib)
+# postrule plot (smoke test — full render requires matplotlib)
 # ---------------------------------------------------------------------------
 
 

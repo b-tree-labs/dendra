@@ -15,7 +15,7 @@
 
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { notFound, redirect } from "next/navigation";
-import { upsertUser, getSwitchReport } from "../../../../lib/dendra-api";
+import { upsertUser, getSwitchReport } from "../../../../lib/postrule-api";
 import SwitchReportClient from "./switch-report-client";
 
 export const runtime = "edge";

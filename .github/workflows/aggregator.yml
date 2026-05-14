@@ -48,7 +48,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           python cloud/aggregator/run.py \
-            --database dendra-events-staging \
+            --database postrule-events-staging \
             --output landing/insights/tuned-defaults.staging.json
           # Surface the cohort size so the next job can decide
           # whether the aggregator output looks sane before promoting.
@@ -83,11 +83,11 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           # Production KV namespace ID for cohort wisdom. Replace the
           # placeholder after running:
-          #   wrangler kv namespace create dendra-insights-production
+          #   wrangler kv namespace create postrule-insights-production
           # See docs/working/aggregator-kv-cutover-2026-05-07.md.
           KV_INSIGHTS_NAMESPACE_ID: 6af5e74e6de9496392621ad8030eb69f
         run: |
           python cloud/aggregator/run.py \
-            --database dendra-events \
+            --database postrule-events \
             --env production \
             --kv-namespace-id "$KV_INSIGHTS_NAMESPACE_ID"

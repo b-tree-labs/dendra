@@ -3,7 +3,7 @@
 
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { upsertUser } from "../../../lib/dendra-api";
+import { upsertUser } from "../../../lib/postrule-api";
 import BillingClient from "./billing-client";
 
 export const runtime = "edge";

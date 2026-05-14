@@ -34,21 +34,21 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from dendra import (
+from postrule import (
     LearnedSwitch,
     MLPrediction,
     Phase,
     SwitchConfig,
 )
-from dendra.core import ClassificationRecord
-from dendra.gates import (
+from postrule.core import ClassificationRecord
+from postrule.gates import (
     AccuracyMarginGate,
     CompositeGate,
     McNemarGate,
     MinVolumeGate,
 )
-from dendra.models import ModelPrediction
-from dendra.storage import (
+from postrule.models import ModelPrediction
+from postrule.storage import (
     BoundedInMemoryStorage,
     FileStorage,
     InMemoryStorage,
@@ -113,16 +113,16 @@ def collect_env() -> dict[str, Any]:
         "machine": platform.machine(),
         "cpu": _cpu_brand(),
         "ram_gb": _ram_gb(),
-        "dendra_version": _dendra_version(),
+        "postrule_version": _postrule_version(),
         "disk_mount": _disk_type_for(Path.cwd()),
     }
 
 
-def _dendra_version() -> str:
+def _postrule_version() -> str:
     try:
-        import dendra
+        import postrule
 
-        return getattr(dendra, "__version__", "unknown")
+        return getattr(postrule, "__version__", "unknown")
     except Exception:
         return "unknown"
 
@@ -611,7 +611,7 @@ def bench_dispatch_vs_classify(n_iter: int) -> list[CellStats]:
 
 def bench_entry_points(n_iter: int) -> list[CellStats]:
     """Decorator-call vs .classify() vs .dispatch()."""
-    from dendra import ml_switch
+    from postrule import ml_switch
 
     cells: list[CellStats] = []
 
@@ -725,10 +725,10 @@ def main() -> int:
     env = collect_env()
     print(
         f"[env] Python {platform.python_version()} / {env['cpu']} / "
-        f"{env['ram_gb']} GB / dendra {env['dendra_version']}"
+        f"{env['ram_gb']} GB / postrule {env['postrule_version']}"
     )
 
-    scratch = Path(tempfile.mkdtemp(prefix="dendra_bench_"))
+    scratch = Path(tempfile.mkdtemp(prefix="postrule_bench_"))
     print(f"[scratch] {scratch}")
 
     skip = {s.strip() for s in args.skip_groups.split(",") if s.strip()}
@@ -842,7 +842,7 @@ def render_markdown(env: dict[str, Any], cells: list[CellStats]) -> str:
     lines.append(f"- Machine: {env['machine']}")
     lines.append(f"- CPU: {env['cpu']}")
     lines.append(f"- RAM: {env['ram_gb']} GB")
-    lines.append(f"- Dendra: {env['dendra_version']}")
+    lines.append(f"- Postrule: {env['postrule_version']}")
     lines.append("")
 
     # ---- classify phase matrix ----

@@ -1,6 +1,6 @@
 {
-  "name": "Dendra",
-  "short_name": "Dendra",
+  "name": "Postrule",
+  "short_name": "Postrule",
   "description": "The classification primitive every production codebase is missing.",
   "start_url": "/",
   "display": "standalone",
@@ -9,23 +9,23 @@
   "theme_color": "#1a1a1f",
   "icons": [
     {
-      "src": "/assets/dendra-favicon-16.png",
+      "src": "/assets/postrule-favicon-16.png",
       "sizes": "16x16",
       "type": "image/png"
     },
     {
-      "src": "/assets/dendra-favicon-32.png",
+      "src": "/assets/postrule-favicon-32.png",
       "sizes": "32x32",
       "type": "image/png"
     },
     {
-      "src": "/assets/dendra-favicon-180.png",
+      "src": "/assets/postrule-favicon-180.png",
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/assets/dendra-favicon-512.png",
+      "src": "/assets/postrule-favicon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

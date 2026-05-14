@@ -18,8 +18,8 @@ import Link from "next/link";
 export const runtime = "edge";
 
 export const metadata = {
-  title: "Privacy Policy — Dendra",
-  description: "How B-Tree Labs handles your data when you use Dendra.",
+  title: "Privacy Policy — Postrule",
+  description: "How B-Tree Labs handles your data when you use Postrule.",
 };
 
 export default function PrivacyPage() {
@@ -49,7 +49,7 @@ export default function PrivacyPage() {
         <div className="callout">
           <p>
             <strong>The short version.</strong> If you haven&apos;t signed
-            in, Dendra sends us nothing. If you have signed in, we collect
+            in, Postrule sends us nothing. If you have signed in, we collect
             count-only records of your classification results — never the
             text you classified, never the labels you produced. You can
             turn that off at any time.
@@ -58,7 +58,7 @@ export default function PrivacyPage() {
 
         <h2>Who we are</h2>
         <p>
-          Dendra is a product of <strong>B-Tree Labs</strong>, a DBA of
+          Postrule is a product of <strong>B-Tree Labs</strong>, a DBA of
           B-Tree Ventures, LLC, registered in Texas, USA. Throughout this
           policy, &ldquo;we&rdquo; / &ldquo;our&rdquo; refers to B-Tree
           Labs.
@@ -85,15 +85,15 @@ export default function PrivacyPage() {
 
         <h2>The telemetry contract</h2>
         <p>
-          Dendra is a Python library you install on your own machine.
+          Postrule is a Python library you install on your own machine.
           Whether it sends us anything depends on a single fact: are you
           signed in?
         </p>
 
         <h3>Unauthenticated use — nothing crosses the wire</h3>
         <p>
-          When you run Dendra without signing in (via{" "}
-          <code>pip install dendra</code> and no API key), it works
+          When you run Postrule without signing in (via{" "}
+          <code>pip install postrule</code> and no API key), it works
           entirely on your computer. We don&apos;t see your code, your
           inputs, your labels, or even the fact that you ran it. No
           telemetry, no pings, no analytics. The open-source library has
@@ -102,8 +102,8 @@ export default function PrivacyPage() {
 
         <h3>Signed-in use — count-only verdict events, by default</h3>
         <p>
-          When you sign in (CLI <code>dendra login</code> or via the
-          dashboard) we tell you, at sign-in, that Dendra will start
+          When you sign in (CLI <code>postrule login</code> or via the
+          dashboard) we tell you, at sign-in, that Postrule will start
           sending us small &ldquo;verdict events&rdquo; about how your
           classifiers are performing. A verdict event contains:
         </p>
@@ -149,7 +149,7 @@ export default function PrivacyPage() {
         <ul>
           <li>
             Set the environment variable{" "}
-            <code>DENDRA_NO_TELEMETRY=1</code> wherever the SDK runs. This
+            <code>POSTRULE_NO_TELEMETRY=1</code> wherever the SDK runs. This
             is the bluntest off-switch and overrides everything else.
           </li>
           <li>
@@ -231,7 +231,7 @@ export default function PrivacyPage() {
         <p>
           You can request a copy of your data, or delete your account and
           every record we have, by emailing{" "}
-          <a href="mailto:privacy@dendra.run">privacy@dendra.run</a>. We
+          <a href="mailto:privacy@postrule.ai">privacy@postrule.ai</a>. We
           reply within 30 days. Residents of the EU/UK have GDPR rights
           of access, rectification, erasure, restriction, portability,
           and objection. California residents have CCPA rights of
@@ -251,7 +251,7 @@ export default function PrivacyPage() {
         <h2>Contact</h2>
         <p>
           Questions:{" "}
-          <a href="mailto:privacy@dendra.run">privacy@dendra.run</a>.
+          <a href="mailto:privacy@postrule.ai">privacy@postrule.ai</a>.
           Mailing address available on request.
         </p>
 

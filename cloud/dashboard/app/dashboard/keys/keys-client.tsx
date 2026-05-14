@@ -3,7 +3,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ApiKeyMeta, IssuedKey } from "../../../lib/dendra-api";
+import type { ApiKeyMeta, IssuedKey } from "../../../lib/postrule-api";
 
 export default function KeysClient({ initialKeys }: { initialKeys: ApiKeyMeta[] }) {
   const [keys, setKeys] = useState<ApiKeyMeta[]>(initialKeys);
@@ -177,7 +177,7 @@ export default function KeysClient({ initialKeys }: { initialKeys: ApiKeyMeta[] 
                 borderRadius: "4px",
               }}
             >
-              dendra login
+              postrule login
             </code>{" "}
             in your terminal.
           </p>
@@ -198,7 +198,7 @@ export default function KeysClient({ initialKeys }: { initialKeys: ApiKeyMeta[] 
                     className="font-mono"
                     style={{ color: "var(--ink)", fontSize: "0.9375rem" }}
                   >
-                    dndr_live_{k.key_prefix}…{k.key_suffix}
+                    prul_live_{k.key_prefix}…{k.key_suffix}
                   </div>
                   <div
                     className="mt-1"
@@ -246,7 +246,7 @@ export default function KeysClient({ initialKeys }: { initialKeys: ApiKeyMeta[] 
                 }}
               >
                 <span className="font-mono">
-                  dndr_live_{k.key_prefix}…{k.key_suffix}
+                  prul_live_{k.key_prefix}…{k.key_suffix}
                 </span>{" "}
                 ({k.name ?? "unnamed"}) — revoked {k.revoked_at}
               </li>

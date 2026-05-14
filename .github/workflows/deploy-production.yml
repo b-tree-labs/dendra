@@ -37,7 +37,7 @@ jobs:
       - run: pytest --timeout=60
 
   deploy-landing:
-    name: Deploy landing → dendra.run
+    name: Deploy landing → postrule.ai
     needs: test
     runs-on: ubuntu-latest
     steps:
@@ -47,7 +47,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy landing --project-name=dendra-run --branch=main
+          command: pages deploy landing --project-name=postrule-run --branch=main
 
   deploy-collector:
     name: Deploy collector Worker → production
@@ -68,7 +68,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: cloud/collector
-          command: d1 migrations apply dendra-events --env production --remote
+          command: d1 migrations apply postrule-events --env production --remote
       - name: Deploy Worker (production env)
         uses: cloudflare/wrangler-action@v3
         with:
@@ -93,9 +93,9 @@ jobs:
         run: sleep 15
       - name: Run smoke tests (read-only against production)
         env:
-          DENDRA_SMOKE_BASE_URL: https://dendra.run
-          DENDRA_SMOKE_MODELS_URL: https://models.dendra.run
-          DENDRA_SMOKE_COLLECTOR_URL: https://collector.dendra.run
+          POSTRULE_SMOKE_BASE_URL: https://postrule.ai
+          POSTRULE_SMOKE_MODELS_URL: https://models.postrule.ai
+          POSTRULE_SMOKE_COLLECTOR_URL: https://collector.postrule.ai
         run: pytest -m smoke --timeout=60
 
   rollback-on-failure:

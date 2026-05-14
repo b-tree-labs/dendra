@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { upsertUser, listKeys, issueKey } from "../../../lib/dendra-api";
+import { upsertUser, listKeys, issueKey } from "../../../lib/postrule-api";
 
 export const runtime = "edge";
 
@@ -16,7 +16,7 @@ async function authedUser() {
   const u = await currentUser();
   const email = u?.emailAddresses?.[0]?.emailAddress;
   if (!email) return null;
-  // Idempotent: ensures a row exists in dendra-events.users for this Clerk user.
+  // Idempotent: ensures a row exists in postrule-events.users for this Clerk user.
   return upsertUser(userId, email);
 }
 

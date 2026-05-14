@@ -1,4 +1,4 @@
-# Dendra brand-mark critic assessments
+# Postrule brand-mark critic assessments
 
 **Date:** 2026-04-22.
 **Context:** 14 concept marks shipped in `feat/brand-concepts` PR #6
@@ -44,7 +44,7 @@ Contingency mark built from Critic 3's proposal.
 2. Break the lintel-post joint perception — either inset the lintel
    by one stroke-width on each side, or commit to a butt-join with
    a tiny pin at each corner (echoing B-Tree Labs' center-node
-   vocabulary). The latter gives Dendra *its own joint grammar*
+   vocabulary). The latter gives Postrule *its own joint grammar*
    while staying in the family.
 3. Thin the accent stroke by ~20% — currently reads as heavy as
    the structure. Make the passage feel like a *value being
@@ -64,7 +64,7 @@ step away from a wellness-brand logo"), C1 + C3 (curve variants —
 > thing they're for age badly. Stripe's mark isn't a payment flow;
 > Cloudflare's isn't a proxy cloud; Temporal's isn't a state
 > machine. They're abstract containers that *earn meaning through
-> the product*. The Dendra set is trying to pre-load meaning into
+> the product*. The Postrule set is trying to pre-load meaning into
 > the glyph, which is exactly the move mature infra brands don't
 > make."
 
@@ -119,11 +119,11 @@ step away from a wellness-brand logo"), C1 + C3 (curve variants —
    of each corner. Solve by merging the three strokes into a single
    polyline with `stroke-linejoin="miter"`.
 3. **Add a 28 r graphite center node at the lintel midpoint.** The
-   B-Tree Labs origin has a 28 r center dot; Dendra's brief insists
+   B-Tree Labs origin has a 28 r center dot; Postrule's brief insists
    on "same visual language." A node at (256, 200) becomes the
    threshold-crossing point and gives the accent tick something to
    emerge from instead of floating on the lintel stroke. This
-   single addition ties Dendra to Axiom visually while keeping the
+   single addition ties Postrule to Axiom visually while keeping the
    glyphs distinct (cross vs gate).
 
 **Small-size survivors (16 px):** D1, D3, A4, A2.
@@ -190,7 +190,7 @@ actually reads, not what Ben intends):**
   chart' first and 'transition curve' second."
 - **D · Gate:** Architecture. Threshold. Π / pi / portal /
   goalpost. "The only one of the four whose primary semantic field
-  is *passage* rather than *progress* — and passage is what Dendra
+  is *passage* rather than *progress* — and passage is what Postrule
   is actually about."
 
 **Cliché risk per concept:**
@@ -205,7 +205,7 @@ actually reads, not what Ben intends):**
   peak is the literal platonic form of 'VC pitch deck.'"
 - **Gate:** moderate. "Π-shapes risk reading as Stonehenge /
   Greek-temple / 'classical authority' kitsch, but the referent (a
-  gate) is specific enough to Dendra's mechanism that the cliché is
+  gate) is specific enough to Postrule's mechanism that the cliché is
   survivable."
 
 **Which marks earn their specificity (are un-swappable with
@@ -226,7 +226,7 @@ AI company's identity:
 **A fifth direction not explored (the one that might be strongest
 of all):**
 
-> "The contingency table. Dendra's entire mechanism is a
+> "The contingency table. Postrule's entire mechanism is a
 > paired-proportion test — a 2×2 of {rule_correct, rule_wrong} ×
 > {ml_correct, ml_wrong}, where advancement depends on a specific
 > asymmetry between the off-diagonal cells (b and c in McNemar's

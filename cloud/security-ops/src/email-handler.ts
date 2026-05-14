@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: LicenseRef-BSL-1.1
 //
 // Inbound email handler — every message routed to
-// security@dendra.run lands here. Pipeline:
+// security@postrule.ai lands here. Pipeline:
 //
 //   1. Parse From + Subject. Detect URGENT in the subject.
 //   2. Allocate a SR-YYYY-NNNN reference and INSERT into D1.
@@ -201,7 +201,7 @@ export async function handleInboundEmail(
           'The original message has been forwarded separately to',
           env.SECURITY_FORWARD_TO + '.',
           '',
-          '— dendra-security-ops',
+          '— postrule-security-ops',
         ].join('\n'),
       });
     } catch (err) {

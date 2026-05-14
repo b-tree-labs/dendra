@@ -52,9 +52,9 @@ EXTENDED_BENCHES = [
 
 ALPHA = 0.01
 
-# Dendra brand palette (matches landing/brand-tokens.css).
+# Postrule brand palette (matches landing/brand-tokens.css).
 # These tokens are used both for paper figures and the landing-page
-# embeds, so the on-page figures look like Dendra rather than like
+# embeds, so the on-page figures look like Postrule rather than like
 # raw matplotlib paper exports.
 COLOR_INK = "#1a1a1f"
 COLOR_INK_SOFT = "#6a6a72"
@@ -68,8 +68,8 @@ COLOR_REGIME_A = COLOR_ACCENT_DEEP
 COLOR_REGIME_B = COLOR_INK_SOFT
 
 
-def _apply_dendra_style() -> None:
-    """Apply Dendra brand styling globally before any figure renders."""
+def _apply_postrule_style() -> None:
+    """Apply Postrule brand styling globally before any figure renders."""
     plt.rcParams.update(
         {
             "figure.facecolor": COLOR_GROUND,
@@ -104,7 +104,7 @@ def _apply_dendra_style() -> None:
     )
 
 
-_apply_dendra_style()
+_apply_postrule_style()
 
 
 def load_paired(slug: str) -> tuple[dict, list[dict]]:

@@ -112,7 +112,7 @@ describe('admin: user upsert + key lifecycle', () => {
       suffix: string;
       name: string;
     }>();
-    expect(body.plaintext).toMatch(/^dndr_live_[A-Za-z0-9]{32}$/);
+    expect(body.plaintext).toMatch(/^prul_live_[A-Za-z0-9]{32}$/);
     expect(body.prefix.length).toBe(8);
     expect(body.suffix.length).toBe(4);
     expect(body.name).toBe('production');

@@ -3,7 +3,7 @@
 "use client";
 
 import { useState } from "react";
-import type { DendraPreferences } from "../../../lib/dendra-api";
+import type { PostrulePreferences } from "../../../lib/postrule-api";
 
 // Mailto template for the manual self-serve account deletion flow
 // (saas-launch-tech-spec-2026-05-02.md §Scope: "Self-serve account
@@ -16,10 +16,10 @@ export default function SettingsClient({
   initial,
   clerkDisplayName,
 }: {
-  initial: DendraPreferences;
+  initial: PostrulePreferences;
   clerkDisplayName: string | null;
 }) {
-  const [prefs, setPrefs] = useState<DendraPreferences>(initial);
+  const [prefs, setPrefs] = useState<PostrulePreferences>(initial);
   const [error, setError] = useState<string | null>(null);
 
   // Inline edit state for the display_name field.
@@ -43,7 +43,7 @@ export default function SettingsClient({
       setError(`Save failed (${r.status}).`);
       return false;
     }
-    const next = (await r.json()) as DendraPreferences;
+    const next = (await r.json()) as PostrulePreferences;
     setPrefs(next);
     setError(null);
     return true;
@@ -208,7 +208,7 @@ export default function SettingsClient({
                 : "Off"}
           </button>
           <p style={{ margin: 0 }}>
-            Send count-only verdict telemetry to dendra.run.
+            Send count-only verdict telemetry to postrule.ai.
           </p>
         </div>
 
@@ -221,7 +221,7 @@ export default function SettingsClient({
         >
           {prefs.telemetry_enabled
             ? "Currently ON — count-only verdict events flowing. Disable to stop emissions from new authenticated runs (existing data retained per privacy contract)."
-            : "Currently OFF — Dendra is collecting nothing from your runs."}
+            : "Currently OFF — Postrule is collecting nothing from your runs."}
         </p>
       </section>
 

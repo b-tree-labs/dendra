@@ -4,7 +4,7 @@
 #
 # Business Source License 1.1; Change Date 2030-05-01 → Apache 2.0.
 
-"""Dendra Insights aggregator — turns raw events into tuned-defaults.json.
+"""Postrule Insights aggregator — turns raw events into tuned-defaults.json.
 
 Reads from the D1 events database (via wrangler d1 execute) and writes
 to landing/insights/tuned-defaults.json. Triggered nightly by
@@ -41,7 +41,7 @@ compatible additions):
 Run locally (against the staging D1):
 
     python cloud/aggregator/run.py \\
-        --database dendra-events-staging \\
+        --database postrule-events-staging \\
         --output landing/insights/tuned-defaults.json
 
 Run via GitHub Action (see .github/workflows/aggregator.yml) — uses
@@ -61,7 +61,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-# Baked-in default values — same as src/dendra/insights/tuned_defaults.py
+# Baked-in default values — same as src/postrule/insights/tuned_defaults.py
 # BAKED_IN_DEFAULTS. The aggregator MAY override these in v1.1+ once we
 # have signal-extraction logic; for v1.0 they pass through unchanged
 # with cohort_size + generated_at refreshed.
@@ -280,8 +280,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument(
         "--database",
-        default="dendra-events-staging",
-        help="D1 database name (default: dendra-events-staging).",
+        default="postrule-events-staging",
+        help="D1 database name (default: postrule-events-staging).",
     )
     parser.add_argument(
         "--env",

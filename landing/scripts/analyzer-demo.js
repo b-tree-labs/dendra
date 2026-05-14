@@ -67,7 +67,7 @@
 
   // Render a code block. Two modes:
   //   showLineNumbers: true  → gutter with line numbers + diff markers
-  //                            (Source / Dendra-wrapped tabs)
+  //                            (Source / Postrule-wrapped tabs)
   //   showLineNumbers: false → plain text, no gutter (Sample log / Config)
   // Line numbers + diff markers are CSS pseudo-elements so the clipboard
   // copy is always the bare source.
@@ -188,7 +188,7 @@
       .join("");
   }
 
-  // Build the synthesized "Dendra-wrapped" preview by inserting the
+  // Build the synthesized "Postrule-wrapped" preview by inserting the
   // decorator into the actual source snippet. Returns
   //   { text, addedRanges, startLine }
   // where addedRanges is a list of [start, end] inclusive 0-based line
@@ -199,9 +199,9 @@
       (site.labels || []).filter(looksLikeReasonableLabel);
     const labels = reasonable.length > 0
       ? reasonable.map((l) => `'${String(l).replace(/'/g, "\\'")}'`).join(", ")
-      : "  # inferred from return statements when you run `dendra init`";
+      : "  # inferred from return statements when you run `postrule init`";
     const fn = site.function_name;
-    const decoratorBlock = `from dendra import ml_switch
+    const decoratorBlock = `from postrule import ml_switch
 
 @ml_switch(
     labels=[${labels}],
@@ -322,7 +322,7 @@
             .join("\n\n");
 
     const text =
-      `from dendra import Switch\n` +
+      `from postrule import Switch\n` +
       `\n\n` +
       `class ${cls}(Switch):\n` +
       `    """Auto-lifted from ${fn}.\n` +
@@ -358,13 +358,13 @@
       (site.labels || []).filter(looksLikeReasonableLabel);
     const labels = reasonable.length > 0
       ? reasonable.map((l) => `'${String(l).replace(/'/g, "\\'")}'`).join(", ")
-      : "  # inferred from return statements when you run `dendra init`";
+      : "  # inferred from return statements when you run `postrule init`";
     const fn = site.function_name;
     const safetyHint = site.regime === "narrow"
       ? "  # set True for authorization-class decisions (caps at Phase 4)"
       : "  # set True to cap at Phase 4 for any safety-critical site";
     return `# 1. Minimum viable. Drop-in two-liner — this is enough to ship.
-from dendra import ml_switch
+from postrule import ml_switch
 
 @ml_switch(
     labels=[${labels}],
@@ -375,7 +375,7 @@ def ${fn}(...): ...
 
 # 2. Centralize across your project — define once, reuse everywhere.
 # Eliminates repetitive boilerplate across 10s or 100s of sites.
-from dendra import SwitchConfig
+from postrule import SwitchConfig
 
 team_config = SwitchConfig(
     author='@triage:support',
@@ -392,13 +392,13 @@ def ${fn}(...): ...
 #   gate            McNemarGate     α=0.01 (1% per-step graduation FPR)
 #   verifier        'default'       auto-detect Ollama / OpenAI / Anthropic
 #   auto_advance    True            gate fires every 250 verdicts
-#   storage         FileStorage     runtime/dendra/<switch>/, atomic + fsynced
+#   storage         FileStorage     runtime/postrule/<switch>/, atomic + fsynced
 
 
 # 4. Native class form — the canonical v1 authoring pattern.
 # Same site as above, expressed as a Switch subclass instead of a
-# decorator. This is what \`dendra init --auto-lift\` writes for you.
-from dendra import Switch
+# decorator. This is what \`postrule init --auto-lift\` writes for you.
+from postrule import Switch
 
 
 class ${classNameFor(fn)}Switch(Switch):
@@ -556,8 +556,8 @@ ${
       `# what you'd see on disk after ml_switch(..., persist=True), which derives a\n` +
       `# FileStorage at:\n` +
       `#\n` +
-      `#   Log file:  runtime/dendra/${fn}/outcomes.jsonl   # active segment, append-only\n` +
-      `#              runtime/dendra/${fn}/outcomes.jsonl.1 # rotated by size, not date\n` +
+      `#   Log file:  runtime/postrule/${fn}/outcomes.jsonl   # active segment, append-only\n` +
+      `#              runtime/postrule/${fn}/outcomes.jsonl.1 # rotated by size, not date\n` +
       `#   Source:    ${site.file_path}:${site.line_start}  (def ${fn})\n` +
       `#   Format:    one ClassificationRecord JSON per line; flock-protected, fsync optional.\n`;
     const body = entries
@@ -573,12 +573,12 @@ ${
   }
 
   // Render the expanded panel for a clicked site row. Three tabs:
-  // Source, Dendra-wrapped, Sample log.
+  // Source, Postrule-wrapped, Sample log.
   function renderExpanded(site, data) {
     const githubLink = buildGithubLink(data, site);
     const sourceText = site.snippet
       ? escapeHtml(site.snippet)
-      : "(source snippet not available — install dendra and run `dendra analyze .` for the live scan)";
+      : "(source snippet not available — install postrule and run `postrule analyze .` for the live scan)";
     const sourceStartLine = site.snippet_start_line || site.line_start;
     const wrapped = buildWrappedPreview(site);
     const wrappedSwitch = buildWrappedPreviewSwitch(site);
@@ -589,12 +589,12 @@ ${
             ? `<a class="site-github-link" href="${githubLink}" target="_blank" rel="noopener noreferrer" title="Open this file at the right line on GitHub" aria-label="Open file on GitHub"><svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg></a>`
             : ""}
           <button type="button" class="site-tab" data-tab="source" aria-selected="true">Source</button>
-          <button type="button" class="site-tab" data-tab="wrapped" aria-selected="false">Dendra-wrapped</button>
+          <button type="button" class="site-tab" data-tab="wrapped" aria-selected="false">Postrule-wrapped</button>
           <button type="button" class="site-tab" data-tab="log" aria-selected="false">Sample log entry</button>
           <button type="button" class="site-tab" data-tab="config" aria-selected="false">Config</button>
         </div>
         <div class="site-tab-pane" data-pane="source">
-          ${renderCodeBlock(site.snippet || "(source snippet not available — install dendra and run `dendra analyze .` for the live scan)", {
+          ${renderCodeBlock(site.snippet || "(source snippet not available — install postrule and run `postrule analyze .` for the live scan)", {
             startLine: sourceStartLine,
           })}
           <p class="site-tab-cap">Lines ${sourceStartLine}-${site.snippet_end_line || site.line_end} of <code>${escapeHtml(site.file_path)}</code></p>
@@ -610,9 +610,9 @@ ${
           <div data-wrapped-render="switch" hidden>
             ${renderCodeBlock(wrappedSwitch.text, { startLine: wrappedSwitch.startLine, addedRanges: wrappedSwitch.addedRanges })}
           </div>
-          <p class="site-tab-cap">Green <code>+</code> lines are what <code>dendra init</code> writes into <code>${escapeHtml(site.file_path)}</code>. <strong>Decorator</strong> is the drop-in two-liner; <strong>Switch class</strong> is what <code>--auto-lift</code> generates when you want per-branch handlers and per-evidence methods extracted. Run locally:</p>
+          <p class="site-tab-cap">Green <code>+</code> lines are what <code>postrule init</code> writes into <code>${escapeHtml(site.file_path)}</code>. <strong>Decorator</strong> is the drop-in two-liner; <strong>Switch class</strong> is what <code>--auto-lift</code> generates when you want per-branch handlers and per-evidence methods extracted. Run locally:</p>
           <div class="cap-cmd" data-copy-target>
-            <code>dendra init ${escapeHtml(site.file_path)}:${escapeHtml(site.function_name)} --author @you:team --dry-run</code>
+            <code>postrule init ${escapeHtml(site.file_path)}:${escapeHtml(site.function_name)} --author @you:team --dry-run</code>
             <button type="button" class="copy-btn copy-btn--code" data-copy-source aria-label="Copy command" title="Copy"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="9" height="11" rx="1.5"/><path d="M3 5v8.5A1.5 1.5 0 0 0 4.5 15H11"/></svg></button>
           </div>
         </div>
@@ -679,7 +679,7 @@ ${
       footer = `
         <tr class="more-row">
           <td colspan="6" class="dim">
-            … and ${more} more sites. Run <code>dendra analyze .</code> locally for the full list.
+            … and ${more} more sites. Run <code>postrule analyze .</code> locally for the full list.
           </td>
         </tr>`;
     }
@@ -969,7 +969,7 @@ ${
           <span class="info">
             Live custom-repo analysis is shipping in v1.1
             (Pyodide-in-browser; ~5-15 s for small/medium repos).
-            Today: <code>pip install dendra &amp;&amp; dendra analyze ${escapeHtml(val.replace(/^https?:\/\/(www\.)?github\.com\//, ""))}</code>
+            Today: <code>pip install postrule &amp;&amp; postrule analyze ${escapeHtml(val.replace(/^https?:\/\/(www\.)?github\.com\//, ""))}</code>
             for the full scan locally.
           </span>`;
       }

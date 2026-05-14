@@ -1,8 +1,8 @@
 {
-  "name": "@dendra/dashboard",
+  "name": "@postrule/dashboard",
   "version": "0.1.0",
   "private": true,
-  "description": "Dendra cloud dashboard (app.dendra.run). Sign-in, API key issuance, CLI device-flow exchange.",
+  "description": "Postrule cloud dashboard (app.postrule.ai). Sign-in, API key issuance, CLI device-flow exchange.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

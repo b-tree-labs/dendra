@@ -1,4 +1,4 @@
-# Dendra code ownership — see
+# Postrule code ownership — see
 # https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 #
 # Default owner reviews every PR unless a more specific pattern applies.
@@ -23,12 +23,12 @@
 /pyproject.toml                     @benjaminbooth
 
 # Core primitive — breaking changes here are patent-adjacent; issue first.
-/src/dendra/core.py                 @benjaminbooth
-/src/dendra/decorator.py            @benjaminbooth
-/src/dendra/storage.py              @benjaminbooth
+/src/postrule/core.py                 @benjaminbooth
+/src/postrule/decorator.py            @benjaminbooth
+/src/postrule/storage.py              @benjaminbooth
 
 # BSL-licensed surfaces — product-surface changes also go through owner.
-/src/dendra/analyzer.py             @benjaminbooth
-/src/dendra/cli.py                  @benjaminbooth
-/src/dendra/research.py             @benjaminbooth
-/src/dendra/roi.py                  @benjaminbooth
+/src/postrule/analyzer.py             @benjaminbooth
+/src/postrule/cli.py                  @benjaminbooth
+/src/postrule/research.py             @benjaminbooth
+/src/postrule/roi.py                  @benjaminbooth

@@ -3,8 +3,8 @@
 //
 // API key generation + verification.
 //
-// Format:  dndr_live_<32 base62 chars>   ← 32 chars × log2(62) ≈ 190 bits
-//          dndr_test_<32 base62 chars>   ← sandbox, same shape
+// Format:  prul_live_<32 base62 chars>   ← 32 chars × log2(62) ≈ 190 bits
+//          prul_test_<32 base62 chars>   ← sandbox, same shape
 //
 // Hashing: HMAC-SHA-256(pepper, full_key). NOT argon2id.
 //
@@ -43,7 +43,7 @@ export async function generateKey(
   const bytes = new Uint8Array(KEY_LEN);
   crypto.getRandomValues(bytes);
   const random = Array.from(bytes, (b) => BASE62[b % 62]).join('');
-  const plaintext = `dndr_${env}_${random}`;
+  const plaintext = `prul_${env}_${random}`;
   const hash = await hashKey(plaintext, pepper);
   return {
     plaintext,
@@ -76,6 +76,6 @@ export async function hashKey(plaintext: string, pepper: string): Promise<string
  */
 export function parseBearer(authHeader: string | null): string | null {
   if (!authHeader) return null;
-  const m = /^Bearer\s+(dndr_(live|test)_[A-Za-z0-9]{32})$/.exec(authHeader.trim());
+  const m = /^Bearer\s+(prul_(live|test)_[A-Za-z0-9]{32})$/.exec(authHeader.trim());
   return m?.[1] ?? null;
 }

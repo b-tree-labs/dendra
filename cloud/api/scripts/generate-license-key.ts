@@ -1,8 +1,8 @@
 // Copyright (c) 2026 B-Tree Labs
 // SPDX-License-Identifier: LicenseRef-BSL-1.1
 //
-// One-time generation of the Ed25519 keypair used to sign Dendra
-// license tokens. The PUBLIC key gets baked into the dendra Python
+// One-time generation of the Ed25519 keypair used to sign Postrule
+// license tokens. The PUBLIC key gets baked into the postrule Python
 // package + sample docs (so offline verifiers can check signatures
 // without us in the loop). The PRIVATE key gets installed as a wrangler
 // secret on the api Worker:
@@ -49,7 +49,7 @@ async function main() {
   console.log('  wrangler secret put LICENSE_SIGNING_PRIVATE_KEY --env=production');
   console.log('');
   console.log('After setting both, the public key is what verifiers use.');
-  console.log('Embed it in src/dendra/license.py LICENSE_PUBLIC_KEY_HEX.');
+  console.log('Embed it in src/postrule/license.py LICENSE_PUBLIC_KEY_HEX.');
 }
 
 main().catch((e) => {

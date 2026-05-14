@@ -12,7 +12,7 @@
 # Additional Use Grant: see LICENSE-BSL. Production use is
 # permitted; offering a competing hosted service is not.
 
-"""Tests for ``dendra login`` — RFC 8628 device flow.
+"""Tests for ``postrule login`` — RFC 8628 device flow.
 
 Mocks the requests layer + ``webbrowser`` + ``time.sleep`` so the
 test suite stays offline and finishes in milliseconds.
@@ -25,8 +25,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 import requests
 
-from dendra import auth
-from dendra.cli import _detect_device_name, _fetch_telemetry_preference, cmd_login
+from postrule import auth
+from postrule.cli import _detect_device_name, _fetch_telemetry_preference, cmd_login
 
 
 @pytest.fixture()
@@ -42,7 +42,7 @@ def args(monkeypatch):
     """Default argparse-style namespace for cmd_login."""
     import argparse
 
-    monkeypatch.setenv("DENDRA_API_BASE", "http://api.test/v1")
+    monkeypatch.setenv("POSTRULE_API_BASE", "http://api.test/v1")
     return argparse.Namespace(no_browser=True, device_name=None)
 
 
@@ -74,7 +74,7 @@ class TestHappyPath:
         success_resp = _resp(
             200,
             {
-                "api_key": "dndr_live_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",  # pragma: allowlist secret
+                "api_key": "prul_live_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",  # pragma: allowlist secret
                 "email": "user@example.com",
             },
         )
@@ -102,7 +102,7 @@ class TestHappyPath:
         # Credentials were saved.
         creds = auth.load_credentials()
         assert creds is not None
-        assert creds["api_key"].startswith("dndr_live_")
+        assert creds["api_key"].startswith("prul_live_")
         assert creds["email"] == "user@example.com"
         assert creds["telemetry_enabled"] is True
 
@@ -120,7 +120,7 @@ class TestHappyPath:
         success_resp = _resp(
             200,
             {
-                "api_key": "dndr_live_OFFAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",  # pragma: allowlist secret
+                "api_key": "prul_live_OFFAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",  # pragma: allowlist secret
                 "email": "user@example.com",
             },
         )
@@ -182,7 +182,7 @@ class TestErrorPaths:
         with patch("requests.post", side_effect=requests.RequestException("dns boom")):
             rc = cmd_login(args)
         assert rc == 1
-        assert "Could not reach Dendra" in capsys.readouterr().err
+        assert "Could not reach Postrule" in capsys.readouterr().err
 
     def test_start_non_200_returns_1(self, args, fake_home, capsys):
         bad = _resp(503, {"error": "service_unavailable"})
@@ -276,7 +276,7 @@ class TestErrorPaths:
         success = _resp(
             200,
             {
-                "api_key": "dndr_live_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",  # pragma: allowlist secret
+                "api_key": "prul_live_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",  # pragma: allowlist secret
                 "email": "u@e.com",
             },
         )
@@ -309,7 +309,7 @@ class TestPolish:
         success = _resp(
             200,
             {
-                "api_key": "dndr_live_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",  # pragma: allowlist secret
+                "api_key": "prul_live_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",  # pragma: allowlist secret
                 "email": "u@e.com",
             },
         )
@@ -340,7 +340,7 @@ class TestPolish:
         success = _resp(
             200,
             {
-                "api_key": "dndr_live_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",  # pragma: allowlist secret
+                "api_key": "prul_live_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",  # pragma: allowlist secret
                 "email": "u@e.com",
             },
         )
@@ -369,7 +369,7 @@ class TestPolish:
         success = _resp(
             200,
             {
-                "api_key": "dndr_live_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",  # pragma: allowlist secret
+                "api_key": "prul_live_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",  # pragma: allowlist secret
                 "email": "u@e.com",
             },
         )
@@ -394,7 +394,7 @@ class TestPolish:
         success = _resp(
             200,
             {
-                "api_key": "dndr_live_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",  # pragma: allowlist secret
+                "api_key": "prul_live_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",  # pragma: allowlist secret
                 "email": "u@e.com",
             },
         )

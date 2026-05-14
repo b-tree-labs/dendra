@@ -196,7 +196,7 @@ def _stable_pick(items: list[Path], n: int, seed: str) -> list[Path]:
 
 def fetch_one(src: Source, out_root: Path, idx_offset: int = 0) -> tuple[int, str]:
     """Clone, sample, write. Returns (samples_written, head_sha)."""
-    with tempfile.TemporaryDirectory(prefix="dendra-fetch-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="postrule-fetch-") as tmp:
         clone_path = Path(tmp) / "src"
         sha = _shallow_clone(src.repo, clone_path)
         candidates = _glob_files(clone_path, src.globs)

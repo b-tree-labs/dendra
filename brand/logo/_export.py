@@ -1,6 +1,6 @@
 # Copyright (c) 2026 B-Tree Labs
 # SPDX-License-Identifier: Apache-2.0
-"""Regenerate Dendra brand-kit PNG exports from the canonical SVGs.
+"""Regenerate Postrule brand-kit PNG exports from the canonical SVGs.
 
 Run: `python brand/logo/_export.py`. Requires `cairosvg` (`pip install
 cairosvg`). Writes PNGs next to the source SVGs using the
@@ -24,57 +24,57 @@ HERE = Path(__file__).parent
 # None for output_size means "render at natural dimensions" (used for
 # wordmarks + social card, where the canvas ratio is load-bearing).
 EXPORTS: dict[str, list[int | None]] = {
-    "dendra-favicon": [16, 32, 180, 512],
-    "dendra-mark": [1024],
-    "dendra-mark-dark": [1024],
-    "dendra-mark-mono-light": [1024],
-    "dendra-mark-mono-dark": [1024],
+    "postrule-favicon": [16, 32, 180, 512],
+    "postrule-mark": [1024],
+    "postrule-mark-dark": [1024],
+    "postrule-mark-mono-light": [1024],
+    "postrule-mark-mono-dark": [1024],
     # Parent + sub-brand wordmarks. The canvas dimensions are
     # auto-computed by `_generate_wordmarks.py` to give symmetric
     # 50px L/R margins per word, so widths vary per sub-brand.
     # Each ships in three variants (light / -dark / -transparent)
     # × two layouts (horizontal / stacked).
-    "dendra-wordmark-horizontal": [None],
-    "dendra-wordmark-horizontal-dark": [None],
-    "dendra-wordmark-horizontal-transparent": [None],
-    "dendra-wordmark-stacked": [None],
-    "dendra-wordmark-stacked-dark": [None],
-    "dendra-wordmark-stacked-transparent": [None],
+    "postrule-wordmark-horizontal": [None],
+    "postrule-wordmark-horizontal-dark": [None],
+    "postrule-wordmark-horizontal-transparent": [None],
+    "postrule-wordmark-stacked": [None],
+    "postrule-wordmark-stacked-dark": [None],
+    "postrule-wordmark-stacked-transparent": [None],
     # Sub-brand lockups — analyze
-    "dendra-analyze-wordmark": [None],
-    "dendra-analyze-wordmark-dark": [None],
-    "dendra-analyze-wordmark-transparent": [None],
-    "dendra-analyze-wordmark-stacked": [None],
-    "dendra-analyze-wordmark-stacked-dark": [None],
-    "dendra-analyze-wordmark-stacked-transparent": [None],
+    "postrule-analyze-wordmark": [None],
+    "postrule-analyze-wordmark-dark": [None],
+    "postrule-analyze-wordmark-transparent": [None],
+    "postrule-analyze-wordmark-stacked": [None],
+    "postrule-analyze-wordmark-stacked-dark": [None],
+    "postrule-analyze-wordmark-stacked-transparent": [None],
     # Sub-brand lockups — cloud
-    "dendra-cloud-wordmark": [None],
-    "dendra-cloud-wordmark-dark": [None],
-    "dendra-cloud-wordmark-transparent": [None],
-    "dendra-cloud-wordmark-stacked": [None],
-    "dendra-cloud-wordmark-stacked-dark": [None],
-    "dendra-cloud-wordmark-stacked-transparent": [None],
+    "postrule-cloud-wordmark": [None],
+    "postrule-cloud-wordmark-dark": [None],
+    "postrule-cloud-wordmark-transparent": [None],
+    "postrule-cloud-wordmark-stacked": [None],
+    "postrule-cloud-wordmark-stacked-dark": [None],
+    "postrule-cloud-wordmark-stacked-transparent": [None],
     # Sub-brand lockups — insight
-    "dendra-insight-wordmark": [None],
-    "dendra-insight-wordmark-dark": [None],
-    "dendra-insight-wordmark-transparent": [None],
-    "dendra-insight-wordmark-stacked": [None],
-    "dendra-insight-wordmark-stacked-dark": [None],
-    "dendra-insight-wordmark-stacked-transparent": [None],
+    "postrule-insight-wordmark": [None],
+    "postrule-insight-wordmark-dark": [None],
+    "postrule-insight-wordmark-transparent": [None],
+    "postrule-insight-wordmark-stacked": [None],
+    "postrule-insight-wordmark-stacked-dark": [None],
+    "postrule-insight-wordmark-stacked-transparent": [None],
     # Sub-brand lockups — research
-    "dendra-research-wordmark": [None],
-    "dendra-research-wordmark-dark": [None],
-    "dendra-research-wordmark-transparent": [None],
-    "dendra-research-wordmark-stacked": [None],
-    "dendra-research-wordmark-stacked-dark": [None],
-    "dendra-research-wordmark-stacked-transparent": [None],
+    "postrule-research-wordmark": [None],
+    "postrule-research-wordmark-dark": [None],
+    "postrule-research-wordmark-transparent": [None],
+    "postrule-research-wordmark-stacked": [None],
+    "postrule-research-wordmark-stacked-dark": [None],
+    "postrule-research-wordmark-stacked-transparent": [None],
     # Social card
-    "dendra-social-card": [None],
-    "dendra-social-card-dark": [None],
+    "postrule-social-card": [None],
+    "postrule-social-card-dark": [None],
     # Applied assets — social banners + share previews
-    "dendra-github-social-preview": [None],  # 1280×640 native
-    "dendra-twitter-banner": [None],  # 1500×500 native
-    "dendra-linkedin-banner": [None],  # 1128×191 native
+    "postrule-github-social-preview": [None],  # 1280×640 native
+    "postrule-twitter-banner": [None],  # 1500×500 native
+    "postrule-linkedin-banner": [None],  # 1128×191 native
 }
 
 

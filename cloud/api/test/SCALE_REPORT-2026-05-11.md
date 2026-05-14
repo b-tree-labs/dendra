@@ -1,4 +1,4 @@
-# Dendra dashboard + hot-path scale report — 2026-05-11
+# Postrule dashboard + hot-path scale report — 2026-05-11
 
 Pre-launch (2026-05-20) measurement pass on the dashboard server
 endpoints (PRs #35-#37, #41) and the modified `POST /v1/verdicts`
@@ -6,7 +6,7 @@ hot path (PR #41 — adds an indexed DELETE on `switch_archives` after
 each verdict INSERT).
 
 Harness source: `cloud/api/test/scale_harness.test.ts`.
-Run with `DENDRA_SCALE=1 npm test -- scale_harness` from `cloud/api/`.
+Run with `POSTRULE_SCALE=1 npm test -- scale_harness` from `cloud/api/`.
 Skip-by-default — plain `npm test` ignores it.
 
 ---
@@ -296,7 +296,7 @@ as a CTE with `FIRST_VALUE(v.phase) OVER (PARTITION BY v.switch_name ORDER BY
 v.created_at DESC)`. All 220 existing tests still pass — wire shape preserved.
 The single binding parameter for the user_id replaces the previous double-bind
 (one for the outer WHERE, one for the now-deleted correlated subquery's WHERE).
-Empirical heavy-tail measurement to be captured via `DENDRA_SCALE=1 npm test --
+Empirical heavy-tail measurement to be captured via `POSTRULE_SCALE=1 npm test --
 scale_harness` against the merged main; baseline was 140ms, target <50ms per
 the original analysis.
 
@@ -348,7 +348,7 @@ the launch spec).
 ## 6. Acceptance criteria check
 
 * [x] `cd cloud/api && npm test` green — 166 passed, 25 skipped.
-* [x] `cd cloud/api && DENDRA_SCALE=1 npm test` runs the harness
+* [x] `cd cloud/api && POSTRULE_SCALE=1 npm test` runs the harness
       end-to-end without crashing — 25 passed, 0 failed, ~170s.
 * [x] This report carries concrete p50/p95/p99 numbers per endpoint.
 * [x] Migration 0009 lands the one obviously-fixable index (verdicts
@@ -361,7 +361,7 @@ the launch spec).
 
 ```
 cd cloud/api
-DENDRA_SCALE=1 npm test -- scale_harness --reporter=verbose 2>&1 | grep SCALE_RESULT
+POSTRULE_SCALE=1 npm test -- scale_harness --reporter=verbose 2>&1 | grep SCALE_RESULT
 ```
 
 Every measurement is emitted as a single-line JSON object prefixed

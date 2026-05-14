@@ -188,7 +188,7 @@ describe('POST /v1/device/token — poll', () => {
 });
 
 describe('happy path — full device flow', () => {
-  it('CLI gets a fresh dndr_live_ key after dashboard authorizes', async () => {
+  it('CLI gets a fresh prul_live_ key after dashboard authorizes', async () => {
     // 1. CLI starts the flow.
     const start = await SELF.fetch(`${BASE}/v1/device/code`, {
       method: 'POST',
@@ -225,7 +225,7 @@ describe('happy path — full device flow', () => {
     });
     expect(polled2.status).toBe(200);
     const success = await polled2.json<{ api_key: string; email: string }>();
-    expect(success.api_key).toMatch(/^dndr_live_[A-Za-z0-9]{32}$/);
+    expect(success.api_key).toMatch(/^prul_live_[A-Za-z0-9]{32}$/);
     expect(success.email).toBe('devflow@example.com');
 
     // 5. Replay protection: polling again with the same device_code fails.

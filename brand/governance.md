@@ -1,6 +1,6 @@
-# Dendra · brand governance
+# Postrule · brand governance
 
-How the Dendra brand is maintained, who can change it, and how
+How the Postrule brand is maintained, who can change it, and how
 to add a new asset. This doc lives inside the brand kit because
 the kit is the artifact — if you're editing a file in `brand/`,
 you're working within this process.
@@ -43,7 +43,7 @@ kit.
    A new product launch sub-brand is a variant of the sub-brand
    lockup system (`brand/sub-brands.md`) and must follow its rules.
 2. **Write the SVG master** in `brand/logo/` with the canonical
-   `dendra-<name>.svg` naming convention. Include a comment
+   `postrule-<name>.svg` naming convention. Include a comment
    header explaining what the asset is, what sizes it targets,
    and where it's used.
 3. **Add to `brand/logo/_export.py`** if it needs PNG exports.
@@ -83,7 +83,7 @@ version needs to be restored (e.g., a marketing piece went out
 with an older mark and needs to be regenerated), use `git
 checkout <sha>` on `brand/` files directly.
 
-The one exception: if the Dendra mark itself changes in a
+The one exception: if the Postrule mark itself changes in a
 visually significant way (not a minor refinement — a new glyph
 decision), tag the commit with `brand-v2` / `brand-v3` etc. and
 document the change in `CHANGELOG.md` under a new top-level
@@ -91,33 +91,33 @@ section. This is a once-in-several-years event.
 
 ## Attribution + external use
 
-### For third parties using the Dendra name or mark
+### For third parties using the Postrule name or mark
 
 See `TRADEMARKS.md` in the repository root. In short:
 
-- **Descriptive / nominative use** ("my project uses Dendra") —
+- **Descriptive / nominative use** ("my project uses Postrule") —
   no permission needed.
-- **Embedding the mark in a product name or UI** ("Dendra Plus"
-  / "Powered by Dendra" badge) — requires a trademark license.
+- **Embedding the mark in a product name or UI** ("Postrule Plus"
+  / "Powered by Postrule" badge) — requires a trademark license.
 - **Swag, merch, unofficial product** — requires permission.
 
 Email `trademarks@b-treeventures.com` for anything uncertain.
 
-### Fair-use references to other brands within Dendra content
+### Fair-use references to other brands within Postrule content
 
-When Dendra's own content references other brands (e.g., the
+When Postrule's own content references other brands (e.g., the
 dogfood blog post discusses Sentry / PostHog / HuggingFace /
 LangChain source code):
 
 - Always link to the source on first mention.
-- Never use another brand's logo or wordmark in Dendra-authored
+- Never use another brand's logo or wordmark in Postrule-authored
   content without permission.
 - Quote code and public docs; credit correctly.
 - Keep the tone neutral / analytical, not comparative-marketing.
 
-### When someone asks "can I use the Dendra logo for X?"
+### When someone asks "can I use the Postrule logo for X?"
 
-- Conference talk about Dendra: **yes** — point them at
+- Conference talk about Postrule: **yes** — point them at
   `brand/logo/` for clean assets.
 - Integration partner's "works with" badge: **maybe** — depends
   on their offering; ask for details; usually yes with a
@@ -165,7 +165,7 @@ variant, longer for new concepts.
 - **Identity-designer refinement pass.** Current kit is
   Claude-drafted; a pro refinement (~2 weeks, ~$6-12k) is on
   the post-launch roadmap.
-- **Sonic identity.** Dendra has no sound. If video content (a
+- **Sonic identity.** Postrule has no sound. If video content (a
   product demo, conference talk with screencast) ever needs a
   sonic brand element, add a discussion thread and this doc
   gets a new section.

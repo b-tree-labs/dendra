@@ -11,7 +11,7 @@ export const runtime = "edge";
 export default function Home() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-16">
-      <p className="eyebrow eyebrow--accent">Dendra Cloud</p>
+      <p className="eyebrow eyebrow--accent">Postrule Cloud</p>
       <h1
         className="mt-3"
         style={{

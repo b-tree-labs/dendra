@@ -3,7 +3,7 @@
 "use client";
 
 import { useState } from "react";
-import type { InsightsStatus } from "../../../lib/dendra-api";
+import type { InsightsStatus } from "../../../lib/postrule-api";
 
 // One-line copy keyed off the cohort-size + enrollment state combo.
 // Mirrors the "Empty/transition states" spec in the launch task brief:

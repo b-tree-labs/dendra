@@ -386,8 +386,8 @@ All of the above is reproducible by:
 
 ```
 git fetch origin
-git worktree add /tmp/dendra-chaos-harness -b test/chaos-dashboard-endpoints origin/main
-cd /tmp/dendra-chaos-harness/cloud/api
+git worktree add /tmp/postrule-chaos-harness -b test/chaos-dashboard-endpoints origin/main
+cd /tmp/postrule-chaos-harness/cloud/api
 npm install
 npm test
 ```

@@ -12,7 +12,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { upsertUser } from "../../../../lib/dendra-api";
+import { upsertUser } from "../../../../lib/postrule-api";
 import { stripe, priceIdForTier, checkoutReturnUrls } from "../../../../lib/stripe";
 
 export const runtime = "edge";
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "invalid_tier_id" }, { status: 400 });
     }
 
-    const dendraUser = await upsertUser(userId, email);
+    const postruleUser = await upsertUser(userId, email);
     const baseUrl = req.nextUrl.origin;
     const session = await stripe().checkout.sessions.create({
       mode: "subscription",
@@ -60,8 +60,8 @@ export async function POST(req: NextRequest) {
       // stripe_customer_id (set on the user row at first checkout).
       subscription_data: {
         metadata: {
-          dendra_user_id: String(dendraUser.user_id),
-          dendra_tier_id: body.tier_id,
+          postrule_user_id: String(postruleUser.user_id),
+          postrule_tier_id: body.tier_id,
         },
       },
       // Stripe shows a "I agree to the Terms of Service" checkbox at

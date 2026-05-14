@@ -13,7 +13,7 @@ for the 2026-05-20 launch).
 ## Description
 
 Paste into **About → Description** (the field under the repo title on
-`github.com/b-tree-labs/dendra`). 120-char ceiling; this is what shows
+`github.com/b-tree-labs/postrule`). 120-char ceiling; this is what shows
 in search results and on the org page card.
 
 > Graduated-autonomy classification primitive — rule today, ML tomorrow, paired-McNemar gate decides when.
@@ -32,7 +32,7 @@ Three alternates if the above reads off:
 
 Paste into **About → Website**:
 
-> https://dendra.run
+> https://postrule.ai
 
 ---
 
@@ -87,15 +87,15 @@ GitHub renders this when the repo is shared on Twitter / X / LinkedIn
 
 The asset already exists in the repo at:
 
-> `brand/logo/dendra-github-social-preview.png` (1280×640)
+> `brand/logo/postrule-github-social-preview.png` (1280×640)
 
 Apply via **Settings → General → Social preview → Edit → Upload an
 image**. GitHub will compress it; the SVG master at
-`brand/logo/dendra-github-social-preview.svg` is the regenerate source
+`brand/logo/postrule-github-social-preview.svg` is the regenerate source
 if you ever need to tweak it.
 
 After upload, verify by opening
-<https://opengraph.githubassets.com/0/b-tree-labs/dendra> in an
+<https://opengraph.githubassets.com/0/b-tree-labs/postrule> in an
 incognito tab — should show the new card.
 
 ---
@@ -105,7 +105,7 @@ incognito tab — should show the new card.
 Repos can pin up to **6** items on the org profile and the repo's
 landing page. Suggestions (in priority order — pin the top 3):
 
-1. **Repo: `b-tree-labs/dendra`** — pin on the org profile.
+1. **Repo: `b-tree-labs/postrule`** — pin on the org profile.
 2. **Repo: `b-tree-labs/axiom-os`** — the second active product per
    `b-tree-labs/profile/README.md`.
 3. **Discussion (optional, v1.1):** "v1.1 roadmap — what would you
@@ -148,7 +148,7 @@ The org profile rendered at <https://github.com/b-tree-labs> is
 sourced from `b-tree-labs/.github/profile/README.md` — a separate
 repo. That file currently reads:
 
-> Dendra v1.0 launching 2026-05-13
+> Postrule v1.0 launching 2026-05-13
 
 That date is stale (launch is 2026-05-20, per PR #51's bump). Ben
 should update that file directly in the `b-tree-labs/.github` repo
@@ -156,8 +156,8 @@ before launch — out of scope for this PR since it lives in a different
 repo. Two-line patch:
 
 ```diff
-- | **[Dendra](https://dendra.run)** | Graduated-autonomy classification primitive (rule → LLM → ML in six phases, library-first) | v1.0 launching 2026-05-13 |
-+ | **[Dendra](https://dendra.run)** | Graduated-autonomy classification primitive (rule → LLM → ML in six phases, library-first) | v1.1.0 — 2026-05-20 |
+- | **[Postrule](https://postrule.ai)** | Graduated-autonomy classification primitive (rule → LLM → ML in six phases, library-first) | v1.0 launching 2026-05-13 |
++ | **[Postrule](https://postrule.ai)** | Graduated-autonomy classification primitive (rule → LLM → ML in six phases, library-first) | v1.1.0 — 2026-05-20 |
 ```
 
 (v1.1.0 skips 1.0.0 deliberately per PR #51 / [CHANGELOG.md][changelog].)

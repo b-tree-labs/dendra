@@ -1,7 +1,7 @@
 # Pre-launch security audit — 2026-05-11
 
 **Auditor:** Claude Opus 4.7 (1M context), invoked by Benjamin Booth
-**Scope:** Dendra v1.0 cloud + SDK surface at `origin/main` HEAD
+**Scope:** Postrule v1.0 cloud + SDK surface at `origin/main` HEAD
 `d4684d3` (PRs #28–#44 inclusive).
 **Launch target:** 2026-05-20.
 **Status:** **No blockers found.** One HIGH-severity finding (vulnerable
@@ -20,9 +20,9 @@ v1.1 with rationale.
 | 2 | high     | 5 CSP + security headers          | **fixed in this PR**                  | Dashboard had **zero** security response headers. Added CSP / HSTS / X-Frame-Options / Referrer / Permissions / X-Content-Type-Options via `middleware.ts`. |
 | 3 | medium   | 9 dependency vulns                | **fixed in this PR**                  | `hono` bumped 4.6.14 → 4.12.18; closes 3 open dependabot alerts (#30, #31, #32).                          |
 | 4 | medium   | 7 rate-limit coverage             | **deferred to v1.1 with rationale**   | No per-IP / per-account-hash RPS limit on `/v1/verdicts` or `/admin/*`. Tier-cap is the only throttle. Owner doc'd this explicitly in `cloud/api/src/usage.ts` lines 17–19.  |
-| 5 | medium   | 12 SECURITY.md stale              | **accepted; documented in PR body**   | SECURITY.md says "Dendra Cloud (when it exists) — separate security policy will apply" but cloud launches in 9 days. v1.1 follow-up to merge cloud scope in. |
+| 5 | medium   | 12 SECURITY.md stale              | **accepted; documented in PR body**   | SECURITY.md says "Postrule Cloud (when it exists) — separate security policy will apply" but cloud launches in 9 days. v1.1 follow-up to merge cloud scope in. |
 | 6 | medium   | 11 input validation               | **accepted with rationale**           | `display_name` server-side handling is `slice(0, 64)` (truncate) instead of 400-reject. Defense in depth; UX-preserving on bypass attempt. Not exploitable. |
-| 7 | low      | 9 dependency vulns (out of scope) | **out of scope for launch**           | `fast-uri` HIGH in `cloud/vscode-dendra/package-lock.json`. vscode-dendra is not in the v1.0 launch surface. Bump in a follow-up. |
+| 7 | low      | 9 dependency vulns (out of scope) | **out of scope for launch**           | `fast-uri` HIGH in `cloud/vscode-postrule/package-lock.json`. vscode-postrule is not in the v1.0 launch surface. Bump in a follow-up. |
 | 8 | info     | 2 keys hashing algorithm          | **accepted; documented in source**    | API keys hashed with HMAC-SHA-256, not argon2id. Reasoning correct: 190-bit random keys don't need a KDF. Documented in `cloud/api/src/keys.ts` lines 9–17. |
 
 Severity scale: critical / **high** / **medium** / low / info.
@@ -33,7 +33,7 @@ Severity scale: critical / **high** / **medium** / low / info.
 
 1. Fetched `origin/main`, verified HEAD matches `d4684d3`, verified all
    17 expected PRs (#28–#44) are present in the log.
-2. Created worktree at `/tmp/dendra-security-audit-v2`.
+2. Created worktree at `/tmp/postrule-security-audit-v2`.
 3. Walked each of the 13 audit dimensions against the worktree HEAD.
 4. Re-ran tests after every code change: `cloud/api npm test` → 220
    passed / 27 skipped (unchanged); dashboard typecheck / lint / build
@@ -55,7 +55,7 @@ Severity scale: critical / **high** / **medium** / low / info.
   never echoed back, never logged on a failure path, never serialized
   into the error message. Reviewed all `console.error` / `console.log`
   calls in the file; none touch `expected` or `got`.
-- `cloud/dashboard/lib/dendra-api.ts` lines 11–18: `assertServerOnly()`
+- `cloud/dashboard/lib/postrule-api.ts` lines 11–18: `assertServerOnly()`
   fires on every `adminFetch` and `adminFetchNullable`. All 18 admin
   call sites in the file go through one of those two helpers. Token
   cannot leak to the browser.
@@ -63,7 +63,7 @@ Severity scale: critical / **high** / **medium** / low / info.
   documented as a secret. `[vars]` blocks (lines 71–72, 111–112) only
   contain `ENVIRONMENT`.
 
-### 2. Bearer-token (`dndr_live_…`) auth path — CLEAN with note
+### 2. Bearer-token (`prul_live_…`) auth path — CLEAN with note
 
 - Hashing: HMAC-SHA-256 with `API_KEY_PEPPER`, not argon2id. The
   reasoning in `cloud/api/src/keys.ts` lines 9–17 is sound: keys are
@@ -78,7 +78,7 @@ Severity scale: critical / **high** / **medium** / low / info.
   returns a row or it doesn't — no early bail based on prefix.
 - `auth.ts` line 80: invalid key returns `invalid_or_revoked_key` 401
   — the bearer value is never echoed.
-- No `dndr_live_…`-shaped logging found in `src/dendra/` or
+- No `prul_live_…`-shaped logging found in `src/postrule/` or
   `cloud/api/src/`. The one mention in `verdict_telemetry.py:195` is
   inside a docstring example with `# pragma: allowlist secret`.
 
@@ -113,14 +113,14 @@ Severity scale: critical / **high** / **medium** / low / info.
   `LlamafileAdapter`) take `base_url` as a developer-supplied
   constructor arg, not request input. Library users explicitly pin
   the endpoint at decoration time.
-- CLI device-flow URL: `_DEFAULT_API_BASE = "https://api.dendra.run/v1"`
-  hard-coded at `src/dendra/cli.py:49`. Env override
-  `DENDRA_API_BASE` is operator-controlled, not network-attacker
+- CLI device-flow URL: `_DEFAULT_API_BASE = "https://api.postrule.ai/v1"`
+  hard-coded at `src/postrule/cli.py:49`. Env override
+  `POSTRULE_API_BASE` is operator-controlled, not network-attacker
   controlled. Same trust model as `OPENAI_BASE_URL`.
-- `_fetch_telemetry_preference` (`src/dendra/cli.py:595–620`) hits
+- `_fetch_telemetry_preference` (`src/postrule/cli.py:595–620`) hits
   `{api_base}/whoami` — same trust model.
-- Dashboard `API_BASE = process.env.DENDRA_API_BASE_URL ??
-  'https://staging-api.dendra.run'` (`lib/dendra-api.ts:8`). Server-
+- Dashboard `API_BASE = process.env.POSTRULE_API_BASE_URL ??
+  'https://staging-api.postrule.ai'` (`lib/postrule-api.ts:8`). Server-
   controlled config; user cannot inject.
 - Stripe webhook: outbound calls limited to `stripe.Subscription`
   metadata reads, which go through the Stripe SDK's pinned base URL.
@@ -133,7 +133,7 @@ Severity scale: critical / **high** / **medium** / low / info.
 naked `clerkMiddleware()` export — **zero** security response headers
 on any dashboard route. PR #26 ("launch readiness P0") apparently did
 not land header coverage. Anyone serving content from
-`app.dendra.run` could be embedded in any iframe, executed in any
+`app.postrule.ai` could be embedded in any iframe, executed in any
 mixed-content context, or sniffed by a MITM willing to downgrade.
 
 **Fix:** Rewrote `middleware.ts` to wrap the Clerk middleware and
@@ -235,7 +235,7 @@ their other deployments).
 ### 9. Dependency vulnerabilities — **HIGH (fixed in this PR)**
 
 **pre-audit `gh dependabot/alerts`:** **16 open alerts**, far more than the
-"4" the prompt mentioned. The repo is `b-tree-labs/dendra`. Concrete
+"4" the prompt mentioned. The repo is `b-tree-labs/postrule`. Concrete
 counts at audit time:
 
 | # | Severity | Package | Manifest | Fix in |
@@ -253,7 +253,7 @@ counts at audit time:
 | 36 | high | next | dashboard | 15.5.16 |
 | 35 | high | next | dashboard | 15.5.16 |
 | 34 | high | next | dashboard | 15.5.16 |
-| 33 | high | fast-uri | **vscode-dendra** (out-of-scope for v1.0) | 3.1.2 |
+| 33 | high | fast-uri | **vscode-postrule** (out-of-scope for v1.0) | 3.1.2 |
 | 32 | medium | hono | api | 4.12.18 |
 | 31 | low | hono | api | 4.12.18 |
 | 30 | medium | hono | api | 4.12.18 |
@@ -277,7 +277,7 @@ counts at audit time:
 3. `eslint-config-next` aligned to `^15.5.18` to match.
 
 **Out of scope for launch:** alert #33 (`fast-uri` HIGH in
-`cloud/vscode-dendra`). The VSCode extension is not part of the v1.0
+`cloud/vscode-postrule`). The VSCode extension is not part of the v1.0
 launch surface; bump in a follow-up.
 
 **Python side:** `pip-audit` not installed in this environment.
@@ -324,10 +324,10 @@ before the next monthly maintenance window.
 
 **Findings:**
 
-1. **Stale scope claim.** Line 65: "Dendra Cloud (when it exists) —
+1. **Stale scope claim.** Line 65: "Postrule Cloud (when it exists) —
    separate security policy will apply." The cloud surface launches
    in 9 days. This needs to be flipped before launch day.
-   - **Recommendation:** add a brief "## Hosted service (Dendra Cloud)"
+   - **Recommendation:** add a brief "## Hosted service (Postrule Cloud)"
      section pointing to the same `security@b-treeventures.com` alias,
      covering the api Worker, dashboard, webhook receiver, and
      bearer-token + service-token auth boundaries. Flag for
@@ -372,7 +372,7 @@ before the next monthly maintenance window.
    Python dependency scan.
 6. **HSTS preload** submission once confident no http-only origins
    remain.
-7. **Bump `fast-uri` in `cloud/vscode-dendra`** when that surface
+7. **Bump `fast-uri` in `cloud/vscode-postrule`** when that surface
    re-enters scope.
 
 ---
@@ -386,7 +386,7 @@ After the fixes in this PR:
 - `cloud/dashboard` — typecheck clean, lint clean, build clean.
 - `cloud/collector` — npm audit clean.
 - 16 dependabot alerts → 1 remaining (alert #33, out-of-scope
-  vscode-dendra fast-uri).
+  vscode-postrule fast-uri).
 
 **No blockers identified. Cleared to ship 2026-05-20** pending the
 two pre-launch operator actions above (Cloudflare Rule for per-IP

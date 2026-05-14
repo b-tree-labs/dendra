@@ -1,5 +1,5 @@
 {
-  "$schema": "https://dendra.run/schemas/pricing-tiers.v1.json",
+  "$schema": "https://postrule.ai/schemas/pricing-tiers.v1.json",
   "last_updated": "2026-05-11",
   "currency": "USD",
   "post_graduation_cost_per_call_usd": 3e-6,
@@ -8,12 +8,12 @@
   "default_graduation_fraction": 0.5,
   "default_graduation_window_days": 90,
   "metering_unit_label": "Verdicts / mo",
-  "metering_unit_gloss": "A verdict is one classification Dendra logs to your account — feeds your report card and the cohort.",
+  "metering_unit_gloss": "A verdict is one classification Postrule logs to your account — feeds your report card and the cohort.",
   "tiers": [
     {
       "id": "free",
       "label": "Free",
-      "headline": "One product, two deployment modes. Run Dendra locally; use the cloud as your audit layer.",
+      "headline": "One product, two deployment modes. Run Postrule locally; use the cloud as your audit layer.",
       "price_display": "$0",
       "price_per_month_usd": 0,
       "classifications_per_month": 10000,
@@ -23,7 +23,7 @@
       "upgrade_summary": "Free covers self-hosted runs and the hosted audit layer at 10K verdicts/mo. Upgrade to Pro for cohort-tuned BYOK judge orchestration, audit-chain export, and 250K verdicts/mo.",
       "is_enterprise": false,
       "cta_label": "Sign up free",
-      "cta_href": "https://app.dendra.run/sign-up?utm_source=pricing_free"
+      "cta_href": "https://app.postrule.ai/sign-up?utm_source=pricing_free"
     },
     {
       "id": "pro",
@@ -38,8 +38,8 @@
       "upgrade_summary": "Pro adds the BYOK judge orchestration layer (cohort-tuned prompts + audit-chain export) on top of Free, with 25× the verdict cap and unlimited dashboard users.",
       "is_enterprise": false,
       "cta_label": "Sign up",
-      "cta_href": "https://app.dendra.run/sign-up?utm_source=pricing_pro",
-      "stripe_product_lookup_key": "dendra_hosted_pro"
+      "cta_href": "https://app.postrule.ai/sign-up?utm_source=pricing_pro",
+      "stripe_product_lookup_key": "postrule_hosted_pro"
     },
     {
       "id": "scale",
@@ -54,8 +54,8 @@
       "upgrade_summary": "Scale adds webhooks, SSO, and 90-day retention to Pro, with 20× the verdict cap for high-volume ML platforms.",
       "is_enterprise": false,
       "cta_label": "Sign up",
-      "cta_href": "https://app.dendra.run/sign-up?utm_source=pricing_scale",
-      "stripe_product_lookup_key": "dendra_hosted_scale"
+      "cta_href": "https://app.postrule.ai/sign-up?utm_source=pricing_scale",
+      "stripe_product_lookup_key": "postrule_hosted_scale"
     },
     {
       "id": "business",
@@ -70,8 +70,8 @@
       "upgrade_summary": "Business adds the SOC 2 readiness roadmap, 99.9% SLA, on-request BAA, and dedicated Slack to Scale, with a 5× verdict cap for regulated workloads.",
       "is_enterprise": false,
       "cta_label": "Sign up",
-      "cta_href": "https://app.dendra.run/sign-up?utm_source=pricing_business",
-      "stripe_product_lookup_key": "dendra_hosted_business"
+      "cta_href": "https://app.postrule.ai/sign-up?utm_source=pricing_business",
+      "stripe_product_lookup_key": "postrule_hosted_business"
     },
     {
       "id": "enterprise_financial",
@@ -86,7 +86,7 @@
       "upgrade_summary": "Enterprise adds industry-tuned configuration and design-partner pricing for regulated financial-services deployments.",
       "is_enterprise": true,
       "cta_label": "Sign up to apply",
-      "cta_href": "https://app.dendra.run/sign-up?utm_source=pricing_enterprise_financial"
+      "cta_href": "https://app.postrule.ai/sign-up?utm_source=pricing_enterprise_financial"
     },
     {
       "id": "enterprise_healthcare",
@@ -101,7 +101,7 @@
       "upgrade_summary": "Enterprise adds industry-tuned configuration and design-partner pricing for regulated healthcare deployments.",
       "is_enterprise": true,
       "cta_label": "Sign up to apply",
-      "cta_href": "https://app.dendra.run/sign-up?utm_source=pricing_enterprise_healthcare"
+      "cta_href": "https://app.postrule.ai/sign-up?utm_source=pricing_enterprise_healthcare"
     },
     {
       "id": "enterprise_soc",
@@ -116,7 +116,7 @@
       "upgrade_summary": "Enterprise adds industry-tuned configuration and design-partner pricing for regulated SOC/security deployments.",
       "is_enterprise": true,
       "cta_label": "Sign up to apply",
-      "cta_href": "https://app.dendra.run/sign-up?utm_source=pricing_enterprise_soc"
+      "cta_href": "https://app.postrule.ai/sign-up?utm_source=pricing_enterprise_soc"
     },
     {
       "id": "enterprise_government",
@@ -131,7 +131,7 @@
       "upgrade_summary": "Enterprise adds industry-tuned configuration and design-partner pricing for regulated government deployments.",
       "is_enterprise": true,
       "cta_label": "Sign up to apply",
-      "cta_href": "https://app.dendra.run/sign-up?utm_source=pricing_enterprise_government"
+      "cta_href": "https://app.postrule.ai/sign-up?utm_source=pricing_enterprise_government"
     },
     {
       "id": "pro_services",
@@ -146,7 +146,7 @@
       "upgrade_summary": "Pro Services is decoupled from the license — engagement-priced packages from $35K–$150K.",
       "is_enterprise": false,
       "cta_label": "Sign up to scope",
-      "cta_href": "https://app.dendra.run/sign-up?utm_source=pricing_pro_services"
+      "cta_href": "https://app.postrule.ai/sign-up?utm_source=pricing_pro_services"
     }
   ]
 }

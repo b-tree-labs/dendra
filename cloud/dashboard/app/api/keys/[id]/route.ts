@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { upsertUser, revokeKey } from "../../../../lib/dendra-api";
+import { upsertUser, revokeKey } from "../../../../lib/postrule-api";
 
 export const runtime = "edge";
 

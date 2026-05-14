@@ -9,7 +9,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { upsertUser } from "../../../../lib/dendra-api";
+import { upsertUser } from "../../../../lib/postrule-api";
 import { stripe } from "../../../../lib/stripe";
 
 export const runtime = "edge";
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     const email = u?.emailAddresses?.[0]?.emailAddress;
     if (!email) return NextResponse.json({ error: "no_email" }, { status: 400 });
 
-    const dendraUser = await upsertUser(userId, email);
+    const postruleUser = await upsertUser(userId, email);
 
     // Fetch the user's stripe_customer_id from the api Worker's admin surface.
     // (The portal session needs an existing customer; we set this on first

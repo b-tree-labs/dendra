@@ -205,7 +205,7 @@ async function readCohortSize(env: PreferencesEnv): Promise<number> {
 // ---------------------------------------------------------------------------
 // GET /admin/insights/status?user_id=N
 //
-// Companion to the `dendra insights status` CLI command. The dashboard
+// Companion to the `postrule insights status` CLI command. The dashboard
 // renders three lines:
 //   - Status: enrolled / not-enrolled
 //   - Cohort size: N deployments

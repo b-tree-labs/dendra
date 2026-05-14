@@ -1,6 +1,6 @@
-# Dendra · accessibility
+# Postrule · accessibility
 
-How the Dendra brand system holds up when accessibility matters.
+How the Postrule brand system holds up when accessibility matters.
 This doc is a reference for designers, developers, and marketers
 using the kit — if you're adding a new asset, check it against
 the rules here before shipping.
@@ -71,7 +71,7 @@ primary work.
 
 ### For charts + figures
 
-When `dendra plot` or `matplotlib` outputs use the accent orange
+When `postrule plot` or `matplotlib` outputs use the accent orange
 for a data series:
 
 - Use a distinct line style (dashed, dotted) in addition to color
@@ -92,25 +92,25 @@ At 16 px favicon:
   full semantic. At 32 px and above, the gate structure resolves.
 
 **Do not ship the mark without the rounded tile at favicon sizes.**
-The plain `dendra-mark.svg` on a transparent background becomes
-illegible below ~32 px. Use `dendra-favicon.svg` (the rounded
+The plain `postrule-mark.svg` on a transparent background becomes
+illegible below ~32 px. Use `postrule-favicon.svg` (the rounded
 graphite tile variant) for anything under 32 px.
 
 ## Alt text conventions
 
-All Dendra marks, wordmarks, and composite assets need alt text
+All Postrule marks, wordmarks, and composite assets need alt text
 when embedded in documents, emails, slides, and web pages.
 
 | Asset | Recommended alt text |
 |---|---|
-| Mark alone | `Dendra mark` |
+| Mark alone | `Postrule mark` |
 | Mark (decorative, with visible wordmark nearby) | `""` (empty — use `aria-hidden="true"` too) |
-| Horizontal wordmark | `Dendra` |
-| Stacked wordmark | `Dendra` |
-| Sub-brand lockup (e.g. Cloud) | `Dendra Cloud` |
-| Social card | `Dendra: software that's smarter every month than the day you shipped it` |
+| Horizontal wordmark | `Postrule` |
+| Stacked wordmark | `Postrule` |
+| Sub-brand lockup (e.g. Cloud) | `Postrule Cloud` |
+| Social card | `Postrule: software that's smarter every month than the day you shipped it` |
 | Favicon / tile | usually omitted (favicons are decorative context for the page title) |
-| Animated mark | `Dendra mark (animated)` — include the (animated) hint for screen-reader users |
+| Animated mark | `Postrule mark (animated)` — include the (animated) hint for screen-reader users |
 
 **Do NOT** use alt text like "logo," "icon," "image of mark," or
 decorative descriptors. Alt text is meaning, not description.
@@ -118,13 +118,13 @@ decorative descriptors. Alt text is meaning, not description.
 ### When to use `aria-hidden="true"`
 
 When the mark appears *next to* a wordmark that is text (like in
-the site header), the mark is decorative — the textual "DENDRA"
+the site header), the mark is decorative — the textual "POSTRULE"
 is the actual content. In that case:
 
 ```html
-<a href="/" class="wordmark" aria-label="Dendra home">
-  <img src="./dendra-mark.svg" alt="" aria-hidden="true" />
-  <span>DENDRA</span>
+<a href="/" class="wordmark" aria-label="Postrule home">
+  <img src="./postrule-mark.svg" alt="" aria-hidden="true" />
+  <span>POSTRULE</span>
 </a>
 ```
 
@@ -148,15 +148,15 @@ mark is skipped as decorative chrome.
 ### Font size minimum
 
 Body text is 16 px base. Secondary text is 13 px. **Never use
-smaller than 11 px** in Dendra interfaces — anything smaller
+smaller than 11 px** in Postrule interfaces — anything smaller
 fails normal-vision reading at typical viewing distances and
-cannot be rescued by Dendra's ink-soft color choice.
+cannot be rescued by Postrule's ink-soft color choice.
 
 ## Motion accessibility
 
-The mark has one animation — `dendra-mark-animated.svg` —
+The mark has one animation — `postrule-mark-animated.svg` —
 triggered for specific UI states (loading, first-render,
-phase-transition confirmation). All Dendra motion:
+phase-transition confirmation). All Postrule motion:
 
 - Respects `prefers-reduced-motion: reduce` — reduced-motion
   viewers see the settled-state mark, not the rising animation.
@@ -169,14 +169,14 @@ See `brand/motion.md` for the full motion spec.
 
 ## Focus states
 
-Interactive elements (buttons, links) in Dendra's web UI get
+Interactive elements (buttons, links) in Postrule's web UI get
 a visible focus ring. The landing page CSS uses `:focus-visible`
 with a 2-px accent-orange outline — 3 : 1 against off-white,
 3.5 : 1 against graphite. Always visible, never display:none.
 
 ## Touch-target size
 
-On mobile: interactive elements in Dendra UIs (landing page
+On mobile: interactive elements in Postrule UIs (landing page
 buttons, navigation links, install-command blocks) are minimum
 48×48 px — matches the WCAG 2.5.5 target-size guideline and the
 Apple/Android platform minimums.
@@ -193,6 +193,6 @@ Markdown docs in this repo target:
 ---
 
 **If you find an accessibility issue with a brand asset**, file
-it at https://github.com/b-tree-labs/dendra/issues with the
+it at https://github.com/b-tree-labs/postrule/issues with the
 `a11y` label. Explicit, reproducible bug reports are strongly
 preferred over vague "this is hard to see" reports.

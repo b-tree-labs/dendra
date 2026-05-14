@@ -3,7 +3,7 @@
 //
 // /v1/registry/contribute, /v1/team-corpus, /v1/team-corpus/:id handlers.
 //
-// Backs the Python `dendra.cloud.registry` and `dendra.cloud.team_corpus`
+// Backs the Python `postrule.cloud.registry` and `postrule.cloud.team_corpus`
 // modules. All routes are Bearer-authenticated via the standard auth
 // middleware mounted in index.ts.
 //
@@ -18,7 +18,7 @@ const TEAM_ID_RE = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/;
 const MAX_TEAM_PAYLOAD_BYTES = 16 * 1024;
 const MAX_REGISTRY_PAYLOAD_BYTES = 32 * 1024;
 
-// Conservative identifier-key set; mirrors `dendra.cloud.registry._IDENTIFYING_KEYS`.
+// Conservative identifier-key set; mirrors `postrule.cloud.registry._IDENTIFYING_KEYS`.
 // Server-side check rejects any contribution where these keys appear at
 // any nesting level — defense in depth against a buggy or malicious client.
 const IDENTIFYING_KEYS = new Set([
@@ -51,7 +51,7 @@ function containsIdentifyingKey(obj: unknown): boolean {
 // POST /v1/team-corpus
 //
 // Body: { team_id: "acme-eng", corpus: { ...arbitrary JSON... } }
-// Returns: { share_url: "https://api.dendra.run/v1/team-corpus/acme-eng" }
+// Returns: { share_url: "https://api.postrule.ai/v1/team-corpus/acme-eng" }
 // ---------------------------------------------------------------------------
 export async function shareCorpusHandler(c: Context<{ Bindings: ApiEnv }>) {
   const userId = requireAuth(c).user_id;
@@ -140,7 +140,7 @@ export async function contributeHandler(c: Context<{ Bindings: ApiEnv }>) {
   if (containsIdentifyingKey(body)) {
     return c.json(
       {
-        error: 'corpus contains identifying keys; run dendra.cloud.registry.anonymize first',
+        error: 'corpus contains identifying keys; run postrule.cloud.registry.anonymize first',
       },
       400,
     );

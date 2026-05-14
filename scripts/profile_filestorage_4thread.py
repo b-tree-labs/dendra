@@ -22,7 +22,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from dendra import ClassificationRecord, FileStorage  # noqa: E402
+from postrule import ClassificationRecord, FileStorage  # noqa: E402
 
 
 def _record() -> ClassificationRecord:

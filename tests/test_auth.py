@@ -12,7 +12,7 @@
 # Additional Use Grant: see LICENSE-BSL. Production use is
 # permitted; offering a competing hosted service is not.
 
-"""Tests for ``dendra.auth`` — local credential storage + env fallback."""
+"""Tests for ``postrule.auth`` — local credential storage + env fallback."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ import stat
 
 import pytest
 
-from dendra import auth
+from postrule import auth
 
 
 @pytest.fixture()
@@ -32,7 +32,7 @@ def fake_home(tmp_path, monkeypatch):
     # Some platforms also consult USERPROFILE; mirror it so Path.home() agrees.
     monkeypatch.setenv("USERPROFILE", str(tmp_path))
     # Drop any ambient API key from the parent shell.
-    monkeypatch.delenv("DENDRA_API_KEY", raising=False)
+    monkeypatch.delenv("POSTRULE_API_KEY", raising=False)
     return tmp_path
 
 
@@ -48,7 +48,7 @@ class TestLoadCredentials:
         assert creds["email"] == "user@example.com"
 
     def test_env_var_fallback(self, fake_home, monkeypatch):
-        monkeypatch.setenv("DENDRA_API_KEY", "dndra_envkey")
+        monkeypatch.setenv("POSTRULE_API_KEY", "dndra_envkey")
         creds = auth.load_credentials()
         assert creds is not None
         assert creds["api_key"] == "dndra_envkey"  # pragma: allowlist secret
@@ -57,7 +57,7 @@ class TestLoadCredentials:
 
     def test_file_takes_precedence_over_env(self, fake_home, monkeypatch):
         auth.save_credentials("dndra_filekey", email="u@x.com")
-        monkeypatch.setenv("DENDRA_API_KEY", "dndra_envkey")
+        monkeypatch.setenv("POSTRULE_API_KEY", "dndra_envkey")
         creds = auth.load_credentials()
         assert creds["api_key"] == "dndra_filekey"  # pragma: allowlist secret
 
@@ -75,7 +75,7 @@ class TestSaveCredentials:
 
     def test_file_permissions_are_0600(self, fake_home):
         auth.save_credentials("dndra_token", email="a@b.com")
-        cred_path = fake_home / ".dendra" / "credentials"
+        cred_path = fake_home / ".postrule" / "credentials"
         assert cred_path.exists()
         # On POSIX, the mode bits should be exactly user-read/user-write.
         if os.name == "posix":
@@ -84,7 +84,7 @@ class TestSaveCredentials:
 
     def test_file_contents_are_valid_json(self, fake_home):
         auth.save_credentials("dndra_token", email="a@b.com")
-        cred_path = fake_home / ".dendra" / "credentials"
+        cred_path = fake_home / ".postrule" / "credentials"
         # JSON is a subset of TOML for plain key/value, but the canonical
         # on-disk format we ship is JSON. Make sure it parses.
         payload = json.loads(cred_path.read_text(encoding="utf-8"))
@@ -101,7 +101,7 @@ class TestSaveCredentials:
 class TestClearCredentials:
     def test_removes_credentials_file(self, fake_home):
         auth.save_credentials("dndra_token", email="a@b.com")
-        cred_path = fake_home / ".dendra" / "credentials"
+        cred_path = fake_home / ".postrule" / "credentials"
         assert cred_path.exists()
         auth.clear_credentials()
         assert not cred_path.exists()
@@ -120,7 +120,7 @@ class TestIsLoggedIn:
         assert auth.is_logged_in() is True
 
     def test_true_with_env_credentials(self, fake_home, monkeypatch):
-        monkeypatch.setenv("DENDRA_API_KEY", "dndra_env")
+        monkeypatch.setenv("POSTRULE_API_KEY", "dndra_env")
         assert auth.is_logged_in() is True
 
 
@@ -152,7 +152,7 @@ class TestTelemetryPreference:
         assert creds["telemetry_enabled"] is True
 
     def test_env_var_only_defaults_to_telemetry_enabled(self, fake_home, monkeypatch):
-        monkeypatch.setenv("DENDRA_API_KEY", "dndra_env")
+        monkeypatch.setenv("POSTRULE_API_KEY", "dndra_env")
         creds = auth.load_credentials()
         assert creds is not None
         assert creds["telemetry_enabled"] is True

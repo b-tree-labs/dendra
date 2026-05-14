@@ -1,5 +1,5 @@
 {
-  "$schema": "https://dendra.run/schemas/llm-prices.v1.json",
+  "$schema": "https://postrule.ai/schemas/llm-prices.v1.json",
   "last_updated": "2026-04-30",
   "source": {
     "name": "BerriAI/litellm model_prices_and_context_window.json",

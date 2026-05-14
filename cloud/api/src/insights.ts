@@ -6,7 +6,7 @@
 // namespace. No auth: the Python CLI and the landing site both fetch
 // these via plain HTTPS.
 //
-// The route is mounted on `dendra.run/insights/*` via a Cloudflare
+// The route is mounted on `postrule.ai/insights/*` via a Cloudflare
 // Worker Route override (see docs/working/aggregator-kv-cutover-2026-05-07.md),
 // which keeps the consumer URL stable across the file→KV cutover.
 
@@ -39,7 +39,7 @@ insights.get('/tuned-defaults.json', async (c) => {
     headers: {
       'Content-Type': 'application/json',
       'Cache-Control': 'public, max-age=300',
-      'X-Dendra-Source': 'kv',
+      'X-Postrule-Source': 'kv',
     },
   });
 });

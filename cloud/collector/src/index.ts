@@ -1,7 +1,7 @@
 // Copyright (c) 2026 B-Tree Labs
 // SPDX-License-Identifier: LicenseRef-BSL-1.1
 //
-// Dendra Insights collector — Cloudflare Worker.
+// Postrule Insights collector — Cloudflare Worker.
 //
 // Two routes:
 //   POST /v1/events      — accept a batch of events, validate, persist to D1
@@ -18,7 +18,7 @@ export interface Env {
 }
 
 // ---------------------------------------------------------------------------
-// Schema constants — must stay aligned with src/dendra/insights/events.py
+// Schema constants — must stay aligned with src/postrule/insights/events.py
 // EVENT_TYPES + _PAYLOAD_KEY_WHITELIST. A change in either side without
 // the other is a privacy bug; tests pin both sides to prevent drift.
 // ---------------------------------------------------------------------------
@@ -126,15 +126,15 @@ export default {
 };
 
 // ---------------------------------------------------------------------------
-// CORS — landing-page origin (dendra.run / staging.dendra.run) calls
-// the collector subdomain (collector.dendra.run / staging-collector...).
+// CORS — landing-page origin (postrule.ai / staging.postrule.ai) calls
+// the collector subdomain (collector.postrule.ai / staging-collector...).
 // Same-org cross-origin; locked to known origins, no wildcard.
 // ---------------------------------------------------------------------------
 
 const ALLOWED_ORIGINS = new Set([
-  'https://dendra.run',
-  'https://www.dendra.run',
-  'https://staging.dendra.run',
+  'https://postrule.ai',
+  'https://www.postrule.ai',
+  'https://staging.postrule.ai',
   // Local dev (python -m http.server / wrangler dev).
   'http://localhost:8765',
   'http://127.0.0.1:8765',

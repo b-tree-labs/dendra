@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  E · Contingency horizontal wordmark (mark + "DENDRA").
+  E · Contingency horizontal wordmark (mark + "POSTRULE").
   Same layout as B-Tree Labs wordmark system: 1200×300 canvas, mark
   scaled 0.391 into the left gutter, wordmark set in Space Grotesk
   Medium 108 px with 0.18em tracking.
@@ -18,5 +18,5 @@
   <text x="300" y="185"
         font-family="'Space Grotesk', 'Neue Haas Grotesk Display', 'Helvetica Neue', system-ui, sans-serif"
         font-weight="500" font-size="108" letter-spacing="19.4"
-        fill="#1a1a1f">DENDRA</text>
+        fill="#1a1a1f">POSTRULE</text>
 </svg>

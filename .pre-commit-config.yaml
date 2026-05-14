@@ -1,4 +1,4 @@
-# Dendra pre-commit hooks
+# Postrule pre-commit hooks
 #
 # Install once:
 #   pip install pre-commit

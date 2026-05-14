@@ -2,7 +2,7 @@
 #
 # We don't run pylint in CI (ruff covers hard lints). This file exists
 # so the editor's bundled pylint doesn't bury real signal under rules
-# that don't fit Dendra's example-driven repo shape. Disables below are
+# that don't fit Postrule's example-driven repo shape. Disables below are
 # limited to the genuinely unfixable — widen only with a one-line
 # rationale.
 

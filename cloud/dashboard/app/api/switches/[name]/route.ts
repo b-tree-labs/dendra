@@ -16,7 +16,7 @@ import {
   upsertUser,
   archiveSwitch,
   unarchiveSwitch,
-} from "../../../../lib/dendra-api";
+} from "../../../../lib/postrule-api";
 
 export const runtime = "edge";
 

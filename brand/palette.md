@@ -1,10 +1,10 @@
-# Dendra · palette
+# Postrule · palette
 
-Dendra inherits the B-Tree Labs palette exactly. Every color is
+Postrule inherits the B-Tree Labs palette exactly. Every color is
 already defined and documented in the parent system at
 `b-tree-labs/.github/brand/palette.md`. This file exists to
-confirm Dendra uses the same values and to document any
-Dendra-specific usage rules on top of the parent.
+confirm Postrule uses the same values and to document any
+Postrule-specific usage rules on top of the parent.
 
 ## Primary palette
 
@@ -24,9 +24,9 @@ Dendra-specific usage rules on top of the parent.
 | Accent deep | Ember deep | `#8a3d00` |
 | Accent wash | Ember wash | `#f4e4d8` |
 
-## Dendra-specific usage
+## Postrule-specific usage
 
-**The accent carries the theorem.** In the Dendra mark (D2' ·
+**The accent carries the theorem.** In the Postrule mark (D2' ·
 Node), the burnt orange accent stroke is the evidence — the thing
 that crosses the rule floor and passes through the phase gate.
 Everywhere the accent appears, it is doing *semantic* work:
@@ -34,7 +34,7 @@ marking the thing being measured, the thing advancing, the thing
 earning its graduation. It is never decoration.
 
 **One accent per composition.** Same rule as the parent. Never
-more than a single accent element in any Dendra asset.
+more than a single accent element in any Postrule asset.
 
 **Accent on dark ground.** `#BF5700` holds its reading at a
 contrast ratio of ~3.2:1 on `#1a1a1f` — WCAG-AA for non-text,

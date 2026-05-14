@@ -1,12 +1,12 @@
 // Copyright (c) 2026 B-Tree Labs
 // SPDX-License-Identifier: LicenseRef-BSL-1.1
 //
-// Root layout for the Dendra dashboard.
+// Root layout for the Postrule dashboard.
 //
 // Brand port (2026-05-11): the page chrome (header + footer + body type)
 // matches landing/index.html exactly. Brand tokens live in globals.css;
 // fonts load via next/font/google so the dashboard inherits the same
-// Space Grotesk / Geist Mono pairing as dendra.run.
+// Space Grotesk / Geist Mono pairing as postrule.ai.
 
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -31,11 +31,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Dendra",
+  title: "Postrule",
   description:
     "Software that's smarter every month than the day you shipped it.",
   icons: {
-    icon: "/brand/dendra-favicon.svg",
+    icon: "/brand/postrule-favicon.svg",
   },
 };
 
@@ -71,18 +71,18 @@ function SiteHeader() {
         <Link
           href="/"
           className="wordmark"
-          aria-label="Dendra home"
+          aria-label="Postrule home"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             className="wordmark-mark"
-            src="/brand/dendra-mark.svg"
+            src="/brand/postrule-mark.svg"
             alt=""
             aria-hidden="true"
             width="32"
             height="32"
           />
-          <span>DENDRA</span>
+          <span>POSTRULE</span>
         </Link>
         <nav className="primary-nav" aria-label="Primary">
           <Link href="/dashboard">Dashboard</Link>
@@ -102,11 +102,11 @@ function SiteHeader() {
             Settings
           </Link>
           <a
-            href="https://dendra.run"
+            href="https://postrule.ai"
             className="nav-secondary"
             rel="noreferrer"
           >
-            dendra.run
+            postrule.ai
           </a>
           <SignedIn>
             <UserButton afterSignOutUrl="/" />
@@ -125,7 +125,7 @@ function SiteFooter() {
         <span>© 2026 B-Tree Labs</span>
         <nav aria-label="Footer">
           <a
-            href="https://github.com/b-tree-labs/dendra/tree/main/docs"
+            href="https://github.com/b-tree-labs/postrule/tree/main/docs"
             rel="noreferrer"
           >
             Docs
@@ -133,7 +133,7 @@ function SiteFooter() {
           <Link href="/privacy">Privacy</Link>
           <Link href="/terms">Terms</Link>
           <a
-            href="https://github.com/b-tree-labs/dendra"
+            href="https://github.com/b-tree-labs/postrule"
             rel="noreferrer"
           >
             GitHub

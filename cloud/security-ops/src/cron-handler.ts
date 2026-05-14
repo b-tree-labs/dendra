@@ -147,10 +147,10 @@ export function buildOverdueDigest(
   lines.push(
     'Mark a report triaged by stamping triaged_at, e.g.:',
     '',
-    "  wrangler d1 execute dendra-events --env production \\",
+    "  wrangler d1 execute postrule-events --env production \\",
     '    --command \"UPDATE security_reports SET triaged_at = datetime(\\\'now\\\') WHERE reference = \\\'SR-YYYY-NNNN\\\'\"',
     '',
-    '— dendra-security-ops',
+    '— postrule-security-ops',
   );
   return { subject, text: lines.join('\n') };
 }
@@ -178,7 +178,7 @@ export function buildUrgentEscalation(
       'at receipt via the email handler. Triage now or de-classify by',
       'marking triaged.',
       '',
-      '— dendra-security-ops',
+      '— postrule-security-ops',
     ].join('\n'),
   };
 }
