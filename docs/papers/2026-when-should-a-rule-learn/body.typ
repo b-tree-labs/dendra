@@ -793,8 +793,8 @@ Two views of the data are useful and pull complementary signals.
     Snips, HWU64, Banking77, CLINC150. Rule accuracy (grey, flat) and
     ML-head accuracy (blue, rising) on a log x-axis; the dashed red
     vertical marks the first paired-McNemar gate fire at p \< 0.01.
-    Shuffle-sensitivity for the bottom-row rules is reported in Table
-    4b.
+    Shuffle-sensitivity for the bottom-row rules is deferred to a
+    follow-up revision (see Appendix B).
   ]
 )
 
