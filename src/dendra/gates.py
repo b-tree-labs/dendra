@@ -276,14 +276,10 @@ class McNemarGate:
         # filter b > c ensures we only advance when the imbalance points the
         # right way (target wins more disagreement than current).
         b = sum(
-            1
-            for cur, tgt in zip(current_correct, target_correct, strict=True)
-            if (not cur) and tgt
+            1 for cur, tgt in zip(current_correct, target_correct, strict=True) if (not cur) and tgt
         )
         c = sum(
-            1
-            for cur, tgt in zip(current_correct, target_correct, strict=True)
-            if cur and (not tgt)
+            1 for cur, tgt in zip(current_correct, target_correct, strict=True) if cur and (not tgt)
         )
 
         # Lazy import to avoid a hard dependency on viz for core.
