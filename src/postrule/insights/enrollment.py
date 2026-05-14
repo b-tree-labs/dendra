@@ -20,9 +20,9 @@ from dataclasses import dataclass
 from typing import Final
 
 from postrule.insights._paths import (
-    postrule_home,
     enrollment_path,
     ensure_postrule_home,
+    postrule_home,
 )
 
 #: Schema version for the enrollment record. Bump when the structure

@@ -151,7 +151,8 @@ def _maybe_nudge_signup() -> None:
     if count < _NUDGE_THRESHOLD:
         return
     print(
-        "\nLoving Postrule? Sign up for a free account to enable shared team analysis: postrule login",
+        "\nLoving Postrule? Sign up for a free account to enable shared team analysis:"
+        " postrule login",
         file=sys.stderr,
     )
     state["nudge_shown"] = True
@@ -1823,7 +1824,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--report-out",
         default=None,
         help=(
-            "Override the output path for --report (default: postrule/results/_initial-analysis.md)."
+            "Override the output path for --report "
+            "(default: postrule/results/_initial-analysis.md)."
         ),
     )
     p_analyze.add_argument(
