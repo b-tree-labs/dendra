@@ -6,7 +6,7 @@
 // Three exports:
 //
 //   - `email`     — invoked by Cloudflare Email Routing on every
-//                   inbound mail to security@b-treeventures.com.
+//                   inbound mail to security@dendra.run.
 //   - `scheduled` — invoked by the cron trigger configured in
 //                   wrangler.toml ("0 9 * * *" — daily 09:00 UTC).
 //   - `fetch`     — a tiny /health probe so smoke tests can reach
