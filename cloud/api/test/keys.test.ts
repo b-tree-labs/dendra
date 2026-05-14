@@ -76,7 +76,7 @@ describe('parseBearer', () => {
   });
 
   it('tolerates extra whitespace around the header', () => {
-    const k = 'prul_live_abcdefghijklmnopqrstuvwxyz12345A';
+    const k = 'prul_live_abcdefghijklmnopqrstuvwxyz12345A'; // pragma: allowlist secret
     expect(parseBearer(`  Bearer ${k}  `)).toBe(k);
   });
 });

@@ -69,7 +69,9 @@ def test_import_postrule_cold(perf_record):
         },
         target=200_000_000.0,  # 200ms in ns
     )
-    assert median < 200_000_000, f"import postrule median {median / 1e6:.1f}ms exceeds 200ms target."
+    assert median < 200_000_000, (
+        f"import postrule median {median / 1e6:.1f}ms exceeds 200ms target."
+    )
 
 
 # ---------------------------------------------------------------------------

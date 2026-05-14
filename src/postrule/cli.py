@@ -671,7 +671,9 @@ def cmd_insights_enroll(args: argparse.Namespace) -> int:
 
     if is_enrolled():
         print("Already enrolled in Postrule Insights.")
-        print("Run `postrule insights status` for details, or `postrule insights leave` to opt out.")
+        print(
+            "Run `postrule insights status` for details, or `postrule insights leave` to opt out."
+        )
         return 0
 
     print(DISCLOSURE_TEXT, end="")
