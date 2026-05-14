@@ -19,16 +19,19 @@ classification (ATIS, HWU64, Banking77, CLINC150, Snips), question
 categorization (TREC-6), news topic classification (AG News), and
 programming-language detection (codelangs).
 
-We report transition-curve behavior under two rule constructions on
-Banking77, the most-cited intent benchmark in the suite. The 100-example
-keyword auto-rule is sensitive to training-stream order: on the
-as-shipped HuggingFace split it reduces to predict-modal at 1.3%
-(chance), and under random shuffles of the training stream recovers to
-a median of 24.4% (range 21 to 30 across 10 seeds). The auto-rule
-graduates to the same ML asymptote at 87.7% by training-corpus
-exhaustion regardless of starting point; the McNemar gate fires on the
-as-shipped split after the rule's modal-fallback floor is overtaken,
-with effect size dominating the gate decision.
+We report transition-curve behavior under the canonical
+100-example keyword auto-rule on the as-shipped HuggingFace split for
+each benchmark. On Banking77, the most-cited intent benchmark in the
+suite, the auto-rule's seed window is captured by a single class and
+the rule reduces to predict-modal at 1.3% (chance); it nonetheless
+graduates to an ML asymptote of 87.7% by training-corpus exhaustion,
+with the McNemar gate firing after the rule's modal-fallback floor is
+overtaken and effect size dominating the gate decision. The rule is
+sensitive to training-stream order — random shuffles of the training
+stream redraw the seed window from across the label space and produce
+a substantially different rule — but quantifying that sensitivity
+across the suite requires multi-seed runs deferred to the next
+revision (see Appendix B).
 
 We release the reference implementation (the Dendra library), the full
 transition-curve dataset, the benchmark harness, and an `MLHead`
@@ -129,7 +132,8 @@ We make four contributions:
   usable] (ATIS, TREC-6), #emph[rule modal-fallback under sorted splits]
   (Banking77, HWU64, CLINC150, Snips, AG News). The third regime is partially a
   property of HuggingFace split ordering rather than benchmark
-  intrinsics; we report shuffle-sensitivity in §5.3 (Table 5b). Under
+  intrinsics; the shuffle-sensitivity quantification is deferred to
+  the next revision (see Appendix B). Under
   the paired McNemar gate at $alpha = 0.01$, transition depths in the
   suite range from 250 outcomes to 2000. §5 reports the curves; §6 lays
   out the regime taxonomy.
@@ -735,7 +739,7 @@ reported separately in §5.7. Table 4 reports the headline numbers.
   align(center)[#text(size: 8pt)[#table(
     columns: (12%, 16%, 7%, 9%, 10%, 8%, 9%, 11%, 18%),
     align: (left,left,right,right,right,right,right,right,right,),
-    table.header([Benchmark], [Domain], [Labels], [Rule acc], [ML first clear], [ML \@ 1k], [ML final], [First clear ($p < 0.01$)], [Outcomes to ML final],),
+    table.header([Benchmark], [Domain], [Labels], [Rule acc], [ML first clear], [ML \@ 1k], [ML final], [First clear ($p < 0.01$)#footnote[#emph[First clear] reports the smallest checkpoint at which $b > c$ and $p < alpha$. The production gate (`McNemarGate` in `src/dendra/gates.py`) additionally requires $n_"paired" >= n_min$, which can be satisfied later than this column shows on small test sets or under extreme effect sizes. With $n_min = 200$ enforced, the first-clear depths shift to: codelangs never (139-row test set never reaches $n_"paired" = 200$), ATIS 250, TREC-6 250, AG News 1,000, Snips 3,000, HWU64 2,250, Banking77 1,000, CLINC150 750. Path (c) of the V1 review — re-running the column under the production gate — is deferred to a follow-up revision.]], [Outcomes to ML final],),
     table.hline(),
     [#strong[codelangs]], [code], [12], [87.8%], [97.1%], [#emph[\(extract)]], [#strong[97.8%]], [#strong[400]], [553],
     [#strong[ATIS]], [flight booking], [26], [70.0%], [75.6%], [81.9%], [#strong[88.7%]], [#strong[250]], [4,978],
@@ -761,10 +765,12 @@ Snips (Coucke et al. 2018); HWU64 (Liu et al. 2019); Banking77
 (Casanueva et al. 2020); CLINC150 (Larson et al. 2019). Banking77, HWU64, CLINC150, and Snips at
 seed=100 with the as-shipped HuggingFace split produce single-label
 (modal-fallback) rules. Their `Rule acc` column equals chance (1/k).
-Under random shuffling of the training stream the rule recovers to 17 to
-75 percent depending on benchmark (Table 5b). The chance-accuracy floor
-on these four rows is therefore a property of stream ordering at
-seed=100, not of the benchmark itself. Snips is the one outlier on
+Under random shuffling of the training stream the seed window is
+redrawn from across the label space and the rule changes substantially;
+quantifying that sensitivity across the suite is deferred to the next
+revision (see Appendix B). The chance-accuracy floor on these four
+rows is therefore a property of stream ordering at seed=100, not of
+the benchmark itself. Snips is the one outlier on
 first-clear depth: the as-shipped rule's 14.3% accuracy beats the ML
 head at the 250-outcome checkpoint, and the advance gate fires only at
 2,000 outcomes after ML overtakes. The Snips `ML \@ 1k` cell equals
@@ -835,10 +841,11 @@ lifecycle was designed for.
 Banking77, CLINC150 at high cardinality; Snips, AG News, when the
 as-shipped split is sorted by label).] At seed=100 with these splits the
 auto-rule's seed window is captured by a single class and the rule
-reduces to predict-modal. With shuffled training streams the rule
-recovers; on Snips, the recovery is dramatic (75 percent on the test
-set, vs 14 percent under the as-shipped order). The lifecycle handles
-both cases the same way: the rule is the audit floor regardless of its
+reduces to predict-modal. With shuffled training streams the rule is
+redrawn from a different cross-class seed and the construction
+generally yields a higher baseline (multi-seed quantification deferred
+to the next revision; see Appendix B). The lifecycle handles both
+cases the same way: the rule is the audit floor regardless of its
 accuracy. Practitioners deciding whether to ship a rule on day one
 should not infer "this benchmark is hopeless for keyword rules" from the
 as-shipped baseline alone. Two distinct paths get a benchmark into this
@@ -858,9 +865,13 @@ regime:
   a single distinguishing word the auto-rule's TF-IDF keyword pass can
   reach for in the seed window. AG News at 4 labels and 25.9% rule
   (chance = 25%) is the same shape: the rule barely exceeds
-  always-predict-the-modal-class. Under random shuffles of the training
-  stream the Snips rule recovers to 75% (Table 5b); the as-shipped floor
-  is an artifact, not an intrinsic of the benchmark.
+  always-predict-the-modal-class. Random shuffles of the training
+  stream redraw the seed window away from the single-class capture and
+  produce a substantially higher-accuracy rule on Snips; multi-seed
+  quantification is deferred to the next revision (see Appendix B).
+  The as-shipped floor is plausibly an artifact rather than an
+  intrinsic of the benchmark, but the regenerated data is the test of
+  that claim.
 
 The "transition depth" metric loses its narrative force in Regime III:
 the rule was never a viable baseline, and no team could have shipped a
@@ -932,40 +943,20 @@ keyword affinity] rather than cardinality, would not be helped by more
 examples either: the issue is that the label boundary doesn't reduce to
 lexical signals at all in the as-shipped order.)
 
-A second sensitivity axis applies to the same rule construction. The
+A second sensitivity axis applies to the same rule construction: the
 auto-rule's seed window is the first 100 (text, label) pairs in the
 training stream, so its content depends on training-stream order. On
 HuggingFace splits sorted by label, the seed window is captured by a
-single class. Re-shuffling the training stream redraws the window from
-across the label space and changes the rule:
-
-#figure(
-  align(center)[#text(size: 8pt)[#table(
-    columns: (16%, 10%, 16%, 16%, 12%, 12%, 18%),
-    align: (left,right,right,right,right,right,right,),
-    table.header([Benchmark], [Labels], [Paper rule (no shuffle)], [Shuffle median], [min], [max], [Δ],),
-    table.hline(),
-    [HWU64], [64], [1.8%], [27.1%], [23.2%], [31.9%], [+25.4 pp],
-    [Banking77], [77], [1.3%], [24.4%], [21.0%], [29.6%], [+23.1 pp],
-    [CLINC150], [151], [0.5%], [16.6%], [15.4%], [23.8%], [+16.1 pp],
-    [Snips], [7], [14.3%], [#strong[75.3%]], [68.8%], [77.3%], [#strong[\+61.0 pp]],
-    [AG News], [4], [25.9%], [40.0%], [37.0%], [46.1%], [+14.1 pp],
-    [TREC-6], [6], [43.0%], [38.6%], [17.6%], [48.2%], [-4.4 pp],
-  )]]
-  , kind: table
-  )
-
-#strong[Table 5b.] #emph[Rule sensitivity to training-stream order.] Ten
-random shuffles per benchmark, seed=100. Of the five at-chance baselines
-in the table (HWU64, Banking77, CLINC150, Snips, AG News), all five
-recover meaningfully under shuffling; Snips recovers from 14.3% to
-75.3%. TREC-6 (rule at 43.0%, above chance) is included as a control
-and is noisier under shuffle (range 17.6% to 48.2%) because TREC-6's
-natural ordering happens to be favorable. The as-shipped paper rule is not the only rule a practitioner
-would build; it is the rule that the canonical 100-example seed produces
-under the canonical HuggingFace download order. Practitioners with
-control over the seed should expect substantially higher rule baselines
-on the high-cardinality cluster.
+single class; re-shuffling the training stream redraws the window from
+across the label space and changes the rule. Quantifying this axis
+properly requires multi-seed runs across the six relevant benchmarks
+(`dendra bench <name> --shuffle-seed N` over $N in 1..10$); those runs
+are deferred to the next revision and the corresponding sensitivity
+table is not included here (see Appendix B). The qualitative point —
+that the as-shipped paper rule is not the only rule a practitioner
+would build, and that practitioners with control over the seed should
+expect higher rule baselines on the high-cardinality cluster — stands
+as a falsifiable claim awaiting the regenerated data.
 
 === 5.4 Paired vs unpaired test
 <paired-vs-unpaired-test>
@@ -1186,8 +1177,8 @@ The CIFAR-10 setup uses two pieces shipped in v1.0:
   dependency on the v1.0 install path.
 
 Both objects satisfy the same protocols the text path uses; no lifecycle
-or gate code knows it is operating on images. The bench (1000 train rows
-\+ 200 test rows, deterministic seed) reports:
+or gate code knows it is operating on images. The bench (4,000 train rows
+\+ 500 test rows, deterministic seed) reports:
 
 #figure(
   align(center)[#table(
@@ -2202,8 +2193,15 @@ rules per benchmark in
   the `--no-shuffle` flag opts out of the v1.0 default seed-window
   shuffle and recovers the v0.x paper-as-shipped behavior):
   `dendra bench --no-shuffle {atis,banking77,clinc150,hwu64,snips,trec6,ag_news,codelangs}`.
-  Table 5b is reproduced by running `dendra bench <name> --shuffle-seed N`
-  with `N in 1..10` across the six listed benchmarks.
+
+#strong[Deferred to the next revision: shuffle-sensitivity table.] The
+shuffle-sensitivity multi-seed runs that would back a Regime III
+shuffle-recovery table are slated for the next paper revision once the
+regeneration sweep has been done. The CLI is `dendra bench <name>
+--shuffle-seed N` with `N in 1..10` across the six benchmarks in the
+at-chance cluster (HWU64, Banking77, CLINC150, Snips, AG News, plus
+TREC-6 as a control); per the v1.0 README estimate, the sweep is
+roughly $6 times 10 times 30$ minutes $approx 30$ CPU-hours total.
 
 == Appendix C: Code listings
 <appendix-c-code-listings>
