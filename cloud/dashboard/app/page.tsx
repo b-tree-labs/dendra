@@ -20,8 +20,7 @@ export default function Home() {
           letterSpacing: "-0.01em",
         }}
       >
-        Software that&apos;s smarter every month than the day you shipped
-        it.
+        Self-taught classifiers.
       </h1>
 
       <div className="prose-brand mt-6">
