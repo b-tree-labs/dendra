@@ -355,8 +355,8 @@ A learned switch is one object that holds three optional decision-makers
 (the rule, an LLM-style model, and a trained ML head) plus a phase
 counter that tracks which decision-maker is currently routing
 classifications. The phase counter steps forward, or back, as the gates
-introduced in §3.2 and §3.3 fire on accumulated outcome evidence; the
-routing logic at each phase is shown in Table 2 below.
+introduced in §3.2 and §3.3 fire on accumulated outcome evidence.
+Table 2 shows the routing logic at each phase.
 
 Formally, we define a #emph[learned switch] over a label set $cal(L)$ as
 a tuple $S = \( R \, M \, H \, phi.alt \)$ where
@@ -808,11 +808,10 @@ Two views of the data are useful and pull complementary signals.
 
 === 5.2 Three regimes by cardinality and rule-keyword affinity
 <three-regimes-by-cardinality-and-rule-keyword-affinity>
-Reading Table 4 by rule baseline alone separates the suite into three
-operationally meaningful regimes that are governed by #emph[two] axes:
-label cardinality, and how cleanly the label boundary admits stable
-lexical signals (rule-keyword affinity, reported relative to chance
-accuracy $1 \/ k$).
+The suite splits into three operationally meaningful regimes when read
+by rule baseline alone. Two axes govern them: label cardinality, and
+how cleanly the label boundary admits stable lexical signals
+(rule-keyword affinity, reported relative to chance accuracy $1 \/ k$).
 
 #strong[Regime I, #emph[rule near optimum] (codelangs).] With 12
 programming-language labels and rigid syntactic keywords (`def`,
@@ -1153,15 +1152,15 @@ over the autoresearch trajectory) as the v1.x story.
 === 5.7 Beyond text: image-classification bench (CIFAR-10)
 <beyond-text-image-classification-bench-cifar-10>
 All eight benchmarks above are text-shaped. The lifecycle, gates, and
-theorem are modality-agnostic by construction (the gate operates on
+theorem are modality-agnostic by construction: the gate operates on
 paired-correctness arrays, which are produced by #emph[any] classifier
-the user chooses), so the question of generalization to other media
-reduces to a question of available #emph[rule] and #emph[MLHead]
-implementations. We ship one image-modality bench in v1.0 to demonstrate
-the mechanism transfers; pretrained-embedding heads (CLIP, ViT, ResNet)
-and richer modalities (audio, video) are deferred to a companion paper
-because they require dependencies and compute budgets out of scope for
-the v1.0 reference implementation.
+the user chooses. Generalization to other media reduces to a question
+of available #emph[rule] and #emph[MLHead] implementations. We ship one
+image-modality bench in v1.0 to demonstrate the mechanism transfers;
+pretrained-embedding heads (CLIP, ViT, ResNet) and richer modalities
+(audio, video) are deferred to a companion paper because they require
+dependencies and compute budgets out of scope for the v1.0 reference
+implementation.
 
 The CIFAR-10 setup uses two pieces shipped in v1.0:
 
@@ -1327,13 +1326,14 @@ that suite.
 <safety-and-governance>
 === 7.1 Safety-critical caps
 <safety-critical-caps>
-For classification sites where the rule is a regulatory contract
-(content moderation under HIPAA-bound clinical decisions, authorization
-decisions, export-control labeling, identity-verification routing), the
-lifecycle caps at $P_4$ (`ML_WITH_FALLBACK`). The reference
-implementation refuses the $P_4 arrow.r P_5$ transition at construction
-time when `safety_critical=True` is set, and the `Gate` protocol cannot
-be subverted by an operator without modifying source code.
+Some classification sites have a rule that is itself a regulatory
+contract: content moderation under HIPAA-bound clinical decisions,
+authorization decisions, export-control labeling, identity-verification
+routing. For those sites, the lifecycle caps at $P_4$
+(`ML_WITH_FALLBACK`). The reference implementation refuses the
+$P_4 arrow.r P_5$ transition at construction time when
+`safety_critical=True` is set, and the `Gate` protocol cannot be
+subverted by an operator without modifying source code.
 
 The construction-time refusal is a deliberate ergonomic choice: the
 operator who would otherwise reach for `force_advance(P_5)` at 3 AM
@@ -1445,11 +1445,10 @@ interoperates across them. The design decisions worth surfacing:
 
 === 9.1 The `@ml_switch` decorator
 <the-ml_switch-decorator>
-How do you wire classification, dispatch, and the eventual rule-to-ML
-migration through a single call site, so the same
-`classify_content(post)` invocation is what production code calls on day
-one and on day thirty? The simplest invocation is a decorator over the
-rule function:
+Production code should call `classify_content(post)` the same way on
+day one and on day thirty, even as the decision-maker underneath
+migrates from rule to ML. The decorator is how the call site stays
+fixed while the internals graduate. Wrap the rule function once:
 
 ```python
 from dendra import ml_switch
@@ -1547,23 +1546,23 @@ $S = \( R \, M \, H \, phi.alt \)$ of §3.1) is what evolves.
 <storage-and-durability>
 The default storage is a bounded in-memory rotator (10,000 records
 FIFO). Production deployments pass `persist=True` to switch to a
-resilient file-backed store (`FileStorage`) wrapped in an in-memory
-fallback (`ResilientStorage`) that buffers on disk failure and drains on
-recovery. A `SqliteStorage` backend ships for concurrent multi-process
-write workloads. The storage layer is pluggable via the `Storage`
-protocol; users with existing audit infrastructure (Kafka, Redshift,
-Snowflake) can plug those in.
+resilient file-backed store: `FileStorage` wrapped in `ResilientStorage`,
+which buffers on disk failure and drains on recovery. A `SqliteStorage`
+backend ships for concurrent multi-process write workloads. The storage
+layer is pluggable via the `Storage` protocol; users with existing audit
+infrastructure (Kafka, Redshift, Snowflake) can plug those in.
 
 === 9.3 The verifier slot
 <the-verifier-slot>
 Verdict acquisition is the rate-limiting step in production graduation:
 the McNemar gate cannot fire on outcomes that haven't been collected.
 The library ships an autonomous-verifier default
-(`verifier=default_verifier()`) that auto-detects a local Ollama model
-(`qwen2.5:7b` by default; the verdict-quality frontier across small-LLM
-judges is the subject of a companion write-up in preparation) or an
-OpenAI/Anthropic API key, and uses the LLM-as-judge pattern (Liu et al.,
-2023; Zheng et al., 2023) to produce verdicts for every classification.
+(`verifier=default_verifier()`) that produces a verdict for every
+classification via the LLM-as-judge pattern (Liu et al., 2023; Zheng et
+al., 2023). It auto-detects a local Ollama model (`qwen2.5:7b` by
+default) or an OpenAI/Anthropic API key. The verdict-quality frontier
+across small-LLM judges is the subject of a companion write-up in
+preparation.
 
 The same-LLM-as-classifier-and-judge bias is enforced at construction
 time: the `JudgeSource` constructor refuses a judge model that resolves
@@ -1718,11 +1717,11 @@ survives operator turnover.
 <what-this-paper-does-not-change>
 We do not claim to solve verdict acquisition. The McNemar gate eats
 verdicts; it cannot generate them. The autonomous-verifier default
-raises the verdict-rate ceiling significantly (a human-reviewer queue
-typically labels a single-digit-percent sample of production traffic; an
-LLM judge can label every classification), but the underlying problem of
-verdict #emph[quality] is a research direction in itself; we treat it as
-a follow-on rather than a solved problem.
+raises the verdict-rate ceiling significantly: a human-reviewer queue
+typically labels a single-digit-percent sample of production traffic,
+while an LLM judge can label every classification. The underlying
+problem of verdict #emph[quality], though, is a research direction in
+itself; we treat it as a follow-on rather than a solved problem.
 
 We do not claim to solve drift in full. v1 handles one specific kind:
 slow accuracy degradation of the deployed classifier relative to the
@@ -1751,14 +1750,14 @@ where they fit better.
 === 10.3 Cost and latency at scale: graduation as economic optimization
 <cost-and-latency-at-scale-graduation-as-economic-optimization>
 The accuracy story §5 reports has an economic counterpart that is
-structurally identical and operationally larger at scale. The
-lifecycle's transition from a model-classifier slot (Phase 1 / Phase 2:
-an LLM, hosted or local) to a trained ML head (Phase 4 / Phase 5: a
-sklearn pipeline) is a transition between two regimes of inference
-economics, not just two regimes of accuracy. Production teams that adopt
-Dendra inherit #emph[both] graduations: the gate-validated accuracy lift
-the paper measures, and a per-call cost-and-latency drop the paper has
-not yet emphasized.
+structurally identical and operationally larger at scale. The lifecycle
+moves the decision-maker from an LLM (Phase 1 / Phase 2, hosted or
+local) to a trained ML head (Phase 4 / Phase 5, a sklearn pipeline).
+That is a transition between two regimes of inference economics, not
+just two regimes of accuracy. Production teams that adopt Dendra
+inherit #emph[both] graduations: the gate-validated accuracy lift the
+paper measures, and a per-call cost-and-latency drop the paper has not
+yet emphasized.
 
 #strong[Latency.] A model-classifier slot routes through a hosted LLM
 API or a local LLM runtime. Production p50 latency for these services is
@@ -1841,17 +1840,17 @@ this section emphasizes.
 <implications-for-the-cascade-routing-literature>
 The cascade and routing literature (FrugalGPT, RouteLLM, Dekoninck et
 al.) optimizes inference-time routing among already-trained models. Our
-work generalizes the question to the #emph[lifecycle in which models are
-introduced and retired]: a `MODEL_PRIMARY` phase is structurally
+work generalizes the question to the #emph[lifecycle in which models
+are introduced and retired]. A `MODEL_PRIMARY` phase is structurally
 analogous to a two-stage cascade in the FrugalGPT lineage (LLM
-classifier with rule fallback), but the cascade direction is reversed
-— FrugalGPT escalates cheap→expensive on uncertainty, where Dendra's
-`MODEL_PRIMARY` falls back expensive→cheap on uncertainty. The gating
-optimization in our setting is on the cheap fallback (the rule, which
-is structurally preserved) rather than on the expensive primary (the
-LLM); both arrangements share the escalation-on-low-confidence
-pattern, and the $P_4 arrow.r P_5$ transition is the moment when the
-expensive tier becomes unnecessary altogether.
+classifier with rule fallback), but the cascade direction is reversed:
+FrugalGPT escalates cheap→expensive on uncertainty, where Dendra's
+`MODEL_PRIMARY` falls back expensive→cheap. The gating optimization in
+our setting is on the cheap fallback (the rule, which is structurally
+preserved) rather than on the expensive primary (the LLM). Both
+arrangements share the escalation-on-low-confidence pattern, and the
+$P_4 arrow.r P_5$ transition is the moment when the expensive tier
+becomes unnecessary altogether.
 
 A future synthesis would treat the cascade and the lifecycle as
 instances of the same meta-decision-process, with the rule floor as a
