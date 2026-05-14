@@ -26,11 +26,11 @@ the rule reduces to predict-modal at 1.3% (chance); it nonetheless
 graduates to an ML asymptote of 87.7% by training-corpus exhaustion,
 with the McNemar gate firing after the rule's modal-fallback floor is
 overtaken and effect size dominating the gate decision. The rule is
-sensitive to training-stream order — random shuffles of the training
-stream redraw the seed window from across the label space and produce
-a substantially different rule — but quantifying that sensitivity
-across the suite requires multi-seed runs deferred to the next
-revision (see Appendix B).
+sensitive to training-stream order. Random shuffles redraw the seed
+window from across the label space and produce a substantially
+different rule, but quantifying that sensitivity across the suite
+requires multi-seed runs deferred to the next revision (see Appendix
+B).
 
 We release the reference implementation (the Dendra library), the full
 transition-curve dataset, the benchmark harness, and an `MLHead`
@@ -738,7 +738,7 @@ reported separately in §5.7. Table 4 reports the headline numbers.
   align(center)[#text(size: 8pt)[#table(
     columns: (12%, 16%, 7%, 9%, 10%, 8%, 9%, 11%, 18%),
     align: (left,left,right,right,right,right,right,right,right,),
-    table.header([Benchmark], [Domain], [Labels], [Rule acc], [ML first clear], [ML \@ 1k], [ML final], [First clear ($p < 0.01$)#footnote[#emph[First clear] reports the smallest checkpoint at which $b > c$ and $p < alpha$. The production gate (`McNemarGate` in `src/dendra/gates.py`) additionally requires $n_"paired" >= n_min$, which can be satisfied later than this column shows on small test sets or under extreme effect sizes. With $n_min = 200$ enforced, the first-clear depths shift to: codelangs never (139-row test set never reaches $n_"paired" = 200$), ATIS 250, TREC-6 250, AG News 1,000, Snips 3,000, HWU64 2,250, Banking77 1,000, CLINC150 750. Path (c) of the V1 review — re-running the column under the production gate — is deferred to a follow-up revision.]], [Outcomes to ML final],),
+    table.header([Benchmark], [Domain], [Labels], [Rule acc], [ML first clear], [ML \@ 1k], [ML final], [First clear ($p < 0.01$)#footnote[#emph[First clear] reports the smallest checkpoint at which $b > c$ and $p < alpha$. The production gate (`McNemarGate` in `src/dendra/gates.py`) additionally requires $n_"paired" >= n_min$, which can be satisfied later than this column shows on small test sets or under extreme effect sizes. With $n_min = 200$ enforced, the first-clear depths shift to: codelangs never (139-row test set never reaches $n_"paired" = 200$), ATIS 250, TREC-6 250, AG News 1,000, Snips 3,000, HWU64 2,250, Banking77 1,000, CLINC150 750. Path (c) of the V1 review, re-running the column under the production gate, is deferred to a follow-up revision.]], [Outcomes to ML final],),
     table.hline(),
     [#strong[codelangs]], [code], [12], [87.8%], [97.1%], [#emph[\(extract)]], [#strong[97.8%]], [#strong[400]], [553],
     [#strong[ATIS]], [flight booking], [26], [70.0%], [75.6%], [81.9%], [#strong[88.7%]], [#strong[250]], [4,978],
@@ -950,11 +950,11 @@ across the label space and changes the rule. Quantifying this axis
 properly requires multi-seed runs across the six relevant benchmarks
 (`dendra bench <name> --shuffle-seed N` over $N in 1..10$); those runs
 are deferred to the next revision and the corresponding sensitivity
-table is not included here (see Appendix B). The qualitative point —
-that the as-shipped paper rule is not the only rule a practitioner
-would build, and that practitioners with control over the seed should
-expect higher rule baselines on the high-cardinality cluster — stands
-as a falsifiable claim awaiting the regenerated data.
+table is not included here (see Appendix B). The qualitative point stands
+as a falsifiable claim awaiting the regenerated data: that the
+as-shipped paper rule is not the only rule a practitioner would build,
+and that practitioners with control over the seed should expect higher
+rule baselines on the high-cardinality cluster.
 
 === 5.4 Paired vs unpaired test
 <paired-vs-unpaired-test>
