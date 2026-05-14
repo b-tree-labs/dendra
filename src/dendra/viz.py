@@ -110,10 +110,15 @@ def _two_proportion_z_p(*, p1: float, p2: float, n: int) -> float | None:
 
 
 def mcnemar_p(rule_correct: list[bool], ml_correct: list[bool]) -> float | None:
-    """One-sided McNemar's paired-test p-value (H1: ML beats rule).
+    """Two-sided McNemar's paired-test p-value.
 
-    Uses the exact binomial on disagreement pairs when the count is
-    small; normal approximation above 50 disagreements.
+    Computes ``p = min(1.0, 2 * BinomialCDF(min(b, c); n_paired, 0.5))``
+    where ``b`` and ``c`` are the discordant-pair counts and
+    ``n_paired = b + c``. This matches the convention used in the
+    paper's Algorithm 1 (``body.typ`` §3.2), in
+    :func:`dendra.autoresearch._mcnemar_p_value`, and in
+    ``tests/test_figure_4_data_contract.py``. Uses the exact binomial
+    tail for small ``n``; normal approximation above 50 disagreements.
 
     ``rule_correct`` and ``ml_correct`` are parallel lists of booleans
     over the same test set. Returns None if the lists are empty or
@@ -128,17 +133,24 @@ def mcnemar_p(rule_correct: list[bool], ml_correct: list[bool]) -> float | None:
         return 1.0  # no disagreements → cannot reject H0
 
     if n <= 50:
-        # Exact one-sided binomial: P(X >= b | X ~ Bin(n, 0.5)).
+        # Exact two-sided binomial:
+        # p = min(1.0, 2 * P(X <= min(b, c) | X ~ Bin(n, 0.5))).
         from math import comb
 
-        tail = sum(comb(n, k) for k in range(b, n + 1))
-        return tail / (2**n)
+        k = min(b, c)
+        tail = sum(comb(n, i) for i in range(k + 1))
+        p_one = tail / (2**n)
+        return min(1.0, 2.0 * p_one)
 
-    # Normal approximation (continuity-corrected).
+    # Normal approximation (continuity-corrected), two-sided.
     import math
 
-    z = (b - c - (1 if b > c else -1)) / math.sqrt(n)
-    return 0.5 * math.erfc(z / math.sqrt(2))
+    # |b - c| with continuity correction toward zero.
+    abs_diff = abs(b - c)
+    cc = abs_diff - 1 if abs_diff >= 1 else 0
+    z = cc / math.sqrt(n)
+    # Two-sided p = 2 * (1 - Phi(z)) = erfc(z / sqrt(2)).
+    return min(1.0, math.erfc(z / math.sqrt(2)))
 
 
 def load_run(jsonl_path: str | Path) -> BenchmarkRun:

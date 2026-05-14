@@ -210,6 +210,14 @@ class McNemarGate:
     with at least ``min_paired`` correct-outcome records containing
     predictions from BOTH sources.
 
+    The underlying test is the two-sided exact binomial on discordant
+    pairs as described in Algorithm 1 of the paper (``body.typ`` §3.2):
+    ``p = min(1.0, 2 * BinomialCDF(min(b, c); b + c, 0.5))``. The
+    advance condition pairs ``p < alpha`` with the directional check
+    ``b > c`` (target wins more disagreement than current); the
+    direction filter is implicit in the gate's caller-decided
+    ``current_phase``/``target_phase`` orientation.
+
     Statistical contract: the probability of advancing to a worse-
     than-current phase is bounded above by ``alpha``. A false-negative
     (refuse to advance despite real improvement) is bounded by the
@@ -262,6 +270,18 @@ class McNemarGate:
         current_acc = sum(current_correct) / n
         target_acc = sum(target_correct) / n
 
+        # Discordant pair direction (paper Algorithm 1, body.typ §3.2):
+        # b is "target right, current wrong"; c is "current right, target wrong".
+        # The two-sided p answers "are b and c imbalanced?"; the directional
+        # filter b > c ensures we only advance when the imbalance points the
+        # right way (target wins more disagreement than current).
+        b = sum(
+            1 for cur, tgt in zip(current_correct, target_correct, strict=True) if (not cur) and tgt
+        )
+        c = sum(
+            1 for cur, tgt in zip(current_correct, target_correct, strict=True) if cur and (not tgt)
+        )
+
         # Lazy import to avoid a hard dependency on viz for core.
         from dendra.viz import mcnemar_p
 
@@ -275,13 +295,27 @@ class McNemarGate:
                 target_accuracy=target_acc,
             )
 
-        if p < self._alpha:
+        if p < self._alpha and b > c:
             return GateDecision(
                 target_better=True,
                 rationale=(
-                    f"McNemar p={p:.4g} < alpha={self._alpha}; "
+                    f"McNemar p={p:.4g} < alpha={self._alpha} (b={b} > c={c}); "
                     f"{current_phase.name}={current_acc:.1%} "
                     f"→ {target_phase.name}={target_acc:.1%} on {n} paired samples"
+                ),
+                p_value=p,
+                paired_sample_size=n,
+                current_accuracy=current_acc,
+                target_accuracy=target_acc,
+            )
+        if p < self._alpha:
+            # Significant imbalance but in the wrong direction: target loses
+            # more than it wins. Refuse to advance.
+            return GateDecision(
+                target_better=False,
+                rationale=(
+                    f"McNemar p={p:.4g} < alpha={self._alpha} but b={b} <= c={c}; "
+                    f"target does not beat current on {n} paired samples"
                 ),
                 p_value=p,
                 paired_sample_size=n,
